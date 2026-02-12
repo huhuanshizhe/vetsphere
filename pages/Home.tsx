@@ -82,6 +82,39 @@ const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* --- TEMPORARY TESTING PORTALS --- */}
+      <section className="py-12 bg-slate-100 border-y border-slate-200">
+         <div className="max-w-7xl mx-auto px-6">
+           <div className="flex items-center gap-4 mb-6">
+              <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-200 animate-pulse">Debug Mode</span>
+              <h2 className="text-xl font-black text-slate-900">快速测试通道 (Quick Login Portals)</h2>
+           </div>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Link to="/auth" className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-vs hover:-translate-y-1 transition-all group">
+                 <div className="text-3xl mb-3">👨‍⚕️</div>
+                 <div className="font-black text-slate-900 group-hover:text-vs">医生/用户入口</div>
+                 <div className="text-[10px] text-slate-400 font-bold uppercase mt-1">Doctor Portal</div>
+              </Link>
+              <Link to="/partners/edu" className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-purple-500 hover:-translate-y-1 transition-all group">
+                 <div className="text-3xl mb-3">🎓</div>
+                 <div className="font-black text-slate-900 group-hover:text-purple-600">课程供应商入口</div>
+                 <div className="text-[10px] text-slate-400 font-bold uppercase mt-1">Course Provider</div>
+              </Link>
+              <Link to="/partners/gear" className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-500 hover:-translate-y-1 transition-all group">
+                 <div className="text-3xl mb-3">🏢</div>
+                 <div className="font-black text-slate-900 group-hover:text-blue-600">商城供应商入口</div>
+                 <div className="text-[10px] text-slate-400 font-bold uppercase mt-1">Shop Supplier</div>
+              </Link>
+              <Link to="/sys-admin" className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-slate-900 hover:-translate-y-1 transition-all group">
+                 <div className="text-3xl mb-3">🛡️</div>
+                 <div className="font-black text-slate-900 group-hover:text-slate-900">超级管理员入口</div>
+                 <div className="text-[10px] text-slate-400 font-bold uppercase mt-1">Super Admin</div>
+              </Link>
+           </div>
+         </div>
+      </section>
+      {/* ------------------------------- */}
+
       {/* Specialty Disciplines */}
       <section className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-6">

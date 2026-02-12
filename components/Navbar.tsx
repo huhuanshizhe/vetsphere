@@ -2,18 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
   const { cart } = useCart();
+  const { isAuthenticated, user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isActive = (path: string) => location.pathname === path;
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // 模拟登录状态
-  const isLoggedIn = location.pathname.includes('/dashboard');
-
-  // 路由跳转时自动关闭移动端菜单
+  // Automatically close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
@@ -75,9 +74,9 @@ const Navbar: React.FC = () => {
                 </span>
               )}
            </Link>
-           {isLoggedIn ? (
+           {isAuthenticated ? (
              <Link to="/dashboard" className="hidden md:block btn-vs text-xs uppercase tracking-widest no-underline">
-                Dashboard
+                {user?.name || 'Dashboard'}
              </Link>
            ) : (
              <Link to="/auth" className="hidden md:block btn-vs text-xs uppercase tracking-widest no-underline">
@@ -104,9 +103,15 @@ const Navbar: React.FC = () => {
               </Link>
             ))}
             <div className="h-px bg-slate-100 my-2"></div>
-            <Link to="/auth" className="p-4 text-center btn-vs rounded-xl">
-              {isLoggedIn ? 'Dashboard' : 'Login / Register'}
-            </Link>
+            {isAuthenticated ? (
+               <Link to="/dashboard" className="p-4 text-center btn-vs rounded-xl">
+                 Dashboard ({user?.name})
+               </Link>
+            ) : (
+               <Link to="/auth" className="p-4 text-center btn-vs rounded-xl">
+                 Login / Register
+               </Link>
+            )}
         </div>
       )}
     </nav>

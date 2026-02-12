@@ -9,6 +9,8 @@ export default defineConfig({
     port: 3000,
     allowedHosts: [
       'veterinary.chanyechuhai.com',
+      'vetsphere.com',
+      'www.vetsphere.com',
       'localhost',
       '127.0.0.1'
     ]
