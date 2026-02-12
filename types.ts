@@ -12,8 +12,6 @@ export type UserRole = 'Doctor' | 'CourseProvider' | 'ShopSupplier' | 'Admin';
 
 export type ProductGroup = 'PowerTools' | 'Implants' | 'HandInstruments' | 'Consumables' | 'Equipment';
 
-export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
-
 export interface DoctorProfile {
   id: string;
   fullName: string;
@@ -26,122 +24,74 @@ export interface DoctorProfile {
   referralCode: string;
   points: number;
   level: 'Resident' | 'Surgeon' | 'Expert' | 'Master';
-  status?: 'Active' | 'Banned';
-}
-
-// --- CRM / Lead Management ---
-export interface Lead {
-  id: string;
-  source: 'AI Chat' | 'Contact Form';
-  contactInfo: string; // Extracted email or phone
-  name?: string; // Extracted or guessed name
-  organization?: string; // Extracted clinic name
-  interestSummary: string; // Summary of what they were asking about
-  fullChatLog?: Message[]; // Snapshot of conversation
-  status: 'New' | 'Contacted' | 'Converted' | 'Archived';
-  createdAt: string;
-}
-
-// --- 社区相关类型 ---
-export interface Post {
-  id: string;
-  author: {
-    id: string;
-    name: string;
-    avatar: string;
-    level: string;
-    hospital: string;
-  };
-  title: string;
-  content: string;
-  specialty: Specialty;
-  media: {
-    type: 'image' | 'video';
-    url: string;
+  progress: {
+    specialty: Specialty;
+    level: number;
+    completedCourses: string[];
   }[];
-  usedProducts?: string[]; // 关联商城器械 ID
-  stats: {
-    likes: number;
-    comments: number;
-    saves: number;
-  };
-  createdAt: string;
-  isAiAnalyzed?: boolean;
-}
-
-export interface Comment {
-  id: string;
-  postId: string;
-  author: {
-    name: string;
-    avatar: string;
-  };
-  content: string;
-  createdAt: string;
-  replies?: Comment[];
 }
 
 export interface Product {
   id: string;
   name: string;
   brand: string;
-  procedure?: string;
-  supplier: {
-    name: string;
-    origin: string;
-    rating: number;
-  };
   group: ProductGroup;
   price: number;
   specialty: Specialty;
   imageUrl: string;
   description: string;
-  longDescription?: string;
+  longDescription: string;
   specs: { [key: string]: string };
+  compareData?: {
+    torque?: string;
+    weight?: string;
+    battery?: string;
+    material?: string;
+  };
   stockStatus: 'In Stock' | 'Low Stock' | 'Out of Stock';
-  approvalStatus?: ApprovalStatus;
+  supplier: {
+    name: string;
+    origin: string;
+    rating: number;
+  };
 }
 
 export interface Course {
   id: string;
   title: string;
-  instructor: Instructor;
   specialty: Specialty;
+  level: 'Basic' | 'Intermediate' | 'Advanced' | 'Master';
   price: number;
   currency: string;
+  startDate: string;
+  endDate: string;
+  imageUrl: string;
+  instructor: {
+    name: string;
+    imageUrl: string;
+    title: string;
+    credentials: string[];
+    bio: string;
+  };
   location: {
     city: string;
     venue: string;
     address: string;
   };
-  startDate: string;
-  endDate: string;
   description: string;
-  imageUrl: string;
-  level: 'Basic' | 'Intermediate' | 'Advanced' | 'Master';
-  agenda: DailyAgenda[];
-  status: 'Draft' | 'Pending' | 'Published' | 'Rejected';
-  capacity?: number;
+  status: string;
+  agenda: {
+    day: string;
+    date: string;
+    items: { time: string; activity: string; }[];
+  }[];
 }
 
-export interface DailyAgenda {
-  day: string;
-  date: string;
-  items: AgendaItem[];
-}
-
-export interface AgendaItem {
-  time: string;
-  activity: string;
-  description?: string;
-}
-
-export interface Instructor {
-  name: string;
-  title: string;
-  bio: string;
-  imageUrl: string;
-  credentials: string[];
+export interface Message {
+  role: 'user' | 'model';
+  content: string;
+  timestamp: Date;
+  sources?: { title: string; uri: string }[];
 }
 
 export interface CartItem {
@@ -157,15 +107,82 @@ export interface CartItem {
 export interface Order {
   id: string;
   customerName: string;
-  items: { name: string; quantity: number }[];
+  customerEmail: string;
+  items: CartItem[];
   totalAmount: number;
   status: 'Pending' | 'Paid' | 'Shipped' | 'Completed';
   date: string;
-  shippingAddress?: string;
+  shippingAddress: string;
 }
 
-export interface Message {
-  role: 'user' | 'model';
+export interface Quote {
+  id: string;
+  customerEmail: string;
+  customerInfo: any;
+  items: CartItem[];
+  totalAmount: number;
+  status: 'Active' | 'Expired';
+  validUntil: string;
+  createdAt: string;
+}
+
+export interface Post {
+  id: string;
+  title: string;
   content: string;
+  specialty: Specialty;
+  media: { type: 'image' | 'video'; url: string }[];
+  stats: { likes: number; comments: number; saves: number };
+  createdAt: string;
+  isAiAnalyzed: boolean;
+  author: {
+    name: string;
+    avatar: string;
+    level: string;
+    hospital: string;
+  };
+  // Structured Medical Data
+  patientInfo?: {
+    species: string;
+    age: string;
+    weight: string;
+  };
+  sections?: {
+    diagnosis?: string;
+    plan?: string;
+    outcome?: string;
+  };
+  expertComment?: string;
+}
+
+export interface Lead {
+  id: string;
+  source: string;
+  contactInfo: string;
+  interestSummary: string;
+  fullChatLog: Message[];
+  status: 'New' | 'Contacted' | 'Converted' | 'Archived';
+  createdAt: string;
+  organization?: string;
+}
+
+export interface ShippingTemplate {
+  id: string;
+  name: string;
+  regionCode: string;
+  baseFee: number;
+  // perItemFee corrected to camelCase
+  perItemFee: number;
+  currency: string;
+  estimatedDays: string;
+}
+
+export interface AppNotification {
+  id: string;
+  type: 'order' | 'community' | 'system';
+  title: string;
+  message: string;
+  read: boolean;
   timestamp: Date;
+  link?: string;
 }

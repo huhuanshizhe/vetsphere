@@ -29,6 +29,8 @@ app.use(cors({
     'https://veterinary.chanyechuhai.com', 
     'https://vetsphere.com',
     'https://www.vetsphere.com',
+    'https://vetsphere.net',
+    'https://www.vetsphere.net',
     'http://localhost:3000', 
     'http://127.0.0.1:3000'
   ],
@@ -47,30 +49,57 @@ app.get('/', (req, res) => {
 // Stripe Payment Endpoints
 // ==========================================
 
+// 1. Classic Payment Intent (Embedded Form) - KEEPING FOR REFERENCE
 app.post('/api/payment/stripe/create-intent', async (req, res) => {
     const { orderId, amount, currency } = req.body;
-
     try {
-        // Stripe 金额单位通常是最小货币单位 (如 cents)，这里假设前端传的是元，需要乘 100
-        // 如果是日元等无小数货币，则不需要乘 100 (此处简化处理，假设 CNY/USD)
         const amountInCents = Math.round(amount * 100);
-
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amountInCents,
             currency: currency ? currency.toLowerCase() : 'cny',
             metadata: { orderId },
-            automatic_payment_methods: {
-                enabled: true,
-            },
+            automatic_payment_methods: { enabled: true },
         });
-
         res.json({
             status: 'success',
             clientSecret: paymentIntent.client_secret,
             id: paymentIntent.id
         });
     } catch (error) {
-        console.error('Stripe Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 2. NEW: Stripe Checkout Session (Hosted Page)
+app.post('/api/payment/stripe/create-checkout-session', async (req, res) => {
+    const { items, orderId, returnUrl } = req.body;
+
+    try {
+        // Map cart items to Stripe Line Items
+        const lineItems = items.map(item => ({
+            price_data: {
+                currency: 'cny',
+                product_data: {
+                    name: item.name,
+                    images: item.imageUrl ? [item.imageUrl] : [],
+                },
+                unit_amount: Math.round(item.price * 100), // Convert to cents
+            },
+            quantity: item.quantity,
+        }));
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card', 'alipay'], // Stripe Checkout supports multiple methods easily
+            line_items: lineItems,
+            mode: 'payment',
+            success_url: `${returnUrl}?success=true&orderId=${orderId}`,
+            cancel_url: `${returnUrl}?canceled=true`,
+            client_reference_id: orderId,
+        });
+
+        res.json({ url: session.url });
+    } catch (error) {
+        console.error('Stripe Checkout Error:', error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -1,304 +1,403 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Specialty, Post } from '../types';
-
-const INITIAL_POSTS: Post[] = [
-  {
-    id: 'post-001',
-    author: {
-      id: 'doc-88',
-      name: 'Dr. Zhang',
-      avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&h=100&q=80',
-      level: 'Expert',
-      hospital: 'Beijing Central Vet'
-    },
-    title: 'Complication Management post-TPLO: Second Look at Medial Meniscus',
-    content: '5yo Labrador presented with intermittent lameness 3 months post-TPLO. Second arthroscopic look revealed a bucket handle tear of the medial meniscus. Gait significantly improved after partial meniscectomy...',
-    specialty: Specialty.ORTHOPEDICS,
-    media: [
-      { type: 'image', url: 'https://images.unsplash.com/photo-1583483425070-cb9ce8fc51b5?auto=format&fit=crop&w=800&q=80' },
-      { type: 'image', url: 'https://images.unsplash.com/photo-1579154235602-4c202ff39040?auto=format&fit=crop&w=800&q=80' }
-    ],
-    stats: { likes: 124, comments: 18, saves: 45 },
-    createdAt: '2h ago',
-    isAiAnalyzed: true
-  },
-  {
-    id: 'post-002',
-    author: {
-      id: 'doc-99',
-      name: 'Prof. Li',
-      avatar: 'https://images.unsplash.com/photo-1559839734-2b71f1e59816?auto=format&fit=crop&w=100&h=100&q=80',
-      level: 'Master',
-      hospital: 'Royal Pet Hospital'
-    },
-    title: 'Exotics Ophthalmology: Rabbit Phacoemulsification Case Sharing',
-    content: 'Given the extremely thin lens capsule in rabbits, pressure control is critical. Used a 2.4mm incision with a custom IOL implantation...',
-    specialty: Specialty.EYE_SURGERY,
-    media: [
-      { type: 'image', url: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=800&q=80' }
-    ],
-    stats: { likes: 89, comments: 5, saves: 12 },
-    createdAt: '5h ago'
-  }
-];
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { getGeminiResponse, DEFAULT_SYSTEM_INSTRUCTION } from '../services/gemini';
+import { useLanguage } from '../context/LanguageContext';
 
 const Community: React.FC = () => {
-  const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeSpecialty, setActiveSpecialty] = useState<Specialty | 'All'>('All');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPublisher, setShowPublisher] = useState(false);
-  
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isLiked, setIsLiked] = useState<Record<string, boolean>>({});
+  const [commentInput, setCommentInput] = useState('');
+  const [comments, setComments] = useState<any[]>([]);
+
   // Post Form State
-  const [newPostTitle, setNewPostTitle] = useState('');
-  const [newPostContent, setNewPostContent] = useState('');
-  const [newPostSpecialty, setNewPostSpecialty] = useState<Specialty>(Specialty.ORTHOPEDICS);
+  const [form, setForm] = useState({
+    title: '',
+    content: '',
+    specialty: Specialty.ORTHOPEDICS,
+    species: 'Canine',
+    age: '',
+    weight: '',
+    diagnosis: '',
+    plan: '',
+    outcome: '',
+    media: [] as { type: 'image' | 'video'; url: string }[]
+  });
 
-  const handlePublish = () => {
-    if(!newPostTitle || !newPostContent) return;
-    
-    const newPost: Post = {
-      id: `post-${Date.now()}`,
-      author: {
-        id: 'me',
-        name: 'Me (Dr. User)',
-        avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=100&h=100&q=80',
-        level: 'Surgeon',
-        hospital: 'My Clinic'
-      },
-      title: newPostTitle,
-      content: newPostContent,
-      specialty: newPostSpecialty,
-      media: [
-        { type: 'image', url: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80' } // Mock image
-      ],
-      stats: { likes: 0, comments: 0, saves: 0 },
-      createdAt: 'Just now',
-      isAiAnalyzed: true // Mock AI analysis
-    };
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
-    setPosts([newPost, ...posts]);
-    setShowPublisher(false);
-    setNewPostTitle('');
-    setNewPostContent('');
-    // Mock success
-    alert('Case published! AI is analyzing your content...');
+  const fetchPosts = async () => {
+    setLoading(true);
+    const data = await api.getPosts();
+    setPosts(data);
+    setLoading(false);
   };
 
-  const filteredPosts = activeSpecialty === 'All' 
-    ? posts 
-    : posts.filter(p => p.specialty === activeSpecialty);
+  const handleLike = (postId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setIsLiked(prev => ({ ...prev, [postId]: !prev[postId] }));
+    api.interactWithPost(postId, 'like');
+    // UI-only increment for demo
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, stats: { ...p.stats, likes: p.stats.likes + (isLiked[postId] ? -1 : 1) } } : p));
+  };
+
+  const handleShare = (post: Post, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (navigator.share) {
+      navigator.share({
+        title: post.title,
+        text: post.content,
+        url: window.location.href,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(`${post.title} - Check this clinical case on VetSphere: ${window.location.href}`);
+      alert('Link copied to clipboard!');
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+       const files = Array.from(e.target.files);
+       const mediaPromises = files.map(file => new Promise<{ type: 'image' | 'video', url: string }>((resolve) => {
+           const reader = new FileReader();
+           reader.onload = (ev) => {
+               const type = file.type.startsWith('video') ? 'video' : 'image';
+               resolve({ type, url: ev.target?.result as string });
+           };
+           reader.readAsDataURL(file);
+       }));
+       const newMedia = await Promise.all(mediaPromises);
+       setForm(prev => ({ ...prev, media: [...prev.media, ...newMedia] }));
+    }
+  };
+
+  const handlePublish = async () => {
+    if(!form.title || !form.content || !user) return;
+    const postData: Partial<Post> = {
+      title: form.title, content: form.content, specialty: form.specialty,
+      media: form.media, author: { name: user.name || 'User', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&h=100&q=80', level: user.role, hospital: 'Veterinary Surgical Center' },
+      patientInfo: { species: form.species, age: form.age, weight: form.weight },
+      sections: { diagnosis: form.diagnosis, plan: form.plan, outcome: form.outcome }
+    };
+    await api.createPost(postData, user);
+    await fetchPosts();
+    setShowPublisher(false);
+    resetForm();
+  };
+
+  const submitComment = () => {
+    if (!commentInput.trim() || !user) return;
+    const newComment = { id: Date.now(), author: user.name, content: commentInput, date: 'Just now' };
+    setComments([newComment, ...comments]);
+    setCommentInput('');
+    api.addComment(selectedPost!.id, newComment);
+  };
+
+  const resetForm = () => {
+    setForm({ title: '', content: '', specialty: Specialty.ORTHOPEDICS, species: 'Canine', age: '', weight: '', diagnosis: '', plan: '', outcome: '', media: [] });
+  };
+
+  const runAiAnalysis = async (post: Post) => {
+    setIsAiAnalyzing(true);
+    setAiResponse(null);
+    const prompt = `Analyze this clinical case as a senior veterinary surgeon. Title: ${post.title}. Specialty: ${post.specialty}. Provide surgical risk assessment and implant recommendations.`;
+    const { text } = await getGeminiResponse([], prompt, DEFAULT_SYSTEM_INSTRUCTION);
+    setAiResponse(text);
+    setIsAiAnalyzing(false);
+  };
+
+  const filteredPosts = activeSpecialty === 'All' ? posts : posts.filter(p => p.specialty === activeSpecialty);
 
   return (
-    <div className="bg-slate-50 min-h-screen pt-32 pb-20 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header Area */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
-          <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Case Plaza</h1>
-            <p className="text-slate-500 font-medium mt-2">Share your surgical art, advance with global surgeons.</p>
-          </div>
-          <div className="flex items-center gap-4">
-             <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto max-w-[200px] sm:max-w-none">
-                {['All', ...Object.values(Specialty)].slice(0, 4).map(s => (
-                  <button 
-                    key={s} 
-                    onClick={() => setActiveSpecialty(s as any)}
-                    className={`px-6 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeSpecialty === s ? 'bg-vs text-white shadow-lg shadow-vs/20' : 'text-slate-400 hover:text-slate-900'}`}
-                  >
-                    {s}
-                  </button>
-                ))}
-             </div>
-             <button 
-                onClick={() => setShowPublisher(true)}
-                className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-800 transition-all flex items-center gap-2 shrink-0"
-             >
-                <span className="text-lg">+</span> Post Case
-             </button>
-          </div>
-        </div>
-
-        {/* Feed Grid */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          {filteredPosts.map(post => (
-            <div 
-              key={post.id} 
-              onClick={() => setSelectedPost(post)}
-              className="bg-white rounded-[40px] border border-slate-100 p-8 flex flex-col gap-6 cursor-pointer group hover:shadow-2xl hover:shadow-slate-200 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <img src={post.author.avatar} className="w-12 h-12 rounded-2xl object-cover border-2 border-slate-50 shadow-sm" />
-                  <div>
-                    <h4 className="text-sm font-black text-slate-900 leading-tight flex items-center gap-2">
-                      {post.author.name}
-                      <span className="px-2 py-0.5 bg-vs/5 text-vs text-[8px] font-black uppercase rounded">{post.author.level}</span>
-                    </h4>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{post.author.hospital}</p>
-                  </div>
-                </div>
-                <span className="text-[10px] text-slate-300 font-bold">{post.createdAt}</span>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-xl font-black text-slate-900 group-hover:text-vs transition-colors line-clamp-1">{post.title}</h3>
-                <p className="text-sm text-slate-500 font-medium line-clamp-2 leading-relaxed">{post.content}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 h-48 rounded-3xl overflow-hidden bg-slate-100">
-                 {post.media.map((m, i) => (
-                   <img key={i} src={m.url} className={`w-full h-full object-cover ${post.media.length === 1 ? 'col-span-2' : ''}`} />
-                 ))}
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-                <div className="flex items-center gap-6">
-                  <button className="flex items-center gap-2 group/btn">
-                    <span className="text-xl group-hover/btn:scale-125 transition-transform">❤️</span>
-                    <span className="text-xs font-black text-slate-400">{post.stats.likes}</span>
-                  </button>
-                  <button className="flex items-center gap-2 group/btn">
-                    <span className="text-xl group-hover/btn:scale-125 transition-transform">💬</span>
-                    <span className="text-xs font-black text-slate-400">{post.stats.comments}</span>
-                  </button>
-                </div>
-                {post.isAiAnalyzed && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-vs/10 rounded-full">
-                     <span className="text-xs">✨</span>
-                     <span className="text-[9px] font-black text-vs uppercase tracking-widest">AI Analyzed</span>
-                  </div>
-                )}
-              </div>
+    <div className="bg-[#F8FAFC] min-h-screen pt-32 pb-20 px-4">
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-12">
+        
+        {/* Main Content */}
+        <div className="flex-1">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-black text-slate-900 tracking-tight">{t.community.title}</h1>
+              <p className="text-slate-500 font-medium">{t.community.subtitle}</p>
             </div>
-          ))}
+            
+            <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+              {['All', ...Object.values(Specialty)].slice(0, 5).map(s => (
+                <button 
+                  key={s} onClick={() => setActiveSpecialty(s as any)}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSpecialty === s ? 'bg-vs text-white shadow-lg' : 'text-slate-400 hover:text-slate-900'}`}
+                >
+                  {s === 'All' ? t.courses.allSpecialties : s}
+                </button>
+              ))}
+              <div className="w-px h-6 bg-slate-100 mx-2 hidden sm:block"></div>
+              <button onClick={() => setShowPublisher(true)} className="bg-vs text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-vs/20 hover:scale-105 transition-all">
+                {t.community.newCase}
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+             <div className="py-40 flex justify-center"><div className="w-10 h-10 border-4 border-vs border-t-transparent rounded-full animate-spin"></div></div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {filteredPosts.map(post => (
+                <div 
+                  key={post.id} 
+                  onClick={() => { setSelectedPost(post); setAiResponse(null); setComments([]); }}
+                  className="vs-card-refined p-8 bg-white flex flex-col group cursor-pointer"
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                      <img src={post.author.avatar} className="w-10 h-10 rounded-xl object-cover" />
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900">{post.author.name}</h4>
+                        <p className="text-[9px] text-vs font-black uppercase">{post.author.level}</p>
+                      </div>
+                    </div>
+                    <button onClick={(e) => handleShare(post, e)} className="p-2 text-slate-300 hover:text-vs transition-colors">📤</button>
+                  </div>
+
+                  <h3 className="text-xl font-black text-slate-900 mb-4 line-clamp-2 leading-tight group-hover:text-vs transition-colors">{post.title}</h3>
+                  <div className="flex gap-2 mb-6">
+                     <span className="px-2 py-1 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-400 uppercase tracking-widest">{post.specialty}</span>
+                  </div>
+
+                  {post.media.length > 0 && (
+                    <div className="aspect-video rounded-2xl bg-slate-100 overflow-hidden mb-6">
+                      <img src={post.media[0].url} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-6 border-t border-slate-50 mt-auto">
+                    <div className="flex gap-5">
+                      <button onClick={(e) => handleLike(post.id, e)} className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${isLiked[post.id] ? 'text-red-500' : 'text-slate-400'}`}>
+                        <span>{isLiked[post.id] ? '❤️' : '🤍'}</span> {post.stats.likes}
+                      </button>
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                        <span>💬</span> {post.stats.comments}
+                      </div>
+                    </div>
+                    {post.isAiAnalyzed && <span className="text-[9px] font-black text-vs uppercase flex items-center gap-1">✨ AI analyzed</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Sidebar */}
+        <aside className="hidden lg:block w-80 shrink-0 space-y-8">
+            <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">{t.community.trending}</h4>
+                <div className="space-y-6">
+                    {[
+                        { name: 'Dr. Zhang', role: 'Orthopedics Expert', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80', cases: 142 },
+                        { name: 'Dr. Emily Smith', role: 'Neuro Surgeon', avatar: 'https://images.unsplash.com/photo-1559839734-2b71f1e59816?auto=format&fit=crop&w=100&q=80', cases: 89 },
+                        { name: 'Dr. Chen', role: 'Soft Tissue', avatar: 'https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?auto=format&fit=crop&w=100&q=80', cases: 65 },
+                    ].map(exp => (
+                        <div key={exp.name} className="flex items-center gap-4 group">
+                            <img src={exp.avatar} className="w-10 h-10 rounded-xl object-cover" />
+                            <div className="flex-1">
+                                <p className="text-xs font-black text-slate-900">{exp.name}</p>
+                                <p className="text-[9px] text-slate-400 font-bold">{exp.role}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-vs">{exp.cases}</p>
+                                <p className="text-[8px] text-slate-300 font-bold uppercase">{t.community.cases}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <button className="w-full mt-8 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-vs transition-all">{t.community.viewMembers}</button>
+            </div>
+
+            <div className="p-8 bg-slate-900 rounded-[32px] text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl">🎓</div>
+                <h5 className="text-[10px] font-black text-vs uppercase tracking-widest mb-2">{t.community.certPath}</h5>
+                <p className="text-xs font-medium text-slate-400 mb-6">{t.community.certDesc}</p>
+                <button className="w-full py-3 bg-vs text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-vs/20">{t.community.learnMore}</button>
+            </div>
+        </aside>
       </div>
 
-      {/* Post Detail Modal */}
+      {/* Case Detail Drawer */}
       {selectedPost && (
-        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-           <div className="bg-white rounded-[48px] w-full max-w-5xl h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 relative">
-              <button 
-                onClick={() => setSelectedPost(null)}
-                className="absolute top-8 right-8 w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-xl z-50 hover:scale-95 transition-all"
-              >✕</button>
-
-              <div className="flex-1 overflow-y-auto">
-                 <div className="grid lg:grid-cols-5 h-full">
-                    {/* Media Column */}
-                    <div className="lg:col-span-3 bg-slate-100 h-full overflow-y-auto p-4 space-y-4">
-                       {selectedPost.media.map((m, i) => (
-                         <img key={i} src={m.url} className="w-full rounded-3xl shadow-lg border border-white/50" />
-                       ))}
-                    </div>
-
-                    {/* Content Column */}
-                    <div className="lg:col-span-2 p-12 flex flex-col border-l border-slate-100">
-                       <div className="flex items-center gap-4 mb-10">
-                          <img src={selectedPost.author.avatar} className="w-14 h-14 rounded-2xl object-cover" />
-                          <div>
-                            <h3 className="font-black text-slate-900">{selectedPost.author.name}</h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">{selectedPost.author.hospital}</p>
-                          </div>
-                       </div>
-
-                       <h2 className="text-2xl font-black text-slate-900 mb-6 leading-tight">{selectedPost.title}</h2>
-                       <div className="flex-1 space-y-6">
-                          <p className="text-slate-600 font-medium leading-relaxed">{selectedPost.content}</p>
-                          
-                          {selectedPost.isAiAnalyzed && (
-                            <div className="p-6 bg-vs/5 border border-vs/10 rounded-3xl space-y-3">
-                               <p className="text-[10px] font-black text-vs uppercase tracking-widest flex items-center gap-2">
-                                  <span>✨</span> AI Surgical Insight
-                               </p>
-                               <p className="text-xs text-vs font-bold leading-relaxed">
-                                  This case demonstrates excellent preoperative planning. AI analysis suggests: in Labradors with high bone density, balancing osteotomy speed and torque is key to reducing thermal necrosis. Consider SurgiTech High-Torque system...
-                               </p>
-                            </div>
-                          )}
-
-                          <section className="pt-8 border-t border-slate-50">
-                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Clinical Discussion (18)</h4>
-                             <div className="space-y-6">
-                                <div className="flex gap-4">
-                                   <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0"></div>
-                                   <div className="space-y-1">
-                                      <p className="text-xs font-black text-slate-800">Dr. Wang <span className="text-slate-300 font-medium ml-2">1h ago</span></p>
-                                      <p className="text-xs text-slate-600 font-medium">What blade size did you use? Any recommendations for micro instruments for the meniscectomy?</p>
-                                   </div>
-                                </div>
-                             </div>
-                          </section>
-                       </div>
-
-                       <div className="mt-10 pt-6 border-t border-slate-50 flex gap-4">
-                          <input 
-                            type="text" 
-                            placeholder="Join the discussion..." 
-                            className="flex-1 px-6 py-4 bg-slate-50 rounded-2xl border-none text-sm font-bold focus:ring-2 focus:ring-vs/20"
-                          />
-                          <button className="w-14 h-14 bg-vs text-white rounded-2xl flex items-center justify-center text-xl">↑</button>
-                       </div>
-                    </div>
+        <div className="fixed inset-0 z-[300] bg-slate-950/70 backdrop-blur-sm flex items-center justify-end animate-in fade-in duration-300">
+           <div className="bg-white w-full max-w-6xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-500 overflow-hidden">
+              <div className="p-6 md:p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+                 <div className="flex items-center gap-4">
+                    <button onClick={() => setSelectedPost(null)} className="p-2 hover:bg-slate-50 rounded-lg">✕</button>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 truncate max-w-md">{selectedPost.title}</h2>
                  </div>
+                 <div className="flex gap-3">
+                    <button onClick={() => handleShare(selectedPost)} className="p-3 border rounded-xl hover:bg-slate-50">📤</button>
+                    <button onClick={() => runAiAnalysis(selectedPost)} disabled={isAiAnalyzing} className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2">
+                      {isAiAnalyzing ? t.community.analyzing : t.community.runAi}
+                    </button>
+                 </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="grid lg:grid-cols-12 h-full">
+                   <div className="lg:col-span-8 p-6 md:p-12 space-y-12">
+                      <div className="grid grid-cols-3 gap-6 p-8 bg-slate-50 rounded-[32px]">
+                         {[
+                           { label: t.community.species, val: selectedPost.patientInfo?.species || 'N/A', icon: '🐾' },
+                           { label: t.community.age, val: selectedPost.patientInfo?.age || 'N/A', icon: '🎂' },
+                           { label: t.community.weight, val: selectedPost.patientInfo?.weight || 'N/A', icon: '⚖️' },
+                         ].map(item => (
+                           <div key={item.label}>
+                              <p className="text-[9px] font-black text-slate-400 uppercase mb-2">{item.label}</p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{item.icon}</span>
+                                <span className="text-sm font-black text-slate-900">{item.val}</span>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+
+                      <div className="space-y-12">
+                         <section>
+                            <h4 className="text-[10px] font-black text-vs uppercase tracking-widest mb-6">{t.community.clinicalBackground}</h4>
+                            <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{selectedPost.content}</p>
+                         </section>
+                         {selectedPost.sections?.diagnosis && (
+                           <section>
+                              <h4 className="text-[10px] font-black text-vs uppercase tracking-widest mb-4">{t.community.diagnosis}</h4>
+                              <div className="p-6 bg-emerald-50/50 border border-emerald-100 rounded-2xl text-sm font-bold text-slate-800 italic">{selectedPost.sections.diagnosis}</div>
+                           </section>
+                         )}
+                         {selectedPost.media.length > 0 && (
+                           <section>
+                              <h4 className="text-[10px] font-black text-vs uppercase tracking-widest mb-6">{t.community.gallery}</h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                 {selectedPost.media.map((m, i) => (
+                                   <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-slate-100"><img src={m.url} className="w-full h-full object-cover" /></div>
+                                 ))}
+                              </div>
+                           </section>
+                         )}
+                      </div>
+
+                      {/* Comment System UI */}
+                      <section className="pt-12 border-t border-slate-100">
+                         <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-8">{t.community.discussion} ({comments.length + selectedPost.stats.comments})</h4>
+                         
+                         <div className="flex gap-4 mb-10">
+                            <div className="w-10 h-10 rounded-full bg-vs flex items-center justify-center text-white font-bold">VS</div>
+                            <div className="flex-1 relative">
+                               <input 
+                                 type="text" 
+                                 value={commentInput}
+                                 onChange={e => setCommentInput(e.target.value)}
+                                 placeholder={t.community.addComment}
+                                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium pr-16"
+                               />
+                               <button onClick={submitComment} className="absolute right-2 top-2 h-10 px-4 bg-vs text-white rounded-xl text-[10px] font-black uppercase">{t.community.postComment}</button>
+                            </div>
+                         </div>
+
+                         <div className="space-y-8">
+                            {comments.map(c => (
+                              <div key={c.id} className="flex gap-4">
+                                 <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 uppercase text-xs">{c.author.charAt(0)}</div>
+                                 <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                       <span className="text-sm font-black text-slate-900">{c.author}</span>
+                                       <span className="text-[9px] text-slate-300 uppercase font-bold">{c.date}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-600 leading-relaxed">{c.content}</p>
+                                 </div>
+                              </div>
+                            ))}
+                            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End of thread</p>
+                            </div>
+                         </div>
+                      </section>
+                   </div>
+
+                   <div className="lg:col-span-4 bg-slate-50/50 p-8 md:p-12 border-l border-slate-100 space-y-10">
+                      <div className="bg-white p-8 rounded-3xl border border-vs/20 shadow-xl">
+                         <h5 className="text-[10px] font-black text-vs uppercase tracking-widest mb-4">{t.community.aiAnalysis}</h5>
+                         {aiResponse ? (
+                           <div className="text-xs font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{aiResponse}</div>
+                         ) : isAiAnalyzing ? (
+                           <div className="flex flex-col items-center py-10"><div className="w-8 h-8 border-2 border-vs border-t-transparent rounded-full animate-spin mb-4"></div><p className="text-[9px] font-black text-slate-400 uppercase">{t.community.analyzing}</p></div>
+                         ) : (
+                           <p className="text-xs text-slate-400 font-medium italic">Run AI analysis to get risk scores and technique peer-review.</p>
+                         )}
+                      </div>
+
+                      <div className="space-y-6">
+                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.community.author}</h5>
+                         <div className="flex items-center gap-4">
+                            <img src={selectedPost.author.avatar} className="w-14 h-14 rounded-2xl object-cover" />
+                            <div><p className="font-black text-slate-900">{selectedPost.author.name}</p><p className="text-[9px] text-vs font-black uppercase">{selectedPost.author.level}</p></div>
+                         </div>
+                         <button className="w-full py-4 bg-slate-950 text-white rounded-2xl text-[10px] font-black uppercase shadow-xl">{t.community.follow}</button>
+                      </div>
+                   </div>
+                </div>
               </div>
            </div>
         </div>
       )}
 
-      {/* Publisher Modal */}
+      {/* Post Publisher */}
       {showPublisher && (
-        <div className="fixed inset-0 z-[250] bg-slate-900/90 flex items-center justify-center p-4">
-           <div className="bg-white rounded-[48px] w-full max-w-2xl p-12 space-y-10 animate-in slide-in-from-bottom-8 duration-300 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center">
-                 <h2 className="text-3xl font-black text-slate-900">Publish Clinical Case</h2>
-                 <button onClick={() => setShowPublisher(false)} className="text-slate-400 hover:text-slate-900">Close</button>
+        <div className="fixed inset-0 z-[400] bg-slate-950/90 flex items-center justify-center p-4">
+           <div className="bg-white rounded-[40px] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom-10">
+              <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                 <h2 className="text-2xl font-black text-slate-900">{t.community.publishTitle}</h2>
+                 <button onClick={() => setShowPublisher(false)}>✕</button>
               </div>
-              <div className="space-y-6">
-                 <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Case Title</label>
-                    <input 
-                        type="text" 
-                        value={newPostTitle}
-                        onChange={e => setNewPostTitle(e.target.value)}
-                        className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:bg-white focus:ring-4 focus:ring-vs/10 font-bold" 
-                        placeholder="e.g. TPLO Post-op Gait Analysis" 
-                    />
+              <div className="flex-1 overflow-y-auto p-10 space-y-10">
+                 <div className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</label>
+                       <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" placeholder="Patient condition summary..." />
+                    </div>
+                    <div className="space-y-3">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Specialty</label>
+                       <select value={form.specialty} onChange={e => setForm({...form, specialty: e.target.value as any})} className="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
+                         {Object.values(Specialty).map(s => <option key={s} value={s}>{s}</option>)}
+                       </select>
+                    </div>
                  </div>
-                 <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Specialty</label>
-                    <select 
-                        value={newPostSpecialty}
-                        onChange={e => setNewPostSpecialty(e.target.value as Specialty)}
-                        className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none font-bold"
-                    >
-                       {Object.values(Specialty).map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                 <div className="space-y-3">
+                    <label className="text-[10px] font-black text-vs uppercase tracking-widest">Description</label>
+                    <textarea value={form.content} onChange={e => setForm({...form, content: e.target.value})} className="w-full h-32 p-4 bg-slate-50 border rounded-2xl font-medium" placeholder={t.community.publishDesc} />
                  </div>
-                 <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Clinical Insights / Discussion</label>
-                    <textarea 
-                        value={newPostContent}
-                        onChange={e => setNewPostContent(e.target.value)}
-                        className="w-full h-40 p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:bg-white focus:ring-4 focus:ring-vs/10 font-medium text-sm" 
-                        placeholder="Describe the procedure, findings, or questions you have..."
-                    ></textarea>
-                 </div>
-                 <div className="grid grid-cols-3 gap-4">
-                    <div className="aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-all">
-                       <span className="text-2xl mb-2">📸</span>
-                       <span className="text-[9px] font-black text-slate-400 uppercase">Upload Media</span>
+                 <div className="space-y-6">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.community.uploadMedia}</label>
+                    <div className="grid grid-cols-4 gap-4">
+                       {form.media.map((m, idx) => (
+                         <div key={idx} className="aspect-square rounded-2xl overflow-hidden relative"><img src={m.url} className="w-full h-full object-cover" /></div>
+                       ))}
+                       <label className="aspect-square border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors">
+                          <input type="file" multiple className="hidden" onChange={handleFileSelect} />
+                          <span className="text-2xl">📸</span>
+                       </label>
                     </div>
                  </div>
               </div>
-              <button 
-                onClick={handlePublish}
-                disabled={!newPostTitle || !newPostContent}
-                className="w-full py-5 bg-vs text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-2xl shadow-vs/30 disabled:opacity-50 disabled:shadow-none"
-              >
-                Submit & Request AI Analysis
-              </button>
+              <div className="p-8 border-t bg-slate-50 flex gap-4">
+                 <button onClick={() => setShowPublisher(false)} className="flex-1 text-[10px] font-black uppercase text-slate-400">{t.community.cancel}</button>
+                 <button onClick={handlePublish} className="flex-[2] py-4 bg-vs text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">{t.community.publishBtn}</button>
+              </div>
            </div>
         </div>
       )}

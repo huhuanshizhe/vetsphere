@@ -2,202 +2,139 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import { getGeminiResponse, DEFAULT_SYSTEM_INSTRUCTION } from '../services/gemini';
-import { api } from '../services/api';
-
-const CHAT_STORAGE_KEY = 'vetsphere_chat_history_v1';
-const PROMPT_STORAGE_KEY = 'vetsphere_system_prompt_v1';
-
-// RegEx Patterns for Detection
-const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-const PHONE_REGEX = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4,}/;
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 const AIChat: React.FC = () => {
-  // --- State: Chat History ---
-  // Initialize state from localStorage if available
-  const [messages, setMessages] = useState<Message[]>(() => {
-    try {
-      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Re-hydrate date strings back to Date objects
-        return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
-      }
-    } catch (e) {
-      console.error('Failed to load chat history', e);
-    }
-    // Default welcome message
-    return [{
-      role: 'model',
-      content: 'Hello, I am the VetSphere Intelligent Assistant. I can recommend the most suitable surgical courses, provide consultation on precision instruments, or record your custom product needs.',
-      timestamp: new Date()
-    }];
-  });
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+
+  const [messages, setMessages] = useState<Message[]>(() => [{
+    role: 'model',
+    content: t.ai.welcome,
+    timestamp: new Date()
+  }]);
 
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, isTyping]);
 
-  // Persist Chat to LocalStorage whenever messages change
-  useEffect(() => {
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-  }, [messages]);
-
-  // --- CRM Lead Capture Logic ---
-  const attemptLeadCapture = (text: string, currentHistory: Message[]) => {
-    const emailMatch = text.match(EMAIL_REGEX);
-    const phoneMatch = text.match(PHONE_REGEX);
-
-    if (emailMatch || phoneMatch) {
-        const contact = emailMatch ? emailMatch[0] : phoneMatch ? phoneMatch[0] : 'Unknown';
-        
-        // Contextual analysis (simple extraction of last user intent)
-        const lastFewMessages = currentHistory.slice(-5).map(m => m.content).join(' || ');
-        
-        // Look for organization keywords nearby
-        const orgKeywords = text.match(/(hospital|clinic|center|university|group|co\.|ltd)/i);
-        const orgGuess = orgKeywords ? "Possible Clinic mentioned" : undefined;
-
-        api.createLead({
-            contactInfo: contact,
-            interestSummary: `User shared contact. Recent Context: ${lastFewMessages.substring(0, 200)}...`,
-            fullChatLog: [...currentHistory, { role: 'user', content: text, timestamp: new Date() }],
-            organization: orgGuess
-        });
-    }
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => setSelectedImage(ev.target?.result as string);
+          reader.readAsDataURL(file);
+      }
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      role: 'user',
-      content: input,
-      timestamp: new Date()
-    };
-
-    const newHistory = [...messages, userMessage];
-    setMessages(newHistory);
+    if (!input.trim() && !selectedImage) return;
+    let rawBase64 = selectedImage ? selectedImage.split(',')[1] : '';
+    const userMsg: Message = { role: 'user', content: input || '[Clinical Image]', timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+    setSelectedImage(null);
 
-    // 1. Analyze for Lead Capture (Async, don't block chat)
-    attemptLeadCapture(input, messages);
-
-    // 2. AI Response
-    const currentSystemInstruction = localStorage.getItem(PROMPT_STORAGE_KEY) || DEFAULT_SYSTEM_INSTRUCTION;
-
-    const responseText = await getGeminiResponse(newHistory, input, currentSystemInstruction);
+    const { text, sources } = await getGeminiResponse(
+        [...messages, userMsg], 
+        input || "Analyze image", 
+        DEFAULT_SYSTEM_INSTRUCTION, 
+        user?.role,
+        rawBase64
+    );
     
-    const botMessage: Message = {
-      role: 'model',
-      content: responseText,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, botMessage]);
+    setMessages(prev => [...prev, { role: 'model', content: text, timestamp: new Date(), sources }]);
     setIsTyping(false);
   };
 
-  const clearHistory = () => {
-    if (window.confirm('Are you sure you want to clear the chat history?')) {
-      const initial = [{
-        role: 'model' as const,
-        content: 'Session reset. You can start a new consultation.',
-        timestamp: new Date()
-      }];
-      setMessages(initial);
-      // localStorage update is handled by the useEffect dependency on 'messages'
-    }
-  };
-
   return (
-    <div className="bg-slate-50 min-h-[calc(100vh-80px)] pt-32 pb-12 px-4 relative">
-      <div className="max-w-4xl mx-auto flex flex-col h-[75vh]">
+    <div className="bg-slate-50 min-h-screen pt-24 md:pt-32 pb-8 px-4 flex flex-col items-center">
+      <div className="w-full max-w-5xl flex flex-col gap-6 h-[calc(100vh-140px)]">
         
-        {/* Header */}
-        <header className="mb-6 flex items-center justify-between">
+        <header className="flex items-center justify-between shrink-0 px-2">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-vs rounded-xl flex items-center justify-center text-2xl shadow-lg">
-              🤖
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-vs rounded-2xl flex items-center justify-center text-2xl md:text-3xl shadow-xl shadow-vs/20">
+              👁️
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-900">VetSphere AI Assistant</h1>
+              <h1 className="text-xl md:text-2xl font-black text-slate-950">{t.ai.title}</h1>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">AI Online</span>
+                <span className="w-2 h-2 rounded-full bg-vs animate-pulse"></span>
+                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">{t.ai.status}</p>
               </div>
             </div>
           </div>
-          <button onClick={clearHistory} className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition-colors uppercase tracking-widest">
-            Reset Chat
-          </button>
+          <div className="flex gap-2">
+             <button onClick={() => navigate('/live')} className="btn-vs-primary !py-2.5 !px-5 !text-[10px] !rounded-xl !shadow-none">
+               {t.ai.liveMode}
+             </button>
+             <button onClick={() => setMessages([{role:'model', content:t.ai.welcome, timestamp:new Date()}])} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-vs transition-colors">
+               🔄
+             </button>
+          </div>
         </header>
 
-        {/* Chat Window */}
-        <div className="flex-1 bg-white border border-slate-200 rounded-3xl overflow-hidden flex flex-col shadow-sm relative z-10">
-          <div ref={scrollRef} className="flex-1 p-6 sm:p-10 overflow-y-auto space-y-8 scroll-smooth">
+        <div className="flex-1 bg-white border border-slate-200 rounded-[2.5rem] shadow-xl overflow-hidden flex flex-col relative">
+          <div ref={scrollRef} className="flex-1 p-6 md:p-10 overflow-y-auto space-y-8 scroll-smooth">
             {messages.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] sm:max-w-[75%] space-y-1.5`}>
-                  <div className={`p-4 sm:p-5 rounded-2xl text-sm font-medium leading-relaxed whitespace-pre-wrap ${
-                    msg.role === 'user' 
-                      ? 'bg-vs text-white rounded-tr-none' 
-                      : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50'
+                <div className={`max-w-[90%] md:max-w-[80%] space-y-2`}>
+                  <div className={`p-5 md:p-6 rounded-3xl text-sm md:text-base font-medium leading-relaxed ${
+                    msg.role === 'user' ? 'bg-vs text-white shadow-lg shadow-vs/20' : 'bg-slate-50 text-slate-800 border border-slate-100'
                   }`}>
                     {msg.content}
+                    {msg.sources && (
+                        <div className="mt-4 pt-4 border-t border-slate-200/30 flex flex-col gap-2">
+                            {msg.sources.map((s, i) => (
+                                <a key={i} href={s.uri} target="_blank" className="text-xs font-bold text-vs/80 hover:underline flex items-center gap-2">
+                                    <span className="w-1 h-1 bg-vs rounded-full"></span> {s.title}
+                                </a>
+                            ))}
+                        </div>
+                    )}
                   </div>
-                  <div className={`text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    {msg.role === 'user' ? 'YOU' : 'VETSPHERE AI'} • {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
+                  <p className="text-[9px] font-black text-slate-300 uppercase px-4">{msg.timestamp.toLocaleTimeString()}</p>
                 </div>
               </div>
             ))}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-slate-50 p-4 rounded-2xl rounded-tl-none flex gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-vs animate-bounce"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-vs animate-bounce [animation-delay:0.2s]"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-vs animate-bounce [animation-delay:0.4s]"></div>
-                </div>
-              </div>
-            )}
+            {isTyping && <div className="flex gap-2 p-4 bg-slate-50 w-20 rounded-2xl justify-center"><div className="w-1 h-1 bg-vs rounded-full animate-bounce"></div><div className="w-1 h-1 bg-vs rounded-full animate-bounce delay-100"></div><div className="w-1 h-1 bg-vs rounded-full animate-bounce delay-200"></div></div>}
           </div>
 
-          <div className="p-6 bg-slate-50/50 border-t border-slate-100">
-            <div className="max-w-3xl mx-auto flex gap-3">
-              <input 
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask about courses, instrument specs, or feedback..."
-                className="flex-1 py-4 px-6 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-vs/20 focus:border-vs transition-all font-medium text-slate-700"
-              />
-              <button 
-                onClick={handleSend}
-                disabled={isTyping}
-                className="bg-vs w-14 h-14 rounded-xl flex items-center justify-center text-white text-xl font-black hover:bg-vs/90 transition-all shadow-md active:scale-95 disabled:opacity-50"
-              >
-                ↑
-              </button>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-                {['Recommend Ortho Courses', 'TPLO Saw Specs', 'Custom Instruments Request'].map(suggestion => (
-                    <button 
-                        key={suggestion}
-                        onClick={() => setInput(suggestion)}
-                        className="text-[10px] font-bold text-slate-400 border border-slate-200 px-3 py-1 rounded-full hover:bg-white hover:text-vs hover:border-vs transition-all"
-                    >
-                        {suggestion}
-                    </button>
-                ))}
+          <div className="p-6 md:p-8 bg-slate-50/80 border-t border-slate-100 shrink-0">
+            {selectedImage && (
+              <div className="mb-4 flex items-center gap-4 bg-white p-3 rounded-2xl border border-vs/20 animate-in slide-in-from-bottom-2">
+                <img src={selectedImage} className="w-16 h-16 rounded-xl object-cover shadow-sm" />
+                <p className="text-[10px] font-black text-vs uppercase tracking-widest">{t.ai.analyzing}</p>
+                <button onClick={() => setSelectedImage(null)} className="ml-auto p-2 text-slate-300 hover:text-red-500">✕</button>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <label className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-xl flex items-center justify-center text-xl border border-slate-200 cursor-pointer shadow-sm hover:border-vs transition-all shrink-0">
+                <input type="file" className="hidden" onChange={handleImageSelect} />
+                📸
+              </label>
+              <div className="flex-1 relative">
+                  <input 
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSend()}
+                    placeholder={t.ai.placeholder}
+                    className="w-full h-14 md:h-16 bg-white px-6 md:px-8 rounded-xl border border-slate-200 outline-none focus:border-vs font-bold text-slate-800 shadow-sm"
+                  />
+                  <button onClick={handleSend} className="absolute right-2 top-2 w-10 h-10 md:w-12 md:h-12 bg-vs text-white rounded-lg flex items-center justify-center text-xl shadow-lg hover:bg-vs-dark transition-all">
+                    ↑
+                  </button>
+              </div>
             </div>
           </div>
         </div>

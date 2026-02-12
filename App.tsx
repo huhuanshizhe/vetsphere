@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Courses from './pages/Courses';
 import Shop from './pages/Shop';
 import AIChat from './pages/AIChat';
+import LiveAssistant from './pages/LiveAssistant';
 import Dashboard from './pages/Dashboard';
 import Checkout from './pages/Checkout';
 import Auth from './pages/Auth';
@@ -16,6 +17,7 @@ import SEO from './components/SEO';
 import { CartProvider } from './context/CartContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 // SEO Wrapper & Main Content
 const AppContent = () => {
@@ -24,45 +26,52 @@ const AppContent = () => {
   const { user } = useAuth(); // Get user to determine dashboard layout
 
   const getSEOConfig = () => {
+    // Dynamic SEO titles based on current language
     switch (location.pathname) {
       case '/':
         return { 
-          title: language === 'en' ? "Home - Empowering Global Veterinary Surgeons" : "首页 - 赋能全球兽医外科医生",
-          description: "VetSphere is a leading global platform for veterinary professional development, offering advanced surgical training (Orthopedics, Neurosurgery) and medical equipment supply.",
+          title: language === 'zh' ? "VetSphere - 全球兽医外科中心" : "VetSphere - Global Veterinary Surgery Center",
+          description: t.home.heroDesc,
           keywords: "veterinary education, surgery training, medical equipment, vet courses"
         };
       case '/community':
         return { 
-          title: language === 'en' ? "Case Plaza - Global Academic Exchange" : "病例广场 - 全球学术交流",
-          description: "Share complex cases and discuss surgical techniques with global veterinary surgeons. AI assistant helps analyze procedural details.",
+          title: t.community.title,
+          description: t.community.subtitle,
           keywords: "vet case sharing, surgery community, academic discussion"
         };
       case '/courses':
         return { 
-          title: language === 'en' ? "Surgical Courses Center" : "外科课程中心",
-          description: "Explore wet-labs led by top global experts, covering TPLO, Neurosurgery, Soft Tissue repair, and more.",
+          title: t.courses.title,
+          description: t.courses.subtitle,
           keywords: "veterinary courses, wet-labs, surgeon certification"
         };
       case '/shop':
         return { 
-          title: language === 'en' ? "Advanced Medical Equipment Shop" : "高级医疗器械商城",
-          description: "Source international standard surgical power tools, implants, and precision instruments. 100% Traceability, optimized for clinical use.",
+          title: t.shop.breadcrumb,
+          description: t.shop.subtitle,
           keywords: "veterinary equipment, surgical tools, orthopedic implants"
         };
       case '/ai':
         return { 
-          title: language === 'en' ? "AI Intelligent Consultant" : "AI 智能顾问",
-          description: "24/7 Business Consultant recommending the best courses and equipment parameters for you.",
+          title: t.ai.title,
+          description: "24/7 Surgical AI Consultant",
           keywords: "vet AI consultant, surgical assistant"
+        };
+      case '/live':
+        return { 
+          title: "VetSphere Live", 
+          description: "Hands-free AI voice assistant for operating rooms.",
+          keywords: "veterinary voice assistant, surgery ai"
         };
       case '/dashboard':
         return { 
-          title: "Dashboard - VetSphere", 
+          title: t.dashboard.welcome, 
           description: "Manage your learning progress, orders, and professional profile." 
         };
       case '/auth':
         return { 
-          title: "Login / Sign Up - VetSphere Doctor Center", 
+          title: t.auth.signIn, 
           description: "Join the global network of veterinary surgeons." 
         };
       default:
@@ -77,11 +86,12 @@ const AppContent = () => {
   // 2. Doctor login (/auth) is NOT standalone (shows navbar)
   // 3. Admin/Partner dashboard is standalone
   // 4. Doctor dashboard (/dashboard) is NOT standalone (shows navbar)
+  // 5. Live Mode (/live) is standalone (immersive UI)
   const isStandalonePage = () => {
     const path = location.pathname;
 
-    // Explicit Admin/Partner Auth Routes
-    if (['/sys-admin', '/partners/gear', '/partners/edu'].includes(path)) return true;
+    // Explicit Admin/Partner Auth Routes OR Live Mode
+    if (['/sys-admin', '/partners/gear', '/partners/edu', '/live'].includes(path)) return true;
 
     // Dashboard: Standalone ONLY if user is NOT a doctor (i.e. Admin/Supplier)
     if (path === '/dashboard') {
@@ -109,6 +119,7 @@ const AppContent = () => {
             <Route path="/courses" element={<Courses />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/ai" element={<AIChat />} />
+            <Route path="/live" element={<LiveAssistant />} />
             <Route path="/checkout" element={<Checkout />} />
             
             {/* Doctor Portal (Public Entry - Shows Navbar) */}
@@ -146,9 +157,7 @@ const AppContent = () => {
                   <span className="text-white font-black text-2xl tracking-tighter">VetSphere</span>
                 </div>
                 <p className="text-sm leading-relaxed max-w-xs text-slate-500 font-medium">
-                  {language === 'en' 
-                    ? "Building the digital infrastructure for global veterinary surgery. Connecting clinical decision-makers with world-class education and precision medical devices."
-                    : "构建全球兽医外科的数字基础设施。连接临床决策者与世界级教育及精密医疗器械。"}
+                  {t.footer.brandDesc}
                 </p>
                 
                 <div className="pt-6">
@@ -220,13 +229,15 @@ const AppContent = () => {
 const App = () => {
   return (
     <Router>
-      <LanguageProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <LanguageProvider>
           <CartProvider>
-            <AppContent />
+            <NotificationProvider>
+              <AppContent />
+            </NotificationProvider>
           </CartProvider>
-        </AuthProvider>
-      </LanguageProvider>
+        </LanguageProvider>
+      </AuthProvider>
     </Router>
   );
 };

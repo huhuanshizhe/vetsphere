@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { CartItem } from '../types';
 
 interface CartContextType {
@@ -13,10 +13,9 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'vetsphere_cart_v1';
+const CART_STORAGE_KEY = 'vetsphere_cart_v2';
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // 初始化时从 localStorage 读取
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);
@@ -27,22 +26,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   });
 
-  // 购物车变化时写入 localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-    } catch (e) {
-      console.error('Failed to save cart to storage', e);
-    }
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
   }, [cart]);
 
   const addToCart = (newItem: CartItem) => {
     setCart(prev => {
-      const existing = prev.find(item => item.id === newItem.id);
-      if (existing) {
-        return prev.map(item => 
-          item.id === newItem.id ? { ...item, quantity: item.quantity + (newItem.quantity || 1) } : item
-        );
+      const existingIndex = prev.findIndex(item => item.id === newItem.id);
+      if (existingIndex > -1) {
+        const updatedCart = [...prev];
+        updatedCart[existingIndex] = {
+          ...updatedCart[existingIndex],
+          quantity: updatedCart[existingIndex].quantity + (newItem.quantity || 1)
+        };
+        return updatedCart;
       }
       return [...prev, { ...newItem, quantity: newItem.quantity || 1 }];
     });
@@ -64,7 +61,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearCart = () => setCart([]);
 
-  const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalAmount = useMemo(() => {
+    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  }, [cart]);
 
   return (
     <CartContext.Provider value={{ cart, addToCart, updateQuantity, removeFromCart, clearCart, totalAmount }}>
