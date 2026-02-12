@@ -1,0 +1,8 @@
+{
+  "name": "VetSphere - Global Veterinary Professional Development Platform",
+  "description": "A comprehensive internet platform for veterinary surgeons offering online courses, medical equipment sales, and an integrated AI-powered surgical consultant for global veterinarians.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
