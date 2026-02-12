@@ -5,6 +5,7 @@ import { UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { PORTAL_THEME } from '../constants';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AuthProps {
   portalType: UserRole;
@@ -15,6 +16,7 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   // Default Credentials
   const getDefaultCreds = () => {
@@ -96,17 +98,17 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
                         👨‍⚕️
                      </div>
                      <div>
-                        <h2 className="text-3xl font-black leading-tight tracking-tight mb-3">Elevate Your <br/>Surgical Precision.</h2>
+                        <h2 className="text-3xl font-black leading-tight tracking-tight mb-3 whitespace-pre-line">{t.auth.heroTitle}</h2>
                         <p className="text-white/70 font-medium leading-relaxed max-w-sm text-sm">
-                            Join over 5,000 veterinary surgeons accessing world-class training, precision instruments, and AI-powered clinical support.
+                            {t.auth.heroDesc}
                         </p>
                      </div>
                      <div className="flex flex-wrap gap-3 pt-2">
                         <div className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[10px] font-black uppercase tracking-widest text-emerald-400">
-                            ✓ CE Accredited
+                            ✓ {t.auth.badgeCE}
                         </div>
                         <div className="px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-[10px] font-black uppercase tracking-widest text-blue-400">
-                            ✓ Global Network
+                            ✓ {t.auth.badgeGlobal}
                         </div>
                      </div>
                  </div>
@@ -117,10 +119,10 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
                  <div className="max-w-sm mx-auto w-full space-y-8">
                      <div className="text-center md:text-left">
                         <h3 className="text-2xl font-black text-slate-900 mb-2">
-                            {isLogin ? 'Welcome Back, Doctor' : 'Apply for Membership'}
+                            {isLogin ? t.auth.welcomeBack : t.auth.applyMember}
                         </h3>
                         <p className="text-slate-500 text-sm font-bold">
-                            {isLogin ? 'Enter your credentials to access your workspace.' : 'Fill in your professional details to join the network.'}
+                            {isLogin ? t.auth.loginDesc : t.auth.applyDesc}
                         </p>
                      </div>
 
@@ -129,14 +131,14 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
                             <div className="space-y-4 animate-in slide-in-from-right fade-in duration-300">
                                  <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.fullName}</label>
                                         <input type="text" required 
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-vs outline-none transition-all placeholder:text-slate-300 placeholder:font-medium"
                                             placeholder="Dr. Name"
                                             value={formData.fullName} onChange={e => handleChange('fullName', e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">License #</label>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.license}</label>
                                         <input type="text" required 
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-vs outline-none transition-all placeholder:text-slate-300 placeholder:font-medium"
                                             placeholder="VET-ID"
@@ -144,7 +146,7 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
                                     </div>
                                  </div>
                                  <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Clinic / Hospital</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.clinic}</label>
                                     <input type="text" required 
                                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-vs outline-none transition-all placeholder:text-slate-300 placeholder:font-medium"
                                         placeholder="Hospital Name"
@@ -154,7 +156,7 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
                         )}
                         
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Email Address</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.email}</label>
                             <input type="email" required 
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-vs outline-none transition-all placeholder:text-slate-300 placeholder:font-medium"
                                 placeholder="doctor@example.com"
@@ -163,8 +165,8 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
                         
                         <div>
                             <div className="flex justify-between mb-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Password</label>
-                                {isLogin && <button type="button" className="text-[10px] font-bold text-vs hover:underline">Forgot Password?</button>}
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">{t.auth.password}</label>
+                                {isLogin && <button type="button" className="text-[10px] font-bold text-vs hover:underline">{t.auth.forgotPass}</button>}
                             </div>
                             <input type="password" required 
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:bg-white focus:border-vs outline-none transition-all placeholder:text-slate-300 placeholder:font-medium"
@@ -173,13 +175,13 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
                         </div>
 
                         <button type="submit" disabled={loading} className="w-full bg-vs text-white py-4 rounded-xl font-black text-sm uppercase tracking-widest shadow-xl shadow-vs/20 hover:bg-[#008F6F] hover:shadow-2xl hover:-translate-y-0.5 transition-all transform active:scale-95 disabled:opacity-70 disabled:transform-none">
-                            {loading ? 'Authenticating...' : (isLogin ? 'Secure Sign In' : 'Join Network')}
+                            {loading ? t.auth.authenticating : (isLogin ? t.auth.signIn : t.auth.joinNetwork)}
                         </button>
                      </form>
 
                      <div className="relative py-2">
                         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-                        <div className="relative flex justify-center text-[10px] uppercase tracking-widest"><span className="px-3 bg-white text-slate-400 font-bold">Or access with</span></div>
+                        <div className="relative flex justify-center text-[10px] uppercase tracking-widest"><span className="px-3 bg-white text-slate-400 font-bold">{t.auth.orAccess}</span></div>
                      </div>
 
                      <div className="flex gap-4 justify-center">
@@ -192,9 +194,9 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
                      </div>
 
                      <p className="text-center text-xs font-bold text-slate-500 mt-6">
-                         {isLogin ? "Don't have an account yet?" : "Already have an account?"} 
+                         {isLogin ? t.auth.noAccount : t.auth.hasAccount} 
                          <button onClick={() => setIsLogin(!isLogin)} className="text-vs ml-1.5 hover:underline font-black">
-                             {isLogin ? 'Register Now' : 'Sign In'}
+                             {isLogin ? t.auth.registerNow : t.auth.signInLink}
                          </button>
                      </p>
                  </div>
@@ -211,7 +213,7 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
       <Link to="/" className={`absolute top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 rounded-full border transition-all shadow-sm group backdrop-blur-md
         ${isDarkTheme ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' : 'bg-white/80 border-slate-200 text-slate-600 hover:bg-white'}`}>
          <span className="text-lg group-hover:-translate-x-1 transition-transform">←</span>
-         <span className="text-xs font-bold uppercase tracking-widest">VetSphere Home</span>
+         <span className="text-xs font-bold uppercase tracking-widest">{t.auth.vetHome}</span>
       </Link>
 
       <div className={`hidden lg:flex w-1/2 relative overflow-hidden bg-gradient-to-br ${currentTheme.meta.gradient}`}>
@@ -241,22 +243,22 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
       <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-20 ${isDarkTheme ? 'bg-slate-950' : 'bg-white'}`}>
         <div className="w-full max-w-md space-y-10 mt-16 lg:mt-0">
           <div className="text-center lg:text-left">
-            <h2 className={`text-4xl font-black tracking-tight mb-3 ${isDarkTheme ? 'text-white' : 'text-slate-900'}`}>Restricted Login</h2>
+            <h2 className={`text-4xl font-black tracking-tight mb-3 ${isDarkTheme ? 'text-white' : 'text-slate-900'}`}>{t.auth.restricted}</h2>
             <p className={`font-medium text-sm ${isDarkTheme ? 'text-slate-500' : 'text-slate-500'}`}>
-              Please enter your credentials for <span className={`font-bold ${isDarkTheme ? 'text-white' : 'text-slate-900'}`}>{portalType}</span>.
+              {t.auth.enterCreds} <span className={`font-bold ${isDarkTheme ? 'text-white' : 'text-slate-900'}`}>{portalType}</span>.
             </p>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-5">
             <div>
-              <label className={`block text-[10px] font-black uppercase mb-2 tracking-widest ${isDarkTheme ? 'text-slate-500' : 'text-slate-400'}`}>Email</label>
+              <label className={`block text-[10px] font-black uppercase mb-2 tracking-widest ${isDarkTheme ? 'text-slate-500' : 'text-slate-400'}`}>{t.auth.email}</label>
               <input type="email" required placeholder={defaultCreds.email}
                 className={`w-full p-4 rounded-xl border font-bold text-sm outline-none transition-all ${isDarkTheme ? 'bg-slate-900 border-slate-800 text-white focus:border-emerald-500 placeholder-slate-700' : 'bg-slate-50 border-slate-200 focus:border-emerald-500'}`}
                 value={formData.email} onChange={e => handleChange('email', e.target.value)}
               />
             </div>
             <div>
-              <label className={`block text-[10px] font-black uppercase mb-2 tracking-widest ${isDarkTheme ? 'text-slate-500' : 'text-slate-400'}`}>Password</label>
+              <label className={`block text-[10px] font-black uppercase mb-2 tracking-widest ${isDarkTheme ? 'text-slate-500' : 'text-slate-400'}`}>{t.auth.password}</label>
               <input type="password" required placeholder="••••••••"
                 className={`w-full p-4 rounded-xl border font-bold text-sm outline-none transition-all ${isDarkTheme ? 'bg-slate-900 border-slate-800 text-white focus:border-emerald-500 placeholder-slate-700' : 'bg-slate-50 border-slate-200 focus:border-emerald-500'}`}
                 value={formData.password} onChange={e => handleChange('password', e.target.value)}
@@ -265,7 +267,7 @@ const Auth: React.FC<AuthProps> = ({ portalType }) => {
             <button type="submit" disabled={loading}
               className={`w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all transform active:scale-95 disabled:opacity-70 disabled:active:scale-100 text-white ${currentTheme.colors.primaryBg} hover:opacity-90 shadow-lg`}
             >
-              {loading ? 'Authenticating...' : 'Secure Login'}
+              {loading ? t.auth.authenticating : t.auth.secureLogin}
             </button>
           </form>
         </div>

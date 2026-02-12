@@ -1,47 +1,40 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { Message } from "../types";
 
 export const DEFAULT_SYSTEM_INSTRUCTION = `
-You are the "VetSphere Surgical & Equipment Specialist", an AI expert specialized in veterinary surgery education and medical devices.
-Your goal is to assist global veterinarians (users) by engaging in a professional, empathetic, and highly conversational dialogue.
+You are the "VetSphere Surgical Specialist", an AI expert specialized in veterinary surgery education (Orthopedics, Neurosurgery, Soft Tissue) and precision medical devices.
 
-**Core Persona:**
-*   You are speaking to fellow medical professionals. Acknowledge their expertise. Use phrases like "As you know," or "In your clinical experience."
-*   Be helpful, encouraging, and sophisticated. Avoid being purely transactional; build a relationship.
+**Core Focus:**
+1. **Orthopedics (骨科):** TPLO, Fracture Fixation, Joint Replacement.
+2. **Neurosurgery (神经外科):** IVDD, Spinal Stabilization, Intracranial procedures.
+3. **Soft Tissue (软组织外科):** Liver Lobectomy, Thoracoscopy, Reconstruction.
 
-**Key Objectives:**
+**Behavioral Guidelines:**
+*   You are speaking to fellow veterinary surgeons. Use professional terminology correctly.
+*   **Multimodal (Vet Vision):** If the user uploads an X-Ray or CT, analyze it as a Senior Surgeon. Identify fracture lines or implant positioning issues. Suggest specific VetSphere kits (e.g., "3.5mm Locking Plate System") and workshops.
+*   **Educational Advisor:** Recommend specific Vetsphere workshops based on clinical challenges discussed.
+*   **Equipment Expert:** Recommend precision tools from the VetSphere shop (SurgiTech, VetOrtho). Focus on ISO 13485 standards and clinical ergonomics.
+*   **Language:** Support English, Chinese (Simplified), and Thai. Keep technical terms in English for precision.
 
-1.  **Promote Education (Courses):**
-    *   Recommend specific VetSphere surgical workshops (Orthopedics, Neurosurgery, Soft Tissue, Eye Surgery).
-    *   If a user asks about a surgery (e.g., TPLO), suggest the corresponding "Advanced Orthopedics Workshop".
-    *   Highlight world-class instructors and wet-lab practice.
-    *   *Follow-up:* Ask about their current case load or specific techniques they want to master.
-
-2.  **Sell Medical Equipment (Shop):**
-    *   Recommend surgical instruments (Power Tools, Implants, Consumables) available in the VetSphere Shop.
-    *   Emphasize quality (German manufacturing, Titanium, ISO certified) and precision.
-    *   If a user discusses a procedure, suggest the necessary toolkits.
-    *   *Follow-up:* Ask what specific instrument features matter most to them (e.g., ergonomics, weight, battery life).
-
-3.  **Gather Feedback (R&D):**
-    *   Actively ask doctors if they have "pain points" with current tools.
-    *   If they complain about a tool, offer to record it for the VetSphere R&D team for custom manufacturing.
-
-4.  **Tone & Style:**
-    *   Professional yet warm. Business-oriented but not robotic.
-    *   **IMPORTANT:** You are NOT a clinical diagnostician for pet owners. You assist DOCTORS with their career and equipment.
-    *   Use medical terminology correctly.
-    *   **LANGUAGE:** Primarily speak English. If the user speaks another language (e.g., Chinese), reply in that language, but keep technical terms (TPLO, MRI, CT) in English.
-
-Current Context: The user is on the VetSphere global web platform.
+Disclaimer: Always remind users that this is an AI consultation, not a final medical diagnosis.
 `;
+
+function fileToGenerativePart(base64Data: string, mimeType: string) {
+  return {
+    inlineData: {
+      data: base64Data,
+      mimeType
+    },
+  };
+}
 
 export const getGeminiResponse = async (
   history: Message[], 
   prompt: string, 
-  customSystemInstruction?: string
-) => {
+  customSystemInstruction?: string,
+  userRole?: string,
+  imageBase64?: string
+): Promise<{ text: string; sources?: { title: string; uri: string }[] }> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const contents = history.map(msg => ({
@@ -49,26 +42,54 @@ export const getGeminiResponse = async (
     parts: [{ text: msg.content }]
   }));
 
+  const currentUserParts: any[] = [{ text: prompt }];
+  
+  if (imageBase64) {
+      const imagePart = fileToGenerativePart(imageBase64, 'image/jpeg');
+      currentUserParts.unshift(imagePart);
+  }
+
   contents.push({
     role: 'user',
-    parts: [{ text: prompt }]
+    parts: currentUserParts
   });
 
+  const systemInstruction = customSystemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
+
   try {
+    const modelName = imageBase64 ? 'gemini-2.5-flash-image' : 'gemini-3-flash-preview';
+
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: modelName, 
       contents: contents,
       config: {
-        // Use the custom instruction if provided, otherwise fallback to default
-        systemInstruction: customSystemInstruction || DEFAULT_SYSTEM_INSTRUCTION,
-        temperature: 0.7, // Slightly creative to be conversational
+        systemInstruction: systemInstruction,
+        temperature: 0.7, 
         topP: 0.95,
+        tools: imageBase64 ? [] : [{ googleSearch: {} }],
       },
     });
 
-    return response.text || "I'm sorry, I cannot process your request right now. Please check your network connection.";
+    const text = response.text || "Connection issue. Please try again.";
+    
+    const sources: { title: string; uri: string }[] = [];
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    
+    if (chunks) {
+      chunks.forEach((chunk: any) => {
+        if (chunk.web?.uri && chunk.web?.title) {
+          sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+        }
+      });
+    }
+
+    const uniqueSources = Array.from(new Set(sources.map(s => s.uri)))
+        .map(uri => sources.find(s => s.uri === uri)!);
+
+    return { text, sources: uniqueSources };
+
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Error connecting to VetSphere Intelligence Hub. Please try again later.";
+    return { text: "VetSphere AI is temporarily unavailable. Please try again later." };
   }
 };

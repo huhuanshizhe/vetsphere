@@ -1,259 +1,195 @@
 
 import { supabase } from './supabase';
-import { Order, CartItem, Lead } from '../types';
+import { Order, CartItem, Lead, ShippingTemplate, Quote, Product, Course, Post, Specialty } from '../types';
+import { PRODUCTS_CN, COURSES_CN } from '../constants';
 
 const BACKEND_URL = 'http://localhost:3001';
-const LOCAL_ORDERS_KEY = 'vetsphere_local_orders_v1';
-const LOCAL_LEADS_KEY = 'vetsphere_local_leads_v1';
 
-// Helper: Save order locally if backend fails
-const saveLocalOrder = (order: any) => {
-    try {
-        const saved = localStorage.getItem(LOCAL_ORDERS_KEY);
-        const orders = saved ? JSON.parse(saved) : [];
-        // Prevent duplicates
-        if (!orders.find((o: any) => o.id === order.id)) {
-            orders.unshift(order);
-            localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(orders));
-        }
-    } catch (e) {
-        console.error("Local storage error:", e);
-    }
-};
-
-// Helper: Get local orders
-const getLocalOrders = () => {
-    try {
-        const saved = localStorage.getItem(LOCAL_ORDERS_KEY);
-        return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-        return [];
-    }
-};
-
-// Helper: Update local order status
-const updateLocalOrder = (orderId: string, status: string) => {
-    try {
-        const saved = localStorage.getItem(LOCAL_ORDERS_KEY);
-        if (saved) {
-            const orders = JSON.parse(saved);
-            const updated = orders.map((o: any) => o.id === orderId ? { ...o, status } : o);
-            localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(updated));
-        }
-    } catch (e) {
-        console.error("Local storage update error:", e);
-    }
-}
-
-// Helper: Lead Management (Mock Local)
-const saveLocalLead = (lead: Lead) => {
-    try {
-        const saved = localStorage.getItem(LOCAL_LEADS_KEY);
-        const leads = saved ? JSON.parse(saved) : [];
-        leads.unshift(lead);
-        localStorage.setItem(LOCAL_LEADS_KEY, JSON.stringify(leads));
-    } catch (e) {
-        console.error("Local lead save error:", e);
-    }
-}
-
-const getLocalLeads = (): Lead[] => {
-    try {
-        const saved = localStorage.getItem(LOCAL_LEADS_KEY);
-        return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-        return [];
-    }
-}
-
-const updateLocalLeadStatus = (leadId: string, status: any) => {
-    try {
-        const saved = localStorage.getItem(LOCAL_LEADS_KEY);
-        if(saved) {
-            const leads = JSON.parse(saved);
-            const updated = leads.map((l: Lead) => l.id === leadId ? { ...l, status } : l);
-            localStorage.setItem(LOCAL_LEADS_KEY, JSON.stringify(updated));
-        }
-    } catch (e) {}
-}
+// --- MOCK COMMUNITY DATA ---
+const INITIAL_POSTS: Post[] = [
+  {
+    id: 'case-001',
+    title: '复杂粉碎性股骨骨折的 TPLO + 锁定钢板联合固定',
+    content: '患犬为3岁拉布拉多，遭遇车祸导致股骨远端粉碎性骨折，同时伴有交叉韧带断裂。我们采用了双板固定技术...',
+    specialty: Specialty.ORTHOPEDICS,
+    media: [{ type: 'image', url: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80' }],
+    stats: { likes: 42, comments: 12, saves: 28 },
+    createdAt: '2025-05-15',
+    isAiAnalyzed: true,
+    author: { name: 'Dr. Zhang', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80', level: 'Expert', hospital: '上海中心宠物医院' },
+    patientInfo: { species: 'Canine (Labrador)', age: '3y', weight: '32kg' },
+    sections: { diagnosis: 'Distal Femoral Comminuted Fracture', plan: 'Dual Plate Fixation + TPLO Stabilization', outcome: 'Post-op 8 weeks: Good weight bearing.' }
+  },
+  {
+    id: 'case-002',
+    title: '神经外科：L3-L4 椎间盘突出导致的截瘫病例报告',
+    content: '该病例展示了半椎板切除术在急性 IVDD 处理中的应用，术后配合高压氧治疗效果显著。',
+    specialty: Specialty.NEUROSURGERY,
+    media: [{ type: 'image', url: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80' }],
+    stats: { likes: 35, comments: 8, saves: 15 },
+    createdAt: '2025-05-18',
+    isAiAnalyzed: true,
+    author: { name: 'Dr. Emily Smith', avatar: 'https://images.unsplash.com/photo-1559839734-2b71f1e59816?auto=format&fit=crop&w=100&q=80', level: 'Surgeon', hospital: 'London Vet Clinic' },
+    patientInfo: { species: 'Canine (Dachshund)', age: '6y', weight: '8kg' },
+    sections: { diagnosis: 'Acute IVDD (Hansen Type I)', plan: 'Hemilaminectomy at L3-L4', outcome: 'Deep pain sensation recovered in 48h.' }
+  }
+];
 
 export const api = {
   
-  // --- CRM / Leads Module ---
+  async getProducts(): Promise<Product[]> {
+    try {
+      const { data, error } = await supabase.from('products').select('*');
+      if (error || !data || data.length === 0) return PRODUCTS_CN;
+      return data.map(p => ({
+        ...p, group: p.group_category, imageUrl: p.image_url, stockStatus: p.stock_status,
+        supplier: { name: 'Verified Supplier', origin: 'Global', rating: 5.0 }
+      }));
+    } catch (e) { return PRODUCTS_CN; }
+  },
+
+  async getCourses(): Promise<Course[]> {
+    try {
+      const { data, error } = await supabase.from('courses').select('*');
+      if (error || !data || data.length === 0) return COURSES_CN;
+      return data.map(c => ({ ...c, startDate: c.start_date, endDate: c.end_date, imageUrl: c.image_url }));
+    } catch (e) { return COURSES_CN; }
+  },
+
+  async getPosts(): Promise<Post[]> {
+    try {
+      const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+      if (error || !data || data.length === 0) return INITIAL_POSTS;
+      
+      return data.map(p => ({
+        id: p.id, title: p.title, content: p.content, specialty: p.specialty,
+        media: p.media || [], stats: p.stats || { likes: 0, comments: 0, saves: 0 },
+        createdAt: new Date(p.created_at).toLocaleDateString(),
+        isAiAnalyzed: p.is_ai_analyzed,
+        author: p.author_info,
+        patientInfo: p.patient_info,
+        sections: p.sections
+      }));
+    } catch (e) { return INITIAL_POSTS; }
+  },
+
+  async createPost(post: Partial<Post>, user: any): Promise<void> {
+     const newPost = {
+         id: `post-${Date.now()}`,
+         author_id: user.id,
+         author_info: post.author,
+         title: post.title,
+         content: post.content,
+         specialty: post.specialty,
+         media: post.media,
+         patient_info: post.patientInfo,
+         sections: post.sections,
+         is_ai_analyzed: true,
+         stats: { likes: 0, comments: 0, saves: 0 }
+     };
+     await supabase.from('posts').insert(newPost);
+  },
+
+  async interactWithPost(postId: string, type: 'like' | 'save'): Promise<void> {
+    // In a real app, this would update Supabase counts
+    console.log(`Interaction: ${type} on post ${postId}`);
+  },
+
+  async addComment(postId: string, comment: any): Promise<void> {
+    console.log(`New comment on ${postId}:`, comment);
+  },
+
+  async getShippingTemplates(): Promise<ShippingTemplate[]> {
+    const { data, error } = await supabase.from('shipping_templates').select('*');
+    if (error || !data) return [];
+    return data.map(t => ({ id: t.id, name: t.name, regionCode: t.region_code, baseFee: t.base_fee, perItemFee: t.per_item_fee, currency: 'CNY', estimatedDays: t.estimated_days }));
+  },
+
+  async saveShippingTemplate(template: ShippingTemplate): Promise<void> {
+    const payload = { id: template.id, name: template.name, region_code: template.regionCode, base_fee: template.baseFee, per_item_fee: template.perItemFee, estimated_days: template.estimatedDays };
+    const { error } = await supabase.from('shipping_templates').upsert(payload);
+    if (error) throw error;
+  },
+
+  async deleteShippingTemplate(id: string): Promise<void> {
+    await supabase.from('shipping_templates').delete().eq('id', id);
+  },
 
   async createLead(data: Partial<Lead>): Promise<void> {
-    const newLead: Lead = {
-        id: `LEAD-${Date.now()}`,
-        source: 'AI Chat',
-        contactInfo: data.contactInfo || 'Unknown',
-        interestSummary: data.interestSummary || 'General Inquiry',
-        fullChatLog: data.fullChatLog || [],
-        status: 'New',
-        createdAt: new Date().toISOString(),
-        organization: data.organization,
-        name: data.name
-    };
-    
-    // In real app: await supabase.from('leads').insert(newLead);
-    saveLocalLead(newLead);
-    console.log("Lead captured:", newLead);
+    const newLead = { id: `LEAD-${Date.now()}`, source: 'AI Chat', contact_info: data.contactInfo || 'Unknown', interest_summary: data.interestSummary || 'General Inquiry', full_chat_log: data.fullChatLog || [], status: 'New', organization: data.organization, created_at: new Date().toISOString() };
+    await supabase.from('leads').insert(newLead);
   },
 
   async getLeads(): Promise<Lead[]> {
-      // In real app: await supabase.from('leads').select('*');
-      return getLocalLeads();
+      const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+      if (error) return [];
+      return data.map((l: any) => ({ id: l.id, source: l.source, contactInfo: l.contact_info, interestSummary: l.interest_summary, fullChatLog: l.full_chat_log, status: l.status, createdAt: l.created_at, organization: l.organization }));
   },
 
   async updateLeadStatus(id: string, status: 'New' | 'Contacted' | 'Converted' | 'Archived'): Promise<void> {
-      // In real app: await supabase.from('leads').update({status}).eq('id', id);
-      updateLocalLeadStatus(id, status);
+      await supabase.from('leads').update({ status }).eq('id', id);
   },
 
-  // --- Order Module ---
-  
+  async createQuote(items: CartItem[], totalAmount: number, clinicInfo: any): Promise<{ quoteId: string }> {
+      const quoteId = `QT-${new Date().getFullYear()}${Math.floor(Math.random() * 100000)}`;
+      const validUntil = new Date();
+      validUntil.setDate(validUntil.getDate() + 30);
+      const quotePayload = { id: quoteId, customer_email: clinicInfo.customerEmail, customer_info: clinicInfo, items: items, total_amount: totalAmount, status: 'Active', valid_until: validUntil.toISOString(), created_at: new Date().toISOString() };
+      await supabase.from('quotes').insert(quotePayload);
+      return { quoteId };
+  },
+
+  async getQuotes(email?: string): Promise<Quote[]> {
+      let query = supabase.from('quotes').select('*').order('created_at', { ascending: false });
+      if (email) query = query.eq('customer_email', email);
+      const { data, error } = await query;
+      if (error) return [];
+      return data.map((q: any) => ({ id: q.id, customerEmail: q.customer_email, customerInfo: q.customer_info, items: q.items || [], totalAmount: q.total_amount, status: q.status, validUntil: q.valid_until, createdAt: q.created_at }));
+  },
+
   async createOrder(items: CartItem[], totalAmount: number, clinicInfo: any): Promise<{ orderId: string }> {
-    const orderId = `ORD-${new Date().getFullYear()}${Math.floor(Math.random() * 10000)}`;
-    
-    const orderPayload = {
-      id: orderId,
-      customer_name: clinicInfo.doctorName || 'Unknown Doctor',
-      items: items, // Supabase automatically handles JSON serialization
-      total_amount: totalAmount,
-      status: 'Pending',
-      date: new Date().toISOString().split('T')[0],
-      shipping_address: clinicInfo.address || 'Unknown Address'
-    };
-
-    let supabaseSuccess = false;
-
-    try {
-        const { error } = await supabase.from('orders').insert(orderPayload);
-        if (error) {
-            console.warn('Supabase Order Insert Failed (Using Local Fallback):', error.message);
-        } else {
-            supabaseSuccess = true;
-        }
-    } catch (err) {
-        console.error('Supabase Connection Error (Using Local Fallback):', err);
-    }
-
-    // Always save locally as backup or primary if supabase failed
-    if (!supabaseSuccess) {
-        saveLocalOrder(orderPayload);
-    }
-
+    const orderId = `ORD-${new Date().getFullYear()}${Math.floor(Math.random() * 100000)}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    const orderPayload = { id: orderId, user_id: user?.id, customer_name: clinicInfo.doctorName || 'Unknown Doctor', customer_email: clinicInfo.customerEmail, items: items, total_amount: totalAmount, status: 'Pending', date: new Date().toISOString().split('T')[0], shipping_address: clinicInfo.address || 'Unknown Address' };
+    const { error } = await supabase.from('orders').insert(orderPayload);
+    if (error) throw error;
     return { orderId };
   },
 
-  async getOrders(): Promise<Order[]> {
-    let remoteOrders: any[] = [];
-    
+  async getOrders(userEmail?: string): Promise<Order[]> {
     try {
-        const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-        if (!error && data) {
-            remoteOrders = data;
-        }
-    } catch (error) {
-        console.warn('Supabase Fetch Error (Using Local Data):', error);
-    }
-
-    const localOrders = getLocalOrders();
-
-    // Map to Order interface
-    const mapToOrder = (o: any): Order => ({
-      id: o.id,
-      customerName: o.customer_name,
-      items: o.items || [],
-      totalAmount: o.total_amount,
-      status: o.status,
-      date: o.date,
-      shippingAddress: o.shipping_address
-    });
-
-    // Merge: Remote takes precedence if ID exists (though IDs are random)
-    // For simplicity, we just concat distinct ones or just show both if IDs differ
-    const allRaw = [...localOrders, ...remoteOrders];
-    // Deduplicate by ID
-    const uniqueRaw = Array.from(new Map(allRaw.map(item => [item.id, item])).values());
-    
-    // Sort by date descending (mock)
-    uniqueRaw.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    return uniqueRaw.map(mapToOrder);
+        const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return (data || []).map((o: any) => ({ id: o.id, customerName: o.customer_name, customerEmail: o.customer_email, items: o.items || [], totalAmount: o.total_amount, status: o.status, date: o.date || o.created_at, shippingAddress: o.shipping_address }));
+    } catch (error) { return []; }
   },
 
   async updateOrderStatus(orderId: string, status: 'Paid' | 'Shipped' | 'Completed'): Promise<void> {
-    // 1. Try Supabase
-    try {
-        const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId);
-        
-        if (error) console.warn('Supabase Update Failed:', error.message);
-    } catch (error) {
-        console.warn('Supabase Update Connection Error:', error);
-    }
-
-    // 2. Update Local
-    updateLocalOrder(orderId, status);
+    await supabase.from('orders').update({ status }).eq('id', orderId);
   },
-
-  // --- Payment Module (Airwallex) ---
-
-  async initiatePayment(orderId: string, amount: number, currency: string = 'CNY'): Promise<any> {
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/payment/airwallex/create-intent`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                orderId,
-                amount,
-                currency,
-                description: `VetSphere Medical Order #${orderId}`
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Backend payment initialization failed');
-        }
-
-        return await response.json(); 
-    } catch (error) {
-        console.warn("Airwallex Backend unreachable (Demo Mode):", error);
-        return { status: 'success', mock: true, client_secret: 'mock_secret_123' };
-    }
-  },
-
-  // --- Payment Module (Stripe) ---
 
   async initiateStripePayment(orderId: string, amount: number, currency: string = 'CNY'): Promise<any> {
     try {
-        const response = await fetch(`${BACKEND_URL}/api/payment/stripe/create-intent`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                orderId,
-                amount,
-                currency
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Stripe backend initialization failed');
-        }
-
+        const response = await fetch(`${BACKEND_URL}/api/payment/stripe/create-intent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, amount, currency }) });
+        if (!response.ok) throw new Error('Stripe backend initialization failed');
         return await response.json();
-    } catch (error) {
-        // Log as warning instead of error to prevent "Failed to fetch" from looking like a crash in console
-        console.warn("Stripe Backend unreachable (Demo Mode activated).");
-        // Fallback with mock: true to trigger UI simulation
-        return { mock: true };
-    }
+    } catch (error) { return { mock: true }; }
+  },
+  
+  async createStripeCheckoutSession(orderId: string, items: CartItem[]): Promise<any> {
+      try {
+          const response = await fetch(`${BACKEND_URL}/api/payment/stripe/create-checkout-session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, items, returnUrl: window.location.origin + window.location.pathname }) });
+          if (!response.ok) throw new Error('Failed to create Checkout session');
+          return await response.json();
+      } catch (error) { return { mock: true }; }
+  },
+
+  async initiatePayment(orderId: string, amount: number, currency: string = 'CNY'): Promise<any> {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/payment/airwallex/create-intent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, amount, currency, description: `VetSphere Order #${orderId}` }) });
+        if (!response.ok) throw new Error('Backend payment initialization failed');
+        return await response.json(); 
+    } catch (error) { return { status: 'success', mock: true, client_secret: 'mock_secret_123' }; }
   },
 
   async verifyPayment(orderId: string): Promise<boolean> {
@@ -261,101 +197,15 @@ export const api = {
     return true;
   },
 
-  // --- User Module ---
-  
   async login(email: string, password?: string): Promise<{ token: string; user: any }> {
-    if (!password) {
-        throw new Error("Password is required for Supabase Auth");
-    }
-
-    // Helper to guess role from email for demo fallback
-    const determineRole = (email: string) => {
-        if (email.includes('admin')) return 'Admin';
-        if (email.includes('supplier') || email.includes('shop')) return 'ShopSupplier';
-        if (email.includes('edu') || email.includes('csavs') || email.includes('course')) return 'CourseProvider';
-        return 'Doctor';
-    };
-
-    // Helper for creating mock sessions in fallback scenarios
-    const createMockSession = () => {
-        const role = determineRole(email);
-        return {
-            token: "mock_token_bypass_" + Date.now(),
-            user: {
-                id: "mock_" + email,
-                email: email,
-                name: email.split('@')[0],
-                role: role
-            }
-        };
-    };
-
-    // 1. Try to sign in
-    let { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-    });
-
-    // --- DEMO FIX: Handle specific Supabase errors by bypassing check ---
-    if (error) {
-        const msg = error.message.toLowerCase();
-        const isRateLimit = msg.includes('rate limit') || error.status === 429;
-        const isEmailNotConfirmed = msg.includes('email not confirmed');
-        
-        if (isRateLimit || isEmailNotConfirmed) {
-            console.warn(`Demo Mode: Bypassing auth due to error: ${error.message}`);
-            return createMockSession();
-        }
-    }
-
-    // 2. If user doesn't exist (Invalid login credentials), Auto-Sign Up (for Demo convenience)
+    if (!password) throw new Error("Password is required");
+    let { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error && error.message.includes('Invalid login credentials')) {
-        console.log("User not found, attempting auto-registration for demo...");
-        
-        const role = determineRole(email);
-
-        const signUpResult = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: { role } // Store role in metadata
-            }
-        });
-        
-        // Handle rate limit during sign up as well
-        if (signUpResult.error) {
-             const msg = signUpResult.error.message.toLowerCase();
-             if (msg.includes('rate limit') || signUpResult.error.status === 429) {
-                 console.warn("Demo Mode: SignUp Rate Limit. Bypassing.");
-                 return createMockSession();
-             }
-             throw signUpResult.error;
-        }
-        
-        // If session is null (Supabase waiting for email confirmation), bypass for demo
-        if (!signUpResult.data.session) {
-             console.warn("Demo Mode: SignUp successful but email pending. Bypassing.");
-             return createMockSession();
-        }
-
-        data = { user: signUpResult.data.user, session: signUpResult.data.session };
-    } else if (error) {
-        throw error;
+        const role = email.includes('admin') ? 'Admin' : email.includes('supplier') ? 'ShopSupplier' : email.includes('edu') ? 'CourseProvider' : 'Doctor';
+        const signUp = await supabase.auth.signUp({ email, password, options: { data: { role } } });
+        if (!signUp.error && signUp.data.session) { data = { user: signUp.data.user, session: signUp.data.session }; error = null; }
     }
-
-    if (!data.user) throw new Error("Authentication failed");
-
-    // Extract role from metadata, default to Doctor if missing
-    const role = data.user.user_metadata?.role || 'Doctor';
-
-    return {
-      token: data.session?.access_token || "mock_token",
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.email?.split('@')[0] || "User",
-        role: role
-      }
-    };
+    if (error || !data.user) throw new Error("Authentication failed");
+    return { token: data.session?.access_token || "", user: { id: data.user.id, email: data.user.email, name: data.user.email?.split('@')[0], role: data.user.user_metadata?.role || 'Doctor' } };
   }
 };
