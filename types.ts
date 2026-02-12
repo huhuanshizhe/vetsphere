@@ -29,6 +29,19 @@ export interface DoctorProfile {
   status?: 'Active' | 'Banned';
 }
 
+// --- CRM / Lead Management ---
+export interface Lead {
+  id: string;
+  source: 'AI Chat' | 'Contact Form';
+  contactInfo: string; // Extracted email or phone
+  name?: string; // Extracted or guessed name
+  organization?: string; // Extracted clinic name
+  interestSummary: string; // Summary of what they were asking about
+  fullChatLog?: Message[]; // Snapshot of conversation
+  status: 'New' | 'Contacted' | 'Converted' | 'Archived';
+  createdAt: string;
+}
+
 // --- 社区相关类型 ---
 export interface Post {
   id: string;

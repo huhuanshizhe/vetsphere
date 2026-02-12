@@ -1,5 +1,90 @@
 
-import { Specialty, Course, Product } from './types';
+import { Specialty, Course, Product, UserRole } from './types';
+
+// --- VISUAL THEME SYSTEM ---
+export const PORTAL_THEME: Record<UserRole, any> = {
+  Doctor: {
+    role: 'Doctor',
+    colors: {
+      primary: '#00A884',
+      primaryBg: 'bg-[#00A884]',
+      primaryText: 'text-[#00A884]',
+      lightBg: 'bg-emerald-50',
+      sidebarBg: 'bg-white', // Clean white for clinical feel
+      sidebarText: 'text-slate-600',
+      sidebarActive: 'bg-emerald-50 text-[#00A884] border-r-4 border-[#00A884]',
+      pageBg: 'bg-slate-50'
+    },
+    meta: {
+      title: 'Surgeon Portal',
+      subtitle: 'Clinical Workspace',
+      icon: '👨‍⚕️',
+      image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1000&q=80',
+      gradient: 'from-[#00A884] to-emerald-600'
+    }
+  },
+  CourseProvider: {
+    role: 'CourseProvider',
+    colors: {
+      primary: '#7C3AED',
+      primaryBg: 'bg-purple-600',
+      primaryText: 'text-purple-600',
+      lightBg: 'bg-purple-50',
+      sidebarBg: 'bg-[#2E1065]', // Deep purple for academic authority
+      sidebarText: 'text-purple-200',
+      sidebarActive: 'bg-white/10 text-white shadow-lg',
+      pageBg: 'bg-[#F3F4F6]'
+    },
+    meta: {
+      title: 'Education Partner',
+      subtitle: 'Academic Management',
+      icon: '🎓',
+      image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1000&q=80',
+      gradient: 'from-purple-600 to-indigo-900'
+    }
+  },
+  ShopSupplier: {
+    role: 'ShopSupplier',
+    colors: {
+      primary: '#2563EB',
+      primaryBg: 'bg-blue-600',
+      primaryText: 'text-blue-600',
+      lightBg: 'bg-blue-50',
+      sidebarBg: 'bg-[#0F172A]', // Dark slate for corporate/supply chain
+      sidebarText: 'text-slate-400',
+      sidebarActive: 'bg-blue-600 text-white',
+      pageBg: 'bg-slate-100'
+    },
+    meta: {
+      title: 'Supply Chain Console',
+      subtitle: 'Global Inventory Control',
+      icon: '📦',
+      image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1000&q=80',
+      gradient: 'from-blue-600 to-slate-900'
+    }
+  },
+  Admin: {
+    role: 'Admin',
+    colors: {
+      primary: '#10B981',
+      primaryBg: 'bg-emerald-500',
+      primaryText: 'text-emerald-500',
+      lightBg: 'bg-slate-800',
+      sidebarBg: 'bg-black', // Hacker style dark mode
+      sidebarText: 'text-gray-500',
+      sidebarActive: 'text-emerald-400 bg-white/5 border-l-2 border-emerald-500',
+      pageBg: 'bg-[#0B1120]' // Very dark background
+    },
+    meta: {
+      title: 'System Command',
+      subtitle: 'Super Admin Access',
+      icon: '🛡️',
+      image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1000&q=80',
+      gradient: 'from-gray-900 to-black'
+    }
+  }
+};
+
 
 // English Data
 export const COURSES: Course[] = [

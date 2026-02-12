@@ -2,22 +2,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import { getGeminiResponse, DEFAULT_SYSTEM_INSTRUCTION } from '../services/gemini';
+import { api } from '../services/api';
 
 const CHAT_STORAGE_KEY = 'vetsphere_chat_history_v1';
 const PROMPT_STORAGE_KEY = 'vetsphere_system_prompt_v1';
 
+// RegEx Patterns for Detection
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+const PHONE_REGEX = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4,}/;
+
 const AIChat: React.FC = () => {
   // --- State: Chat History ---
+  // Initialize state from localStorage if available
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = localStorage.getItem(CHAT_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        // Re-hydrate date strings back to Date objects
         return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
       }
     } catch (e) {
       console.error('Failed to load chat history', e);
     }
+    // Default welcome message
     return [{
       role: 'model',
       content: 'Hello, I am the VetSphere Intelligent Assistant. I can recommend the most suitable surgical courses, provide consultation on precision instruments, or record your custom product needs.',
@@ -29,17 +37,41 @@ const AIChat: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
 
-  // Persist Chat
+  // Persist Chat to LocalStorage whenever messages change
   useEffect(() => {
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
   }, [messages]);
+
+  // --- CRM Lead Capture Logic ---
+  const attemptLeadCapture = (text: string, currentHistory: Message[]) => {
+    const emailMatch = text.match(EMAIL_REGEX);
+    const phoneMatch = text.match(PHONE_REGEX);
+
+    if (emailMatch || phoneMatch) {
+        const contact = emailMatch ? emailMatch[0] : phoneMatch ? phoneMatch[0] : 'Unknown';
+        
+        // Contextual analysis (simple extraction of last user intent)
+        const lastFewMessages = currentHistory.slice(-5).map(m => m.content).join(' || ');
+        
+        // Look for organization keywords nearby
+        const orgKeywords = text.match(/(hospital|clinic|center|university|group|co\.|ltd)/i);
+        const orgGuess = orgKeywords ? "Possible Clinic mentioned" : undefined;
+
+        api.createLead({
+            contactInfo: contact,
+            interestSummary: `User shared contact. Recent Context: ${lastFewMessages.substring(0, 200)}...`,
+            fullChatLog: [...currentHistory, { role: 'user', content: text, timestamp: new Date() }],
+            organization: orgGuess
+        });
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -50,14 +82,18 @@ const AIChat: React.FC = () => {
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const newHistory = [...messages, userMessage];
+    setMessages(newHistory);
     setInput('');
     setIsTyping(true);
 
-    // Read latest system prompt config
+    // 1. Analyze for Lead Capture (Async, don't block chat)
+    attemptLeadCapture(input, messages);
+
+    // 2. AI Response
     const currentSystemInstruction = localStorage.getItem(PROMPT_STORAGE_KEY) || DEFAULT_SYSTEM_INSTRUCTION;
 
-    const responseText = await getGeminiResponse(messages, input, currentSystemInstruction);
+    const responseText = await getGeminiResponse(newHistory, input, currentSystemInstruction);
     
     const botMessage: Message = {
       role: 'model',
@@ -77,7 +113,7 @@ const AIChat: React.FC = () => {
         timestamp: new Date()
       }];
       setMessages(initial);
-      localStorage.removeItem(CHAT_STORAGE_KEY);
+      // localStorage update is handled by the useEffect dependency on 'messages'
     }
   };
 
