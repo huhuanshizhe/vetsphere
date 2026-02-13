@@ -89,8 +89,8 @@ export const PORTAL_THEME: Record<UserRole, any> = {
 // English Data
 export const COURSES: Course[] = [
   {
-    id: 'csavs-ultra-001',
-    title: 'Abdominal Ultrasound Series: Basic Principles',
+    id: 'csavs-ultra-basic-2026',
+    title: 'CSAVS Veterinary Ultrasound - Basic (腹部超声系列·基础班)',
     specialty: Specialty.ULTRASOUND,
     level: 'Basic',
     price: 9800,
@@ -99,17 +99,17 @@ export const COURSES: Course[] = [
     endDate: '2026-04-03',
     location: {
       city: 'Maanshan, China',
-      venue: 'CSAVS Training Center',
-      address: 'Near East Maanshan Station (High Speed Rail)'
+      venue: 'CSAVS Practical Training Center',
+      address: 'Next to Maanshan East Railway Station (High Speed Rail)'
     },
     instructor: {
       name: 'Femke Bosma',
       title: 'DVM, DECVDI',
       credentials: ['European Specialist in Veterinary Diagnostic Imaging'],
-      imageUrl: 'https://images.unsplash.com/photo-1559839734-2b71f1e59816?auto=format&fit=crop&w=400&h=400&q=80',
-      bio: 'Dr. Femke Bosma graduated from Utrecht University in 2016. She is a recognized specialist in veterinary diagnostic imaging (ECVDI).'
+      imageUrl: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&w=400&h=400&q=80',
+      bio: 'Dr. Femke Bosma graduated from Utrecht University in 2016. She joined the Animal Medical Center in Amsterdam and later completed her residency in radiology under Maartje Passon and Tessa Köning. She successfully passed the ECVDI certification exams in 2021.'
     },
-    description: 'Comprehensive introduction to abdominal ultrasound physics and organ-by-organ scanning techniques.',
+    description: 'Systematic training on abdominal ultrasound physics, artifact recognition, and standard organ scanning protocols.',
     imageUrl: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=800&q=80',
     status: 'Published',
     agenda: [
@@ -117,44 +117,212 @@ export const COURSES: Course[] = [
         day: 'Day 1',
         date: 'March 30',
         items: [
-          { time: '08:30-09:00', activity: 'Registration' },
-          { time: '09:00-12:00', activity: 'Physics & Theory' },
-          { time: '13:00-17:00', activity: 'Practical Session' }
+          { time: '09:00-12:00', activity: 'Basic Ultrasound Physics: How is the US image created? Types of Ultrasound Probes. Settings adjustment (Depth, Focus, Gain).' },
+          { time: '13:00-17:00', activity: 'Artifacts: Recognition and mitigation. Probe handling techniques & standardization. Practical Session.' }
+        ]
+      },
+      {
+        day: 'Day 2',
+        date: 'March 31',
+        items: [
+          { time: '09:00-12:00', activity: 'Liver & Biliary System: Normal hepatobiliary anatomy. Focal and diffuse hepatic lesions. Gallbladder mucocele.' },
+          { time: '13:00-17:00', activity: 'Pancreas: Identifying the pancreas. Pancreatitis and neoplasia. Spleen: Normal anatomy and common pathologies. Practical.' }
+        ]
+      },
+      {
+        day: 'Day 3',
+        date: 'April 1',
+        items: [
+          { time: '09:00-12:00', activity: 'Urogenital System: Kidneys, Ureters, Bladder. Chronic renal changes, neoplasia. Adrenal Glands identification.' },
+          { time: '13:00-17:00', activity: 'Retroperitoneal Space: Anatomy and common pathology. Practical Session.' }
+        ]
+      },
+      {
+        day: 'Day 4',
+        date: 'April 2',
+        items: [
+          { time: '09:00-12:00', activity: 'Gastrointestinal Tract: Normal anatomy of GIT segments. Motility. Ileus, Intussusception, Foreign bodies.' },
+          { time: '13:00-17:00', activity: 'Abdominal Lymph Nodes: Identification and differentiation of reactive vs metastatic nodes. Practical.' }
+        ]
+      },
+      {
+        day: 'Day 5',
+        date: 'April 3',
+        items: [
+          { time: '09:00-12:00', activity: 'Abdominal Vasculature: Aorta, Vena Cava, Portal Vein. Doppler usage. Peritoneum & Ascites.' },
+          { time: '13:00-17:00', activity: 'Ultrasound-guided Interventions: Cystocentesis, FNAs, Biopsy techniques. Safety precautions. Practical.' }
         ]
       }
     ]
   },
   {
-    id: 'csavs-soft-001',
-    title: 'Advanced Soft Tissue Surgery Workshop',
+    id: 'csavs-soft-2026',
+    title: 'CSAVS Practical Soft Tissue Surgery (软组织外科实操课程)',
     specialty: Specialty.SOFT_TISSUE,
-    level: 'Intermediate',
+    level: 'Advanced',
     price: 4800,
     currency: 'CNY',
     startDate: '2026-03-18',
     endDate: '2026-03-20',
     location: {
       city: 'Nanjing, China',
-      venue: 'Teaching Hospital',
-      address: '4th Floor, New Building'
+      venue: 'Nanjing Agricultural Univ. Teaching Hospital',
+      address: '4th Floor Practical Center, New District'
     },
     instructor: {
       name: 'Joachim Proot',
       title: 'DVM, CertSAS, DECVS',
       credentials: ['European Specialist in Small Animal Surgery'],
-      imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=400&h=400&q=80',
-      bio: 'Joachim is a recognized leader in soft tissue and oncologic reconstruction.'
+      imageUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=400&h=400&q=80',
+      bio: 'Joachim possesses 15 years of specialized surgical experience in referral tertiary care centers across the UK. He serves as the Chair of Soft Tissue Surgery at IVC Evidensia. His courses are highly regarded for their practicality.'
     },
-    description: 'Intensive workshop focusing on liver lobectomy and complex skin flaps.',
-    imageUrl: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80',
+    description: 'Intensive hands-on workshop covering Liver Lobectomy, Thoracic Surgery, and Reconstructive Skin Flaps.',
+    imageUrl: 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=800&q=80',
     status: 'Published',
     agenda: [
       {
         day: 'Day 1',
         date: 'March 18',
         items: [
-          { time: '14:30-16:00', activity: 'Liver Lobectomy Theory' },
-          { time: '16:30-18:00', activity: 'Practical Lab' }
+          { time: '14:30-15:00', activity: 'Liver lobectomy using staplers' },
+          { time: '15:00-15:30', activity: 'Diaphragmotomy to improve access to the liver' },
+          { time: '15:30-16:00', activity: 'Duodenotomy and catheterisation of the common bile duct' },
+          { time: '16:30-18:00', activity: 'Cholecystoduodenostomy & Cholecystectomy. Removal of sublumbar lymph nodes.' }
+        ]
+      },
+      {
+        day: 'Day 2',
+        date: 'March 19',
+        items: [
+          { time: '08:30-10:00', activity: 'Intercostal thoracotomy & Sternotomy' },
+          { time: '10:00-11:00', activity: 'Lung lobectomy' },
+          { time: '11:00-12:00', activity: 'Pericardectomy' },
+          { time: '13:00-15:00', activity: 'Total ear canal ablation (TECA)' },
+          { time: '15:00-17:30', activity: 'Ventral bulla osteotomy' }
+        ]
+      },
+      {
+        day: 'Day 3',
+        date: 'March 20',
+        items: [
+          { time: '08:30-10:00', activity: 'Axial pattern flaps' },
+          { time: '10:00-10:30', activity: 'Subdermal plexus flaps' },
+          { time: '10:30-12:00', activity: 'Free skin graft' },
+          { time: '13:00-17:30', activity: 'Practical: Axial pattern flaps & Subdermal plexus flaps' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'csavs-eye-2026',
+    title: 'European Veterinary Ophthalmology Certification VOSC-China (欧洲兽医眼科认证)',
+    specialty: Specialty.EYE_SURGERY,
+    level: 'Master',
+    price: 15000,
+    currency: 'CNY',
+    startDate: '2026-01-03',
+    endDate: '2026-01-05',
+    location: {
+      city: 'Shanghai, China',
+      venue: 'I-VET Ophthalmology Training Center',
+      address: '738 Shangcheng Road, Pudong New Area'
+    },
+    instructor: {
+      name: 'Rick F. Sanchez',
+      title: 'DVM, DECVO, CertVetEd',
+      credentials: ['European Specialist in Veterinary Ophthalmology'],
+      imageUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=400&h=400&q=80',
+      bio: 'Rick is a pioneering veterinarian in applying suture burying techniques for corneal surgery. He re-established the Ophthalmology service at the RVC (Royal Veterinary College) in 2011 and is the editor of "An Atlas of Ophthalmic Surgery".'
+    },
+    description: 'Advanced Corneal Suturing, Reconstruction, and Phacoemulsification techniques.',
+    imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80',
+    status: 'Published',
+    agenda: [
+      {
+        day: 'Day 1',
+        date: 'Jan 3',
+        items: [
+          { time: '09:00-10:00', activity: 'Micro-ophthalmic instrument selection & magnification systems' },
+          { time: '10:10-11:40', activity: 'Understanding corneal suture patterns & achieving excellence' },
+          { time: '12:40-14:10', activity: 'Use of buried knots in corneal surgery' },
+          { time: '14:20-17:00', activity: 'Practical Session: Advanced Corneal Suturing' }
+        ]
+      },
+      {
+        day: 'Day 2',
+        date: 'Jan 4',
+        items: [
+          { time: '09:00-10:00', activity: 'Superficial keratectomy, laceration repair and iris prolapse' },
+          { time: '10:00-11:00', activity: 'Conjunctival pedicle grafting and use of support pedicles' },
+          { time: '11:10-12:10', activity: 'Corneoconjunctival Transpositions (CLCTS)' },
+          { time: '13:10-14:10', activity: 'Use of Biomaterials' },
+          { time: '14:20-17:00', activity: 'Practical Session: Advanced Corneal Reconstruction' }
+        ]
+      },
+      {
+        day: 'Day 3',
+        date: 'Jan 5',
+        items: [
+          { time: '09:00-10:00', activity: 'The uncomplicated phacoemulsification' },
+          { time: '10:00-11:30', activity: 'Problem solving I: Anterior capsulorrhexis and lens content removal' },
+          { time: '12:30-14:00', activity: 'Problem solving II: Capsular tension ring (CTR) and IOL implant' },
+          { time: '14:00-15:30', activity: 'Problem solving III: Aspiration of viscoelastic & corneal wound closure' },
+          { time: '16:30-17:00', activity: 'Practical Session: Phacoemulsification techniques' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'csavs-joint-2026',
+    title: 'CSAVS Practical Joint Surgery Workshop (关节外科实操课程)',
+    specialty: Specialty.ORTHOPEDICS,
+    level: 'Advanced',
+    price: 4800,
+    currency: 'CNY',
+    startDate: '2026-03-18',
+    endDate: '2026-03-20',
+    location: {
+      city: 'Maanshan, China',
+      venue: 'CSAVS Training Center',
+      address: 'Maanshan, Anhui Province'
+    },
+    instructor: {
+      name: 'Antonio Pozzi',
+      title: 'DVM, DECVS, DACVS, DACVSMR',
+      credentials: ['Director of Small Animal Surgery at University of Zurich'],
+      imageUrl: 'https://images.unsplash.com/photo-1531891437567-317ff7fd9008?auto=format&fit=crop&w=400&h=400&q=80',
+      bio: 'Dr. Antonio Pozzi is a world-renowned specialist in neurosurgery, orthopedics, and sports medicine. His research team focuses on "One Health" and joint biomechanics. He has previously held faculty positions at the University of Florida.'
+    },
+    description: 'Mastering joint surgery: Bandaging, reduction of luxations, arthrotomy principles, and basic arthroscopy.',
+    imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
+    status: 'Published',
+    agenda: [
+      {
+        day: 'Day 1',
+        date: 'March 18',
+        items: [
+          { time: '14:30-16:00', activity: 'Bandaging: how to perform bandages, splints, slings for joint diseases (Lecture)' },
+          { time: '16:30-18:00', activity: 'Arthrotomy: Basic principles on how to perform an arthrotomy (Lecture)' }
+        ]
+      },
+      {
+        day: 'Day 2',
+        date: 'March 19',
+        items: [
+          { time: '08:30-10:00', activity: 'How to perform an orthopedic examination: laxity tests, joint palpation (Practical)' },
+          { time: '10:30-12:00', activity: 'Closed reduction of a luxation (Hip) and applying different bandages (Modified Robert Jones, Ehmer, Splints) (Practical)' },
+          { time: '13:00-14:30', activity: 'Arthroscopy: Introduction to basic arthroscopy (Practical)' },
+          { time: '15:00-17:30', activity: 'Basic Arthroscopy introduction continued (Practical)' }
+        ]
+      },
+      {
+        day: 'Day 3',
+        date: 'March 20',
+        items: [
+          { time: '08:30-10:00', activity: 'Stifle arthrotomy: From surgical anatomy to joint exploration (Practical)' },
+          { time: '10:30-12:00', activity: 'Stifle arthrotomy continued (Practical)' },
+          { time: '13:00-14:30', activity: 'Arthroscopy: Arthroscopic assisted arthrotomy (Practical)' },
+          { time: '15:00-17:30', activity: 'Arthroscopy: Other applications (Practical)' }
         ]
       }
     ]

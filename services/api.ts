@@ -35,25 +35,52 @@ const INITIAL_POSTS: Post[] = [
   }
 ];
 
+// In-memory store for demo purposes (resets on refresh if using mock)
+let MOCK_PRODUCTS = [...PRODUCTS_CN];
+let MOCK_COURSES = [...COURSES_CN];
+
 export const api = {
   
+  // --- PRODUCTS (Shop) ---
   async getProducts(): Promise<Product[]> {
     try {
       const { data, error } = await supabase.from('products').select('*');
-      if (error || !data || data.length === 0) return PRODUCTS_CN;
+      if (error || !data || data.length === 0) return MOCK_PRODUCTS;
       return data.map(p => ({
         ...p, group: p.group_category, imageUrl: p.image_url, stockStatus: p.stock_status,
         supplier: { name: 'Verified Supplier', origin: 'Global', rating: 5.0 }
       }));
-    } catch (e) { return PRODUCTS_CN; }
+    } catch (e) { return MOCK_PRODUCTS; }
   },
 
+  async manageProduct(action: 'create' | 'update' | 'delete', product: Partial<Product>): Promise<void> {
+    if (action === 'create') {
+        const newProduct = { ...product, id: `p-${Date.now()}` } as Product;
+        MOCK_PRODUCTS.unshift(newProduct);
+        // Supabase logic would go here
+    } else if (action === 'update') {
+        MOCK_PRODUCTS = MOCK_PRODUCTS.map(p => p.id === product.id ? { ...p, ...product } : p);
+    } else if (action === 'delete') {
+        MOCK_PRODUCTS = MOCK_PRODUCTS.filter(p => p.id !== product.id);
+    }
+  },
+
+  // --- COURSES (Education) ---
   async getCourses(): Promise<Course[]> {
     try {
       const { data, error } = await supabase.from('courses').select('*');
-      if (error || !data || data.length === 0) return COURSES_CN;
+      if (error || !data || data.length === 0) return MOCK_COURSES;
       return data.map(c => ({ ...c, startDate: c.start_date, endDate: c.end_date, imageUrl: c.image_url }));
-    } catch (e) { return COURSES_CN; }
+    } catch (e) { return MOCK_COURSES; }
+  },
+
+  async manageCourse(action: 'create' | 'update' | 'delete', course: Partial<Course>): Promise<void> {
+    if (action === 'create') {
+        const newCourse = { ...course, id: `c-${Date.now()}`, status: 'Published' } as Course;
+        MOCK_COURSES.unshift(newCourse);
+    } else if (action === 'delete') {
+        MOCK_COURSES = MOCK_COURSES.filter(c => c.id !== course.id);
+    }
   },
 
   async getPosts(): Promise<Post[]> {

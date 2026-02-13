@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { Message } from "../types";
 
@@ -19,6 +20,24 @@ You are the "VetSphere Surgical Specialist", an AI expert specialized in veterin
 Disclaimer: Always remind users that this is an AI consultation, not a final medical diagnosis.
 `;
 
+// Helper to get/set dynamic instructions
+export const getSystemInstruction = () => {
+  return localStorage.getItem('VS_SYSTEM_PROMPT') || DEFAULT_SYSTEM_INSTRUCTION;
+};
+
+export const saveSystemInstruction = (instruction: string) => {
+  localStorage.setItem('VS_SYSTEM_PROMPT', instruction);
+};
+
+export const getAIConfig = () => {
+    const saved = localStorage.getItem('VS_AI_CONFIG');
+    return saved ? JSON.parse(saved) : { temperature: 0.7, topP: 0.95 };
+};
+
+export const saveAIConfig = (config: { temperature: number, topP: number }) => {
+    localStorage.setItem('VS_AI_CONFIG', JSON.stringify(config));
+};
+
 function fileToGenerativePart(base64Data: string, mimeType: string) {
   return {
     inlineData: {
@@ -31,7 +50,7 @@ function fileToGenerativePart(base64Data: string, mimeType: string) {
 export const getGeminiResponse = async (
   history: Message[], 
   prompt: string, 
-  customSystemInstruction?: string,
+  customSystemInstruction?: string, // Deprecated in favor of dynamic fetch, but kept for compatibility
   userRole?: string,
   imageBase64?: string
 ): Promise<{ text: string; sources?: { title: string; uri: string }[] }> => {
@@ -54,7 +73,9 @@ export const getGeminiResponse = async (
     parts: currentUserParts
   });
 
-  const systemInstruction = customSystemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
+  // Use the dynamic instruction stored by Admin, or fall back to default
+  const systemInstruction = getSystemInstruction();
+  const config = getAIConfig();
 
   try {
     const modelName = imageBase64 ? 'gemini-2.5-flash-image' : 'gemini-3-flash-preview';
@@ -64,8 +85,8 @@ export const getGeminiResponse = async (
       contents: contents,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.7, 
-        topP: 0.95,
+        temperature: config.temperature, 
+        topP: config.topP,
         tools: imageBase64 ? [] : [{ googleSearch: {} }],
       },
     });
