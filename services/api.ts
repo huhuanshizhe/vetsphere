@@ -240,18 +240,33 @@ export const api = {
         }
     }
 
-    // 3. EMERGENCY BYPASS FOR SUPER ADMIN
-    // If Supabase fails (e.g. Email not verified, Database down), allow the master admin to enter.
-    if ((error || !data.user) && email === 'admin@vetsphere.pro' && password === 'admin123') {
-        return {
-            token: "master-admin-bypass-token",
-            user: { 
-                id: "admin-master-id", 
-                email: email, 
-                name: "Super Admin", 
-                role: 'Admin' 
-            }
-        };
+    // 3. EMERGENCY BYPASS FOR ALL DEMO ROLES
+    // If Supabase fails (e.g. invalid creds, network issue), check against hardcoded demo credentials.
+    if (error || !data.user) {
+        if (email === 'admin@vetsphere.pro' && password === 'admin123') {
+            return {
+                token: "master-admin-bypass-token",
+                user: { id: "admin-master-id", email, name: "Super Admin", role: 'Admin' }
+            };
+        }
+        if (email === 'supplier@surgitech.com' && password === 'supply123') {
+             return {
+                token: "supplier-bypass-token",
+                user: { id: "supplier-demo-id", email, name: "SurgiTech GmbH", role: 'ShopSupplier' }
+            };
+        }
+        if (email === 'edu@csavs.org' && password === 'edu123') {
+             return {
+                token: "edu-bypass-token",
+                user: { id: "edu-demo-id", email, name: "CSAVS Academy", role: 'CourseProvider' }
+            };
+        }
+        if (email === 'doctor@vet.com' && password === 'doc123') {
+             return {
+                token: "doctor-bypass-token",
+                user: { id: "doctor-demo-id", email, name: "Dr. Demo", role: 'Doctor' }
+            };
+        }
     }
 
     if (error || !data.user) throw new Error("Authentication failed");
