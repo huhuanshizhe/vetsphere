@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import { Order, CartItem, Lead, ShippingTemplate, Quote, Product, Course, Post, Specialty } from '../types';
 import { PRODUCTS_CN, COURSES_CN } from '../constants';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://api.vetsphere.net';
 
 // --- MOCK COMMUNITY DATA ---
 const INITIAL_POSTS: Post[] = [
