@@ -78,6 +78,8 @@ export const api = {
     if (action === 'create') {
         const newCourse = { ...course, id: `c-${Date.now()}`, status: 'Published' } as Course;
         MOCK_COURSES.unshift(newCourse);
+    } else if (action === 'update') {
+        MOCK_COURSES = MOCK_COURSES.map(c => c.id === course.id ? { ...c, ...course } : c);
     } else if (action === 'delete') {
         MOCK_COURSES = MOCK_COURSES.filter(c => c.id !== course.id);
     }

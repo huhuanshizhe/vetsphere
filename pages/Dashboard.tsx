@@ -42,6 +42,7 @@ const Dashboard: React.FC = () => {
   // Form States
   const [productForm, setProductForm] = useState<Partial<Product>>({ stockStatus: 'In Stock' });
   const [courseForm, setCourseForm] = useState<Partial<Course>>({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS });
+  const [isEditingCourse, setIsEditingCourse] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -107,17 +108,27 @@ const Dashboard: React.FC = () => {
       }
   };
 
+  const handleEditCourse = (course: Course) => {
+      setCourseForm({ ...course });
+      setIsEditingCourse(true);
+      setShowModal('addCourse');
+  };
+
   const handleSaveCourse = async () => {
-      await api.manageCourse('create', { 
+      const action = isEditingCourse ? 'update' : 'create';
+      const successMessage = isEditingCourse ? '课程信息更新成功。' : '课程现已在平台上架招生。';
+      const successTitle = isEditingCourse ? '课程已更新' : '新课程发布成功';
+
+      await api.manageCourse(action, { 
           ...courseForm, 
-          instructor: { 
+          instructor: courseForm.instructor || { 
               name: user?.name || 'Instructor', 
               title: 'DVM', 
               imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=200&q=80', 
               bio: 'Expert', 
               credentials: [] 
           }, 
-          location: { 
+          location: courseForm.location || { 
               city: courseForm.location?.city || 'Shanghai', 
               venue: 'Training Ctr', 
               address: '123 Rd' 
@@ -126,7 +137,9 @@ const Dashboard: React.FC = () => {
       });
       await loadData();
       setShowModal(null);
-      addNotification({ id: `course-new-${Date.now()}`, type: 'system', title: '新课程发布成功', message: '课程现已在平台上架招生。', read: false, timestamp: new Date() });
+      setIsEditingCourse(false);
+      setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS }); // Reset form
+      addNotification({ id: `course-upd-${Date.now()}`, type: 'system', title: successTitle, message: successMessage, read: false, timestamp: new Date() });
   };
 
   // --- AI Course Generator Logic ---
@@ -469,7 +482,7 @@ const Dashboard: React.FC = () => {
                             </div>
                          </div>
                          <div className="mt-8 relative z-10 flex gap-4">
-                            <button onClick={() => setShowModal('addCourse')} className="bg-white text-purple-600 px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-purple-50 transition-all shadow-lg">
+                            <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS }); setShowModal('addCourse'); }} className="bg-white text-purple-600 px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-purple-50 transition-all shadow-lg">
                                 + 发布新课程 (AI)
                             </button>
                          </div>
@@ -511,7 +524,7 @@ const Dashboard: React.FC = () => {
                  <div className="space-y-6">
                      <div className="flex justify-between items-center">
                         <h3 className="font-bold text-xl text-slate-900">我的课程库</h3>
-                        <button onClick={() => setShowModal('addCourse')} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all">
+                        <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS }); setShowModal('addCourse'); }} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all">
                             + 发布课程 (AI)
                         </button>
                      </div>
@@ -535,7 +548,7 @@ const Dashboard: React.FC = () => {
                                  <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
                                      <span className="font-bold text-slate-900">¥{c.price.toLocaleString()}</span>
                                      <div className="flex gap-2">
-                                         <button className="p-2 text-slate-400 hover:text-purple-600 transition-colors">✎</button>
+                                         <button onClick={() => handleEditCourse(c)} className="p-2 text-slate-400 hover:text-purple-600 transition-colors">✎</button>
                                          <button onClick={() => handleDeleteCourse(c.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">🗑</button>
                                      </div>
                                  </div>
@@ -639,7 +652,7 @@ const Dashboard: React.FC = () => {
                  </div>
              )}
 
-            {/* Modal for Adding Course */}
+            {/* Modal for Adding/Editing Course */}
             {showModal === 'addCourse' && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl p-8 w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95">
@@ -647,32 +660,35 @@ const Dashboard: React.FC = () => {
                         {/* Modal Header */}
                         <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
                             <h3 className="font-black text-xl text-purple-900 flex items-center gap-2">
-                                <span>✨</span> AI 智能教案编辑器 (Course Designer)
+                                <span>{isEditingCourse ? '✏️' : '✨'}</span> 
+                                {isEditingCourse ? '编辑课程 (Edit Course)' : 'AI 智能教案编辑器 (Course Designer)'}
                             </h3>
                             <button onClick={() => setShowModal(null)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">✕</button>
                         </div>
                         
                         <div className="flex-1 grid lg:grid-cols-2 gap-8 overflow-hidden">
-                            {/* Left: AI Control Panel */}
+                            {/* Left: AI Control Panel & Manual Edit */}
                             <div className="flex flex-col gap-6 overflow-y-auto pr-2">
-                                <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
-                                    <label className="block text-[10px] font-black text-purple-600 uppercase mb-2 tracking-widest">
-                                        STEP 1: 输入课程草稿 (Draft Idea)
-                                    </label>
-                                    <textarea 
-                                        value={aiDraftInput}
-                                        onChange={e => setAiDraftInput(e.target.value)}
-                                        placeholder="例如：高级小动物软组织外科实操班，为期三天，地点上海。主要讲授肝叶切除和胸腔镜。目标学员是有3年经验的医生。定价大概5000元。"
-                                        className="w-full h-32 p-4 rounded-xl border-2 border-purple-100 bg-white focus:border-purple-300 outline-none text-sm leading-relaxed"
-                                    />
-                                    <button 
-                                        onClick={handleGenerateCourseAI}
-                                        disabled={isGeneratingCourse || !aiDraftInput}
-                                        className="mt-4 w-full py-3 bg-purple-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-purple-700 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                                    >
-                                        {isGeneratingCourse ? 'AI 正在生成教案...' : '✨ 立即生成中英双语大纲'}
-                                    </button>
-                                </div>
+                                {!isEditingCourse && (
+                                    <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
+                                        <label className="block text-[10px] font-black text-purple-600 uppercase mb-2 tracking-widest">
+                                            STEP 1: 输入课程草稿 (Draft Idea)
+                                        </label>
+                                        <textarea 
+                                            value={aiDraftInput}
+                                            onChange={e => setAiDraftInput(e.target.value)}
+                                            placeholder="例如：高级小动物软组织外科实操班，为期三天，地点上海。主要讲授肝叶切除和胸腔镜。目标学员是有3年经验的医生。定价大概5000元。"
+                                            className="w-full h-32 p-4 rounded-xl border-2 border-purple-100 bg-white focus:border-purple-300 outline-none text-sm leading-relaxed"
+                                        />
+                                        <button 
+                                            onClick={handleGenerateCourseAI}
+                                            disabled={isGeneratingCourse || !aiDraftInput}
+                                            className="mt-4 w-full py-3 bg-purple-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-purple-700 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            {isGeneratingCourse ? 'AI 正在生成教案...' : '✨ 立即生成中英双语大纲'}
+                                        </button>
+                                    </div>
+                                )}
 
                                 {generatedContent && (
                                     <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 animate-in slide-in-from-bottom-4">
@@ -692,16 +708,47 @@ const Dashboard: React.FC = () => {
                                 )}
 
                                 <div className="p-6 border rounded-2xl border-slate-100">
-                                    <h4 className="text-sm font-bold text-slate-900 mb-4">手动编辑 / 修正 (Manual Edit)</h4>
+                                    <h4 className="text-sm font-bold text-slate-900 mb-4">
+                                        {isEditingCourse ? '修改课程详情 (Update Details)' : '手动编辑 / 修正 (Manual Edit)'}
+                                    </h4>
                                     <div className="space-y-4">
-                                        <input type="text" placeholder="课程标题" value={courseForm.title || ''} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <select value={courseForm.specialty} onChange={e => setCourseForm({...courseForm, specialty: e.target.value as Specialty})} className="p-3 border rounded-xl bg-slate-50 text-sm">
-                                                {Object.values(Specialty).map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                            <input type="number" placeholder="价格" value={courseForm.price || ''} onChange={e => setCourseForm({...courseForm, price: Number(e.target.value)})} className="p-3 border rounded-xl bg-slate-50 text-sm" />
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程标题</label>
+                                            <input type="text" placeholder="课程标题" value={courseForm.title || ''} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                         </div>
-                                        <textarea placeholder="课程详情" value={courseForm.description || ''} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">专业领域</label>
+                                                <select value={courseForm.specialty} onChange={e => setCourseForm({...courseForm, specialty: e.target.value as Specialty})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm">
+                                                    {Object.values(Specialty).map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">价格 (CNY)</label>
+                                                <input type="number" placeholder="价格" value={courseForm.price || ''} onChange={e => setCourseForm({...courseForm, price: Number(e.target.value)})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">开始日期</label>
+                                                <input type="date" value={courseForm.startDate || ''} onChange={e => setCourseForm({...courseForm, startDate: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">结束日期</label>
+                                                <input type="date" value={courseForm.endDate || ''} onChange={e => setCourseForm({...courseForm, endDate: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">地点 (城市)</label>
+                                            <input type="text" placeholder="City" value={courseForm.location?.city || ''} onChange={e => setCourseForm({...courseForm, location: { ...courseForm.location, city: e.target.value, address: courseForm.location?.address || '', venue: courseForm.location?.venue || '' } })} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程简介</label>
+                                            <textarea placeholder="课程详情" value={courseForm.description || ''} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -713,7 +760,7 @@ const Dashboard: React.FC = () => {
                                 </div>
                                 <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden max-w-sm mx-auto">
                                     <div className="h-40 bg-slate-200 relative">
-                                        <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" />
+                                        <img src={courseForm.imageUrl || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=400&q=80"} className="w-full h-full object-cover" />
                                         <span className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded text-[9px] font-black uppercase text-purple-600">
                                             {courseForm.specialty || 'SPECIALTY'}
                                         </span>
@@ -733,7 +780,7 @@ const Dashboard: React.FC = () => {
                                     {/* Agenda Preview */}
                                     {courseForm.agenda && courseForm.agenda.length > 0 && (
                                         <div className="bg-slate-50 p-4 border-t border-slate-100">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase mb-2">日程安排</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase mb-2">日程安排 (Agenda)</p>
                                             {courseForm.agenda.map((day, i) => (
                                                 <div key={i} className="mb-2">
                                                     <p className="text-[10px] font-bold text-purple-600">{day.day}</p>
@@ -752,9 +799,9 @@ const Dashboard: React.FC = () => {
 
                         {/* Footer Actions */}
                         <div className="pt-4 mt-4 border-t border-slate-100 flex justify-end gap-4">
-                            <button onClick={() => setShowModal(null)} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">取消</button>
+                            <button onClick={() => { setShowModal(null); setIsEditingCourse(false); }} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">取消</button>
                             <button onClick={handleSaveCourse} className="px-8 py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-all">
-                                发布课程 (Publish)
+                                {isEditingCourse ? '保存修改 (Update)' : '发布课程 (Publish)'}
                             </button>
                         </div>
 
