@@ -43,6 +43,12 @@ const Dashboard: React.FC = () => {
         navigate('/auth');
         return;
     }
+
+    // Auto-switch tab language for specific roles
+    if ((user.role === 'Admin' || user.role === 'ShopSupplier') && activeTab === 'Overview') {
+        setActiveTab('概览');
+    }
+
     loadData();
     
     // Load AI Configs
@@ -66,11 +72,11 @@ const Dashboard: React.FC = () => {
   const handleShipOrder = async (orderId: string) => {
     await api.updateOrderStatus(orderId, 'Shipped');
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Shipped' } : o));
-    addNotification({ id: `admin-n-${Date.now()}`, type: 'system', title: 'Order Update', message: `Order #${orderId} marked as Shipped.`, read: false, timestamp: new Date() });
+    addNotification({ id: `admin-n-${Date.now()}`, type: 'system', title: '订单更新', message: `订单 #${orderId} 已标记为发货。`, read: false, timestamp: new Date() });
   };
 
   const handleDeleteProduct = async (id: string) => {
-      if(window.confirm('Delete this product?')) {
+      if(window.confirm('确认删除此商品吗？')) {
           await api.manageProduct('delete', { id });
           setProducts(prev => prev.filter(p => p.id !== id));
       }
@@ -80,7 +86,7 @@ const Dashboard: React.FC = () => {
       await api.manageProduct('create', { ...productForm, imageUrl: 'https://images.unsplash.com/photo-1581093588401-fbb62a02f120?auto=format&fit=crop&w=400&q=80', supplier: { name: user?.name || 'Supplier', origin: 'CN', rating: 5 } });
       await loadData();
       setShowModal(null);
-      addNotification({ id: `prod-${Date.now()}`, type: 'system', title: 'Inventory Update', message: 'New product added successfully.', read: false, timestamp: new Date() });
+      addNotification({ id: `prod-${Date.now()}`, type: 'system', title: '库存更新', message: '新商品添加成功。', read: false, timestamp: new Date() });
   };
 
   const handleSaveCourse = async () => {
@@ -93,7 +99,7 @@ const Dashboard: React.FC = () => {
   const saveAIChanges = () => {
       saveSystemInstruction(systemPrompt);
       saveAIConfig(aiConfig);
-      addNotification({ id: `ai-${Date.now()}`, type: 'system', title: 'AI Brain Updated', message: 'System instructions and model parameters have been deployed.', read: false, timestamp: new Date() });
+      addNotification({ id: `ai-${Date.now()}`, type: 'system', title: 'AI 大脑已更新', message: '系统指令和模型参数已成功部署到生产环境。', read: false, timestamp: new Date() });
   };
 
   if (!user) return null;
@@ -135,7 +141,7 @@ const Dashboard: React.FC = () => {
 
            <div className="p-4 mt-auto">
                <button onClick={logout} className="w-full py-3 border border-slate-200/20 rounded-xl text-[10px] font-bold uppercase text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-colors">
-                   Sign Out
+                   {user.role === 'Admin' || user.role === 'ShopSupplier' ? '退出登录' : 'Sign Out'}
                </button>
            </div>
         </aside>
@@ -145,7 +151,9 @@ const Dashboard: React.FC = () => {
             <header className="flex justify-between items-center mb-10">
                 <div>
                     <h1 className={`text-3xl font-black tracking-tight mb-1 ${user.role === 'Admin' ? 'text-white' : 'text-slate-900'}`}>{activeTab}</h1>
-                    <p className="text-slate-400 text-sm font-medium">Welcome back, {user.name}</p>
+                    <p className="text-slate-400 text-sm font-medium">
+                        {user.role === 'Admin' || user.role === 'ShopSupplier' ? `欢迎回来, ${user.name}` : `Welcome back, ${user.name}`}
+                    </p>
                 </div>
             </header>
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -201,41 +209,41 @@ const Dashboard: React.FC = () => {
      );
   }
 
-  // --- ROLE: SHOP SUPPLIER (Business) ---
+  // --- ROLE: SHOP SUPPLIER (Business) - CHINESE UI ---
   if (user.role === 'ShopSupplier') {
       return (
-        <DashboardLayout sidebarItems={['Overview', 'Inventory', 'Fulfillment', 'Analytics']}>
-            {activeTab === 'Overview' && (
+        <DashboardLayout sidebarItems={['概览', '库存管理', '订单履约', '数据分析']}>
+            {activeTab === '概览' && (
                 <div className="grid grid-cols-3 gap-6">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase">Total Revenue</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase">总收入 (Total Revenue)</p>
                         <p className="text-3xl font-black text-slate-900 mt-2">¥128,400</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase">Pending Orders</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase">待处理订单 (Pending Orders)</p>
                         <p className="text-3xl font-black text-blue-600 mt-2">{orders.filter(o => o.status === 'Pending').length}</p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase">Active Products</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase">在售商品 (Active Products)</p>
                         <p className="text-3xl font-black text-slate-900 mt-2">{products.length}</p>
                     </div>
                 </div>
             )}
 
-            {activeTab === 'Inventory' && (
+            {activeTab === '库存管理' && (
                 <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h3 className="font-bold text-lg">Product Catalog</h3>
-                        <button onClick={() => setShowModal('addProduct')} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase hover:bg-blue-700 transition-colors">+ Add Item</button>
+                        <h3 className="font-bold text-lg">商品目录</h3>
+                        <button onClick={() => setShowModal('addProduct')} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase hover:bg-blue-700 transition-colors">+ 添加商品</button>
                     </div>
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-wider">
                             <tr>
-                                <th className="p-4">Product</th>
+                                <th className="p-4">商品名称 (Product)</th>
                                 <th className="p-4">SKU/ID</th>
-                                <th className="p-4">Price</th>
-                                <th className="p-4">Stock</th>
-                                <th className="p-4 text-right">Actions</th>
+                                <th className="p-4">价格 (Price)</th>
+                                <th className="p-4">库存状态 (Stock)</th>
+                                <th className="p-4 text-right">操作 (Actions)</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -249,7 +257,7 @@ const Dashboard: React.FC = () => {
                                     <td className="p-4 font-bold">¥{p.price.toLocaleString()}</td>
                                     <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${p.stockStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>{p.stockStatus}</span></td>
                                     <td className="p-4 text-right">
-                                        <button onClick={() => handleDeleteProduct(p.id)} className="text-red-400 hover:text-red-600 font-bold text-xs">Delete</button>
+                                        <button onClick={() => handleDeleteProduct(p.id)} className="text-red-400 hover:text-red-600 font-bold text-xs">删除</button>
                                     </td>
                                 </tr>
                             ))}
@@ -258,14 +266,14 @@ const Dashboard: React.FC = () => {
                 </div>
             )}
 
-            {activeTab === 'Fulfillment' && (
+            {activeTab === '订单履约' && (
                 <div className="space-y-4">
                      {orders.map(order => (
                          <div key={order.id} className="bg-white p-6 rounded-2xl border border-slate-100 flex justify-between items-center">
                              <div className="flex items-center gap-6">
                                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">📦</div>
                                  <div>
-                                     <p className="font-black text-slate-900">Order #{order.id}</p>
+                                     <p className="font-black text-slate-900">订单号 #{order.id}</p>
                                      <p className="text-xs text-slate-500">{order.shippingAddress}</p>
                                      <div className="flex gap-2 mt-2">
                                          {order.items.map((i, idx) => <span key={idx} className="bg-slate-50 px-2 py-1 rounded text-[10px] text-slate-600 border border-slate-200">{i.quantity}x {i.name}</span>)}
@@ -275,9 +283,9 @@ const Dashboard: React.FC = () => {
                              <div className="text-right">
                                  <p className="font-bold text-lg mb-2">¥{order.totalAmount.toLocaleString()}</p>
                                  {order.status === 'Pending' || order.status === 'Paid' ? (
-                                     <button onClick={() => handleShipOrder(order.id)} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-slate-700">Mark Shipped</button>
+                                     <button onClick={() => handleShipOrder(order.id)} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-slate-700">标记发货</button>
                                  ) : (
-                                     <span className="text-emerald-500 font-bold uppercase text-xs">✓ Shipped</span>
+                                     <span className="text-emerald-500 font-bold uppercase text-xs">✓ 已发货</span>
                                  )}
                              </div>
                          </div>
@@ -289,20 +297,20 @@ const Dashboard: React.FC = () => {
             {showModal === 'addProduct' && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl p-8 w-full max-w-lg space-y-6 animate-in zoom-in-95">
-                        <h3 className="font-black text-xl">Add New Instrument</h3>
+                        <h3 className="font-black text-xl">添加新器械</h3>
                         <div className="space-y-4">
-                            <input type="text" placeholder="Product Name" className="w-full p-3 border rounded-xl" onChange={e => setProductForm({...productForm, name: e.target.value})} />
+                            <input type="text" placeholder="商品名称" className="w-full p-3 border rounded-xl" onChange={e => setProductForm({...productForm, name: e.target.value})} />
                             <div className="grid grid-cols-2 gap-4">
                                 <select className="p-3 border rounded-xl" onChange={e => setProductForm({...productForm, group: e.target.value as ProductGroup})}>
                                     <option>PowerTools</option><option>Implants</option><option>HandInstruments</option>
                                 </select>
-                                <input type="number" placeholder="Price" className="p-3 border rounded-xl" onChange={e => setProductForm({...productForm, price: Number(e.target.value)})} />
+                                <input type="number" placeholder="价格 (CNY)" className="p-3 border rounded-xl" onChange={e => setProductForm({...productForm, price: Number(e.target.value)})} />
                             </div>
-                            <textarea placeholder="Description" className="w-full p-3 border rounded-xl" onChange={e => setProductForm({...productForm, description: e.target.value})} />
+                            <textarea placeholder="商品描述" className="w-full p-3 border rounded-xl" onChange={e => setProductForm({...productForm, description: e.target.value})} />
                         </div>
                         <div className="flex gap-4">
-                            <button onClick={() => setShowModal(null)} className="flex-1 py-3 text-slate-500 font-bold">Cancel</button>
-                            <button onClick={handleSaveProduct} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">Save Item</button>
+                            <button onClick={() => setShowModal(null)} className="flex-1 py-3 text-slate-500 font-bold">取消</button>
+                            <button onClick={handleSaveProduct} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold">保存商品</button>
                         </div>
                     </div>
                 </div>
@@ -378,31 +386,31 @@ const Dashboard: React.FC = () => {
       );
   }
 
-  // --- ROLE: ADMIN (Super User) ---
+  // --- ROLE: ADMIN (Super User) - CHINESE UI ---
   if (user.role === 'Admin') {
       return (
-        <DashboardLayout sidebarItems={['Overview', 'AI Brain', 'User Mgmt', 'Financials']}>
-             {activeTab === 'Overview' && (
+        <DashboardLayout sidebarItems={['概览', 'AI 大脑中枢', '用户管理', '财务报表']}>
+             {activeTab === '概览' && (
                  <div className="grid grid-cols-4 gap-6">
                      <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-sm">
-                         <p className="text-[10px] font-bold text-slate-500 uppercase">Platform Volume</p>
+                         <p className="text-[10px] font-bold text-slate-500 uppercase">平台总交易额 (Platform Volume)</p>
                          <h3 className="text-2xl font-black text-white">¥{orders.reduce((acc, o) => acc + o.totalAmount, 0).toLocaleString()}</h3>
                      </div>
                  </div>
              )}
 
-             {activeTab === 'AI Brain' && (
+             {activeTab === 'AI 大脑中枢' && (
                  <div className="grid lg:grid-cols-2 gap-8 h-full">
                      {/* Left: Prompt Engineering */}
                      <div className="flex flex-col gap-6">
                          <div className="bg-black/20 border border-white/5 p-6 rounded-3xl backdrop-blur-sm flex-1 flex flex-col">
                              <div className="flex justify-between items-center mb-4">
                                  <div>
-                                     <h3 className="text-white font-black text-lg">System Instruction</h3>
-                                     <p className="text-slate-500 text-xs">Define the AI's persona, rules, and boundaries.</p>
+                                     <h3 className="text-white font-black text-lg">系统指令 (System Prompt)</h3>
+                                     <p className="text-slate-500 text-xs">定义 AI 的人设、规则和业务边界。</p>
                                  </div>
                                  <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase rounded-full">
-                                     v2.4 Active
+                                     v2.4 已激活
                                  </div>
                              </div>
                              <textarea 
@@ -414,11 +422,11 @@ const Dashboard: React.FC = () => {
                          </div>
                          
                          <div className="bg-black/20 border border-white/5 p-6 rounded-3xl backdrop-blur-sm">
-                             <h3 className="text-white font-black text-lg mb-4">Model Tuning</h3>
+                             <h3 className="text-white font-black text-lg mb-4">模型参数调优 (Model Tuning)</h3>
                              <div className="space-y-6">
                                  <div>
                                      <div className="flex justify-between text-xs font-bold text-slate-400 mb-2">
-                                         <span>Temperature (Creativity)</span>
+                                         <span>随机性 (Temperature)</span>
                                          <span>{aiConfig.temperature}</span>
                                      </div>
                                      <input 
@@ -430,7 +438,7 @@ const Dashboard: React.FC = () => {
                                  </div>
                                  <div>
                                      <div className="flex justify-between text-xs font-bold text-slate-400 mb-2">
-                                         <span>Top P (Nucleus Sampling)</span>
+                                         <span>核采样 (Top P)</span>
                                          <span>{aiConfig.topP}</span>
                                      </div>
                                      <input 
@@ -449,11 +457,11 @@ const Dashboard: React.FC = () => {
                          <div className="bg-black/20 border border-white/5 p-6 rounded-3xl backdrop-blur-sm">
                              <div className="flex justify-between items-center mb-6">
                                  <div>
-                                     <h3 className="text-white font-black text-lg">Knowledge Base (RAG)</h3>
-                                     <p className="text-slate-500 text-xs">Uploaded documents are indexed for context.</p>
+                                     <h3 className="text-white font-black text-lg">知识库 (RAG)</h3>
+                                     <p className="text-slate-500 text-xs">已上传文档将用于构建 AI 的上下文索引。</p>
                                  </div>
                                  <button className="px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl text-xs font-bold hover:bg-white/10 transition-colors">
-                                     + Upload PDF
+                                     + 上传 PDF
                                  </button>
                              </div>
                              <div className="space-y-3">
@@ -467,7 +475,7 @@ const Dashboard: React.FC = () => {
                                              </div>
                                          </div>
                                          <span className={`text-[10px] font-bold uppercase ${file.status === 'Indexed' ? 'text-emerald-500' : 'text-yellow-500'}`}>
-                                             {file.status}
+                                             {file.status === 'Indexed' ? '已索引' : '处理中'}
                                          </span>
                                      </div>
                                  ))}
@@ -475,7 +483,7 @@ const Dashboard: React.FC = () => {
                          </div>
 
                          <div className="bg-black/20 border border-white/5 p-6 rounded-3xl backdrop-blur-sm flex-1">
-                             <h3 className="text-white font-black text-lg mb-4">Recent Interactions Audit</h3>
+                             <h3 className="text-white font-black text-lg mb-4">近期对话审计</h3>
                              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                  {[
                                      { user: 'Dr. Zhang', query: 'TPLO plate size for 32kg Lab?', ai: 'Recommended 3.5mm Broad based on weight...', sentiment: 'Positive' },
@@ -487,7 +495,7 @@ const Dashboard: React.FC = () => {
                                              <span className="text-emerald-400 font-bold">{log.user}</span>
                                              <span className="text-slate-500">{log.sentiment}</span>
                                          </div>
-                                         <p className="text-slate-300 mb-1">Q: {log.query}</p>
+                                         <p className="text-slate-300 mb-1">问: {log.query}</p>
                                          <p className="text-slate-500 italic">AI: {log.ai}</p>
                                      </div>
                                  ))}
@@ -498,17 +506,17 @@ const Dashboard: React.FC = () => {
                             onClick={saveAIChanges}
                             className="w-full py-4 bg-emerald-500 text-black font-black uppercase tracking-widest rounded-2xl hover:bg-emerald-400 transition-all"
                          >
-                             Deploy Changes to Production
+                             发布更新到生产环境
                          </button>
                      </div>
                  </div>
              )}
              
-             {activeTab === 'User Mgmt' && (
+             {activeTab === '用户管理' && (
                  <div className="bg-black/20 border border-white/5 rounded-3xl overflow-hidden">
                      <table className="w-full text-left text-sm text-slate-300">
                          <thead className="bg-white/5 font-black uppercase text-[10px]">
-                             <tr><th className="p-4">User</th><th className="p-4">Role</th><th className="p-4">Status</th></tr>
+                             <tr><th className="p-4">用户 (User)</th><th className="p-4">角色 (Role)</th><th className="p-4">状态 (Status)</th></tr>
                          </thead>
                          <tbody className="divide-y divide-white/5">
                              <tr><td className="p-4">Dr. Zhang</td><td className="p-4">Doctor</td><td className="p-4 text-emerald-500">Active</td></tr>
