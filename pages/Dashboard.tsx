@@ -41,7 +41,7 @@ const Dashboard: React.FC = () => {
 
   // Form States
   const [productForm, setProductForm] = useState<Partial<Product>>({ stockStatus: 'In Stock' });
-  const [courseForm, setCourseForm] = useState<Partial<Course>>({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS });
+  const [courseForm, setCourseForm] = useState<Partial<Course>>({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [] });
   const [isEditingCourse, setIsEditingCourse] = useState(false);
 
   useEffect(() => {
@@ -119,15 +119,19 @@ const Dashboard: React.FC = () => {
       const successMessage = isEditingCourse ? '课程信息更新成功。' : '课程现已在平台上架招生。';
       const successTitle = isEditingCourse ? '课程已更新' : '新课程发布成功';
 
+      // Ensure instructor object structure
+      const instructor = courseForm.instructor || { 
+          name: user?.name || 'Instructor', 
+          title: 'DVM', 
+          imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=200&q=80', 
+          bio: 'Expert', 
+          credentials: [] 
+      };
+
       await api.manageCourse(action, { 
           ...courseForm, 
-          instructor: courseForm.instructor || { 
-              name: user?.name || 'Instructor', 
-              title: 'DVM', 
-              imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=200&q=80', 
-              bio: 'Expert', 
-              credentials: [] 
-          }, 
+          instructor: instructor,
+          imageUrl: courseForm.imageUrl || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
           location: courseForm.location || { 
               city: courseForm.location?.city || 'Shanghai', 
               venue: 'Training Ctr', 
@@ -138,7 +142,7 @@ const Dashboard: React.FC = () => {
       await loadData();
       setShowModal(null);
       setIsEditingCourse(false);
-      setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS }); // Reset form
+      setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [] }); // Reset form
       addNotification({ id: `course-upd-${Date.now()}`, type: 'system', title: successTitle, message: successMessage, read: false, timestamp: new Date() });
   };
 
@@ -155,7 +159,8 @@ const Dashboard: React.FC = () => {
         1. Title: Professional and catchy (English & Chinese).
         2. Description: Detailed, academic tone, emphasizing clinical benefits.
         3. Price: Estimate a price in CNY.
-        4. Output JSON Format ONLY:
+        4. Instructor: Generate a realistic mock instructor profile (name, title, bio).
+        5. Output JSON Format ONLY:
         {
             "titleEN": "...",
             "titleCN": "...",
@@ -163,6 +168,11 @@ const Dashboard: React.FC = () => {
             "price": 5000,
             "specialty": "Orthopedics",
             "level": "Advanced",
+            "instructor": {
+                "name": "Dr. Smith",
+                "title": "DVM, DECVS",
+                "bio": "Expert in ..."
+            },
             "agenda": [
                { "day": "Day 1", "items": [{"time": "09:00", "activity": "..."}] },
                { "day": "Day 2", "items": [{"time": "09:00", "activity": "..."}] }
@@ -195,6 +205,14 @@ const Dashboard: React.FC = () => {
           price: generatedContent.price,
           specialty: generatedContent.specialty as Specialty,
           level: generatedContent.level as any,
+          instructor: {
+              ...prev.instructor,
+              name: generatedContent.instructor?.name || 'Instructor',
+              title: generatedContent.instructor?.title || 'DVM',
+              bio: generatedContent.instructor?.bio || 'Expert',
+              imageUrl: prev.instructor?.imageUrl || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=200&q=80',
+              credentials: []
+          },
           agenda: generatedContent.agenda?.map((day: any) => ({
               day: day.day,
               date: '2025-01-01', // Default placeholder
@@ -322,6 +340,7 @@ const Dashboard: React.FC = () => {
   if (user.role === 'ShopSupplier') {
       return (
         <DashboardLayout sidebarItems={['概览', '库存管理', '订单履约', '数据分析']}>
+            {/* ... (ShopSupplier Content remains same) ... */}
             {activeTab === '概览' && (
                 <div className="grid grid-cols-3 gap-6">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -482,7 +501,7 @@ const Dashboard: React.FC = () => {
                             </div>
                          </div>
                          <div className="mt-8 relative z-10 flex gap-4">
-                            <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS }); setShowModal('addCourse'); }} className="bg-white text-purple-600 px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-purple-50 transition-all shadow-lg">
+                            <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [] }); setShowModal('addCourse'); }} className="bg-white text-purple-600 px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-purple-50 transition-all shadow-lg">
                                 + 发布新课程 (AI)
                             </button>
                          </div>
@@ -524,7 +543,7 @@ const Dashboard: React.FC = () => {
                  <div className="space-y-6">
                      <div className="flex justify-between items-center">
                         <h3 className="font-bold text-xl text-slate-900">我的课程库</h3>
-                        <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS }); setShowModal('addCourse'); }} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all">
+                        <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [] }); setShowModal('addCourse'); }} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all">
                             + 发布课程 (AI)
                         </button>
                      </div>
@@ -558,6 +577,7 @@ const Dashboard: React.FC = () => {
                  </div>
              )}
 
+             {/* ... (Other tabs remain same) ... */}
              {activeTab === '学员名单' && (
                  <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
                     <div className="p-8 border-b border-slate-100">
@@ -668,7 +688,7 @@ const Dashboard: React.FC = () => {
                         
                         <div className="flex-1 grid lg:grid-cols-2 gap-8 overflow-hidden">
                             {/* Left: AI Control Panel & Manual Edit */}
-                            <div className="flex flex-col gap-6 overflow-y-auto pr-2">
+                            <div className="flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
                                 {!isEditingCourse && (
                                     <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
                                         <label className="block text-[10px] font-black text-purple-600 uppercase mb-2 tracking-widest">
@@ -712,10 +732,23 @@ const Dashboard: React.FC = () => {
                                         {isEditingCourse ? '修改课程详情 (Update Details)' : '手动编辑 / 修正 (Manual Edit)'}
                                     </h4>
                                     <div className="space-y-4">
+                                        {/* Basic Info */}
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程标题</label>
                                             <input type="text" placeholder="课程标题" value={courseForm.title || ''} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                         </div>
+                                        
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程封面图 (Course Image URL)</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="https://..." 
+                                                value={courseForm.imageUrl || ''} 
+                                                onChange={e => setCourseForm({...courseForm, imageUrl: e.target.value})} 
+                                                className="w-full p-3 border rounded-xl bg-slate-50 text-sm" 
+                                            />
+                                        </div>
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">专业领域</label>
@@ -749,6 +782,156 @@ const Dashboard: React.FC = () => {
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程简介</label>
                                             <textarea placeholder="课程详情" value={courseForm.description || ''} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm" />
                                         </div>
+
+                                        {/* Instructor Section */}
+                                        <div className="border-t border-slate-100 pt-6 mt-6">
+                                            <h5 className="text-xs font-black text-slate-900 uppercase mb-4 tracking-widest bg-slate-100 inline-block px-2 py-1 rounded">讲师信息 (Instructor)</h5>
+                                            <div className="space-y-3">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">姓名</label>
+                                                        <input 
+                                                            type="text" placeholder="Name" 
+                                                            value={courseForm.instructor?.name || ''} 
+                                                            onChange={e => setCourseForm({...courseForm, instructor: { ...courseForm.instructor, name: e.target.value } as any})} 
+                                                            className="w-full p-3 border rounded-xl bg-slate-50 text-sm" 
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">头衔/学位</label>
+                                                        <input 
+                                                            type="text" placeholder="Title (e.g. DVM)" 
+                                                            value={courseForm.instructor?.title || ''} 
+                                                            onChange={e => setCourseForm({...courseForm, instructor: { ...courseForm.instructor, title: e.target.value } as any})} 
+                                                            className="w-full p-3 border rounded-xl bg-slate-50 text-sm" 
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">讲师照片 URL</label>
+                                                    <input 
+                                                        type="text" placeholder="https://..." 
+                                                        value={courseForm.instructor?.imageUrl || ''} 
+                                                        onChange={e => setCourseForm({...courseForm, instructor: { ...courseForm.instructor, imageUrl: e.target.value } as any})} 
+                                                        className="w-full p-3 border rounded-xl bg-slate-50 text-sm" 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">讲师简介</label>
+                                                    <textarea 
+                                                        placeholder="Instructor Bio..." 
+                                                        value={courseForm.instructor?.bio || ''} 
+                                                        onChange={e => setCourseForm({...courseForm, instructor: { ...courseForm.instructor, bio: e.target.value } as any})} 
+                                                        className="w-full h-20 p-3 border rounded-xl bg-slate-50 text-sm" 
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Agenda Builder */}
+                                        <div className="border-t border-slate-100 pt-6 mt-6">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h5 className="text-xs font-black text-slate-900 uppercase tracking-widest bg-slate-100 inline-block px-2 py-1 rounded">课程详细日程 (Detailed Agenda)</h5>
+                                                <button 
+                                                    onClick={() => {
+                                                        const newDay = { day: `Day ${(courseForm.agenda?.length || 0) + 1}`, date: '', items: [] };
+                                                        setCourseForm({ ...courseForm, agenda: [...(courseForm.agenda || []), newDay] });
+                                                    }}
+                                                    className="text-[10px] font-bold text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors"
+                                                >
+                                                    + 添加天数 (Add Day)
+                                                </button>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {courseForm.agenda?.map((day, dIdx) => (
+                                                    <div key={dIdx} className="bg-slate-50 p-4 rounded-xl border border-slate-100 relative group">
+                                                        <div className="flex justify-between items-center mb-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <input 
+                                                                    value={day.day} 
+                                                                    onChange={e => {
+                                                                        const newAgenda = [...(courseForm.agenda || [])];
+                                                                        newAgenda[dIdx].day = e.target.value;
+                                                                        setCourseForm({ ...courseForm, agenda: newAgenda });
+                                                                    }}
+                                                                    className="font-black text-xs bg-transparent border-b border-dashed border-slate-300 w-20 focus:border-purple-500 outline-none"
+                                                                />
+                                                                <span className="text-[10px] text-slate-400">|</span>
+                                                                <input 
+                                                                    type="date"
+                                                                    value={day.date || ''}
+                                                                    onChange={e => {
+                                                                        const newAgenda = [...(courseForm.agenda || [])];
+                                                                        newAgenda[dIdx].date = e.target.value;
+                                                                        setCourseForm({ ...courseForm, agenda: newAgenda });
+                                                                    }}
+                                                                    className="bg-transparent text-[10px] text-slate-500 border border-slate-200 rounded px-1"
+                                                                />
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const newAgenda = (courseForm.agenda || []).filter((_, i) => i !== dIdx);
+                                                                    setCourseForm({ ...courseForm, agenda: newAgenda });
+                                                                }}
+                                                                className="text-red-300 hover:text-red-500 text-[10px] p-1"
+                                                            >
+                                                                🗑 删除整天
+                                                            </button>
+                                                        </div>
+                                                        <div className="space-y-2 pl-3 border-l-2 border-slate-200 ml-1">
+                                                            {day.items.map((item, iIdx) => (
+                                                                <div key={iIdx} className="flex gap-2 items-center">
+                                                                    <input 
+                                                                        placeholder="09:00" value={item.time} 
+                                                                        onChange={e => {
+                                                                            const newAgenda = [...(courseForm.agenda || [])];
+                                                                            newAgenda[dIdx].items[iIdx].time = e.target.value;
+                                                                            setCourseForm({ ...courseForm, agenda: newAgenda });
+                                                                        }}
+                                                                        className="w-16 p-2 text-[10px] font-mono rounded border border-slate-200 focus:border-purple-300 outline-none"
+                                                                    />
+                                                                    <input 
+                                                                        placeholder="Activity description..." value={item.activity} 
+                                                                        onChange={e => {
+                                                                            const newAgenda = [...(courseForm.agenda || [])];
+                                                                            newAgenda[dIdx].items[iIdx].activity = e.target.value;
+                                                                            setCourseForm({ ...courseForm, agenda: newAgenda });
+                                                                        }}
+                                                                        className="flex-1 p-2 text-[10px] rounded border border-slate-200 focus:border-purple-300 outline-none"
+                                                                    />
+                                                                     <button 
+                                                                        onClick={() => {
+                                                                            const newAgenda = [...(courseForm.agenda || [])];
+                                                                            newAgenda[dIdx].items = newAgenda[dIdx].items.filter((_, i) => i !== iIdx);
+                                                                            setCourseForm({ ...courseForm, agenda: newAgenda });
+                                                                        }}
+                                                                        className="text-slate-300 hover:text-red-500 text-[14px] px-1"
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const newAgenda = [...(courseForm.agenda || [])];
+                                                                    newAgenda[dIdx].items.push({ time: '', activity: '' });
+                                                                    setCourseForm({ ...courseForm, agenda: newAgenda });
+                                                                }}
+                                                                className="text-[9px] font-bold text-slate-400 hover:text-purple-600 mt-2 flex items-center gap-1"
+                                                            >
+                                                                + 添加日程项 (Add Session)
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {(!courseForm.agenda || courseForm.agenda.length === 0) && (
+                                                    <div className="text-center py-6 border-2 border-dashed border-slate-100 rounded-xl text-slate-300 text-xs">
+                                                        暂无日程安排，请点击上方按钮添加。
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -769,6 +952,16 @@ const Dashboard: React.FC = () => {
                                         <h4 className="font-black text-slate-900 mb-2 leading-tight">
                                             {courseForm.title || 'Course Title Preview'}
                                         </h4>
+                                        
+                                        {/* Instructor Preview */}
+                                        <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-xl">
+                                            <img src={courseForm.instructor?.imageUrl || 'https://via.placeholder.com/40'} className="w-8 h-8 rounded-full object-cover border border-white shadow-sm" />
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-900 leading-tight">{courseForm.instructor?.name || 'Instructor Name'}</p>
+                                                <p className="text-[8px] text-slate-500 font-medium truncate w-32">{courseForm.instructor?.title || 'Title'}</p>
+                                            </div>
+                                        </div>
+
                                         <p className="text-[10px] text-slate-500 mb-4 line-clamp-3">
                                             {courseForm.description || 'Description will appear here...'}
                                         </p>
@@ -782,11 +975,11 @@ const Dashboard: React.FC = () => {
                                         <div className="bg-slate-50 p-4 border-t border-slate-100">
                                             <p className="text-[9px] font-black text-slate-400 uppercase mb-2">日程安排 (Agenda)</p>
                                             {courseForm.agenda.map((day, i) => (
-                                                <div key={i} className="mb-2">
-                                                    <p className="text-[10px] font-bold text-purple-600">{day.day}</p>
+                                                <div key={i} className="mb-3">
+                                                    <p className="text-[10px] font-bold text-purple-600 mb-1">{day.day} <span className="text-slate-400 font-normal ml-1">{day.date}</span></p>
                                                     {day.items.map((act, j) => (
-                                                        <p key={j} className="text-[10px] text-slate-600 pl-2 border-l-2 border-slate-200 ml-1">
-                                                            <span className="font-mono opacity-50">{act.time}</span> {act.activity}
+                                                        <p key={j} className="text-[10px] text-slate-600 pl-2 border-l-2 border-slate-200 ml-1 mb-1">
+                                                            <span className="font-mono opacity-50 mr-1">{act.time}</span> {act.activity}
                                                         </p>
                                                     ))}
                                                 </div>
