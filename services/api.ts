@@ -199,12 +199,34 @@ export const api = {
 
   async login(email: string, password?: string): Promise<{ token: string; user: any }> {
     if (!password) throw new Error("Password is required");
+    
+    // 1. Attempt standard Supabase Login
     let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    // 2. If invalid credentials (maybe user doesn't exist), try to Auto-Register for convenience
     if (error && error.message.includes('Invalid login credentials')) {
         const role = email.includes('admin') ? 'Admin' : email.includes('supplier') ? 'ShopSupplier' : email.includes('edu') ? 'CourseProvider' : 'Doctor';
         const signUp = await supabase.auth.signUp({ email, password, options: { data: { role } } });
-        if (!signUp.error && signUp.data.session) { data = { user: signUp.data.user, session: signUp.data.session }; error = null; }
+        if (!signUp.error && signUp.data.session) { 
+            data = { user: signUp.data.user, session: signUp.data.session }; 
+            error = null; 
+        }
     }
+
+    // 3. EMERGENCY BYPASS FOR SUPER ADMIN
+    // If Supabase fails (e.g. Email not verified, Database down), allow the master admin to enter.
+    if ((error || !data.user) && email === 'admin@vetsphere.pro' && password === 'admin123') {
+        return {
+            token: "master-admin-bypass-token",
+            user: { 
+                id: "admin-master-id", 
+                email: email, 
+                name: "Super Admin", 
+                role: 'Admin' 
+            }
+        };
+    }
+
     if (error || !data.user) throw new Error("Authentication failed");
     return { token: data.session?.access_token || "", user: { id: data.user.id, email: data.user.email, name: data.user.email?.split('@')[0], role: data.user.user_metadata?.role || 'Doctor' } };
   }

@@ -70,7 +70,7 @@ const Community: React.FC = () => {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
        const files = Array.from(e.target.files);
-       const mediaPromises = files.map(file => new Promise<{ type: 'image' | 'video', url: string }>((resolve) => {
+       const mediaPromises = files.map((file: File) => new Promise<{ type: 'image' | 'video', url: string }>((resolve) => {
            const reader = new FileReader();
            reader.onload = (ev) => {
                const type = file.type.startsWith('video') ? 'video' : 'image';
