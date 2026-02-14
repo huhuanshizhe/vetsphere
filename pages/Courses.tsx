@@ -1,12 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Specialty, Course } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 
-const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void }> = ({ course, onSelect }) => {
+const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAuthenticated: boolean }> = ({ course, onSelect, isAuthenticated }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
+
   return (
     <div className="clinical-card flex flex-col h-full group overflow-hidden">
       <div className="h-52 relative overflow-hidden bg-slate-100">
@@ -46,7 +51,16 @@ const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void }> = 
         <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
           <div className="space-y-1">
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{t.courses.tuition}</p>
-              <p className="text-lg font-black text-slate-900">¥{course.price.toLocaleString()}</p>
+              {isAuthenticated ? (
+                <p className="text-lg font-black text-slate-900">¥{course.price.toLocaleString()}</p>
+              ) : (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); navigate('/auth'); }}
+                  className="flex items-center gap-1.5 text-xs font-black text-vs uppercase hover:underline"
+                >
+                  <span className="text-[14px]">🔒</span> {t.auth.loginToView}
+                </button>
+              )}
           </div>
           <button 
             onClick={() => onSelect(course)}
@@ -64,6 +78,8 @@ const Courses: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { isAuthenticated, user } = useAuth();
+  const { addNotification } = useNotification();
   const initialFilter = (location.state as any)?.specialty || 'All';
   
   const [courses, setCourses] = useState<Course[]>([]);
@@ -80,6 +96,10 @@ const Courses: React.FC = () => {
   }, []);
 
   const handleRegister = (course: Course) => {
+    if (!isAuthenticated) {
+        navigate('/auth');
+        return;
+    }
     addToCart({
       id: course.id,
       name: course.title,
@@ -91,6 +111,25 @@ const Courses: React.FC = () => {
     });
     setSelectedCourse(null);
     navigate('/checkout');
+  };
+
+  const handleShareCourse = async (course: Course) => {
+    const shareUrl = `${window.location.origin}/#/courses?id=${course.id}`;
+    const shareTitle = `[VetSphere Training] ${course.title}`;
+    
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: shareTitle, url: shareUrl });
+            if (user) {
+                await api.awardPoints(user.id, 50, `Shared course: ${course.title}`);
+                addNotification({ id: `sh-c-${Date.now()}`, type: 'system', title: t.common.pointsEarned, message: '+50 pts for sharing course.', read: true, timestamp: new Date() });
+            }
+        } catch (e) { console.log('Share canceled'); }
+    } else {
+        navigator.clipboard.writeText(shareUrl);
+        addNotification({ id: `sh-c-${Date.now()}`, type: 'system', title: t.common.copySuccess, message: 'Points awarded!', read: true, timestamp: new Date() });
+        if (user) await api.awardPoints(user.id, 50, `Copied course link: ${course.title}`);
+    }
   };
 
   const filteredCourses = filter === 'All' 
@@ -126,7 +165,7 @@ const Courses: React.FC = () => {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredCourses.map(course => (
-            <CourseCard key={course.id} course={course} onSelect={setSelectedCourse} />
+            <CourseCard key={course.id} course={course} onSelect={setSelectedCourse} isAuthenticated={isAuthenticated} />
             ))}
             {filteredCourses.length === 0 && (
             <div className="col-span-full py-20 text-center bg-slate-50 rounded-[32px] border border-dashed border-slate-200">
@@ -147,10 +186,16 @@ const Courses: React.FC = () => {
           >
             <div className="relative h-64 bg-slate-100">
               <img src={selectedCourse.imageUrl} className="w-full h-full object-cover" />
-              <button 
-                onClick={() => setSelectedCourse(null)}
-                className="absolute top-6 right-6 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white text-slate-900 z-50 transition-all"
-              >✕</button>
+              <div className="absolute top-6 right-6 flex gap-3">
+                  <button 
+                    onClick={() => handleShareCourse(selectedCourse)}
+                    className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-vs hover:text-white z-50 transition-all"
+                  >📤</button>
+                  <button 
+                    onClick={() => setSelectedCourse(null)}
+                    className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white text-slate-900 z-50 transition-all"
+                  >✕</button>
+              </div>
 
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex items-end p-10">
                 <div>
@@ -201,7 +246,14 @@ const Courses: React.FC = () => {
               
               <div className="space-y-6">
                 <div className="p-8 rounded-[32px] bg-vs text-white shadow-2xl shadow-vs/20">
-                  <p className="text-4xl font-black mb-8 tracking-tighter">¥{selectedCourse.price.toLocaleString()}</p>
+                  {isAuthenticated ? (
+                    <p className="text-4xl font-black mb-8 tracking-tighter">¥{selectedCourse.price.toLocaleString()}</p>
+                  ) : (
+                    <div className="mb-8">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">{t.auth.memberPrice}</p>
+                        <button onClick={() => navigate('/auth')} className="text-2xl font-black hover:underline underline-offset-4">{t.auth.pleaseLogin}</button>
+                    </div>
+                  )}
                   <div className="space-y-4 mb-10">
                       {t.courses.features.map(feat => (
                         <div key={feat} className="flex items-center gap-3 text-xs font-bold">
@@ -211,7 +263,7 @@ const Courses: React.FC = () => {
                       ))}
                   </div>
                   <button onClick={() => handleRegister(selectedCourse)} className="w-full bg-white text-vs py-5 rounded-2xl font-black text-sm shadow-xl hover:shadow-2xl transition-all">
-                    {t.courses.registerNow}
+                    {isAuthenticated ? t.courses.registerNow : t.auth.loginToRegister}
                   </button>
                 </div>
                 

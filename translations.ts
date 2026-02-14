@@ -22,6 +22,10 @@ export const translations = {
       shipping: 'Shipping',
       free: 'Free',
       secureCheckout: 'Secure Checkout',
+      share: 'Share Knowledge',
+      shareDesc: 'Spread surgical excellence & earn 50 points.',
+      copySuccess: 'Link copied to clipboard!',
+      pointsEarned: '50 Points Awarded!'
     },
     nav: {
       home: 'Overview',
@@ -58,7 +62,13 @@ export const translations = {
       heroTitle: 'Elevate Your Surgical Precision.',
       heroDesc: 'Join over 5,000 veterinary surgeons accessing world-class training, precision instruments, and AI-powered clinical support.',
       badgeCE: 'CE Accredited',
-      badgeGlobal: 'Global Network'
+      badgeGlobal: 'Global Network',
+      loginToView: 'Login to View Price',
+      pleaseLogin: '🔒 Please Login First',
+      loginToRegister: 'Login to Register',
+      loginToBuy: 'Login & Buy Now',
+      memberPrice: 'Member Price',
+      wechatHint: 'Link copied! Paste into WeChat to share.'
     },
     community: {
       title: 'Case Plaza',
@@ -158,7 +168,6 @@ export const translations = {
       }
     },
     home: {
-      // Hero
       heroTag: 'Global Veterinary Surgery',
       heroTitle1: 'Advancing the',
       heroTitle2: 'Standard of Care.',
@@ -170,8 +179,6 @@ export const translations = {
       imgCaption: 'Advanced TPLO Workshop',
       imgLoc: 'Munich Training Center, Germany',
       floatBadge: 'Global Specialists (Diplomates) teaching annually.',
-
-      // Stats
       statCourses: 'Surgical Courses',
       statCoursesSub: 'Yearly Globally',
       statVets: 'Veterinarians',
@@ -180,8 +187,6 @@ export const translations = {
       statCountriesSub: 'Regional Hubs',
       statDevices: 'Medical Devices',
       statDevicesSub: '13485 Certified',
-
-      // Disciplines
       focusTag: 'Clinical Focus',
       focusTitle: 'Comprehensive Surgical Solutions',
       focusDesc: 'We specialize in the complete lifecycle of veterinary surgery: from residency-level training to the supply of precision implants.',
@@ -192,8 +197,6 @@ export const translations = {
       softTitle: 'Soft Tissue & MIS',
       softDesc: 'Mastery in oncologic reconstruction, liver lobectomy, and minimally invasive thoracoscopy/laparoscopy.',
       explore: 'Explore Curriculum →',
-
-      // Equipment
       equipTag: 'SurgiTech Precision Instruments',
       equipTitle1: 'Engineering',
       equipTitle2: 'Clinical Confidence.',
@@ -208,15 +211,11 @@ export const translations = {
       equipFeatureTag: 'Featured System',
       equipFeatureName: 'SurgiPower TPLO V4',
       equipFeatureSpec: 'Max Torque Load',
-
-      // Network
       netTitle: 'A Global Community of Excellence.',
       netDesc: 'VetSphere is not just a platform; it is a worldwide network of teaching hospitals, research centers, and surgical specialists.',
       netPartner1: 'Strategic Partner (Asia)',
       netPartner2: 'Diplomate Faculty',
       netJoined: 'Joined by 15,000+ peers',
-      
-      // Features Grid
       featLabs: 'Hands-on Wet Labs',
       featLabsDesc: 'Small group sessions (4:1 student-teacher ratio) ensuring direct mentorship on cadaver models.',
       featCase: 'Case Consultation',
@@ -225,8 +224,6 @@ export const translations = {
       featSupplyDesc: 'Seamless ordering of implants matching the exact specifications learned in training.',
       featDigital: 'Digital Support',
       featDigitalDesc: 'AI-assisted preoperative planning and intelligent inventory management.',
-
-      // CTA
       ctaTitle1: 'Ready to elevate your',
       ctaTitle2: 'Surgical Practice?',
       ctaDesc: 'Join the professional network trusted by veterinary teaching hospitals and private specialty centers worldwide.',
@@ -267,6 +264,10 @@ export const translations = {
       shipping: '运费',
       free: '免费',
       secureCheckout: '安全结算',
+      share: '学术分享',
+      shareDesc: '传播临床智慧，赚取 50 积分奖励。',
+      copySuccess: '链接已复制到剪贴板',
+      pointsEarned: '获得 50 积分奖励！'
     },
     nav: {
       home: '概览',
@@ -303,7 +304,13 @@ export const translations = {
       heroTitle: '提升您的\n外科精准度。',
       heroDesc: '加入超过 5,000 名兽医外科医生的行列，获取世界级的培训、精密器械和 AI 辅助临床支持。',
       badgeCE: 'CPE 认证',
-      badgeGlobal: '全球网络'
+      badgeGlobal: '全球网络',
+      loginToView: '登录查看价格',
+      pleaseLogin: '🔒 请先登录',
+      loginToRegister: '立即登录预约',
+      loginToBuy: '登录并购买',
+      memberPrice: '会员专享价',
+      wechatHint: '链接已复制！请粘贴至微信发送。'
     },
     community: {
       title: '病例广场',
@@ -403,7 +410,6 @@ export const translations = {
       }
     },
     home: {
-      // Hero
       heroTag: '全球兽医外科中心',
       heroTitle1: '重新定义',
       heroTitle2: '外科临床标准',
@@ -415,8 +421,6 @@ export const translations = {
       imgCaption: 'TPLO 高级实操工坊',
       imgLoc: '德国 · 慕尼黑培训中心',
       floatBadge: '每年授课的全球专科医师 (Diplomates)',
-
-      // Stats
       statCourses: '外科课程',
       statCoursesSub: '每年全球场次',
       statVets: '注册兽医',
@@ -425,8 +429,6 @@ export const translations = {
       statCountriesSub: '区域中心',
       statDevices: '医疗器械',
       statDevicesSub: 'ISO 13485 认证',
-
-      // Disciplines
       focusTag: '临床聚焦',
       focusTitle: '全流程外科解决方案',
       focusDesc: '我们专注于兽医外科的全生命周期：从住院医师级别的专业培训到精密植入物的供应。',
@@ -437,8 +439,6 @@ export const translations = {
       softTitle: '软组织与微创',
       softDesc: '精通肿瘤重建、肝叶切除及微创胸腔镜/腹腔镜技术。',
       explore: '探索课程大纲 →',
-
-      // Equipment
       equipTag: 'SurgiTech 精密器械',
       equipTitle1: '精工工程',
       equipTitle2: '铸就临床信心',
@@ -453,15 +453,11 @@ export const translations = {
       equipFeatureTag: '核心系统',
       equipFeatureName: 'SurgiPower TPLO V4',
       equipFeatureSpec: '最大负载扭矩',
-
-      // Network
       netTitle: '全球卓越医学社区',
       netDesc: 'VetSphere 不仅仅是一个平台；它是连接教学医院、研究中心和外科专家的全球网络。',
       netPartner1: '战略合作伙伴 (亚洲)',
       netPartner2: '专科讲师团',
       netJoined: '已有 15,000+ 同行加入',
-
-      // Features Grid
       featLabs: 'Wet-Lab 实操',
       featLabsDesc: '4:1 师生比的小班教学，确保在大体老师（Cadaver）上的直接指导。',
       featCase: '病例咨询',
@@ -470,8 +466,6 @@ export const translations = {
       featSupplyDesc: '无缝订购与培训中所学规格完全匹配的植入物。',
       featDigital: '数字化支持',
       featDigitalDesc: 'AI 辅助的术前规划与智能库存管理系统。',
-
-      // CTA
       ctaTitle1: '准备好提升您的',
       ctaTitle2: '外科诊疗水平了吗？',
       ctaDesc: '加入这个深受全球教学医院和私立专科中心信赖的专业网络。',
@@ -512,6 +506,10 @@ export const translations = {
       shipping: 'ค่าจัดส่ง',
       free: 'ฟรี',
       secureCheckout: 'ชำระเงินปลอดภัย',
+      share: 'แชร์ความรู้',
+      shareDesc: 'เผยแพร่ความเชี่ยวชาญด้านศัลยกรรมและรับ 50 คะแนน',
+      copySuccess: 'คัดลอกลิงก์สำเร็จ!',
+      pointsEarned: 'คุณได้รับ 50 คะแนน!'
     },
     nav: {
       home: 'ภาพรวม',
@@ -548,7 +546,13 @@ export const translations = {
       heroTitle: 'ยกระดับความแม่นยำ\nทางศัลยกรรมของคุณ',
       heroDesc: 'เข้าร่วมกับศัลยแพทย์สัตวแพทย์กว่า 5,000 คนที่เข้าถึงการฝึกอบรมระดับโลก เครื่องมือที่มีความแม่นยำ และการสนับสนุนทางคลินิกด้วย AI',
       badgeCE: 'ได้รับการรับรอง CPE',
-      badgeGlobal: 'เครือข่ายระดับโลก'
+      badgeGlobal: 'เครือข่ายระดับโลก',
+      loginToView: 'เข้าสู่ระบบเพื่อดูราคา',
+      pleaseLogin: '🔒 โปรดเข้าสู่ระบบก่อน',
+      loginToRegister: 'เข้าสู่ระบบเพื่อลงทะเบียน',
+      loginToBuy: 'เข้าสู่ระบบและซื้อทันที',
+      memberPrice: 'ราคาสมาชิก',
+      wechatHint: 'คัดลอกลิงก์แล้ว! วางใน WeChat เพื่อแชร์'
     },
     community: {
       title: 'Case Plaza',
@@ -659,7 +663,6 @@ export const translations = {
       imgCaption: 'เวิร์กช็อป TPLO ขั้นสูง',
       imgLoc: 'ศูนย์ฝึกอบรมมิวนิก เยอรมนี',
       floatBadge: 'ผู้เชี่ยวชาญระดับโลก (Diplomates) สอนทุกปี',
-
       statCourses: 'หลักสูตรศัลยกรรม',
       statCoursesSub: 'รายปีทั่วโลก',
       statVets: 'สัตวแพทย์',
@@ -668,7 +671,6 @@ export const translations = {
       statCountriesSub: 'ศูนย์กลางระดับภูมิภาค',
       statDevices: 'อุปกรณ์การแพทย์',
       statDevicesSub: 'ได้รับการรับรอง 13485',
-
       focusTag: 'จุดเน้นทางคลินิก',
       focusTitle: 'โซลูชันศัลยกรรมครบวงจร',
       focusDesc: 'เราเชี่ยวชาญในวงจรชีวิตของการผ่าตัดทางสัตวแพทย์ ตั้งแต่การฝึกอบรมระดับแพทย์ประจำบ้านไปจนถึงการจัดหาวัสดุฝังที่แม่นยำ',
@@ -679,7 +681,6 @@ export const translations = {
       softTitle: 'เนื้อเยื่ออ่อน & MIS',
       softDesc: 'ความเชี่ยวชาญในการสร้างใหม่ทางมะเร็งวิทยา, การตัดกลีบตับ และการส่องกล้องทรวงอก/ช่องท้องที่มีการรุกล้ำน้อยที่สุด',
       explore: 'สำรวจหลักสูตร →',
-
       equipTag: 'เครื่องมือความแม่นยำ SurgiTech',
       equipTitle1: 'วิศวกรรม',
       equipTitle2: 'ความมั่นใจทางคลินิก',
@@ -694,13 +695,11 @@ export const translations = {
       equipFeatureTag: 'ระบบแนะนำ',
       equipFeatureName: 'SurgiPower TPLO V4',
       equipFeatureSpec: 'โหลดแรงบิดสูงสุด',
-
       netTitle: 'ชุมชนแห่งความเป็นเลิศระดับโลก',
       netDesc: 'VetSphere ไม่ใช่แค่แพลตฟอร์ม แต่เป็นเครือข่ายทั่วโลกของโรงพยาบาลการสอน ศูนย์วิจัย และผู้เชี่ยวชาญด้านศัลยกรรม',
       netPartner1: 'พันธมิตรเชิงกลยุทธ์ (เอเชีย)',
       netPartner2: 'คณะกรรมการผู้เชี่ยวชาญ',
       netJoined: 'เข้าร่วมโดยเพื่อนร่วมงานกว่า 15,000 คน',
-      
       featLabs: 'Wet-Labs ภาคปฏิบัติ',
       featLabsDesc: 'เซสชันกลุ่มเล็ก (อัตราส่วนนักเรียนต่อครู 4:1) เพื่อให้มั่นใจว่าได้รับคำแนะนำโดยตรงกับร่างอาจารย์ใหญ่',
       featCase: 'การปรึกษาเคส',
@@ -709,10 +708,6 @@ export const translations = {
       featSupplyDesc: 'การสั่งซื้อวัสดุฝังที่ราบรื่นซึ่งตรงกับข้อกำหนดที่เรียนรู้ในการฝึกอบรม',
       featDigital: 'การสนับสนุนดิจิทัล',
       featDigitalDesc: 'การวางแผนก่อนการผ่าตัดด้วย AI และการจัดการสินค้าคงคลังอัจฉริยะ',
-
-      ctaTitle1: 'พร้อมที่จะยกระดับ',
-      ctaTitle2: 'การปฏิบัติทางศัลยกรรมของคุณหรือยัง?',
-      ctaDesc: 'เข้าร่วมเครือข่ายวิชาชีพที่ได้รับความไว้วางใจจากโรงพยาบาลการสอนทางสัตวแพทย์และศูนย์เฉพาะทางเอกชนทั่วโลก',
       ctaButtonPrimary: 'สมัครสมาชิก',
       ctaButtonSecondary: 'ดูกรณีศึกษา'
     },

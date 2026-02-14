@@ -5,15 +5,18 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getGeminiResponse, DEFAULT_SYSTEM_INSTRUCTION } from '../services/gemini';
 import { useLanguage } from '../context/LanguageContext';
+import { useNotification } from '../context/NotificationContext';
 
 const Community: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { addNotification } = useNotification();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSpecialty, setActiveSpecialty] = useState<Specialty | 'All'>('All');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPublisher, setShowPublisher] = useState(false);
+  const [sharingPost, setSharingPost] = useState<Post | null>(null);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState<Record<string, boolean>>({});
@@ -49,21 +52,63 @@ const Community: React.FC = () => {
     e?.stopPropagation();
     setIsLiked(prev => ({ ...prev, [postId]: !prev[postId] }));
     api.interactWithPost(postId, 'like');
-    // UI-only increment for demo
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, stats: { ...p.stats, likes: p.stats.likes + (isLiked[postId] ? -1 : 1) } } : p));
   };
 
-  const handleShare = (post: Post, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (navigator.share) {
-      navigator.share({
-        title: post.title,
-        text: post.content,
-        url: window.location.href,
-      }).catch(console.error);
-    } else {
-      navigator.clipboard.writeText(`${post.title} - Check this clinical case on VetSphere: ${window.location.href}`);
-      alert('Link copied to clipboard!');
+  // --- REFINED SOCIAL SHARING LOGIC ---
+  const triggerShare = async (platform: 'linkedin' | 'twitter' | 'facebook' | 'wechat' | 'copy' | 'system') => {
+    if (!sharingPost) return;
+    
+    const shareUrl = `${window.location.origin}/#/community?caseId=${sharingPost.id}`;
+    const shareTitle = `[VetSphere] ${sharingPost.title}`;
+    const shareText = `Check out this surgical case by ${sharingPost.author.name} on VetSphere.`;
+    
+    let actionTaken = false;
+
+    switch (platform) {
+        case 'linkedin':
+            window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank');
+            actionTaken = true;
+            break;
+        case 'twitter':
+            window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`, '_blank');
+            actionTaken = true;
+            break;
+        case 'facebook':
+            window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+            actionTaken = true;
+            break;
+        case 'copy':
+            navigator.clipboard.writeText(shareUrl);
+            addNotification({ id: `copy-${Date.now()}`, type: 'system', title: t.common.copySuccess, message: '', read: true, timestamp: new Date() });
+            actionTaken = true;
+            break;
+        case 'system':
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
+                    actionTaken = true;
+                } catch (e) { console.log('Native share cancelled'); }
+            }
+            break;
+        case 'wechat':
+            navigator.clipboard.writeText(shareUrl);
+            alert(t.auth.wechatHint);
+            actionTaken = true;
+            break;
+    }
+
+    if (actionTaken && user) {
+        const newPoints = await api.awardPoints(user.id, 50, `Shared case: ${sharingPost.title}`);
+        addNotification({
+            id: `pts-${Date.now()}`,
+            type: 'system',
+            title: t.common.pointsEarned,
+            message: `+50 pts for academic sharing.`,
+            read: false,
+            timestamp: new Date()
+        });
+        setSharingPost(null);
     }
   };
 
@@ -92,6 +137,7 @@ const Community: React.FC = () => {
       sections: { diagnosis: form.diagnosis, plan: form.plan, outcome: form.outcome }
     };
     await api.createPost(postData, user);
+    addNotification({ id: `pub-${Date.now()}`, type: 'system', title: 'Points Awarded!', message: 'You earned 200 points for publishing a case.', read: false, timestamp: new Date() });
     await fetchPosts();
     setShowPublisher(false);
     resetForm();
@@ -121,10 +167,9 @@ const Community: React.FC = () => {
   const filteredPosts = activeSpecialty === 'All' ? posts : posts.filter(p => p.specialty === activeSpecialty);
 
   return (
-    <div className="bg-[#F8FAFC] min-h-screen pt-32 pb-20 px-4">
+    <div className="bg-[#F8FAFC] min-h-screen pt-32 pb-20 px-4 relative">
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-12">
         
-        {/* Main Content */}
         <div className="flex-1">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
             <div className="space-y-2">
@@ -166,7 +211,12 @@ const Community: React.FC = () => {
                         <p className="text-[9px] text-vs font-black uppercase">{post.author.level}</p>
                       </div>
                     </div>
-                    <button onClick={(e) => handleShare(post, e)} className="p-2 text-slate-300 hover:text-vs transition-colors">📤</button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setSharingPost(post); }}
+                        className="p-2 w-10 h-10 bg-slate-50 text-slate-400 rounded-xl hover:bg-vs hover:text-white hover:scale-110 transition-all flex items-center justify-center"
+                    >
+                        📤
+                    </button>
                   </div>
 
                   <h3 className="text-xl font-black text-slate-900 mb-4 line-clamp-2 leading-tight group-hover:text-vs transition-colors">{post.title}</h3>
@@ -197,7 +247,6 @@ const Community: React.FC = () => {
           )}
         </div>
 
-        {/* Sidebar */}
         <aside className="hidden lg:block w-80 shrink-0 space-y-8">
             <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">{t.community.trending}</h4>
@@ -224,15 +273,53 @@ const Community: React.FC = () => {
             </div>
 
             <div className="p-8 bg-slate-900 rounded-[32px] text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl">🎓</div>
-                <h5 className="text-[10px] font-black text-vs uppercase tracking-widest mb-2">{t.community.certPath}</h5>
-                <p className="text-xs font-medium text-slate-400 mb-6">{t.community.certDesc}</p>
-                <button className="w-full py-3 bg-vs text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-vs/20">{t.community.learnMore}</button>
+                <div className="absolute top-0 right-0 w-full h-full bg-vs/5 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2"></div>
+                <h5 className="text-[10px] font-black text-vs uppercase tracking-widest mb-2">Points for Knowledge</h5>
+                <p className="text-xs font-medium text-slate-400 mb-6">Contribute to the global surgical community and earn rewards for your clinic.</p>
+                <div className="space-y-3">
+                   <div className="flex justify-between text-[9px] font-bold uppercase"><span className="text-slate-500">Post Case</span> <span className="text-vs">+200 pts</span></div>
+                   <div className="flex justify-between text-[9px] font-bold uppercase"><span className="text-slate-500">Share Post</span> <span className="text-vs">+50 pts</span></div>
+                   <div className="flex justify-between text-[9px] font-bold uppercase"><span className="text-slate-500">Add Comment</span> <span className="text-vs">+20 pts</span></div>
+                </div>
             </div>
         </aside>
       </div>
 
-      {/* Case Detail Drawer */}
+      {/* Sharing Panel (Glassmorphism Overlay) */}
+      {sharingPost && (
+          <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSharingPost(null)}>
+              <div className="bg-white rounded-[40px] w-full max-w-sm overflow-hidden shadow-2xl p-8 space-y-8 animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                  <div className="text-center">
+                      <div className="w-20 h-20 bg-vs/10 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">📢</div>
+                      <h3 className="text-2xl font-black text-slate-900">{t.common.share}</h3>
+                      <p className="text-slate-400 text-sm font-bold mt-2">{t.common.shareDesc}</p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-8">
+                      {[
+                        { id: 'wechat', label: 'WeChat', icon: '💬', color: 'hover:bg-[#07C160]', text: 'text-[#07C160]' },
+                        { id: 'linkedin', label: 'LinkedIn', icon: '🔗', color: 'hover:bg-[#0077B5]', text: 'text-[#0077B5]' },
+                        { id: 'twitter', label: 'X', icon: '𝕏', color: 'hover:bg-black', text: 'text-black' },
+                        { id: 'facebook', label: 'Facebook', icon: '👥', color: 'hover:bg-[#1877F2]', text: 'text-[#1877F2]' },
+                        { id: 'system', label: 'System', icon: '📱', color: 'hover:bg-vs', text: 'text-vs' },
+                        { id: 'copy', label: 'Link', icon: '📋', color: 'hover:bg-slate-700', text: 'text-slate-700' },
+                      ].map(plat => (
+                        <button key={plat.id} onClick={() => triggerShare(plat.id as any)} className="flex flex-col items-center gap-3 group transition-all">
+                            <div className={`w-14 h-14 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-2xl transition-all group-hover:scale-110 group-hover:shadow-xl group-hover:border-transparent group-hover:text-white ${plat.color} ${plat.text}`}>
+                                {plat.icon}
+                            </div>
+                            <span className="text-[10px] font-black uppercase text-slate-400 group-hover:text-slate-900 tracking-widest">{plat.label}</span>
+                        </button>
+                      ))}
+                  </div>
+
+                  <button onClick={() => setSharingPost(null)} className="w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors">
+                      {t.common.cancel}
+                  </button>
+              </div>
+          </div>
+      )}
+
       {selectedPost && (
         <div className="fixed inset-0 z-[300] bg-slate-950/70 backdrop-blur-sm flex items-center justify-end animate-in fade-in duration-300">
            <div className="bg-white w-full max-w-6xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-500 overflow-hidden">
@@ -242,7 +329,7 @@ const Community: React.FC = () => {
                     <h2 className="text-xl md:text-2xl font-black text-slate-900 truncate max-w-md">{selectedPost.title}</h2>
                  </div>
                  <div className="flex gap-3">
-                    <button onClick={() => handleShare(selectedPost)} className="p-3 border rounded-xl hover:bg-slate-50">📤</button>
+                    <button onClick={(e) => { e.stopPropagation(); setSharingPost(selectedPost); }} className="p-3 border rounded-xl hover:bg-slate-50">📤</button>
                     <button onClick={() => runAiAnalysis(selectedPost)} disabled={isAiAnalyzing} className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2">
                       {isAiAnalyzing ? t.community.analyzing : t.community.runAi}
                     </button>
@@ -291,7 +378,6 @@ const Community: React.FC = () => {
                          )}
                       </div>
 
-                      {/* Comment System UI */}
                       <section className="pt-12 border-t border-slate-100">
                          <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-8">{t.community.discussion} ({comments.length + selectedPost.stats.comments})</h4>
                          
@@ -322,9 +408,6 @@ const Community: React.FC = () => {
                                  </div>
                               </div>
                             ))}
-                            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End of thread</p>
-                            </div>
                          </div>
                       </section>
                    </div>
@@ -356,7 +439,6 @@ const Community: React.FC = () => {
         </div>
       )}
 
-      {/* Post Publisher */}
       {showPublisher && (
         <div className="fixed inset-0 z-[400] bg-slate-950/90 flex items-center justify-center p-4">
            <div className="bg-white rounded-[40px] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom-10">
