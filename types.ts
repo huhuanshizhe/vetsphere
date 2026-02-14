@@ -12,6 +12,15 @@ export type UserRole = 'Doctor' | 'CourseProvider' | 'ShopSupplier' | 'Admin';
 
 export type ProductGroup = 'PowerTools' | 'Implants' | 'HandInstruments' | 'Consumables' | 'Equipment';
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  points: number;
+  level: string;
+}
+
 export interface DoctorProfile {
   id: string;
   fullName: string;

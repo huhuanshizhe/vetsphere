@@ -41,6 +41,20 @@ let MOCK_COURSES = [...COURSES_CN];
 
 export const api = {
   
+  // --- POINTS SYSTEM ---
+  async awardPoints(userId: string, amount: number, reason: string): Promise<number> {
+      // In production, this would be a Supabase RPC call or transaction
+      console.log(`[Points] User ${userId} awarded ${amount} pts for ${reason}`);
+      const current = parseInt(localStorage.getItem(`pts_${userId}`) || "500");
+      const updated = current + amount;
+      localStorage.setItem(`pts_${userId}`, updated.toString());
+      return updated;
+  },
+
+  async fetchUserPoints(userId: string): Promise<number> {
+      return parseInt(localStorage.getItem(`pts_${userId}`) || "500");
+  },
+
   // --- PRODUCTS (Shop) ---
   async getProducts(): Promise<Product[]> {
     try {
@@ -117,6 +131,8 @@ export const api = {
          stats: { likes: 0, comments: 0, saves: 0 }
      };
      await supabase.from('posts').insert(newPost);
+     // Award Points for Contribution
+     await this.awardPoints(user.id, 200, "Publishing Clinical Case");
   },
 
   async interactWithPost(postId: string, type: 'like' | 'save'): Promise<void> {
@@ -243,35 +259,34 @@ export const api = {
     }
 
     // 3. EMERGENCY BYPASS FOR ALL DEMO ROLES
-    // If Supabase fails (e.g. invalid creds, network issue), check against hardcoded demo credentials.
     if (error || !data.user) {
         if (email === 'admin@vetsphere.pro' && password === 'admin123') {
             return {
                 token: "master-admin-bypass-token",
-                user: { id: "admin-master-id", email, name: "Super Admin", role: 'Admin' }
+                user: { id: "admin-master-id", email, name: "Super Admin", role: 'Admin', points: 9999, level: 'Master' }
             };
         }
         if (email === 'supplier@surgitech.com' && password === 'supply123') {
              return {
                 token: "supplier-bypass-token",
-                user: { id: "supplier-demo-id", email, name: "SurgiTech GmbH", role: 'ShopSupplier' }
+                user: { id: "supplier-demo-id", email, name: "SurgiTech GmbH", role: 'ShopSupplier', points: 0, level: 'Partner' }
             };
         }
         if (email === 'edu@csavs.org' && password === 'edu123') {
              return {
                 token: "edu-bypass-token",
-                user: { id: "edu-demo-id", email, name: "CSAVS Academy", role: 'CourseProvider' }
+                user: { id: "edu-demo-id", email, name: "CSAVS Academy", role: 'CourseProvider', points: 0, level: 'Educator' }
             };
         }
         if (email === 'doctor@vet.com' && password === 'doc123') {
              return {
                 token: "doctor-bypass-token",
-                user: { id: "doctor-demo-id", email, name: "Dr. Demo", role: 'Doctor' }
+                user: { id: "doctor-demo-id", email, name: "Dr. Demo", role: 'Doctor', points: 500, level: 'Resident' }
             };
         }
     }
 
     if (error || !data.user) throw new Error("Authentication failed");
-    return { token: data.session?.access_token || "", user: { id: data.user.id, email: data.user.email, name: data.user.email?.split('@')[0], role: data.user.user_metadata?.role || 'Doctor' } };
+    return { token: data.session?.access_token || "", user: { id: data.user.id, email: data.user.email, name: data.user.email?.split('@')[0], role: data.user.user_metadata?.role || 'Doctor', points: 500, level: 'Resident' } };
   }
 };

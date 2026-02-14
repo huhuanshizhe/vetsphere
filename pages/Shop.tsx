@@ -4,12 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import { Specialty, ProductGroup, Product } from '../types';
 
 const Shop: React.FC = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { t } = useLanguage();
+  const { isAuthenticated, user } = useAuth();
+  const { addNotification } = useNotification();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -30,6 +34,11 @@ const Shop: React.FC = () => {
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
     
+    if (!isAuthenticated) {
+        navigate('/auth');
+        return;
+    }
+
     // Perform Cart Action
     addToCart({ 
       id: product.id, 
@@ -55,6 +64,10 @@ const Shop: React.FC = () => {
   };
 
   const handleBuyNow = (product: Product) => {
+    if (!isAuthenticated) {
+        navigate('/auth');
+        return;
+    }
     addToCart({ 
       id: product.id, 
       name: product.name, 
@@ -66,6 +79,25 @@ const Shop: React.FC = () => {
     });
     setSelectedProduct(null);
     navigate('/checkout');
+  };
+
+  const handleShareProduct = async (product: Product) => {
+    const shareUrl = `${window.location.origin}/#/shop?id=${product.id}`;
+    const shareTitle = `[VetSphere Equipment] ${product.name} by ${product.brand}`;
+    
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: shareTitle, url: shareUrl });
+            if (user) {
+                await api.awardPoints(user.id, 50, `Shared product: ${product.name}`);
+                addNotification({ id: `sh-p-${Date.now()}`, type: 'system', title: t.common.pointsEarned, message: '+50 pts for sharing equipment.', read: true, timestamp: new Date() });
+            }
+        } catch (e) { console.log('Share canceled'); }
+    } else {
+        navigator.clipboard.writeText(shareUrl);
+        addNotification({ id: `sh-p-${Date.now()}`, type: 'system', title: t.common.copySuccess, message: 'Academic points awarded!', read: true, timestamp: new Date() });
+        if (user) await api.awardPoints(user.id, 50, `Copied product link: ${product.name}`);
+    }
   };
 
   const filteredProducts = products.filter(p => {
@@ -188,7 +220,11 @@ const Shop: React.FC = () => {
                       <div className="mt-auto flex items-center justify-between pt-5 border-t border-slate-50">
                          <div>
                             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{t.shop.priceExcl}</p>
-                            <p className="text-lg font-black text-slate-900">¥{product.price.toLocaleString()}</p>
+                            {isAuthenticated ? (
+                                <p className="text-lg font-black text-slate-900">¥{product.price.toLocaleString()}</p>
+                            ) : (
+                                <p className="text-xs font-black text-vs flex items-center gap-1">🔒 {t.auth.loginToView}</p>
+                            )}
                          </div>
                          <button 
                             onClick={(e) => handleAddToCart(e, product)}
@@ -196,7 +232,7 @@ const Shop: React.FC = () => {
                               addedProductId === product.id ? '!bg-slate-900' : 'hover:!shadow-vs/20'
                             }`}
                          >
-                            {addedProductId === product.id ? t.shop.added : t.shop.addToCart}
+                            {isAuthenticated ? (addedProductId === product.id ? t.shop.added : t.shop.addToCart) : t.auth.signInLink}
                          </button>
                       </div>
                     </div>
@@ -238,12 +274,20 @@ const Shop: React.FC = () => {
              className="bg-white w-full max-w-xl h-full shadow-2xl p-10 flex flex-col animate-in slide-in-from-right duration-500"
              onClick={(e) => e.stopPropagation()}
            >
-              <button 
-                onClick={() => setSelectedProduct(null)}
-                className="self-start p-2 text-slate-400 hover:text-slate-900 transition-colors mb-8"
-              >
-                ✕ {t.common.close}
-              </button>
+              <div className="flex justify-between items-center mb-8">
+                  <button 
+                    onClick={() => setSelectedProduct(null)}
+                    className="p-2 text-slate-400 hover:text-slate-900 transition-colors"
+                  >
+                    ✕ {t.common.close}
+                  </button>
+                  <button 
+                    onClick={() => handleShareProduct(selectedProduct)}
+                    className="p-3 w-12 h-12 bg-slate-50 text-slate-500 rounded-2xl hover:bg-vs hover:text-white transition-all flex items-center justify-center shadow-sm"
+                  >
+                    📤
+                  </button>
+              </div>
 
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
                  <div className="aspect-square bg-slate-50 rounded-3xl p-12 mb-10 flex items-center justify-center">
@@ -272,13 +316,17 @@ const Shop: React.FC = () => {
               <div className="pt-8 mt-auto border-t border-slate-100 flex items-center justify-between gap-8">
                  <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.shop.grandTotal}</p>
-                    <p className="text-3xl font-black text-slate-900 tracking-tighter">¥{selectedProduct.price.toLocaleString()}</p>
+                    {isAuthenticated ? (
+                        <p className="text-3xl font-black text-slate-900 tracking-tighter">¥{selectedProduct.price.toLocaleString()}</p>
+                    ) : (
+                        <button onClick={() => navigate('/auth')} className="text-xl font-black text-vs hover:underline">🔒 {t.auth.loginToView}</button>
+                    )}
                  </div>
                  <button 
                     onClick={() => handleBuyNow(selectedProduct)}
                     className="flex-1 btn-vs-premium !py-5 !text-xs !rounded-2xl shadow-xl shadow-vs/20 hover:-translate-y-1 transition-all"
                  >
-                    {t.shop.buyNow}
+                    {isAuthenticated ? t.shop.buyNow : t.auth.loginToBuy}
                  </button>
               </div>
            </div>
