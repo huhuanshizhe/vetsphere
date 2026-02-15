@@ -20,7 +20,7 @@ const Dashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userPoints, setUserPoints] = useState(0);
+  const [userPoints, setUserPoints] = useState(user?.points || 0);
   
   // UI State
   const [activeTab, setActiveTab] = useState('Overview');
@@ -52,6 +52,11 @@ const Dashboard: React.FC = () => {
     if (!user) {
         navigate('/auth');
         return;
+    }
+
+    // Update points from user object if it changes
+    if (user.points !== undefined) {
+      setUserPoints(user.points);
     }
 
     // Auto-switch tab language for specific roles
