@@ -9,6 +9,76 @@ import { PORTAL_THEME } from '../constants';
 import { useNotification } from '../context/NotificationContext';
 import { getSystemInstruction, saveSystemInstruction, getAIConfig, saveAIConfig, getGeminiResponse } from '../services/gemini';
 
+// --- DashboardLayout Component (Moved Outside to prevent re-mounting) ---
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+  sidebarItems: string[];
+  user: any;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  logout: () => void;
+}
+
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, sidebarItems, user, activeTab, setActiveTab, logout }) => {
+  const theme = PORTAL_THEME[user.role] || PORTAL_THEME.Doctor;
+
+  return (
+    <div className={`min-h-screen ${theme.colors.pageBg} text-slate-800 flex font-sans`}>
+        {/* Sidebar */}
+        <aside className={`w-64 ${theme.colors.sidebarBg} border-r border-slate-100 flex flex-col shrink-0 transition-colors duration-300`}>
+           <div className="p-8 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl shadow-lg ${user.role === 'Admin' ? 'bg-emerald-500 text-black' : 'bg-white text-slate-900'}`}>
+                      {theme.meta.icon}
+                  </div>
+                  <div>
+                      <span className={`font-black tracking-tight text-sm block ${user.role === 'Admin' ? 'text-white' : 'text-slate-900'}`}>VetSphere</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${user.role === 'Admin' ? 'text-slate-500' : 'text-slate-400'}`}>{user.role}</span>
+                  </div>
+              </div>
+           </div>
+           
+           <nav className="flex-1 p-4 space-y-2">
+              {sidebarItems.map(item => (
+                  <button 
+                    key={item}
+                    onClick={() => setActiveTab(item)}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                        activeTab === item 
+                        ? theme.colors.sidebarActive 
+                        : `${theme.colors.sidebarText} hover:bg-white/5`
+                    }`}
+                  >
+                      {item}
+                  </button>
+              ))}
+           </nav>
+
+           <div className="p-4 mt-auto">
+               <button onClick={logout} className="w-full py-3 border border-slate-200/20 rounded-xl text-[10px] font-bold uppercase text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-colors">
+                   {user.role === 'Admin' || user.role === 'ShopSupplier' ? '退出登录' : 'Sign Out'}
+               </button>
+           </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-8 h-screen overflow-y-auto">
+            <header className="flex justify-between items-center mb-10">
+                <div>
+                    <h1 className={`text-3xl font-black tracking-tight mb-1 ${user.role === 'Admin' ? 'text-white' : 'text-slate-900'}`}>{activeTab}</h1>
+                    <p className="text-slate-400 text-sm font-medium">
+                        {user.role === 'Admin' || user.role === 'ShopSupplier' ? `欢迎回来, ${user.name}` : user.role === 'CourseProvider' ? `教学管理中心 - ${user.name}` : `Welcome back, ${user.name}`}
+                    </p>
+                </div>
+            </header>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {children}
+            </div>
+        </main>
+    </div>
+  );
+};
+
 const Dashboard: React.FC = () => {
   const { user, logout, login } = useAuth();
   const { t } = useLanguage();
@@ -243,69 +313,16 @@ const Dashboard: React.FC = () => {
 
   if (!user) return null;
 
-  // --- THEME & LAYOUT HELPER ---
-  const theme = PORTAL_THEME[user.role] || PORTAL_THEME.Doctor;
-  
-  const DashboardLayout: React.FC<{ children: React.ReactNode; sidebarItems: string[] }> = ({ children, sidebarItems }) => (
-    <div className={`min-h-screen ${theme.colors.pageBg} text-slate-800 flex font-sans`}>
-        {/* Sidebar */}
-        <aside className={`w-64 ${theme.colors.sidebarBg} border-r border-slate-100 flex flex-col shrink-0 transition-colors duration-300`}>
-           <div className="p-8 border-b border-white/5">
-              <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl shadow-lg ${user.role === 'Admin' ? 'bg-emerald-500 text-black' : 'bg-white text-slate-900'}`}>
-                      {theme.meta.icon}
-                  </div>
-                  <div>
-                      <span className={`font-black tracking-tight text-sm block ${user.role === 'Admin' ? 'text-white' : 'text-slate-900'}`}>VetSphere</span>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${user.role === 'Admin' ? 'text-slate-500' : 'text-slate-400'}`}>{user.role}</span>
-                  </div>
-              </div>
-           </div>
-           
-           <nav className="flex-1 p-4 space-y-2">
-              {sidebarItems.map(item => (
-                  <button 
-                    key={item}
-                    onClick={() => setActiveTab(item)}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-                        activeTab === item 
-                        ? theme.colors.sidebarActive 
-                        : `${theme.colors.sidebarText} hover:bg-white/5`
-                    }`}
-                  >
-                      {item}
-                  </button>
-              ))}
-           </nav>
-
-           <div className="p-4 mt-auto">
-               <button onClick={logout} className="w-full py-3 border border-slate-200/20 rounded-xl text-[10px] font-bold uppercase text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-colors">
-                   {user.role === 'Admin' || user.role === 'ShopSupplier' ? '退出登录' : 'Sign Out'}
-               </button>
-           </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-8 h-screen overflow-y-auto">
-            <header className="flex justify-between items-center mb-10">
-                <div>
-                    <h1 className={`text-3xl font-black tracking-tight mb-1 ${user.role === 'Admin' ? 'text-white' : 'text-slate-900'}`}>{activeTab}</h1>
-                    <p className="text-slate-400 text-sm font-medium">
-                        {user.role === 'Admin' || user.role === 'ShopSupplier' ? `欢迎回来, ${user.name}` : user.role === 'CourseProvider' ? `教学管理中心 - ${user.name}` : `Welcome back, ${user.name}`}
-                    </p>
-                </div>
-            </header>
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {children}
-            </div>
-        </main>
-    </div>
-  );
-
   // --- ROLE: DOCTOR (Consumer) ---
   if (user.role === 'Doctor') {
      return (
-        <DashboardLayout sidebarItems={['My Dashboard', 'Academic Path', 'My Orders', 'Rewards Hub']}>
+        <DashboardLayout 
+            sidebarItems={['My Dashboard', 'Academic Path', 'My Orders', 'Rewards Hub']}
+            user={user}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            logout={logout}
+        >
              {/* ... Doctor Dashboard Content ... */}
              {activeTab === 'My Dashboard' && (
                  <div className="grid lg:grid-cols-3 gap-8">
@@ -461,7 +478,13 @@ const Dashboard: React.FC = () => {
   // --- ROLE: SHOP SUPPLIER (Business) - CHINESE UI ---
   if (user.role === 'ShopSupplier') {
       return (
-        <DashboardLayout sidebarItems={['概览', '库存管理', '订单履约', '数据分析']}>
+        <DashboardLayout 
+            sidebarItems={['概览', '库存管理', '订单履约', '数据分析']}
+            user={user}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            logout={logout}
+        >
             {/* ... Supplier Content ... */}
             {activeTab === '概览' && (
                 <div className="grid grid-cols-3 gap-6">
@@ -548,14 +571,14 @@ const Dashboard: React.FC = () => {
                     <div className="bg-white rounded-3xl p-8 w-full max-w-lg space-y-6 animate-in zoom-in-95">
                         <h3 className="font-black text-xl">添加新器械</h3>
                         <div className="space-y-4">
-                            <input type="text" placeholder="商品名称" className="w-full p-3 border rounded-xl" onChange={e => setProductForm({...productForm, name: e.target.value})} />
+                            <input type="text" placeholder="商品名称" className="w-full p-3 border rounded-xl" onChange={e => setProductForm(prev => ({...prev, name: e.target.value}))} />
                             <div className="grid grid-cols-2 gap-4">
-                                <select className="p-3 border rounded-xl" onChange={e => setProductForm({...productForm, group: e.target.value as ProductGroup})}>
+                                <select className="p-3 border rounded-xl" onChange={e => setProductForm(prev => ({...prev, group: e.target.value as ProductGroup}))}>
                                     <option>PowerTools</option><option>Implants</option><option>HandInstruments</option>
                                 </select>
-                                <input type="number" placeholder="价格 (CNY)" className="p-3 border rounded-xl" onChange={e => setProductForm({...productForm, price: Number(e.target.value)})} />
+                                <input type="number" placeholder="价格 (CNY)" className="p-3 border rounded-xl" onChange={e => setProductForm(prev => ({...prev, price: Number(e.target.value)}))} />
                             </div>
-                            <textarea placeholder="商品描述" className="w-full p-3 border rounded-xl" onChange={e => setProductForm({...productForm, description: e.target.value})} />
+                            <textarea placeholder="商品描述" className="w-full p-3 border rounded-xl" onChange={e => setProductForm(prev => ({...prev, description: e.target.value}))} />
                         </div>
                         <div className="flex gap-4">
                             <button onClick={() => setShowModal(null)} className="flex-1 py-3 text-slate-500 font-bold">取消</button>
@@ -593,7 +616,13 @@ const Dashboard: React.FC = () => {
       const trendPoints = "0,80 20,75 40,60 60,65 80,40 100,20"; 
       
       return (
-        <DashboardLayout sidebarItems={['教学概览', '课程管理', '学员名单', '收益分析']}>
+        <DashboardLayout 
+            sidebarItems={['教学概览', '课程管理', '学员名单', '收益分析']}
+            user={user}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            logout={logout}
+        >
              {activeTab === '教学概览' && (
                  <div className="grid grid-cols-3 gap-6">
                      <div className="bg-purple-600 p-8 rounded-[32px] text-white col-span-2 shadow-xl shadow-purple-900/20 flex flex-col justify-between relative overflow-hidden">
@@ -855,11 +884,11 @@ const Dashboard: React.FC = () => {
                                             <div className="space-y-4 animate-in fade-in">
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Course Title (EN)</label>
-                                                    <input type="text" value={courseForm.title || ''} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" />
+                                                    <input type="text" value={courseForm.title || ''} onChange={e => setCourseForm(prev => ({...prev, title: e.target.value}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" />
                                                 </div>
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Description (EN)</label>
-                                                    <textarea value={courseForm.description || ''} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" />
+                                                    <textarea value={courseForm.description || ''} onChange={e => setCourseForm(prev => ({...prev, description: e.target.value}))} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" />
                                                 </div>
                                             </div>
                                         )}
@@ -867,11 +896,11 @@ const Dashboard: React.FC = () => {
                                             <div className="space-y-4 animate-in fade-in">
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程标题 (中文)</label>
-                                                    <input type="text" value={courseForm.title_zh || ''} onChange={e => setCourseForm({...courseForm, title_zh: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="输入中文标题..." />
+                                                    <input type="text" value={courseForm.title_zh || ''} onChange={e => setCourseForm(prev => ({...prev, title_zh: e.target.value}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="输入中文标题..." />
                                                 </div>
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程简介 (中文)</label>
-                                                    <textarea value={courseForm.description_zh || ''} onChange={e => setCourseForm({...courseForm, description_zh: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="输入中文简介..." />
+                                                    <textarea value={courseForm.description_zh || ''} onChange={e => setCourseForm(prev => ({...prev, description_zh: e.target.value}))} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="输入中文简介..." />
                                                 </div>
                                             </div>
                                         )}
@@ -879,29 +908,29 @@ const Dashboard: React.FC = () => {
                                             <div className="space-y-4 animate-in fade-in">
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">หัวข้อหลักสูตร (Thai)</label>
-                                                    <input type="text" value={courseForm.title_th || ''} onChange={e => setCourseForm({...courseForm, title_th: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="ป้อนชื่อภาษาไทย..." />
+                                                    <input type="text" value={courseForm.title_th || ''} onChange={e => setCourseForm(prev => ({...prev, title_th: e.target.value}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="ป้อนชื่อภาษาไทย..." />
                                                 </div>
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">รายละเอียดหลักสูตร (Thai)</label>
-                                                    <textarea value={courseForm.description_th || ''} onChange={e => setCourseForm({...courseForm, description_th: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="ป้อนคำอธิบายภาษาไทย..." />
+                                                    <textarea value={courseForm.description_th || ''} onChange={e => setCourseForm(prev => ({...prev, description_th: e.target.value}))} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="ป้อนคำอธิบายภาษาไทย..." />
                                                 </div>
                                             </div>
                                         )}
 
                                         <div className="border-t border-slate-100 my-4 pt-4">
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">封面图 URL</label>
-                                            <input type="text" placeholder="https://..." value={courseForm.imageUrl || ''} onChange={e => setCourseForm({...courseForm, imageUrl: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                            <input type="text" placeholder="https://..." value={courseForm.imageUrl || ''} onChange={e => setCourseForm(prev => ({...prev, imageUrl: e.target.value}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">专科</label>
-                                                <select value={courseForm.specialty} onChange={e => setCourseForm({...courseForm, specialty: e.target.value as Specialty})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm">
+                                                <select value={courseForm.specialty} onChange={e => setCourseForm(prev => ({...prev, specialty: e.target.value as Specialty}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm">
                                                     {Object.values(Specialty).map(s => <option key={s} value={s}>{s}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">价格 (CNY)</label>
-                                                <input type="number" placeholder="价格" value={courseForm.price || ''} onChange={e => setCourseForm({...courseForm, price: Number(e.target.value)})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                                <input type="number" placeholder="价格" value={courseForm.price || ''} onChange={e => setCourseForm(prev => ({...prev, price: Number(e.target.value)}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                             </div>
                                         </div>
                                     </div>
@@ -946,7 +975,13 @@ const Dashboard: React.FC = () => {
   // --- ROLE: ADMIN ---
   if (user.role === 'Admin') {
       return (
-        <DashboardLayout sidebarItems={['概览', 'AI 大脑中枢', '用户管理', '财务报表']}>
+        <DashboardLayout 
+            sidebarItems={['概览', 'AI 大脑中枢', '用户管理', '财务报表']}
+            user={user}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            logout={logout}
+        >
              {activeTab === '概览' && (
                  <div className="grid grid-cols-4 gap-6">
                      <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-sm">
