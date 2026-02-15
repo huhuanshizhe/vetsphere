@@ -18,7 +18,8 @@ const CART_STORAGE_KEY = 'vetsphere_cart_v2';
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
-      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      // Use sessionStorage so carts don't conflict across tabs during multi-role testing
+      const saved = sessionStorage.getItem(CART_STORAGE_KEY);
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
       console.error('Failed to load cart from storage', e);
@@ -27,7 +28,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   useEffect(() => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
   }, [cart]);
 
   const addToCart = (newItem: CartItem) => {

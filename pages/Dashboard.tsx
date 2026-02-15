@@ -976,7 +976,7 @@ const Dashboard: React.FC = () => {
   if (user.role === 'Admin') {
       return (
         <DashboardLayout 
-            sidebarItems={['概览', 'AI 大脑中枢', '用户管理', '财务报表']}
+            sidebarItems={['概览', 'AI 大脑中枢', '全局课程管理', '用户管理', '财务报表']}
             user={user}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -987,6 +987,44 @@ const Dashboard: React.FC = () => {
                      <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-sm">
                          <p className="text-[10px] font-bold text-slate-500 uppercase">平台总交易额 (Platform Volume)</p>
                          <h3 className="text-2xl font-black text-white">¥{orders.reduce((acc, o) => acc + o.totalAmount, 0).toLocaleString()}</h3>
+                     </div>
+                 </div>
+             )}
+
+             {activeTab === '全局课程管理' && (
+                 <div className="space-y-6">
+                     <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-xl text-white">平台课程全库</h3>
+                        <div className="text-slate-400 text-xs">共 {courses.length} 门课程</div>
+                     </div>
+                     <div className="bg-black/20 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-sm">
+                        <table className="w-full text-left text-sm text-slate-300">
+                            <thead className="bg-white/5 text-slate-500 font-bold uppercase text-[10px]">
+                                <tr>
+                                    <th className="p-6">课程名称</th>
+                                    <th className="p-6">讲师</th>
+                                    <th className="p-6">价格</th>
+                                    <th className="p-6">状态</th>
+                                    <th className="p-6 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {courses.map(c => (
+                                    <tr key={c.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-6 font-bold text-white">
+                                            {c.title}
+                                            <div className="text-[10px] text-slate-500 mt-1">{c.specialty}</div>
+                                        </td>
+                                        <td className="p-6">{c.instructor.name}</td>
+                                        <td className="p-6">¥{c.price.toLocaleString()}</td>
+                                        <td className="p-6"><span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs">{c.status}</span></td>
+                                        <td className="p-6 text-right">
+                                            <button onClick={() => handleDeleteCourse(c.id)} className="text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-widest border border-red-500/30 px-3 py-1 rounded hover:bg-red-500/10 transition-all">下架</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                      </div>
                  </div>
              )}
