@@ -69,12 +69,12 @@ const AIChat: React.FC = () => {
               <h1 className="text-xl md:text-2xl font-black text-slate-950">{t.ai.title}</h1>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-vs animate-pulse"></span>
-                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">{t.ai.status}</p>
+                <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-400">{t.ai.status}</p>
               </div>
             </div>
           </div>
           <div className="flex gap-2">
-             <button onClick={() => navigate('/live')} className="btn-vs-primary !py-2.5 !px-5 !text-[10px] !rounded-xl !shadow-none">
+             <button onClick={() => navigate('/live')} className="btn-vs-primary !py-2.5 !px-6 !text-xs !rounded-xl !shadow-none">
                {t.ai.liveMode}
              </button>
              <button onClick={() => setMessages([{role:'model', content:t.ai.welcome, timestamp:new Date()}])} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-vs transition-colors">
@@ -102,7 +102,7 @@ const AIChat: React.FC = () => {
                         </div>
                     )}
                   </div>
-                  <p className="text-[9px] font-black text-slate-300 uppercase px-4">{msg.timestamp.toLocaleTimeString()}</p>
+                  <p className="text-[10px] font-black text-slate-300 uppercase px-4">{msg.timestamp.toLocaleTimeString()}</p>
                 </div>
               </div>
             ))}
@@ -113,7 +113,7 @@ const AIChat: React.FC = () => {
             {selectedImage && (
               <div className="mb-4 flex items-center gap-4 bg-white p-3 rounded-2xl border border-vs/20 animate-in slide-in-from-bottom-2">
                 <img src={selectedImage} className="w-16 h-16 rounded-xl object-cover shadow-sm" />
-                <p className="text-[10px] font-black text-vs uppercase tracking-widest">{t.ai.analyzing}</p>
+                <p className="text-xs font-black text-vs uppercase tracking-widest">{t.ai.analyzing}</p>
                 <button onClick={() => setSelectedImage(null)} className="ml-auto p-2 text-slate-300 hover:text-red-500">✕</button>
               </div>
             )}
@@ -129,7 +129,7 @@ const AIChat: React.FC = () => {
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSend()}
                     placeholder={t.ai.placeholder}
-                    className="w-full h-14 md:h-16 bg-white px-6 md:px-8 rounded-xl border border-slate-200 outline-none focus:border-vs font-bold text-slate-800 shadow-sm"
+                    className="w-full h-14 md:h-16 bg-white px-6 md:px-8 rounded-xl border border-slate-200 outline-none focus:border-vs font-bold text-slate-800 shadow-sm text-base"
                   />
                   <button onClick={handleSend} className="absolute right-2 top-2 w-10 h-10 md:w-12 md:h-12 bg-vs text-white rounded-lg flex items-center justify-center text-xl shadow-lg hover:bg-vs-dark transition-all">
                     ↑

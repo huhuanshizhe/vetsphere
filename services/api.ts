@@ -39,7 +39,7 @@ const INITIAL_POSTS: Post[] = [
 let MOCK_PRODUCTS = [...PRODUCTS_CN];
 
 // Load courses from storage or fallback to default
-const STORAGE_KEY_COURSES = 'vetsphere_mock_courses_v1';
+const STORAGE_KEY_COURSES = 'vetsphere_mock_courses_v2'; // Bump version to force refresh if schema changed
 const loadCourses = () => {
     try {
         const saved = localStorage.getItem(STORAGE_KEY_COURSES);
@@ -97,28 +97,26 @@ export const api = {
   // --- COURSES (Education) ---
   async getCourses(): Promise<Course[]> {
     // Return the persistent mock courses directly to ensure immediate updates are reflected
-    // In a real scenario, we would prefer the DB, but for this demo, LocalStorage is the source of truth for user edits
-    return MOCK_COURSES;
-    /* 
-    // Supabase fallback logic (commented out to prioritize local persistence for the demo)
-    try {
-      const { data, error } = await supabase.from('courses').select('*');
-      if (error || !data || data.length === 0) return MOCK_COURSES;
-      return data.map(c => ({ ...c, startDate: c.start_date, endDate: c.end_date, imageUrl: c.image_url }));
-    } catch (e) { return MOCK_COURSES; }
-    */
+    // Always re-read from memory or storage to ensure we get the latest updates from manageCourse
+    return [...MOCK_COURSES];
   },
 
   async manageCourse(action: 'create' | 'update' | 'delete', course: Partial<Course>): Promise<void> {
     if (action === 'create') {
-        const newCourse = { ...course, id: `c-${Date.now()}`, status: 'Published' } as Course;
+        const newCourse = { 
+            ...course, 
+            id: `c-${Date.now()}`, 
+            // Default status logic should be handled by the caller (Dashboard), 
+            // but we ensure a default here if missing.
+            status: course.status || 'Pending' 
+        } as Course;
         MOCK_COURSES = [newCourse, ...MOCK_COURSES]; // Unshift
     } else if (action === 'update') {
         MOCK_COURSES = MOCK_COURSES.map(c => c.id === course.id ? { ...c, ...course } : c);
     } else if (action === 'delete') {
         MOCK_COURSES = MOCK_COURSES.filter(c => c.id !== course.id);
     }
-    // Persist changes
+    // Persist changes immediately
     saveCourses(MOCK_COURSES);
   },
 

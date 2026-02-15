@@ -121,10 +121,10 @@ const Shop: React.FC = () => {
             </p>
           </div>
           
-          <div className="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-100 shadow-sm overflow-x-auto max-w-full">
+          <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm overflow-x-auto max-w-full">
             <button 
                onClick={() => setSelectedGroup('All')}
-               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedGroup === 'All' ? 'bg-vs text-white' : 'text-slate-400 hover:text-slate-900'}`}
+               className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedGroup === 'All' ? 'bg-vs text-white' : 'text-slate-400 hover:text-slate-900'}`}
             >
               {t.shop.allItems}
             </button>
@@ -132,7 +132,7 @@ const Shop: React.FC = () => {
               <button 
                 key={g}
                 onClick={() => setSelectedGroup(g as any)}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedGroup === g ? 'bg-vs text-white shadow-lg shadow-vs/20' : 'text-slate-400 hover:text-slate-900'}`}
+                className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedGroup === g ? 'bg-vs text-white shadow-lg shadow-vs/20' : 'text-slate-400 hover:text-slate-900'}`}
               >
                 {g}
               </button>
@@ -145,7 +145,7 @@ const Shop: React.FC = () => {
           {/* Sidebar Filters */}
           <aside className="w-full lg:w-64 space-y-10 shrink-0">
              <div className="space-y-6">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">{t.shop.byDiscipline}</h4>
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">{t.shop.byDiscipline}</h4>
                 <div className="flex flex-col gap-1">
                    {['All', ...Object.values(Specialty)].map(s => (
                      <button 
@@ -163,10 +163,10 @@ const Shop: React.FC = () => {
              <div className="p-6 bg-slate-900 rounded-2xl text-white relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-2 opacity-20">🤖</div>
                 <h5 className="text-xs font-black uppercase tracking-widest mb-2 text-vs">{t.shop.aiSourcing}</h5>
-                <p className="text-[10px] text-slate-400 leading-relaxed font-medium">{t.shop.aiDesc}</p>
+                <p className="text-xs text-slate-400 leading-relaxed font-medium">{t.shop.aiDesc}</p>
                 <button 
                   onClick={() => navigate('/ai')}
-                  className="mt-4 text-[9px] font-black uppercase underline hover:text-vs"
+                  className="mt-4 text-[10px] font-black uppercase underline hover:text-vs"
                 >
                   {t.shop.startChat}
                 </button>
@@ -192,7 +192,7 @@ const Shop: React.FC = () => {
                       <img src={product.imageUrl} className="max-h-full object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105" />
                       
                       <div className="absolute top-4 left-4">
-                        <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest shadow-sm ${
+                        <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest shadow-sm ${
                           product.stockStatus === 'In Stock' ? 'bg-white text-vs' : 'bg-red-50 text-red-500'
                         }`}>
                           {product.stockStatus}
@@ -203,32 +203,32 @@ const Shop: React.FC = () => {
                     {/* Info Area */}
                     <div className="p-6 flex flex-col flex-1">
                       <div className="mb-4">
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1">{product.brand}</p>
-                        <h3 className="text-base font-black text-slate-900 group-hover:text-vs transition-colors line-clamp-1">{product.name}</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{product.brand}</p>
+                        <h3 className="text-lg font-black text-slate-900 group-hover:text-vs transition-colors line-clamp-1">{product.name}</h3>
                       </div>
 
                       {/* Mini Specs */}
                       <div className="flex flex-wrap gap-2 mb-8">
                          {Object.entries(product.specs).slice(0, 2).map(([key, val]) => (
-                            <div key={key} className="px-2 py-1 bg-slate-50 border border-slate-100 rounded-lg">
-                               <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">{key}</p>
-                               <p className="text-[9px] font-black text-slate-800">{val}</p>
+                            <div key={key} className="px-2.5 py-1.5 bg-slate-50 border border-slate-100 rounded-lg">
+                               <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{key}</p>
+                               <p className="text-[10px] font-black text-slate-800">{val}</p>
                             </div>
                          ))}
                       </div>
 
                       <div className="mt-auto flex items-center justify-between pt-5 border-t border-slate-50">
                          <div>
-                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{t.shop.priceExcl}</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{t.shop.priceExcl}</p>
                             {isAuthenticated ? (
-                                <p className="text-lg font-black text-slate-900">¥{product.price.toLocaleString()}</p>
+                                <p className="text-xl font-black text-slate-900">¥{product.price.toLocaleString()}</p>
                             ) : (
-                                <p className="text-xs font-black text-vs flex items-center gap-1">🔒 {t.auth.loginToView}</p>
+                                <p className="text-sm font-black text-vs flex items-center gap-1">🔒 {t.auth.loginToView}</p>
                             )}
                          </div>
                          <button 
                             onClick={(e) => handleAddToCart(e, product)}
-                            className={`btn-vs-premium !py-2.5 !px-5 !rounded-xl text-[10px] shadow-sm transition-all active:scale-95 ${
+                            className={`btn-vs-premium !py-3 !px-6 !rounded-xl text-xs shadow-sm transition-all active:scale-95 ${
                               addedProductId === product.id ? '!bg-slate-900' : 'hover:!shadow-vs/20'
                             }`}
                          >
@@ -254,12 +254,12 @@ const Shop: React.FC = () => {
       {showCartHint && (
         <div className="fixed bottom-10 right-10 z-[300] bg-slate-900 text-white p-5 rounded-2xl shadow-2xl flex items-center gap-6 animate-in slide-in-from-right-10 duration-500">
            <div className="flex flex-col">
-              <p className="text-xs font-black uppercase tracking-widest">{t.shop.added}</p>
-              <p className="text-[10px] text-slate-400">Ready to finalize your surgical gear?</p>
+              <p className="text-sm font-black uppercase tracking-widest">{t.shop.added}</p>
+              <p className="text-xs text-slate-400">Ready to finalize your surgical gear?</p>
            </div>
            <button 
              onClick={() => navigate('/checkout')}
-             className="bg-vs text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-vs-dark transition-all"
+             className="bg-vs text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-vs-dark transition-all"
            >
              Checkout Now
            </button>
@@ -295,18 +295,18 @@ const Shop: React.FC = () => {
                  </div>
                  
                  <div className="mb-10">
-                    <p className="text-[10px] font-black text-vs uppercase tracking-[0.2em] mb-2">{selectedProduct.brand}</p>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">{selectedProduct.name}</h2>
-                    <p className="text-slate-500 mt-4 text-sm leading-relaxed font-medium">{selectedProduct.longDescription}</p>
+                    <p className="text-xs font-black text-vs uppercase tracking-[0.2em] mb-2">{selectedProduct.brand}</p>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">{selectedProduct.name}</h2>
+                    <p className="text-slate-500 mt-4 text-base leading-relaxed font-medium">{selectedProduct.longDescription}</p>
                  </div>
 
                  <div className="space-y-6">
-                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest border-b border-slate-100 pb-3">{t.shop.specs}</h4>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest border-b border-slate-100 pb-3">{t.shop.specs}</h4>
                     <div className="grid grid-cols-2 gap-4">
                        {Object.entries(selectedProduct.specs).map(([k, v]) => (
                          <div key={k} className="p-4 bg-slate-50 rounded-2xl">
-                            <p className="text-[8px] font-black text-slate-400 uppercase mb-1">{k}</p>
-                            <p className="text-xs font-bold text-slate-800">{v}</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase mb-1">{k}</p>
+                            <p className="text-sm font-bold text-slate-800">{v}</p>
                          </div>
                        ))}
                     </div>
@@ -315,7 +315,7 @@ const Shop: React.FC = () => {
 
               <div className="pt-8 mt-auto border-t border-slate-100 flex items-center justify-between gap-8">
                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.shop.grandTotal}</p>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.shop.grandTotal}</p>
                     {isAuthenticated ? (
                         <p className="text-3xl font-black text-slate-900 tracking-tighter">¥{selectedProduct.price.toLocaleString()}</p>
                     ) : (
@@ -324,7 +324,7 @@ const Shop: React.FC = () => {
                  </div>
                  <button 
                     onClick={() => handleBuyNow(selectedProduct)}
-                    className="flex-1 btn-vs-premium !py-5 !text-xs !rounded-2xl shadow-xl shadow-vs/20 hover:-translate-y-1 transition-all"
+                    className="flex-1 btn-vs-premium !py-5 !text-sm !rounded-2xl shadow-xl shadow-vs/20 hover:-translate-y-1 transition-all"
                  >
                     {isAuthenticated ? t.shop.buyNow : t.auth.loginToBuy}
                  </button>

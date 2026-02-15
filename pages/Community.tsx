@@ -181,13 +181,13 @@ const Community: React.FC = () => {
               {['All', ...Object.values(Specialty)].slice(0, 5).map(s => (
                 <button 
                   key={s} onClick={() => setActiveSpecialty(s as any)}
-                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSpecialty === s ? 'bg-vs text-white shadow-lg' : 'text-slate-400 hover:text-slate-900'}`}
+                  className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeSpecialty === s ? 'bg-vs text-white shadow-lg' : 'text-slate-400 hover:text-slate-900'}`}
                 >
                   {s === 'All' ? t.courses.allSpecialties : s}
                 </button>
               ))}
               <div className="w-px h-6 bg-slate-100 mx-2 hidden sm:block"></div>
-              <button onClick={() => setShowPublisher(true)} className="bg-vs text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-vs/20 hover:scale-105 transition-all">
+              <button onClick={() => setShowPublisher(true)} className="bg-vs text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-vs/20 hover:scale-105 transition-all">
                 {t.community.newCase}
               </button>
             </div>
@@ -221,7 +221,7 @@ const Community: React.FC = () => {
 
                   <h3 className="text-xl font-black text-slate-900 mb-4 line-clamp-2 leading-tight group-hover:text-vs transition-colors">{post.title}</h3>
                   <div className="flex gap-2 mb-6">
-                     <span className="px-2 py-1 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-400 uppercase tracking-widest">{post.specialty}</span>
+                     <span className="px-2.5 py-1 bg-slate-50 border border-slate-100 rounded text-[10px] font-bold text-slate-400 uppercase tracking-widest">{post.specialty}</span>
                   </div>
 
                   {post.media.length > 0 && (
@@ -232,14 +232,14 @@ const Community: React.FC = () => {
 
                   <div className="flex items-center justify-between pt-6 border-t border-slate-50 mt-auto">
                     <div className="flex gap-5">
-                      <button onClick={(e) => handleLike(post.id, e)} className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${isLiked[post.id] ? 'text-red-500' : 'text-slate-400'}`}>
+                      <button onClick={(e) => handleLike(post.id, e)} className={`flex items-center gap-1.5 text-sm font-bold transition-colors ${isLiked[post.id] ? 'text-red-500' : 'text-slate-400'}`}>
                         <span>{isLiked[post.id] ? '❤️' : '🤍'}</span> {post.stats.likes}
                       </button>
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                      <div className="flex items-center gap-1.5 text-sm font-bold text-slate-400">
                         <span>💬</span> {post.stats.comments}
                       </div>
                     </div>
-                    {post.isAiAnalyzed && <span className="text-[9px] font-black text-vs uppercase flex items-center gap-1">✨ AI analyzed</span>}
+                    {post.isAiAnalyzed && <span className="text-[10px] font-black text-vs uppercase flex items-center gap-1">✨ AI analyzed</span>}
                   </div>
                 </div>
               ))}
@@ -249,7 +249,7 @@ const Community: React.FC = () => {
 
         <aside className="hidden lg:block w-80 shrink-0 space-y-8">
             <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">{t.community.trending}</h4>
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">{t.community.trending}</h4>
                 <div className="space-y-6">
                     {[
                         { name: 'Dr. Zhang', role: 'Orthopedics Expert', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80', cases: 142 },
@@ -260,26 +260,26 @@ const Community: React.FC = () => {
                             <img src={exp.avatar} className="w-10 h-10 rounded-xl object-cover" />
                             <div className="flex-1">
                                 <p className="text-xs font-black text-slate-900">{exp.name}</p>
-                                <p className="text-[9px] text-slate-400 font-bold">{exp.role}</p>
+                                <p className="text-[10px] text-slate-400 font-bold">{exp.role}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-black text-vs">{exp.cases}</p>
-                                <p className="text-[8px] text-slate-300 font-bold uppercase">{t.community.cases}</p>
+                                <p className="text-xs font-black text-vs">{exp.cases}</p>
+                                <p className="text-[9px] text-slate-300 font-bold uppercase">{t.community.cases}</p>
                             </div>
                         </div>
                     ))}
                 </div>
-                <button className="w-full mt-8 py-3 bg-slate-50 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-vs transition-all">{t.community.viewMembers}</button>
+                <button className="w-full mt-8 py-3 bg-slate-50 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-vs transition-all">{t.community.viewMembers}</button>
             </div>
 
             <div className="p-8 bg-slate-900 rounded-[32px] text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-full h-full bg-vs/5 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2"></div>
-                <h5 className="text-[10px] font-black text-vs uppercase tracking-widest mb-2">Points for Knowledge</h5>
+                <h5 className="text-xs font-black text-vs uppercase tracking-widest mb-2">Points for Knowledge</h5>
                 <p className="text-xs font-medium text-slate-400 mb-6">Contribute to the global surgical community and earn rewards for your clinic.</p>
                 <div className="space-y-3">
-                   <div className="flex justify-between text-[9px] font-bold uppercase"><span className="text-slate-500">Post Case</span> <span className="text-vs">+200 pts</span></div>
-                   <div className="flex justify-between text-[9px] font-bold uppercase"><span className="text-slate-500">Share Post</span> <span className="text-vs">+50 pts</span></div>
-                   <div className="flex justify-between text-[9px] font-bold uppercase"><span className="text-slate-500">Add Comment</span> <span className="text-vs">+20 pts</span></div>
+                   <div className="flex justify-between text-[10px] font-bold uppercase"><span className="text-slate-500">Post Case</span> <span className="text-vs">+200 pts</span></div>
+                   <div className="flex justify-between text-[10px] font-bold uppercase"><span className="text-slate-500">Share Post</span> <span className="text-vs">+50 pts</span></div>
+                   <div className="flex justify-between text-[10px] font-bold uppercase"><span className="text-slate-500">Add Comment</span> <span className="text-vs">+20 pts</span></div>
                 </div>
             </div>
         </aside>
@@ -313,7 +313,7 @@ const Community: React.FC = () => {
                       ))}
                   </div>
 
-                  <button onClick={() => setSharingPost(null)} className="w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors">
+                  <button onClick={() => setSharingPost(null)} className="w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors">
                       {t.common.cancel}
                   </button>
               </div>
@@ -330,7 +330,7 @@ const Community: React.FC = () => {
                  </div>
                  <div className="flex gap-3">
                     <button onClick={(e) => { e.stopPropagation(); setSharingPost(selectedPost); }} className="p-3 border rounded-xl hover:bg-slate-50">📤</button>
-                    <button onClick={() => runAiAnalysis(selectedPost)} disabled={isAiAnalyzing} className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2">
+                    <button onClick={() => runAiAnalysis(selectedPost)} disabled={isAiAnalyzing} className="px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase flex items-center gap-2">
                       {isAiAnalyzing ? t.community.analyzing : t.community.runAi}
                     </button>
                  </div>
@@ -346,7 +346,7 @@ const Community: React.FC = () => {
                            { label: t.community.weight, val: selectedPost.patientInfo?.weight || 'N/A', icon: '⚖️' },
                          ].map(item => (
                            <div key={item.label}>
-                              <p className="text-[9px] font-black text-slate-400 uppercase mb-2">{item.label}</p>
+                              <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{item.label}</p>
                               <div className="flex items-center gap-2">
                                 <span className="text-lg">{item.icon}</span>
                                 <span className="text-sm font-black text-slate-900">{item.val}</span>
@@ -357,18 +357,18 @@ const Community: React.FC = () => {
 
                       <div className="space-y-12">
                          <section>
-                            <h4 className="text-[10px] font-black text-vs uppercase tracking-widest mb-6">{t.community.clinicalBackground}</h4>
+                            <h4 className="text-xs font-black text-vs uppercase tracking-widest mb-6">{t.community.clinicalBackground}</h4>
                             <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{selectedPost.content}</p>
                          </section>
                          {selectedPost.sections?.diagnosis && (
                            <section>
-                              <h4 className="text-[10px] font-black text-vs uppercase tracking-widest mb-4">{t.community.diagnosis}</h4>
+                              <h4 className="text-xs font-black text-vs uppercase tracking-widest mb-4">{t.community.diagnosis}</h4>
                               <div className="p-6 bg-emerald-50/50 border border-emerald-100 rounded-2xl text-sm font-bold text-slate-800 italic">{selectedPost.sections.diagnosis}</div>
                            </section>
                          )}
                          {selectedPost.media.length > 0 && (
                            <section>
-                              <h4 className="text-[10px] font-black text-vs uppercase tracking-widest mb-6">{t.community.gallery}</h4>
+                              <h4 className="text-xs font-black text-vs uppercase tracking-widest mb-6">{t.community.gallery}</h4>
                               <div className="grid grid-cols-2 gap-4">
                                  {selectedPost.media.map((m, i) => (
                                    <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-slate-100"><img src={m.url} className="w-full h-full object-cover" /></div>
@@ -379,7 +379,7 @@ const Community: React.FC = () => {
                       </div>
 
                       <section className="pt-12 border-t border-slate-100">
-                         <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-8">{t.community.discussion} ({comments.length + selectedPost.stats.comments})</h4>
+                         <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-8">{t.community.discussion} ({comments.length + selectedPost.stats.comments})</h4>
                          
                          <div className="flex gap-4 mb-10">
                             <div className="w-10 h-10 rounded-full bg-vs flex items-center justify-center text-white font-bold">VS</div>
@@ -391,7 +391,7 @@ const Community: React.FC = () => {
                                  placeholder={t.community.addComment}
                                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium pr-16"
                                />
-                               <button onClick={submitComment} className="absolute right-2 top-2 h-10 px-4 bg-vs text-white rounded-xl text-[10px] font-black uppercase">{t.community.postComment}</button>
+                               <button onClick={submitComment} className="absolute right-2 top-2 h-10 px-4 bg-vs text-white rounded-xl text-xs font-black uppercase">{t.community.postComment}</button>
                             </div>
                          </div>
 
@@ -402,7 +402,7 @@ const Community: React.FC = () => {
                                  <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                        <span className="text-sm font-black text-slate-900">{c.author}</span>
-                                       <span className="text-[9px] text-slate-300 uppercase font-bold">{c.date}</span>
+                                       <span className="text-[10px] text-slate-300 uppercase font-bold">{c.date}</span>
                                     </div>
                                     <p className="text-sm text-slate-600 leading-relaxed">{c.content}</p>
                                  </div>
@@ -414,7 +414,7 @@ const Community: React.FC = () => {
 
                    <div className="lg:col-span-4 bg-slate-50/50 p-8 md:p-12 border-l border-slate-100 space-y-10">
                       <div className="bg-white p-8 rounded-3xl border border-vs/20 shadow-xl">
-                         <h5 className="text-[10px] font-black text-vs uppercase tracking-widest mb-4">{t.community.aiAnalysis}</h5>
+                         <h5 className="text-xs font-black text-vs uppercase tracking-widest mb-4">{t.community.aiAnalysis}</h5>
                          {aiResponse ? (
                            <div className="text-xs font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{aiResponse}</div>
                          ) : isAiAnalyzing ? (
@@ -425,12 +425,12 @@ const Community: React.FC = () => {
                       </div>
 
                       <div className="space-y-6">
-                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.community.author}</h5>
+                         <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.community.author}</h5>
                          <div className="flex items-center gap-4">
                             <img src={selectedPost.author.avatar} className="w-14 h-14 rounded-2xl object-cover" />
-                            <div><p className="font-black text-slate-900">{selectedPost.author.name}</p><p className="text-[9px] text-vs font-black uppercase">{selectedPost.author.level}</p></div>
+                            <div><p className="font-black text-slate-900">{selectedPost.author.name}</p><p className="text-xs text-vs font-black uppercase">{selectedPost.author.level}</p></div>
                          </div>
-                         <button className="w-full py-4 bg-slate-950 text-white rounded-2xl text-[10px] font-black uppercase shadow-xl">{t.community.follow}</button>
+                         <button className="w-full py-4 bg-slate-950 text-white rounded-2xl text-xs font-black uppercase shadow-xl">{t.community.follow}</button>
                       </div>
                    </div>
                 </div>
@@ -449,22 +449,22 @@ const Community: React.FC = () => {
               <div className="flex-1 overflow-y-auto p-10 space-y-10">
                  <div className="grid md:grid-cols-2 gap-8">
                     <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</label>
+                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Title</label>
                        <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" placeholder="Patient condition summary..." />
                     </div>
                     <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Specialty</label>
+                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Specialty</label>
                        <select value={form.specialty} onChange={e => setForm({...form, specialty: e.target.value as any})} className="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
                          {Object.values(Specialty).map(s => <option key={s} value={s}>{s}</option>)}
                        </select>
                     </div>
                  </div>
                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-vs uppercase tracking-widest">Description</label>
+                    <label className="text-xs font-black text-vs uppercase tracking-widest">Description</label>
                     <textarea value={form.content} onChange={e => setForm({...form, content: e.target.value})} className="w-full h-32 p-4 bg-slate-50 border rounded-2xl font-medium" placeholder={t.community.publishDesc} />
                  </div>
                  <div className="space-y-6">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.community.uploadMedia}</label>
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.community.uploadMedia}</label>
                     <div className="grid grid-cols-4 gap-4">
                        {form.media.map((m, idx) => (
                          <div key={idx} className="aspect-square rounded-2xl overflow-hidden relative"><img src={m.url} className="w-full h-full object-cover" /></div>
@@ -477,7 +477,7 @@ const Community: React.FC = () => {
                  </div>
               </div>
               <div className="p-8 border-t bg-slate-50 flex gap-4">
-                 <button onClick={() => setShowPublisher(false)} className="flex-1 text-[10px] font-black uppercase text-slate-400">{t.community.cancel}</button>
+                 <button onClick={() => setShowPublisher(false)} className="flex-1 text-xs font-black uppercase text-slate-400">{t.community.cancel}</button>
                  <button onClick={handlePublish} className="flex-[2] py-4 bg-vs text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">{t.community.publishBtn}</button>
               </div>
            </div>

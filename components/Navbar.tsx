@@ -61,7 +61,7 @@ const Navbar: React.FC = () => {
             <span className="text-[20px] font-extrabold tracking-tight text-slate-900 leading-none group-hover:text-vs transition-colors duration-300">
               VetSphere
             </span>
-            <span className="text-[7.5px] font-black text-vs/70 uppercase tracking-[0.25em] mt-1.5 transition-all duration-300 group-hover:text-vs group-hover:translate-x-0.5">
+            <span className="text-[9px] font-black text-vs/70 uppercase tracking-[0.25em] mt-1.5 transition-all duration-300 group-hover:text-vs group-hover:translate-x-0.5">
               Surgical Global
             </span>
           </div>
@@ -79,7 +79,7 @@ const Navbar: React.FC = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`px-4 py-2 rounded-lg text-[13px] font-bold tracking-wide transition-all ${
+              className={`px-4 py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all ${
                 isActive(item.path) ? 'text-vs' : 'text-slate-500 hover:text-vs hover:bg-vs-soft'
               }`}
             >
@@ -95,10 +95,10 @@ const Navbar: React.FC = () => {
           <div className="relative hidden sm:block">
             <button 
                 onClick={() => setIsLangOpen(!isLangOpen)}
-                className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-vs transition-colors flex items-center gap-1.5 py-2 px-1"
+                className="text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-vs transition-colors flex items-center gap-1.5 py-2 px-1"
             >
                 {language === 'zh' ? 'CN' : language.toUpperCase()}
-                <svg className={`w-2.5 h-2.5 transition-transform duration-300 ${isLangOpen ? 'rotate-180 text-vs' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className={`w-3 h-3 transition-transform duration-300 ${isLangOpen ? 'rotate-180 text-vs' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
@@ -115,7 +115,7 @@ const Navbar: React.FC = () => {
                     <button 
                         key={lang} 
                         onClick={() => {setLanguage(lang as any); setIsLangOpen(false);}} 
-                        className={`w-full text-center px-3 py-2.5 text-[10px] font-bold rounded-lg hover:bg-slate-50 transition-colors relative z-10 ${language === lang ? 'text-vs bg-vs/5' : 'text-slate-400'}`}
+                        className={`w-full text-center px-3 py-3 text-xs font-bold rounded-lg hover:bg-slate-50 transition-colors relative z-10 ${language === lang ? 'text-vs bg-vs/5' : 'text-slate-400'}`}
                     >
                         {lang === 'zh' ? '中文' : lang === 'en' ? 'English' : 'ไทย'}
                     </button>
@@ -128,13 +128,13 @@ const Navbar: React.FC = () => {
           <Link to="/checkout" className="relative p-2 text-slate-500 hover:text-vs transition-colors">
             <span className="text-xl">🛒</span>
             {cart.length > 0 && (
-              <span className="absolute top-0 right-0 bg-vs text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-in zoom-in">
+              <span className="absolute top-0 right-0 bg-vs text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-in zoom-in">
                 {cart.length}
               </span>
             )}
           </Link>
           
-          <Link to={isAuthenticated ? "/dashboard" : "/auth"} className="btn-vs-premium !py-2 !px-5 !rounded-lg text-xs">
+          <Link to={isAuthenticated ? "/dashboard" : "/auth"} className="btn-vs-premium !py-2.5 !px-6 !rounded-xl text-sm font-bold">
             {isAuthenticated ? user?.name : t.nav.login}
           </Link>
         </div>

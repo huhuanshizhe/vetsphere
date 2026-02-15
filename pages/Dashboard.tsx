@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Order, Product, Course, Specialty, ProductGroup } from '../types';
+import { Order, Product, Course, Specialty, ProductGroup, CourseStatus } from '../types';
 import { api } from '../services/api';
 import { PORTAL_THEME } from '../constants';
 import { useNotification } from '../context/NotificationContext';
-import { getSystemInstruction, saveSystemInstruction, getAIConfig, saveAIConfig, getGeminiResponse } from '../services/gemini';
+import { getSystemInstruction, saveSystemInstruction, getAIConfig, saveAIConfig, generateStructuredData, generateCourseTranslations } from '../services/gemini';
 
 // --- DashboardLayout Component (Moved Outside to prevent re-mounting) ---
 interface DashboardLayoutProps {
@@ -43,7 +43,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, sidebarItem
                   <button 
                     key={item}
                     onClick={() => setActiveTab(item)}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                    className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
                         activeTab === item 
                         ? theme.colors.sidebarActive 
                         : `${theme.colors.sidebarText} hover:bg-white/5`
@@ -55,7 +55,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, sidebarItem
            </nav>
 
            <div className="p-4 mt-auto">
-               <button onClick={logout} className="w-full py-3 border border-slate-200/20 rounded-xl text-[10px] font-bold uppercase text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-colors">
+               <button onClick={logout} className="w-full py-4 border border-slate-200/20 rounded-xl text-xs font-bold uppercase text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-colors">
                    {user.role === 'Admin' || user.role === 'ShopSupplier' ? '退出登录' : 'Sign Out'}
                </button>
            </div>
@@ -65,7 +65,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, sidebarItem
         <main className="flex-1 p-8 h-screen overflow-y-auto">
             <header className="flex justify-between items-center mb-10">
                 <div>
-                    <h1 className={`text-3xl font-black tracking-tight mb-1 ${user.role === 'Admin' ? 'text-white' : 'text-slate-900'}`}>{activeTab}</h1>
+                    <h1 className={`text-4xl font-black tracking-tight mb-1 ${user.role === 'Admin' ? 'text-white' : 'text-slate-900'}`}>{activeTab}</h1>
                     <p className="text-slate-400 text-sm font-medium">
                         {user.role === 'Admin' || user.role === 'ShopSupplier' ? `欢迎回来, ${user.name}` : user.role === 'CourseProvider' ? `教学管理中心 - ${user.name}` : `Welcome back, ${user.name}`}
                     </p>
@@ -108,6 +108,7 @@ const Dashboard: React.FC = () => {
   // Course AI Generator State
   const [aiDraftInput, setAiDraftInput] = useState('');
   const [isGeneratingCourse, setIsGeneratingCourse] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<any>(null);
 
   // Form States
@@ -118,34 +119,43 @@ const Dashboard: React.FC = () => {
   // Localized Editing State
   const [editingLang, setEditingLang] = useState<'en' | 'zh' | 'th'>('en');
 
+  // Load active tab from session storage whenever user changes
   useEffect(() => {
     if (!user) {
         navigate('/auth');
         return;
     }
 
-    // Update points from user object if it changes
+    const savedTab = sessionStorage.getItem(`vs_dash_tab_${user.id}`);
+    if (savedTab) {
+        setActiveTab(savedTab);
+    } else {
+        if (user.role === 'Admin' || user.role === 'ShopSupplier') {
+            setActiveTab('概览');
+        } else if (user.role === 'CourseProvider') {
+            setActiveTab('教学概览');
+        } else if (user.role === 'Doctor') {
+            setActiveTab('My Dashboard');
+        } else {
+            setActiveTab('Overview');
+        }
+    }
+
     if (user.points !== undefined) {
       setUserPoints(user.points);
     }
 
-    // Auto-switch tab language for specific roles
-    if ((user.role === 'Admin' || user.role === 'ShopSupplier') && activeTab === 'Overview') {
-        setActiveTab('概览');
-    }
-    if (user.role === 'CourseProvider' && activeTab === 'Overview') {
-        setActiveTab('教学概览');
-    }
-    if (user.role === 'Doctor' && activeTab === 'Overview') {
-        setActiveTab('My Dashboard');
-    }
-
     loadData();
     
-    // Load AI Configs
     setSystemPrompt(getSystemInstruction());
     setAiConfig(getAIConfig());
   }, [user, navigate]);
+
+  useEffect(() => {
+      if (user && activeTab) {
+          sessionStorage.setItem(`vs_dash_tab_${user.id}`, activeTab);
+      }
+  }, [activeTab, user]);
 
   const loadData = async () => {
     setLoading(true);
@@ -184,11 +194,12 @@ const Dashboard: React.FC = () => {
       addNotification({ id: `prod-${Date.now()}`, type: 'system', title: '库存更新', message: '新商品添加成功。', read: false, timestamp: new Date() });
   };
 
+  // --- Course Management (Provider/Admin Shared) ---
   const handleDeleteCourse = async (id: string) => {
-      if(window.confirm('确定要取消该课程吗？已报名的学员将收到退款通知。')) {
+      if(window.confirm('确定要移除该课程吗？')) {
           await api.manageCourse('delete', { id });
           setCourses(prev => prev.filter(c => c.id !== id));
-          addNotification({ id: `course-del-${Date.now()}`, type: 'system', title: '课程已取消', message: '课程已从平台下架。', read: false, timestamp: new Date() });
+          addNotification({ id: `course-del-${Date.now()}`, type: 'system', title: '课程已移除', message: '课程已从库中删除。', read: false, timestamp: new Date() });
       }
   };
 
@@ -198,10 +209,26 @@ const Dashboard: React.FC = () => {
       setShowModal('addCourse');
   };
 
+  // --- Admin Audit Actions ---
+  const handleApproveCourse = async (courseId: string) => {
+      await api.manageCourse('update', { id: courseId, status: 'Published' });
+      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, status: 'Published' } : c));
+      addNotification({ id: `audit-ok-${Date.now()}`, type: 'system', title: '审核通过', message: '课程已正式上架。', read: false, timestamp: new Date() });
+  };
+
+  const handleRejectCourse = async (courseId: string) => {
+      await api.manageCourse('update', { id: courseId, status: 'Rejected' });
+      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, status: 'Rejected' } : c));
+      addNotification({ id: `audit-rej-${Date.now()}`, type: 'system', title: '已拒绝/下架', message: '课程已下架或退回。', read: false, timestamp: new Date() });
+  };
+
+  // --- Provider Submit Action ---
   const handleSaveCourse = async () => {
       const action = isEditingCourse ? 'update' : 'create';
-      const successMessage = isEditingCourse ? '课程信息更新成功。' : '课程现已在平台上架招生。';
-      const successTitle = isEditingCourse ? '课程已更新' : '新课程发布成功';
+      // If Provider creates/edits, it goes to Pending. If Admin edits, they can force publish (simplified here to Pending for editing).
+      const newStatus: CourseStatus = user?.role === 'Admin' ? 'Published' : 'Pending';
+      const successMessage = isEditingCourse ? '课程更新已提交审核。' : '课程已创建并提交审核。';
+      const successTitle = '提交成功';
 
       const instructor = courseForm.instructor || { 
           name: user?.name || 'Instructor', 
@@ -213,6 +240,7 @@ const Dashboard: React.FC = () => {
 
       await api.manageCourse(action, { 
           ...courseForm, 
+          status: newStatus,
           instructor: instructor,
           imageUrl: courseForm.imageUrl || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
           location: courseForm.location || { 
@@ -229,7 +257,7 @@ const Dashboard: React.FC = () => {
       addNotification({ id: `course-upd-${Date.now()}`, type: 'system', title: successTitle, message: successMessage, read: false, timestamp: new Date() });
   };
 
-  // --- AI Course Generator Logic ---
+  // --- AI Logic ---
   const handleGenerateCourseAI = async () => {
       if (!aiDraftInput.trim()) return;
       setIsGeneratingCourse(true);
@@ -264,10 +292,7 @@ const Dashboard: React.FC = () => {
       `;
 
       try {
-          const { text } = await getGeminiResponse([], prompt, "You are a JSON generator.");
-          const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-          const data = JSON.parse(jsonString);
-          
+          const data = await generateStructuredData(prompt);
           setGeneratedContent(data);
           addNotification({ id: `ai-gen-${Date.now()}`, type: 'system', title: 'AI 方案已生成', message: '请查看并应用生成的课程大纲。', read: false, timestamp: new Date() });
       } catch (e) {
@@ -275,6 +300,36 @@ const Dashboard: React.FC = () => {
           addNotification({ id: `ai-err-${Date.now()}`, type: 'system', title: '生成失败', message: '请重试，确保网络连接正常。', read: false, timestamp: new Date() });
       } finally {
           setIsGeneratingCourse(false);
+      }
+  };
+
+  const handleTranslateFields = async () => {
+      const sourceTitle = editingLang === 'en' ? courseForm.title : editingLang === 'zh' ? courseForm.title_zh : courseForm.title_th;
+      const sourceDesc = editingLang === 'en' ? courseForm.description : editingLang === 'zh' ? courseForm.description_zh : courseForm.description_th;
+
+      if (!sourceTitle) {
+          alert("Please fill in the title first.");
+          return;
+      }
+
+      setIsTranslating(true);
+      try {
+          const result = await generateCourseTranslations(sourceTitle, sourceDesc || '', editingLang);
+          setCourseForm(prev => ({
+              ...prev,
+              title: result.en.title,
+              description: result.en.description,
+              title_zh: result.zh.title,
+              description_zh: result.zh.description,
+              title_th: result.th.title,
+              description_th: result.th.description
+          }));
+          addNotification({ id: `trans-${Date.now()}`, type: 'system', title: '翻译完成', message: '已自动生成其他语言版本。', read: false, timestamp: new Date() });
+      } catch (e) {
+          console.error("Translation failed", e);
+          addNotification({ id: `trans-err-${Date.now()}`, type: 'system', title: '翻译失败', message: '请重试。', read: false, timestamp: new Date() });
+      } finally {
+          setIsTranslating(false);
       }
   };
 
@@ -311,10 +366,59 @@ const Dashboard: React.FC = () => {
       addNotification({ id: `ai-${Date.now()}`, type: 'system', title: 'AI 大脑已更新', message: '系统指令和模型参数已成功部署到生产环境。', read: false, timestamp: new Date() });
   };
 
+  // --- Agenda Helper Functions ---
+  const addAgendaDay = () => {
+      setCourseForm(prev => ({
+          ...prev,
+          agenda: [...(prev.agenda || []), { day: `Day ${(prev.agenda?.length || 0) + 1}`, date: '', items: [] }]
+      }));
+  };
+
+  const updateAgendaDay = (index: number, field: string, value: string) => {
+      const newAgenda = [...(courseForm.agenda || [])];
+      (newAgenda[index] as any)[field] = value;
+      setCourseForm({ ...courseForm, agenda: newAgenda });
+  };
+
+  const addAgendaItem = (dayIndex: number) => {
+      const newAgenda = [...(courseForm.agenda || [])];
+      newAgenda[dayIndex].items.push({ time: '', activity: '' });
+      setCourseForm({ ...courseForm, agenda: newAgenda });
+  };
+
+  const updateAgendaItem = (dayIndex: number, itemIndex: number, field: 'time' | 'activity', value: string) => {
+      const newAgenda = [...(courseForm.agenda || [])];
+      newAgenda[dayIndex].items[itemIndex][field] = value;
+      setCourseForm({ ...courseForm, agenda: newAgenda });
+  };
+
+  const removeAgendaItem = (dayIndex: number, itemIndex: number) => {
+      const newAgenda = [...(courseForm.agenda || [])];
+      newAgenda[dayIndex].items.splice(itemIndex, 1);
+      setCourseForm({ ...courseForm, agenda: newAgenda });
+  };
+
+  const removeAgendaDay = (dayIndex: number) => {
+      const newAgenda = [...(courseForm.agenda || [])];
+      newAgenda.splice(dayIndex, 1);
+      setCourseForm({ ...courseForm, agenda: newAgenda });
+  };
+
+  // Status Badge Helper
+  const getStatusBadge = (status: CourseStatus) => {
+      switch(status) {
+          case 'Published': return <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded">上架中 (Published)</span>;
+          case 'Pending': return <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded animate-pulse">审核中 (Pending)</span>;
+          case 'Rejected': return <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded">已拒绝 (Rejected)</span>;
+          default: return <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">草稿 (Draft)</span>;
+      }
+  };
+
   if (!user) return null;
 
   // --- ROLE: DOCTOR (Consumer) ---
   if (user.role === 'Doctor') {
+     // ... Doctor layout remains same, truncated for brevity ...
      return (
         <DashboardLayout 
             sidebarItems={['My Dashboard', 'Academic Path', 'My Orders', 'Rewards Hub']}
@@ -333,13 +437,13 @@ const Dashboard: React.FC = () => {
                              <div className="flex-1 text-center md:text-left">
                                  <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
                                      <h2 className="text-3xl font-black text-slate-900">{user.name}</h2>
-                                     <span className="px-3 py-1 bg-vs text-white text-[10px] font-black uppercase rounded-full tracking-widest">{user.level}</span>
+                                     <span className="px-3 py-1 bg-vs text-white text-xs font-black uppercase rounded-full tracking-widest">{user.level}</span>
                                  </div>
                                  <p className="text-slate-400 font-bold text-sm mb-6">{user.email}</p>
                                  <div className="grid grid-cols-3 gap-8 border-t border-slate-50 pt-6">
-                                     <div><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Courses</p><p className="text-xl font-black">4</p></div>
-                                     <div><p className="text-[10px] font-black text-slate-400 uppercase mb-1">CPE Credits</p><p className="text-xl font-black">12.5</p></div>
-                                     <div><p className="text-[10px] font-black text-vs uppercase mb-1">Member Points</p><p className="text-xl font-black text-vs">{userPoints}</p></div>
+                                     <div><p className="text-xs font-black text-slate-400 uppercase mb-1">Courses</p><p className="text-xl font-black">4</p></div>
+                                     <div><p className="text-xs font-black text-slate-400 uppercase mb-1">CPE Credits</p><p className="text-xl font-black">12.5</p></div>
+                                     <div><p className="text-xs font-black text-vs uppercase mb-1">Member Points</p><p className="text-xl font-black text-vs">{userPoints}</p></div>
                                  </div>
                              </div>
                          </div>
@@ -357,7 +461,7 @@ const Dashboard: React.FC = () => {
                                                      <p className="text-xs text-slate-400">{o.date}</p>
                                                  </div>
                                              </div>
-                                             <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${o.status === 'Paid' ? 'bg-emerald-50 text-emerald-500 border-emerald-100' : 'bg-white text-slate-400'}`}>{o.status}</span>
+                                             <span className={`text-xs font-black uppercase px-3 py-1 rounded-full border ${o.status === 'Paid' ? 'bg-emerald-50 text-emerald-500 border-emerald-100' : 'bg-white text-slate-400'}`}>{o.status}</span>
                                          </div>
                                      ))}
                                  </div>
@@ -371,7 +475,7 @@ const Dashboard: React.FC = () => {
                          <div className="bg-slate-900 p-8 rounded-[40px] text-white relative overflow-hidden shadow-2xl shadow-vs/20">
                              <div className="absolute top-0 right-0 w-32 h-32 bg-vs/20 rounded-full blur-3xl"></div>
                              <h3 className="text-xl font-black mb-2 flex items-center gap-2">✨ Points Hub</h3>
-                             <p className="text-slate-400 text-xs mb-8">Earn points to unlock exclusive instruments and course discounts.</p>
+                             <p className="text-slate-400 text-sm mb-8">Earn points to unlock exclusive instruments and course discounts.</p>
                              
                              <div className="space-y-4">
                                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between group cursor-pointer hover:bg-white/10 transition-all">
@@ -379,20 +483,20 @@ const Dashboard: React.FC = () => {
                                          <span className="text-xl">📝</span>
                                          <div>
                                              <p className="text-sm font-bold">Post a Case</p>
-                                             <p className="text-[10px] text-emerald-400">+200 Points</p>
+                                             <p className="text-xs text-emerald-400">+200 Points</p>
                                          </div>
                                      </div>
-                                     <button onClick={() => navigate('/community')} className="text-[10px] font-black uppercase bg-vs px-3 py-1 rounded-lg">Go</button>
+                                     <button onClick={() => navigate('/community')} className="text-xs font-black uppercase bg-vs px-3 py-1.5 rounded-lg">Go</button>
                                  </div>
                                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between group cursor-pointer hover:bg-white/10 transition-all">
                                      <div className="flex items-center gap-3">
                                          <span className="text-xl">🔗</span>
                                          <div>
                                              <p className="text-sm font-bold">Share Content</p>
-                                             <p className="text-[10px] text-emerald-400">+50 Points</p>
+                                             <p className="text-xs text-emerald-400">+50 Points</p>
                                          </div>
                                      </div>
-                                     <button onClick={() => navigate('/community')} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1 rounded-lg">Share</button>
+                                     <button onClick={() => navigate('/community')} className="text-xs font-black uppercase bg-white/10 px-3 py-1.5 rounded-lg">Share</button>
                                  </div>
                              </div>
                          </div>
@@ -402,7 +506,7 @@ const Dashboard: React.FC = () => {
                              <p className="text-xs opacity-80 mb-6 leading-relaxed">Both you and your colleague will receive 500 points upon their first successful course registration.</p>
                              <div className="flex gap-2">
                                  <input readOnly value="VET-REF-2025" className="bg-white/20 border-white/10 border rounded-xl px-4 py-2 text-xs font-mono flex-1 outline-none" />
-                                 <button className="bg-white text-vs px-4 py-2 rounded-xl font-black text-[10px] uppercase">Copy</button>
+                                 <button className="bg-white text-vs px-4 py-2 rounded-xl font-black text-xs uppercase">Copy</button>
                              </div>
                          </div>
                      </div>
@@ -417,7 +521,7 @@ const Dashboard: React.FC = () => {
                              <p className="text-slate-500 font-medium">Use your earned credits for surgical excellence.</p>
                          </div>
                          <div className="bg-white px-6 py-3 rounded-2xl border border-slate-100 shadow-sm">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Your Balance</p>
+                             <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Your Balance</p>
                              <p className="text-2xl font-black text-vs">{userPoints} pts</p>
                          </div>
                      </div>
@@ -431,13 +535,13 @@ const Dashboard: React.FC = () => {
                          ].map(reward => (
                              <div key={reward.title} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm flex flex-col group hover:shadow-xl transition-all">
                                  <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center text-4xl mb-6 shadow-inner group-hover:scale-110 transition-transform">{reward.icon}</div>
-                                 <p className="text-[10px] font-black text-vs uppercase mb-2">{reward.type}</p>
+                                 <p className="text-xs font-black text-vs uppercase mb-2">{reward.type}</p>
                                  <h4 className="text-xl font-black text-slate-900 mb-6">{reward.title}</h4>
                                  <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-50">
                                      <span className="font-bold text-slate-400">{reward.cost} pts</span>
                                      <button 
                                         disabled={userPoints < reward.cost}
-                                        className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${userPoints >= reward.cost ? 'bg-slate-900 text-white hover:bg-vs shadow-lg' : 'bg-slate-100 text-slate-300'}`}
+                                        className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${userPoints >= reward.cost ? 'bg-slate-900 text-white hover:bg-vs shadow-lg' : 'bg-slate-100 text-slate-300'}`}
                                      >
                                          Redeem
                                      </button>
@@ -460,11 +564,11 @@ const Dashboard: React.FC = () => {
                                     <td className="p-8 font-black text-slate-900">#{o.id}</td>
                                     <td className="p-8">
                                         <div className="flex gap-2">
-                                            {o.items.map((i, idx) => <span key={idx} className="bg-slate-50 px-2 py-1 rounded text-[10px] font-bold border">{i.name}</span>)}
+                                            {o.items.map((i, idx) => <span key={idx} className="bg-slate-50 px-2 py-1 rounded text-xs font-bold border">{i.name}</span>)}
                                         </div>
                                     </td>
                                     <td className="p-8 font-bold">¥{o.totalAmount.toLocaleString()}</td>
-                                    <td className="p-8"><span className="text-[10px] font-black uppercase px-3 py-1 bg-vs/5 text-vs rounded-full border border-vs/10">{o.status}</span></td>
+                                    <td className="p-8"><span className="text-xs font-black uppercase px-3 py-1 bg-vs/5 text-vs rounded-full border border-vs/10">{o.status}</span></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -477,6 +581,7 @@ const Dashboard: React.FC = () => {
 
   // --- ROLE: SHOP SUPPLIER (Business) - CHINESE UI ---
   if (user.role === 'ShopSupplier') {
+      // ... Supplier Layout ...
       return (
         <DashboardLayout 
             sidebarItems={['概览', '库存管理', '订单履约', '数据分析']}
@@ -485,7 +590,7 @@ const Dashboard: React.FC = () => {
             setActiveTab={setActiveTab}
             logout={logout}
         >
-            {/* ... Supplier Content ... */}
+            {/* ... Supplier Content (Overview, Inventory, Orders) ... */}
             {activeTab === '概览' && (
                 <div className="grid grid-cols-3 gap-6">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -507,10 +612,10 @@ const Dashboard: React.FC = () => {
                 <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                         <h3 className="font-bold text-lg">商品目录</h3>
-                        <button onClick={() => setShowModal('addProduct')} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase hover:bg-blue-700 transition-colors">+ 添加商品</button>
+                        <button onClick={() => setShowModal('addProduct')} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase hover:bg-blue-700 transition-colors">+ 添加商品</button>
                     </div>
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                        <thead className="bg-slate-50 text-slate-400 font-black uppercase text-xs tracking-wider">
                             <tr>
                                 <th className="p-4">商品名称 (Product)</th>
                                 <th className="p-4">SKU/ID</th>
@@ -528,7 +633,7 @@ const Dashboard: React.FC = () => {
                                     </td>
                                     <td className="p-4 text-slate-500 font-mono text-xs">{p.id}</td>
                                     <td className="p-4 font-bold">¥{p.price.toLocaleString()}</td>
-                                    <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${p.stockStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>{p.stockStatus}</span></td>
+                                    <td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold uppercase ${p.stockStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>{p.stockStatus}</span></td>
                                     <td className="p-4 text-right">
                                         <button onClick={() => handleDeleteProduct(p.id)} className="text-red-400 hover:text-red-600 font-bold text-xs">删除</button>
                                     </td>
@@ -549,14 +654,14 @@ const Dashboard: React.FC = () => {
                                      <p className="font-black text-slate-900">订单号 #{order.id}</p>
                                      <p className="text-xs text-slate-500">{order.shippingAddress}</p>
                                      <div className="flex gap-2 mt-2">
-                                         {order.items.map((i, idx) => <span key={idx} className="bg-slate-50 px-2 py-1 rounded text-[10px] text-slate-600 border border-slate-200">{i.quantity}x {i.name}</span>)}
+                                         {order.items.map((i, idx) => <span key={idx} className="bg-slate-50 px-2 py-1 rounded text-xs text-slate-600 border border-slate-200">{i.quantity}x {i.name}</span>)}
                                      </div>
                                  </div>
                              </div>
                              <div className="text-right">
                                  <p className="font-bold text-lg mb-2">¥{order.totalAmount.toLocaleString()}</p>
                                  {order.status === 'Pending' || order.status === 'Paid' ? (
-                                     <button onClick={() => handleShipOrder(order.id)} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-slate-700">标记发货</button>
+                                     <button onClick={() => handleShipOrder(order.id)} className="bg-slate-900 text-white px-5 py-2.5 rounded-lg text-xs font-bold uppercase hover:bg-slate-700">标记发货</button>
                                  ) : (
                                      <span className="text-emerald-500 font-bold uppercase text-xs">✓ 已发货</span>
                                  )}
@@ -593,6 +698,7 @@ const Dashboard: React.FC = () => {
 
   // --- ROLE: COURSE PROVIDER (Education) ---
   if (user.role === 'CourseProvider') {
+      // ... Provider Logic ...
       const studentEnrollments = orders.flatMap(order => 
         order.items
             .filter(item => item.type === 'course')
@@ -623,6 +729,7 @@ const Dashboard: React.FC = () => {
             setActiveTab={setActiveTab}
             logout={logout}
         >
+             {/* ... Provider Tabs (Overview, etc.) ... */}
              {activeTab === '教学概览' && (
                  <div className="grid grid-cols-3 gap-6">
                      <div className="bg-purple-600 p-8 rounded-[32px] text-white col-span-2 shadow-xl shadow-purple-900/20 flex flex-col justify-between relative overflow-hidden">
@@ -693,16 +800,18 @@ const Dashboard: React.FC = () => {
 
                      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
                          {courses.map(c => (
-                             <div key={c.id} className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm flex flex-col group hover:border-purple-200 transition-all">
+                             <div key={c.id} className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm flex flex-col group hover:border-purple-200 transition-all relative">
+                                 <div className="absolute top-4 right-4 z-10">
+                                     {getStatusBadge(c.status)}
+                                 </div>
                                  <div className="h-40 bg-slate-100 rounded-2xl mb-4 overflow-hidden relative">
                                      <img src={c.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                     <span className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-purple-600 shadow-sm">
+                                     <span className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-widest text-purple-600 shadow-sm">
                                          {c.level}
                                      </span>
                                  </div>
                                  <div className="flex justify-between items-start mb-2">
-                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{c.specialty}</span>
-                                     <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded">{c.status}</span>
+                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{c.specialty}</span>
                                  </div>
                                  <h4 className="font-black text-slate-900 mb-1 leading-tight">{c.title}</h4>
                                  <p className="text-xs text-slate-500 font-medium mb-4">{c.location.city} • {c.startDate}</p>
@@ -719,7 +828,8 @@ const Dashboard: React.FC = () => {
                      </div>
                  </div>
              )}
-
+             
+             {/* ... Other Tabs (Students, Revenue) ... */}
              {activeTab === '学员名单' && (
                  <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
                     <div className="p-8 border-b border-slate-100">
@@ -730,7 +840,7 @@ const Dashboard: React.FC = () => {
                         <div className="p-12 text-center text-slate-400 font-medium">暂无报名学员</div>
                     ) : (
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                            <thead className="bg-slate-50/50 text-slate-400 font-black uppercase text-xs tracking-wider">
                                 <tr>
                                     <th className="p-6">学员姓名 (Student)</th>
                                     <th className="p-6">报读课程 (Course)</th>
@@ -749,12 +859,12 @@ const Dashboard: React.FC = () => {
                                         <td className="p-6 font-medium text-slate-700 max-w-xs truncate">{student.courseName}</td>
                                         <td className="p-6 text-slate-500 text-xs font-mono">{new Date(student.date).toLocaleDateString()}</td>
                                         <td className="p-6">
-                                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${student.status === 'Paid' || student.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                                            <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${student.status === 'Paid' || student.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
                                                 {student.status === 'Paid' ? '已付款' : student.status}
                                             </span>
                                         </td>
                                         <td className="p-6 text-right">
-                                            <button className="text-[10px] font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 text-slate-600">
+                                            <button className="text-xs font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 text-slate-600">
                                                 联系学员
                                             </button>
                                         </td>
@@ -769,7 +879,7 @@ const Dashboard: React.FC = () => {
              {activeTab === '收益分析' && (
                  <div className="grid md:grid-cols-2 gap-8">
                      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">本月营收概览</h4>
+                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">本月营收概览</h4>
                          <div className="flex items-baseline gap-2">
                              <span className="text-5xl font-black text-slate-900">¥{totalRevenue.toLocaleString()}</span>
                              <span className="text-xs font-bold text-emerald-500">▲ 12.5%</span>
@@ -783,14 +893,14 @@ const Dashboard: React.FC = () => {
                                  </div>
                              ))}
                          </div>
-                         <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 uppercase">
+                         <div className="flex justify-between mt-4 text-xs font-bold text-slate-400 uppercase">
                              <span>周一</span><span>周日</span>
                          </div>
                      </div>
 
                      <div className="space-y-6">
                          <div className="bg-slate-900 p-8 rounded-[32px] text-white">
-                             <h4 className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-4">待处理事项</h4>
+                             <h4 className="text-xs font-black text-purple-400 uppercase tracking-widest mb-4">待处理事项</h4>
                              <ul className="space-y-4">
                                  <li className="flex items-center gap-3 text-sm">
                                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
@@ -810,6 +920,7 @@ const Dashboard: React.FC = () => {
 
             {showModal === 'addCourse' && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    {/* ... (Modal Content - same as before) ... */}
                     <div className="bg-white rounded-3xl p-8 w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95">
                         <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
                             <h3 className="font-black text-xl text-purple-900 flex items-center gap-2">
@@ -819,11 +930,13 @@ const Dashboard: React.FC = () => {
                             <button onClick={() => setShowModal(null)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">✕</button>
                         </div>
                         
+                        {/* ... (Inner Grid) ... */}
                         <div className="flex-1 grid lg:grid-cols-2 gap-8 overflow-hidden">
+                            {/* ... (AI Inputs & Form Fields - same as before) ... */}
                             <div className="flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
                                 {!isEditingCourse && (
                                     <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
-                                        <label className="block text-[10px] font-black text-purple-600 uppercase mb-2 tracking-widest">
+                                        <label className="block text-xs font-black text-purple-600 uppercase mb-2 tracking-widest">
                                             STEP 1: 输入课程草稿 (Draft Idea)
                                         </label>
                                         <textarea 
@@ -845,8 +958,8 @@ const Dashboard: React.FC = () => {
                                 {generatedContent && (
                                     <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 animate-in slide-in-from-bottom-4">
                                         <div className="flex justify-between items-center mb-4">
-                                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">AI 生成结果预览</span>
-                                            <button onClick={applyAIContent} className="px-3 py-1 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700">
+                                            <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">AI 生成结果预览</span>
+                                            <button onClick={applyAIContent} className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700">
                                                 确认并应用到表单 →
                                             </button>
                                         </div>
@@ -864,30 +977,37 @@ const Dashboard: React.FC = () => {
                                         {isEditingCourse ? '修改课程详情' : '手动编辑 / 修正'}
                                     </h4>
                                     
-                                    {/* Localized Title/Desc Tabs */}
+                                    {/* Localized Title/Desc Tabs with AI Translate */}
                                     <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4">
                                         {['en', 'zh', 'th'].map(lang => (
                                             <button
                                                 key={lang}
                                                 onClick={() => setEditingLang(lang as any)}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                                                className={`flex-1 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
                                                     editingLang === lang ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
                                                 }`}
                                             >
-                                                {lang === 'en' ? 'English (Default)' : lang === 'zh' ? '中文' : 'ไทย'}
+                                                {lang === 'en' ? 'English' : lang === 'zh' ? '中文' : 'ไทย'}
                                             </button>
                                         ))}
+                                        <button 
+                                            onClick={handleTranslateFields}
+                                            disabled={isTranslating}
+                                            className="px-3 py-1.5 bg-purple-100 text-purple-600 rounded-lg text-xs font-black uppercase flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                                        >
+                                            {isTranslating ? '...' : '✨ Auto-Translate'}
+                                        </button>
                                     </div>
 
                                     <div className="space-y-4">
                                         {editingLang === 'en' && (
                                             <div className="space-y-4 animate-in fade-in">
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Course Title (EN)</label>
+                                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Course Title (EN)</label>
                                                     <input type="text" value={courseForm.title || ''} onChange={e => setCourseForm(prev => ({...prev, title: e.target.value}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Description (EN)</label>
+                                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description (EN)</label>
                                                     <textarea value={courseForm.description || ''} onChange={e => setCourseForm(prev => ({...prev, description: e.target.value}))} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" />
                                                 </div>
                                             </div>
@@ -895,11 +1015,11 @@ const Dashboard: React.FC = () => {
                                         {editingLang === 'zh' && (
                                             <div className="space-y-4 animate-in fade-in">
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程标题 (中文)</label>
+                                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">课程标题 (中文)</label>
                                                     <input type="text" value={courseForm.title_zh || ''} onChange={e => setCourseForm(prev => ({...prev, title_zh: e.target.value}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="输入中文标题..." />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程简介 (中文)</label>
+                                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">课程简介 (中文)</label>
                                                     <textarea value={courseForm.description_zh || ''} onChange={e => setCourseForm(prev => ({...prev, description_zh: e.target.value}))} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="输入中文简介..." />
                                                 </div>
                                             </div>
@@ -907,29 +1027,83 @@ const Dashboard: React.FC = () => {
                                         {editingLang === 'th' && (
                                             <div className="space-y-4 animate-in fade-in">
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">หัวข้อหลักสูตร (Thai)</label>
+                                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">หัวข้อหลักสูตร (Thai)</label>
                                                     <input type="text" value={courseForm.title_th || ''} onChange={e => setCourseForm(prev => ({...prev, title_th: e.target.value}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="ป้อนชื่อภาษาไทย..." />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">รายละเอียดหลักสูตร (Thai)</label>
+                                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">รายละเอียดหลักสูตร (Thai)</label>
                                                     <textarea value={courseForm.description_th || ''} onChange={e => setCourseForm(prev => ({...prev, description_th: e.target.value}))} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="ป้อนคำอธิบายภาษาไทย..." />
                                                 </div>
                                             </div>
                                         )}
 
+                                        {/* Structured Agenda Editor */}
                                         <div className="border-t border-slate-100 my-4 pt-4">
-                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">封面图 URL</label>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <label className="block text-xs font-bold text-slate-400 uppercase">课程日程 (Agenda)</label>
+                                                <button onClick={addAgendaDay} className="text-xs bg-purple-50 text-purple-600 px-3 py-1 rounded font-bold hover:bg-purple-100">+ Add Day</button>
+                                            </div>
+                                            
+                                            <div className="space-y-6">
+                                                {courseForm.agenda?.map((day, dayIndex) => (
+                                                    <div key={dayIndex} className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                                        <div className="flex gap-2 mb-3">
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Day 1"
+                                                                value={day.day}
+                                                                onChange={(e) => updateAgendaDay(dayIndex, 'day', e.target.value)}
+                                                                className="w-20 p-2 text-xs font-bold border rounded"
+                                                            />
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Date (e.g. 2025-01-01)"
+                                                                value={day.date}
+                                                                onChange={(e) => updateAgendaDay(dayIndex, 'date', e.target.value)}
+                                                                className="w-32 p-2 text-xs font-mono border rounded"
+                                                            />
+                                                            <button onClick={() => removeAgendaDay(dayIndex)} className="ml-auto text-red-400 text-xs font-bold hover:text-red-600">Remove Day</button>
+                                                        </div>
+                                                        <div className="space-y-2 pl-2 border-l-2 border-slate-200">
+                                                            {day.items.map((item, itemIndex) => (
+                                                                <div key={itemIndex} className="flex gap-2 items-center">
+                                                                    <input 
+                                                                        type="text"
+                                                                        placeholder="09:00"
+                                                                        value={item.time}
+                                                                        onChange={(e) => updateAgendaItem(dayIndex, itemIndex, 'time', e.target.value)}
+                                                                        className="w-16 p-2 text-xs font-mono border rounded"
+                                                                    />
+                                                                    <input 
+                                                                        type="text" 
+                                                                        placeholder="Activity"
+                                                                        value={item.activity}
+                                                                        onChange={(e) => updateAgendaItem(dayIndex, itemIndex, 'activity', e.target.value)}
+                                                                        className="flex-1 p-2 text-xs border rounded"
+                                                                    />
+                                                                    <button onClick={() => removeAgendaItem(dayIndex, itemIndex)} className="text-slate-400 hover:text-red-500">×</button>
+                                                                </div>
+                                                            ))}
+                                                            <button onClick={() => addAgendaItem(dayIndex)} className="text-xs text-purple-500 font-bold hover:underline">+ Add Time Slot</button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="border-t border-slate-100 my-4 pt-4">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">封面图 URL</label>
                                             <input type="text" placeholder="https://..." value={courseForm.imageUrl || ''} onChange={e => setCourseForm(prev => ({...prev, imageUrl: e.target.value}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">专科</label>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">专科</label>
                                                 <select value={courseForm.specialty} onChange={e => setCourseForm(prev => ({...prev, specialty: e.target.value as Specialty}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm">
                                                     {Object.values(Specialty).map(s => <option key={s} value={s}>{s}</option>)}
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">价格 (CNY)</label>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">价格 (CNY)</label>
                                                 <input type="number" placeholder="价格" value={courseForm.price || ''} onChange={e => setCourseForm(prev => ({...prev, price: Number(e.target.value)}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                             </div>
                                         </div>
@@ -938,7 +1112,7 @@ const Dashboard: React.FC = () => {
                             </div>
 
                             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 overflow-y-auto">
-                                <div className="text-center mb-6"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">APP 端预览效果 ({editingLang.toUpperCase()})</p></div>
+                                <div className="text-center mb-6"><p className="text-xs font-black text-slate-400 uppercase tracking-widest">APP 端预览效果 ({editingLang.toUpperCase()})</p></div>
                                 <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden max-w-sm mx-auto">
                                     <div className="h-40 bg-slate-200 relative">
                                         <img src={courseForm.imageUrl || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=400&q=80"} className="w-full h-full object-cover" />
@@ -947,12 +1121,12 @@ const Dashboard: React.FC = () => {
                                         <h4 className="font-black text-slate-900 mb-2 leading-tight">
                                             {editingLang === 'zh' ? (courseForm.title_zh || courseForm.title) : editingLang === 'th' ? (courseForm.title_th || courseForm.title) : courseForm.title || 'Course Title'}
                                         </h4>
-                                        <p className="text-[10px] text-slate-500 mb-4 line-clamp-3">
+                                        <p className="text-xs text-slate-500 mb-4 line-clamp-3">
                                             {editingLang === 'zh' ? (courseForm.description_zh || courseForm.description) : editingLang === 'th' ? (courseForm.description_th || courseForm.description) : courseForm.description || 'Description...'}
                                         </p>
                                         <div className="flex justify-between items-center pt-4 border-t border-slate-50">
                                             <span className="font-black text-slate-900">¥{(courseForm.price || 0).toLocaleString()}</span>
-                                            <button className="px-3 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold">立即报名</button>
+                                            <button className="px-3 py-1 bg-slate-900 text-white rounded-lg text-xs font-bold">立即报名</button>
                                         </div>
                                     </div>
                                 </div>
@@ -962,7 +1136,7 @@ const Dashboard: React.FC = () => {
                         <div className="pt-4 mt-4 border-t border-slate-100 flex justify-end gap-4">
                             <button onClick={() => { setShowModal(null); setIsEditingCourse(false); }} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">取消</button>
                             <button onClick={handleSaveCourse} className="px-8 py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-all">
-                                {isEditingCourse ? '保存修改' : '发布课程'}
+                                {isEditingCourse ? '保存修改 (提交审核)' : '发布课程 (提交审核)'}
                             </button>
                         </div>
                     </div>
@@ -982,10 +1156,11 @@ const Dashboard: React.FC = () => {
             setActiveTab={setActiveTab}
             logout={logout}
         >
+             {/* ... Admin content ... */}
              {activeTab === '概览' && (
                  <div className="grid grid-cols-4 gap-6">
                      <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-sm">
-                         <p className="text-[10px] font-bold text-slate-500 uppercase">平台总交易额 (Platform Volume)</p>
+                         <p className="text-xs font-bold text-slate-500 uppercase">平台总交易额 (Platform Volume)</p>
                          <h3 className="text-2xl font-black text-white">¥{orders.reduce((acc, o) => acc + o.totalAmount, 0).toLocaleString()}</h3>
                      </div>
                  </div>
@@ -994,18 +1169,18 @@ const Dashboard: React.FC = () => {
              {activeTab === '全局课程管理' && (
                  <div className="space-y-6">
                      <div className="flex justify-between items-center">
-                        <h3 className="font-bold text-xl text-white">平台课程全库</h3>
+                        <h3 className="font-bold text-xl text-white">平台课程全库 (Course Audit)</h3>
                         <div className="text-slate-400 text-xs">共 {courses.length} 门课程</div>
                      </div>
                      <div className="bg-black/20 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-sm">
                         <table className="w-full text-left text-sm text-slate-300">
-                            <thead className="bg-white/5 text-slate-500 font-bold uppercase text-[10px]">
+                            <thead className="bg-white/5 text-slate-500 font-bold uppercase text-xs">
                                 <tr>
                                     <th className="p-6">课程名称</th>
                                     <th className="p-6">讲师</th>
                                     <th className="p-6">价格</th>
-                                    <th className="p-6">状态</th>
-                                    <th className="p-6 text-right">操作</th>
+                                    <th className="p-6">状态 (Status)</th>
+                                    <th className="p-6 text-right">审核操作 (Audit)</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
@@ -1013,13 +1188,30 @@ const Dashboard: React.FC = () => {
                                     <tr key={c.id} className="hover:bg-white/5 transition-colors">
                                         <td className="p-6 font-bold text-white">
                                             {c.title}
-                                            <div className="text-[10px] text-slate-500 mt-1">{c.specialty}</div>
+                                            <div className="text-xs text-slate-500 mt-1">{c.specialty}</div>
                                         </td>
                                         <td className="p-6">{c.instructor.name}</td>
                                         <td className="p-6">¥{c.price.toLocaleString()}</td>
-                                        <td className="p-6"><span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs">{c.status}</span></td>
-                                        <td className="p-6 text-right">
-                                            <button onClick={() => handleDeleteCourse(c.id)} className="text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-widest border border-red-500/30 px-3 py-1 rounded hover:bg-red-500/10 transition-all">下架</button>
+                                        <td className="p-6">
+                                            {c.status === 'Pending' ? <span className="text-amber-400 bg-amber-900/30 px-2 py-1 rounded text-xs animate-pulse">Waiting Review</span> : 
+                                             c.status === 'Published' ? <span className="text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded text-xs">Live</span> :
+                                             <span className="text-red-400 bg-red-900/30 px-2 py-1 rounded text-xs">{c.status}</span>}
+                                        </td>
+                                        <td className="p-6 text-right flex justify-end gap-2">
+                                            {c.status === 'Pending' ? (
+                                                <>
+                                                    <button onClick={() => handleApproveCourse(c.id)} className="bg-emerald-500 text-black px-4 py-2 rounded text-xs font-bold hover:bg-emerald-400 transition-all">
+                                                        ✓ 通过 (Approve)
+                                                    </button>
+                                                    <button onClick={() => handleRejectCourse(c.id)} className="bg-red-500 text-white px-4 py-2 rounded text-xs font-bold hover:bg-red-400 transition-all">
+                                                        ✗ 拒绝 (Reject)
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button onClick={() => handleDeleteCourse(c.id)} className="text-slate-500 hover:text-white text-xs font-bold uppercase tracking-widest border border-slate-700 px-4 py-2 rounded hover:bg-white/10 transition-all">
+                                                    管理 (Manage)
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
