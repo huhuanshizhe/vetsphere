@@ -68,7 +68,15 @@ export const translations = {
       loginToRegister: 'Login to Register',
       loginToBuy: 'Login & Buy Now',
       memberPrice: 'Member Price',
-      wechatHint: 'Link copied! Paste into WeChat to share.'
+      wechatHint: 'Link copied! Paste into WeChat to share.',
+      // Vendor Specific
+      applyPartner: 'Apply for Partnership',
+      partnerDesc: 'Apply to become a VetSphere verified supplier or educator.',
+      companyName: 'Organization / Company',
+      disciplineFocus: 'Focus Specialty',
+      contactPerson: 'Contact Person',
+      businessLicense: 'Business Registration / ID',
+      applySuccess: 'Application submitted! Our clinical relations team will contact you within 48 hours.'
     },
     community: {
       title: 'Case Plaza',
@@ -310,7 +318,15 @@ export const translations = {
       loginToRegister: '立即登录预约',
       loginToBuy: '登录并购买',
       memberPrice: '会员专享价',
-      wechatHint: '链接已复制！请粘贴至微信发送。'
+      wechatHint: '链接已复制！请粘贴至微信发送。',
+      // Vendor Specific
+      applyPartner: '合作伙伴入驻',
+      partnerDesc: '申请成为 VetSphere 认证供应商或教育机构。',
+      companyName: '机构 / 公司名称',
+      disciplineFocus: '主营学科',
+      contactPerson: '联系人姓名',
+      businessLicense: '营业执照 / 机构代码',
+      applySuccess: '申请已提交！我们的临床关系团队将在 48 小时内与您联系。'
     },
     community: {
       title: '病例广场',
@@ -552,7 +568,15 @@ export const translations = {
       loginToRegister: 'เข้าสู่ระบบเพื่อลงทะเบียน',
       loginToBuy: 'เข้าสู่ระบบและซื้อทันที',
       memberPrice: 'ราคาสมาชิก',
-      wechatHint: 'คัดลอกลิงก์แล้ว! วางใน WeChat เพื่อแชร์'
+      wechatHint: 'คัดลอกลิงก์แล้ว! วางใน WeChat เพื่อแชร์',
+      // Vendor Specific
+      applyPartner: 'สมัครเป็นพันธมิตร',
+      partnerDesc: 'สมัครเป็นซัพพลายเออร์หรือผู้ให้การศึกษาที่ได้รับการรับรองจาก VetSphere',
+      companyName: 'ชื่อองค์กร / บริษัท',
+      disciplineFocus: 'ความเชี่ยวชาญหลัก',
+      contactPerson: 'บุคคลที่ติดต่อ',
+      businessLicense: 'เลขทะเบียนพาณิชย์ / ID',
+      applySuccess: 'ส่งใบสมัครแล้ว! ทีมงานลูกค้าสัมพันธ์ของเราจะติดต่อคุณภายใน 48 ชั่วโมง'
     },
     community: {
       title: 'Case Plaza',

@@ -67,7 +67,9 @@ export interface Product {
 
 export interface Course {
   id: string;
-  title: string;
+  title: string; // Default (English)
+  title_zh?: string; // Chinese
+  title_th?: string; // Thai
   specialty: Specialty;
   level: 'Basic' | 'Intermediate' | 'Advanced' | 'Master';
   price: number;
@@ -87,7 +89,9 @@ export interface Course {
     venue: string;
     address: string;
   };
-  description: string;
+  description: string; // Default (English)
+  description_zh?: string;
+  description_th?: string;
   status: string;
   agenda: {
     day: string;

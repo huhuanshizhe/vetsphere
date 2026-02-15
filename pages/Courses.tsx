@@ -9,15 +9,32 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 
 const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAuthenticated: boolean }> = ({ course, onSelect, isAuthenticated }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
+
+  // Helper for localized content
+  const getLocalizedContent = () => {
+      let title = course.title;
+      let desc = course.description; // fallback
+
+      if (language === 'zh') {
+          title = course.title_zh || course.title;
+          desc = course.description_zh || course.description;
+      } else if (language === 'th') {
+          title = course.title_th || course.title;
+          desc = course.description_th || course.description;
+      }
+      return { title, desc };
+  };
+
+  const { title } = getLocalizedContent();
 
   return (
     <div className="clinical-card flex flex-col h-full group overflow-hidden">
       <div className="h-52 relative overflow-hidden bg-slate-100">
         <img 
           src={course.imageUrl} 
-          alt={course.title} 
+          alt={title} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute top-4 left-4 flex gap-2">
@@ -37,7 +54,7 @@ const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAu
         </div>
         
         <h3 className="text-lg font-extrabold text-slate-900 mb-4 leading-snug group-hover:text-vs transition-colors line-clamp-2">
-          {course.title}
+          {title}
         </h3>
         
         <div className="flex items-center gap-3 mb-6">
@@ -77,7 +94,7 @@ const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAu
 const Courses: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { isAuthenticated, user } = useAuth();
   const { addNotification } = useNotification();
   const initialFilter = (location.state as any)?.specialty || 'All';
@@ -100,9 +117,11 @@ const Courses: React.FC = () => {
         navigate('/auth');
         return;
     }
+    const currentTitle = language === 'zh' ? (course.title_zh || course.title) : language === 'th' ? (course.title_th || course.title) : course.title;
+    
     addToCart({
       id: course.id,
-      name: course.title,
+      name: currentTitle,
       price: course.price,
       currency: course.currency,
       imageUrl: course.imageUrl,
@@ -114,21 +133,22 @@ const Courses: React.FC = () => {
   };
 
   const handleShareCourse = async (course: Course) => {
+    const currentTitle = language === 'zh' ? (course.title_zh || course.title) : language === 'th' ? (course.title_th || course.title) : course.title;
     const shareUrl = `${window.location.origin}/#/courses?id=${course.id}`;
-    const shareTitle = `[VetSphere Training] ${course.title}`;
+    const shareTitle = `[VetSphere Training] ${currentTitle}`;
     
     if (navigator.share) {
         try {
             await navigator.share({ title: shareTitle, url: shareUrl });
             if (user) {
-                await api.awardPoints(user.id, 50, `Shared course: ${course.title}`);
+                await api.awardPoints(user.id, 50, `Shared course: ${currentTitle}`);
                 addNotification({ id: `sh-c-${Date.now()}`, type: 'system', title: t.common.pointsEarned, message: '+50 pts for sharing course.', read: true, timestamp: new Date() });
             }
         } catch (e) { console.log('Share canceled'); }
     } else {
         navigator.clipboard.writeText(shareUrl);
         addNotification({ id: `sh-c-${Date.now()}`, type: 'system', title: t.common.copySuccess, message: 'Points awarded!', read: true, timestamp: new Date() });
-        if (user) await api.awardPoints(user.id, 50, `Copied course link: ${course.title}`);
+        if (user) await api.awardPoints(user.id, 50, `Copied course link: ${currentTitle}`);
     }
   };
 
@@ -199,7 +219,9 @@ const Courses: React.FC = () => {
 
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex items-end p-10">
                 <div>
-                    <h2 className="text-3xl font-black text-white mb-3 tracking-tight">{selectedCourse.title}</h2>
+                    <h2 className="text-3xl font-black text-white mb-3 tracking-tight">
+                        {language === 'zh' ? (selectedCourse.title_zh || selectedCourse.title) : language === 'th' ? (selectedCourse.title_th || selectedCourse.title) : selectedCourse.title}
+                    </h2>
                     <div className="flex flex-wrap gap-6 text-white/80 text-xs font-bold uppercase tracking-widest">
                         <span className="flex items-center gap-2">📅 {selectedCourse.startDate} — {selectedCourse.endDate}</span>
                         <span className="flex items-center gap-2">📍 {selectedCourse.location.venue}</span>

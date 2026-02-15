@@ -44,6 +44,9 @@ const Dashboard: React.FC = () => {
   const [productForm, setProductForm] = useState<Partial<Product>>({ stockStatus: 'In Stock' });
   const [courseForm, setCourseForm] = useState<Partial<Course>>({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [] });
   const [isEditingCourse, setIsEditingCourse] = useState(false);
+  
+  // Localized Editing State
+  const [editingLang, setEditingLang] = useState<'en' | 'zh' | 'th'>('en');
 
   useEffect(() => {
     if (!user) {
@@ -204,7 +207,8 @@ const Dashboard: React.FC = () => {
       if (!generatedContent) return;
       setCourseForm(prev => ({
           ...prev,
-          title: `${generatedContent.titleEN} (${generatedContent.titleCN})`,
+          title: generatedContent.titleEN,
+          title_zh: generatedContent.titleCN,
           description: generatedContent.description,
           price: generatedContent.price,
           specialty: generatedContent.specialty as Specialty,
@@ -293,10 +297,11 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  // --- ROLE: DOCTOR (Consumer) - UPDATED WITH POINTS ---
+  // --- ROLE: DOCTOR (Consumer) ---
   if (user.role === 'Doctor') {
      return (
         <DashboardLayout sidebarItems={['My Dashboard', 'Academic Path', 'My Orders', 'Rewards Hub']}>
+             {/* ... Doctor Dashboard Content ... */}
              {activeTab === 'My Dashboard' && (
                  <div className="grid lg:grid-cols-3 gap-8">
                      {/* Left: Profile & Stats */}
@@ -452,6 +457,7 @@ const Dashboard: React.FC = () => {
   if (user.role === 'ShopSupplier') {
       return (
         <DashboardLayout sidebarItems={['概览', '库存管理', '订单履约', '数据分析']}>
+            {/* ... Supplier Content ... */}
             {activeTab === '概览' && (
                 <div className="grid grid-cols-3 gap-6">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -819,14 +825,65 @@ const Dashboard: React.FC = () => {
                                     </div>
                                 )}
 
-                                <div className="p-6 border rounded-2xl border-slate-100">
-                                    <h4 className="text-sm font-bold text-slate-900 mb-4">{isEditingCourse ? '修改课程详情' : '手动编辑 / 修正'}</h4>
+                                <div className="p-6 border rounded-2xl border-slate-100 bg-white">
+                                    <h4 className="text-sm font-bold text-slate-900 mb-4 flex justify-between items-center">
+                                        {isEditingCourse ? '修改课程详情' : '手动编辑 / 修正'}
+                                    </h4>
+                                    
+                                    {/* Localized Title/Desc Tabs */}
+                                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4">
+                                        {['en', 'zh', 'th'].map(lang => (
+                                            <button
+                                                key={lang}
+                                                onClick={() => setEditingLang(lang as any)}
+                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                                                    editingLang === lang ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                                                }`}
+                                            >
+                                                {lang === 'en' ? 'English (Default)' : lang === 'zh' ? '中文' : 'ไทย'}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程标题</label>
-                                            <input type="text" placeholder="课程标题" value={courseForm.title || ''} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
-                                        </div>
-                                        <div>
+                                        {editingLang === 'en' && (
+                                            <div className="space-y-4 animate-in fade-in">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Course Title (EN)</label>
+                                                    <input type="text" value={courseForm.title || ''} onChange={e => setCourseForm({...courseForm, title: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Description (EN)</label>
+                                                    <textarea value={courseForm.description || ''} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {editingLang === 'zh' && (
+                                            <div className="space-y-4 animate-in fade-in">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程标题 (中文)</label>
+                                                    <input type="text" value={courseForm.title_zh || ''} onChange={e => setCourseForm({...courseForm, title_zh: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="输入中文标题..." />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">课程简介 (中文)</label>
+                                                    <textarea value={courseForm.description_zh || ''} onChange={e => setCourseForm({...courseForm, description_zh: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="输入中文简介..." />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {editingLang === 'th' && (
+                                            <div className="space-y-4 animate-in fade-in">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">หัวข้อหลักสูตร (Thai)</label>
+                                                    <input type="text" value={courseForm.title_th || ''} onChange={e => setCourseForm({...courseForm, title_th: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="ป้อนชื่อภาษาไทย..." />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">รายละเอียดหลักสูตร (Thai)</label>
+                                                    <textarea value={courseForm.description_th || ''} onChange={e => setCourseForm({...courseForm, description_th: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm focus:border-purple-300 outline-none" placeholder="ป้อนคำอธิบายภาษาไทย..." />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="border-t border-slate-100 my-4 pt-4">
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">封面图 URL</label>
                                             <input type="text" placeholder="https://..." value={courseForm.imageUrl || ''} onChange={e => setCourseForm({...courseForm, imageUrl: e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                         </div>
@@ -842,20 +899,23 @@ const Dashboard: React.FC = () => {
                                                 <input type="number" placeholder="价格" value={courseForm.price || ''} onChange={e => setCourseForm({...courseForm, price: Number(e.target.value)})} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                             </div>
                                         </div>
-                                        <textarea placeholder="课程简介" value={courseForm.description || ''} onChange={e => setCourseForm({...courseForm, description: e.target.value})} className="w-full h-24 p-3 border rounded-xl bg-slate-50 text-sm" />
                                     </div>
                                 </div>
                             </div>
 
                             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 overflow-y-auto">
-                                <div className="text-center mb-6"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">APP 端预览效果</p></div>
+                                <div className="text-center mb-6"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">APP 端预览效果 ({editingLang.toUpperCase()})</p></div>
                                 <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden max-w-sm mx-auto">
                                     <div className="h-40 bg-slate-200 relative">
                                         <img src={courseForm.imageUrl || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=400&q=80"} className="w-full h-full object-cover" />
                                     </div>
                                     <div className="p-5">
-                                        <h4 className="font-black text-slate-900 mb-2 leading-tight">{courseForm.title || 'Course Title'}</h4>
-                                        <p className="text-[10px] text-slate-500 mb-4 line-clamp-3">{courseForm.description || 'Description...'}</p>
+                                        <h4 className="font-black text-slate-900 mb-2 leading-tight">
+                                            {editingLang === 'zh' ? (courseForm.title_zh || courseForm.title) : editingLang === 'th' ? (courseForm.title_th || courseForm.title) : courseForm.title || 'Course Title'}
+                                        </h4>
+                                        <p className="text-[10px] text-slate-500 mb-4 line-clamp-3">
+                                            {editingLang === 'zh' ? (courseForm.description_zh || courseForm.description) : editingLang === 'th' ? (courseForm.description_th || courseForm.description) : courseForm.description || 'Description...'}
+                                        </p>
                                         <div className="flex justify-between items-center pt-4 border-t border-slate-50">
                                             <span className="font-black text-slate-900">¥{(courseForm.price || 0).toLocaleString()}</span>
                                             <button className="px-3 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-bold">立即报名</button>
