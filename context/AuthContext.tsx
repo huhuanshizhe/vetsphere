@@ -16,7 +16,9 @@ const USER_STORAGE_KEY = 'vetsphere_user_v1';
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     try {
-      const saved = localStorage.getItem(USER_STORAGE_KEY);
+      // Use sessionStorage to isolate sessions per tab.
+      // This allows Admin login in Tab A and Doctor login in Tab B without conflict.
+      const saved = sessionStorage.getItem(USER_STORAGE_KEY);
       return saved ? JSON.parse(saved) : null;
     } catch (e) {
       return null;
@@ -25,9 +27,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     } else {
-      localStorage.removeItem(USER_STORAGE_KEY);
+      sessionStorage.removeItem(USER_STORAGE_KEY);
     }
   }, [user]);
 

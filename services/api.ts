@@ -35,9 +35,24 @@ const INITIAL_POSTS: Post[] = [
   }
 ];
 
-// In-memory store for demo purposes (resets on refresh if using mock)
+// In-memory store for demo purposes with LocalStorage persistence
 let MOCK_PRODUCTS = [...PRODUCTS_CN];
-let MOCK_COURSES = [...COURSES_CN];
+
+// Load courses from storage or fallback to default
+const STORAGE_KEY_COURSES = 'vetsphere_mock_courses_v1';
+const loadCourses = () => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY_COURSES);
+        return saved ? JSON.parse(saved) : [...COURSES_CN];
+    } catch (e) {
+        return [...COURSES_CN];
+    }
+};
+let MOCK_COURSES = loadCourses();
+
+const saveCourses = (courses: Course[]) => {
+    localStorage.setItem(STORAGE_KEY_COURSES, JSON.stringify(courses));
+};
 
 export const api = {
   
@@ -81,22 +96,30 @@ export const api = {
 
   // --- COURSES (Education) ---
   async getCourses(): Promise<Course[]> {
+    // Return the persistent mock courses directly to ensure immediate updates are reflected
+    // In a real scenario, we would prefer the DB, but for this demo, LocalStorage is the source of truth for user edits
+    return MOCK_COURSES;
+    /* 
+    // Supabase fallback logic (commented out to prioritize local persistence for the demo)
     try {
       const { data, error } = await supabase.from('courses').select('*');
       if (error || !data || data.length === 0) return MOCK_COURSES;
       return data.map(c => ({ ...c, startDate: c.start_date, endDate: c.end_date, imageUrl: c.image_url }));
     } catch (e) { return MOCK_COURSES; }
+    */
   },
 
   async manageCourse(action: 'create' | 'update' | 'delete', course: Partial<Course>): Promise<void> {
     if (action === 'create') {
         const newCourse = { ...course, id: `c-${Date.now()}`, status: 'Published' } as Course;
-        MOCK_COURSES.unshift(newCourse);
+        MOCK_COURSES = [newCourse, ...MOCK_COURSES]; // Unshift
     } else if (action === 'update') {
         MOCK_COURSES = MOCK_COURSES.map(c => c.id === course.id ? { ...c, ...course } : c);
     } else if (action === 'delete') {
         MOCK_COURSES = MOCK_COURSES.filter(c => c.id !== course.id);
     }
+    // Persist changes
+    saveCourses(MOCK_COURSES);
   },
 
   async getPosts(): Promise<Post[]> {
