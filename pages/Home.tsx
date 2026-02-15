@@ -18,9 +18,9 @@ const Home: React.FC = () => {
             
             {/* Left: Text Content */}
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{t.home.heroTag}</span>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span className="text-sm font-bold text-slate-600 uppercase tracking-wider">{t.home.heroTag}</span>
               </div>
               
               <h1 className="text-5xl lg:text-7xl font-extrabold text-slate-900 leading-[1.1] tracking-tight">
@@ -33,10 +33,10 @@ const Home: React.FC = () => {
               </p>
 
               <div className="flex flex-wrap gap-4 pt-4">
-                <Link to="/courses" className="px-8 py-4 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
+                <Link to="/courses" className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-base hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
                   {t.home.ctaCourse}
                 </Link>
-                <Link to="/shop" className="px-8 py-4 bg-white text-slate-900 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all flex items-center gap-2">
+                <Link to="/shop" className="px-8 py-4 bg-white text-slate-900 border border-slate-200 rounded-2xl font-bold text-base hover:bg-slate-50 transition-all flex items-center gap-2">
                   <span>{t.home.ctaShop}</span>
                   <span>→</span>
                 </Link>
@@ -44,7 +44,7 @@ const Home: React.FC = () => {
 
               <div className="pt-8 flex items-center gap-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
                 <span>{t.home.heroBadge1}</span>
-                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full"></span>
                 <span>{t.home.heroBadge2}</span>
               </div>
             </div>
@@ -67,7 +67,7 @@ const Home: React.FC = () => {
               {/* Floating Badge: Accredited Faculty */}
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl border border-slate-100 max-w-[200px] hidden md:block">
                 <p className="text-4xl font-extrabold text-slate-900 mb-1">50+</p>
-                <p className="text-xs text-slate-500 font-medium leading-tight">{t.home.floatBadge}</p>
+                <p className="text-sm text-slate-500 font-medium leading-tight">{t.home.floatBadge}</p>
               </div>
             </div>
 
@@ -87,8 +87,8 @@ const Home: React.FC = () => {
             ].map((stat, idx) => (
               <div key={idx} className="border-l border-slate-100 pl-8 first:border-0">
                 <h3 className="text-3xl font-extrabold text-slate-900 mb-1">{stat.value}</h3>
-                <p className="text-sm font-bold text-slate-900">{stat.label}</p>
-                <p className="text-xs text-slate-500 mt-1">{stat.sub}</p>
+                <p className="text-base font-bold text-slate-900">{stat.label}</p>
+                <p className="text-xs text-slate-500 mt-1 font-medium">{stat.sub}</p>
               </div>
             ))}
           </div>
@@ -121,12 +121,12 @@ const Home: React.FC = () => {
                 <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-transparent transition-colors"></div>
               </div>
               <div className="p-8">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shadow-sm mb-6">🦴</div>
-                <h4 className="text-xl font-bold text-slate-900 mb-3">{t.home.orthoTitle}</h4>
-                <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-3xl shadow-sm mb-6">🦴</div>
+                <h4 className="text-2xl font-bold text-slate-900 mb-3">{t.home.orthoTitle}</h4>
+                <p className="text-base text-slate-500 leading-relaxed mb-6">
                   {t.home.orthoDesc}
                 </p>
-                <span className="text-xs font-black text-emerald-600 uppercase tracking-widest group-hover:underline">{t.home.explore}</span>
+                <span className="text-sm font-black text-emerald-600 uppercase tracking-widest group-hover:underline">{t.home.explore}</span>
               </div>
             </div>
 
@@ -143,12 +143,12 @@ const Home: React.FC = () => {
                 />
               </div>
               <div className="p-8">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shadow-sm mb-6">🧠</div>
-                <h4 className="text-xl font-bold text-slate-900 mb-3">{t.home.neuroTitle}</h4>
-                <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-3xl shadow-sm mb-6">🧠</div>
+                <h4 className="text-2xl font-bold text-slate-900 mb-3">{t.home.neuroTitle}</h4>
+                <p className="text-base text-slate-500 leading-relaxed mb-6">
                   {t.home.neuroDesc}
                 </p>
-                <span className="text-xs font-black text-emerald-600 uppercase tracking-widest group-hover:underline">{t.home.explore}</span>
+                <span className="text-sm font-black text-emerald-600 uppercase tracking-widest group-hover:underline">{t.home.explore}</span>
               </div>
             </div>
 
@@ -165,12 +165,12 @@ const Home: React.FC = () => {
                 />
               </div>
               <div className="p-8">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shadow-sm mb-6">🩹</div>
-                <h4 className="text-xl font-bold text-slate-900 mb-3">{t.home.softTitle}</h4>
-                <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-3xl shadow-sm mb-6">🩹</div>
+                <h4 className="text-2xl font-bold text-slate-900 mb-3">{t.home.softTitle}</h4>
+                <p className="text-base text-slate-500 leading-relaxed mb-6">
                   {t.home.softDesc}
                 </p>
-                <span className="text-xs font-black text-emerald-600 uppercase tracking-widest group-hover:underline">{t.home.explore}</span>
+                <span className="text-sm font-black text-emerald-600 uppercase tracking-widest group-hover:underline">{t.home.explore}</span>
               </div>
             </div>
           </div>
@@ -196,14 +196,14 @@ const Home: React.FC = () => {
               <ul className="space-y-4 pt-4">
                 {t.home.equipList.map(item => (
                   <li key={item} className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white font-bold">✓</span>
-                    <span className="font-medium text-slate-200">{item}</span>
+                    <span className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-xs text-white font-bold">✓</span>
+                    <span className="font-medium text-slate-200 text-lg">{item}</span>
                   </li>
                 ))}
               </ul>
 
               <div className="pt-8">
-                <Link to="/shop" className="px-8 py-4 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-emerald-50 transition-all inline-block">
+                <Link to="/shop" className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-bold text-base hover:bg-emerald-50 transition-all inline-block">
                   {t.home.equipCta}
                 </Link>
               </div>
@@ -220,11 +220,11 @@ const Home: React.FC = () => {
                     <div className="flex justify-between items-end">
                       <div>
                         <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">{t.home.equipFeatureTag}</p>
-                        <p className="text-xl font-bold text-white">{t.home.equipFeatureName}</p>
+                        <p className="text-2xl font-bold text-white">{t.home.equipFeatureName}</p>
                       </div>
                       <div className="text-right">
-                         <p className="text-white font-mono text-sm">15,000 RPM</p>
-                         <p className="text-slate-400 text-xs">{t.home.equipFeatureSpec}</p>
+                         <p className="text-white font-mono text-base">15,000 RPM</p>
+                         <p className="text-slate-400 text-sm">{t.home.equipFeatureSpec}</p>
                       </div>
                     </div>
                  </div>
@@ -242,7 +242,7 @@ const Home: React.FC = () => {
           <div className="grid lg:grid-cols-12 gap-12">
             <div className="lg:col-span-5 space-y-8">
               <h2 className="text-3xl font-extrabold text-slate-900">{t.home.netTitle}</h2>
-              <p className="text-slate-600 leading-relaxed">
+              <p className="text-slate-600 leading-relaxed text-lg">
                 {t.home.netDesc}
               </p>
               
@@ -258,33 +258,33 @@ const Home: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-4 pt-4">
-                <img src="https://images.unsplash.com/photo-1559839734-2b71f1e59816?auto=format&fit=crop&w=100&q=80" className="w-12 h-12 rounded-full border-2 border-white shadow-sm" alt="Doctor" />
-                <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80" className="w-12 h-12 rounded-full border-2 border-white shadow-sm -ml-6" alt="Doctor" />
-                <img src="https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?auto=format&fit=crop&w=100&q=80" className="w-12 h-12 rounded-full border-2 border-white shadow-sm -ml-6" alt="Doctor" />
+                <img src="https://images.unsplash.com/photo-1559839734-2b71f1e59816?auto=format&fit=crop&w=100&q=80" className="w-14 h-14 rounded-full border-4 border-white shadow-sm" alt="Doctor" />
+                <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80" className="w-14 h-14 rounded-full border-4 border-white shadow-sm -ml-6" alt="Doctor" />
+                <img src="https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?auto=format&fit=crop&w=100&q=80" className="w-14 h-14 rounded-full border-4 border-white shadow-sm -ml-6" alt="Doctor" />
                 <div className="text-sm font-bold text-slate-600 pl-2">{t.home.netJoined}</div>
               </div>
             </div>
 
-            <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm flex flex-col justify-center">
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-10 shadow-sm flex flex-col justify-center">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
                   <div className="space-y-4">
-                     <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xl">🎓</div>
-                     <h4 className="font-bold text-slate-900">{t.home.featLabs}</h4>
+                     <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-2xl">🎓</div>
+                     <h4 className="font-bold text-slate-900 text-lg">{t.home.featLabs}</h4>
                      <p className="text-sm text-slate-500">{t.home.featLabsDesc}</p>
                   </div>
                   <div className="space-y-4">
-                     <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-xl">🤝</div>
-                     <h4 className="font-bold text-slate-900">{t.home.featCase}</h4>
+                     <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-2xl">🤝</div>
+                     <h4 className="font-bold text-slate-900 text-lg">{t.home.featCase}</h4>
                      <p className="text-sm text-slate-500">{t.home.featCaseDesc}</p>
                   </div>
                   <div className="space-y-4">
-                     <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-xl">📦</div>
-                     <h4 className="font-bold text-slate-900">{t.home.featSupply}</h4>
+                     <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-2xl">📦</div>
+                     <h4 className="font-bold text-slate-900 text-lg">{t.home.featSupply}</h4>
                      <p className="text-sm text-slate-500">{t.home.featSupplyDesc}</p>
                   </div>
                   <div className="space-y-4">
-                     <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-xl">🤖</div>
-                     <h4 className="font-bold text-slate-900">{t.home.featDigital}</h4>
+                     <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-2xl">🤖</div>
+                     <h4 className="font-bold text-slate-900 text-lg">{t.home.featDigital}</h4>
                      <p className="text-sm text-slate-500">{t.home.featDigitalDesc}</p>
                   </div>
                </div>
@@ -308,10 +308,10 @@ const Home: React.FC = () => {
                  {t.home.ctaDesc}
                </p>
                <div className="flex flex-col sm:flex-row justify-center gap-6 pt-6">
-                 <Link to="/auth" className="px-10 py-4 bg-emerald-500 text-white rounded-xl font-bold text-sm hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-900/20">
+                 <Link to="/auth" className="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold text-base hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-900/20">
                    {t.home.ctaButtonPrimary}
                  </Link>
-                 <Link to="/community" className="px-10 py-4 bg-white/10 text-white border border-white/20 rounded-xl font-bold text-sm hover:bg-white/20 transition-all">
+                 <Link to="/community" className="px-10 py-4 bg-white/10 text-white border border-white/20 rounded-2xl font-bold text-base hover:bg-white/20 transition-all">
                    {t.home.ctaButtonSecondary}
                  </Link>
                </div>

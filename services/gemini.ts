@@ -47,10 +47,81 @@ function fileToGenerativePart(base64Data: string, mimeType: string) {
   };
 }
 
+// Specialized function for structured data generation (e.g. Course Outlines)
+export const generateStructuredData = async (prompt: string): Promise<any> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        // Force a specific system instruction for data generation tasks to avoid persona pollution
+        systemInstruction: "You are a professional veterinary curriculum designer. Output strict JSON only.",
+        temperature: 0.7,
+      },
+    });
+    
+    const text = response.text;
+    if (!text) throw new Error("No data returned from AI");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Gemini Structured Data Error:", error);
+    throw error;
+  }
+};
+
+// Specialized function to translate course content
+export const generateCourseTranslations = async (
+  sourceTitle: string, 
+  sourceDesc: string, 
+  sourceLang: 'en' | 'zh' | 'th'
+): Promise<any> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const prompt = `
+    Task: Translate the following Veterinary Course content into the missing languages (English, Chinese Simplified, Thai).
+    
+    Source Language: ${sourceLang}
+    Source Title: "${sourceTitle}"
+    Source Description: "${sourceDesc}"
+    
+    Requirements:
+    1. Maintain professional veterinary medical terminology (e.g., TPLO, IVDD, Osteotomy).
+    2. Keep the tone academic and professional.
+    3. Output JSON format ONLY.
+    
+    Expected Output Structure:
+    {
+      "en": { "title": "...", "description": "..." },
+      "zh": { "title": "...", "description": "..." },
+      "th": { "title": "...", "description": "..." }
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.3, // Lower temperature for more accurate translation
+      },
+    });
+    
+    const text = response.text;
+    if (!text) throw new Error("No translation returned");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Gemini Translation Error:", error);
+    throw error;
+  }
+};
+
 export const getGeminiResponse = async (
   history: Message[], 
   prompt: string, 
-  customSystemInstruction?: string, // Deprecated in favor of dynamic fetch, but kept for compatibility
+  customSystemInstruction?: string, 
   userRole?: string,
   imageBase64?: string
 ): Promise<{ text: string; sources?: { title: string; uri: string }[] }> => {
@@ -73,8 +144,8 @@ export const getGeminiResponse = async (
     parts: currentUserParts
   });
 
-  // Use the dynamic instruction stored by Admin, or fall back to default
-  const systemInstruction = getSystemInstruction();
+  // Use custom instruction if provided (for specific tasks), otherwise fallback to stored/default
+  const systemInstruction = customSystemInstruction || getSystemInstruction();
   const config = getAIConfig();
 
   try {

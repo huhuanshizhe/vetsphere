@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -221,7 +222,7 @@ const Checkout: React.FC = () => {
       <div className="lg:col-span-5 order-2 lg:order-1">
         <div className="sticky top-24 space-y-8">
             <div className="clinical-card p-8 bg-slate-50/50 backdrop-blur-sm border-slate-200">
-                <h2 className="text-[10px] font-black mb-8 text-slate-400 uppercase tracking-[0.2em]">Order Summary ({cart.length})</h2>
+                <h2 className="text-xs font-black mb-8 text-slate-400 uppercase tracking-[0.2em]">Order Summary ({cart.length})</h2>
                 <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                     {cart.map(item => (
                     <div key={item.id} className="flex gap-4 group">
@@ -230,8 +231,8 @@ const Checkout: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-slate-900 text-sm truncate">{item.name}</h3>
-                            <p className="text-[10px] text-vs font-black uppercase tracking-widest mb-1">{item.type}</p>
-                            <p className="text-xs text-slate-500">Qty: {item.quantity}</p>
+                            <p className="text-xs text-vs font-black uppercase tracking-widest mb-1">{item.type}</p>
+                            <p className="text-sm text-slate-500">Qty: {item.quantity}</p>
                         </div>
                         <div className="text-right">
                             <p className="font-bold text-slate-900 text-sm">¥{(item.price * item.quantity).toLocaleString()}</p>
@@ -241,11 +242,11 @@ const Checkout: React.FC = () => {
                 </div>
                 
                 <div className="mt-8 pt-8 border-t border-slate-200 space-y-3">
-                    <div className="flex justify-between text-xs font-bold text-slate-500">
+                    <div className="flex justify-between text-sm font-bold text-slate-500">
                         <span>Subtotal</span>
                         <span>¥{totalAmount.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-xs font-bold text-slate-500">
+                    <div className="flex justify-between text-sm font-bold text-slate-500">
                         <span>Shipping</span>
                         <span>Free</span>
                     </div>
@@ -285,19 +286,19 @@ const Checkout: React.FC = () => {
                             <p className="text-xs font-bold text-slate-500">Logged in as</p>
                             <p className="text-sm font-black text-slate-900">{user?.name} ({user?.email})</p>
                         </div>
-                        <button type="button" onClick={logout} className="text-[10px] font-bold text-red-500 hover:underline">Change Account</button>
+                        <button type="button" onClick={logout} className="text-xs font-bold text-red-500 hover:underline">Change Account</button>
                     </div>
                 ) : (
                     <div className="space-y-4">
                          {!showLogin ? (
                              <div className="space-y-4">
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Email Address</label>
+                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Email Address</label>
                                     <input type="email" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                                         placeholder="doctor@clinic.com"
                                         value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
                                 </div>
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
                                     <span>Already have an account?</span>
                                     <button type="button" onClick={() => setShowLogin(true)} className="text-vs hover:underline">Sign In</button>
                                 </div>
@@ -306,7 +307,7 @@ const Checkout: React.FC = () => {
                              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 animate-in fade-in">
                                 <div className="flex justify-between items-center mb-2">
                                     <h4 className="font-bold text-slate-900 text-sm">Sign In</h4>
-                                    <button type="button" onClick={() => setShowLogin(false)} className="text-[10px] font-bold text-slate-400">Cancel</button>
+                                    <button type="button" onClick={() => setShowLogin(false)} className="text-xs font-bold text-slate-400">Cancel</button>
                                 </div>
                                 <input type="email" placeholder="Email" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold" 
                                     value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} />
@@ -332,12 +333,12 @@ const Checkout: React.FC = () => {
                 
                 <div className="grid grid-cols-2 gap-6">
                     <div className="col-span-2">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Recipient Name</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Recipient Name</label>
                         <input type="text" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         value={clinicInfo.doctorName} onChange={e => setClinicInfo({...clinicInfo, doctorName: e.target.value})} />
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Country / Region</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Country / Region</label>
                         <select required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs appearance-none"
                             value={clinicInfo.country} onChange={e => { setClinicInfo({...clinicInfo, country: e.target.value, state: ''}); }}>
                             <option value="" disabled>Select Country</option>
@@ -345,7 +346,7 @@ const Checkout: React.FC = () => {
                         </select>
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">State / Province</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">State / Province</label>
                         <select required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs appearance-none disabled:opacity-50"
                             value={clinicInfo.state} onChange={e => setClinicInfo({...clinicInfo, state: e.target.value})} disabled={!clinicInfo.country}>
                             <option value="" disabled>Select State</option>
@@ -353,22 +354,22 @@ const Checkout: React.FC = () => {
                         </select>
                     </div>
                     <div className="col-span-2">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Street Address</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Street Address</label>
                         <input type="text" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         placeholder="123 Medical Blvd" value={clinicInfo.street} onChange={e => setClinicInfo({...clinicInfo, street: e.target.value})} />
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">City</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">City</label>
                         <input type="text" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         value={clinicInfo.city} onChange={e => setClinicInfo({...clinicInfo, city: e.target.value})} />
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Postal Code</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Postal Code</label>
                         <input type="text" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         value={clinicInfo.zip} onChange={e => setClinicInfo({...clinicInfo, zip: e.target.value})} />
                     </div>
                     <div className="col-span-2">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Phone Number</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Phone Number</label>
                         <input type="tel" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         value={clinicInfo.phone} onChange={e => setClinicInfo({...clinicInfo, phone: e.target.value})} />
                     </div>
@@ -398,7 +399,7 @@ const Checkout: React.FC = () => {
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="font-bold text-slate-900 text-sm">Card Details</h4>
-                            <button type="button" onClick={() => setStatus('idle')} className="text-[10px] font-bold text-slate-400 hover:text-slate-900">Change Method</button>
+                            <button type="button" onClick={() => setStatus('idle')} className="text-xs font-bold text-slate-400 hover:text-slate-900">Change Method</button>
                         </div>
                         <div id="airwallex-card-container" className="mb-6"></div>
                         <button type="button" onClick={handleAirwallexConfirm} className="w-full bg-vs text-white py-4 rounded-xl font-black text-sm shadow-xl hover:shadow-2xl transition-all">
@@ -423,7 +424,7 @@ const Checkout: React.FC = () => {
                                 <div className={`text-2xl w-10 h-10 flex items-center justify-center rounded-xl shadow-sm ${method.id === 'Quote' && paymentMethod === 'Quote' ? 'bg-slate-800 text-white' : 'bg-white'}`}>{method.icon}</div>
                                 <div>
                                     <p className="text-sm font-black">{method.label}</p>
-                                    <p className={`text-[10px] font-bold ${paymentMethod === method.id ? 'opacity-80' : 'opacity-70'}`}>{method.sub}</p>
+                                    <p className={`text-xs font-bold ${paymentMethod === method.id ? 'opacity-80' : 'opacity-70'}`}>{method.sub}</p>
                                 </div>
                                 <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === method.id ? 'border-current' : 'border-slate-200'}`}>
                                     {paymentMethod === method.id && <div className="w-2.5 h-2.5 rounded-full bg-current"></div>}

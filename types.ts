@@ -12,6 +12,8 @@ export type UserRole = 'Doctor' | 'CourseProvider' | 'ShopSupplier' | 'Admin';
 
 export type ProductGroup = 'PowerTools' | 'Implants' | 'HandInstruments' | 'Consumables' | 'Equipment';
 
+export type CourseStatus = 'Pending' | 'Published' | 'Rejected' | 'Draft';
+
 export interface User {
   id: string;
   email: string;
@@ -92,7 +94,7 @@ export interface Course {
   description: string; // Default (English)
   description_zh?: string;
   description_th?: string;
-  status: string;
+  status: CourseStatus;
   agenda: {
     day: string;
     date: string;
