@@ -182,16 +182,17 @@ const Home: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Orthopedics Card */}
+            {/* Orthopedics Card - X-Ray/Bone Image */}
             <div 
               onClick={() => navigate('/courses', { state: { specialty: Specialty.ORTHOPEDICS } })}
               className="group cursor-pointer rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 bg-slate-50"
             >
               <div className="h-64 overflow-hidden relative">
+                {/* Changed to X-RAY image for clear Orthopedics context */}
                 <img 
-                  src="https://images.unsplash.com/photo-1583483425070-cb9ce8fc51b5?auto=format&fit=crop&w=800&q=80" 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                  alt="Orthopedic Surgery"
+                  src="https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=800&q=80" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 grayscale" 
+                  alt="Orthopedic X-Ray"
                 />
                 <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-transparent transition-colors"></div>
               </div>
@@ -205,16 +206,17 @@ const Home: React.FC = () => {
               </div>
             </div>
 
-            {/* Neurosurgery Card */}
+            {/* Neurosurgery Card - Brain MRI/Scan */}
             <div 
               onClick={() => navigate('/courses', { state: { specialty: Specialty.NEUROSURGERY } })}
               className="group cursor-pointer rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 bg-slate-50"
             >
               <div className="h-64 overflow-hidden relative">
+                {/* Changed to MRI Brain Scan for clear Neuro context */}
                 <img 
                   src="https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80" 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                  alt="Neurosurgery"
+                  alt="Neurosurgery MRI"
                 />
               </div>
               <div className="p-8">
@@ -227,14 +229,15 @@ const Home: React.FC = () => {
               </div>
             </div>
 
-            {/* Soft Tissue Card */}
+            {/* Soft Tissue Card - Surgical Field/Operation */}
             <div 
               onClick={() => navigate('/courses', { state: { specialty: Specialty.SOFT_TISSUE } })}
               className="group cursor-pointer rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 bg-slate-50"
             >
               <div className="h-64 overflow-hidden relative">
+                {/* Changed to Sterile Surgical Field for Soft Tissue */}
                 <img 
-                  src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80" 
+                  src="https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=800&q=80" 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                   alt="Soft Tissue Surgery"
                 />
