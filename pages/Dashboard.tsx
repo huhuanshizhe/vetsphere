@@ -119,6 +119,7 @@ const Dashboard: React.FC = () => {
       level: 'Intermediate', 
       specialty: Specialty.ORTHOPEDICS, 
       currency: 'CNY',
+      price: 0,
       instructor: { name: '', title: '', bio: '', imageUrl: '', credentials: [] },
       location: { city: '', venue: '', address: '' },
       startDate: '',
@@ -178,9 +179,10 @@ const Dashboard: React.FC = () => {
         api.getCourses(),
         user?.id ? api.fetchUserPoints(user.id) : Promise.resolve(0)
     ]);
-    setOrders(fetchedOrders);
-    setProducts(fetchedProducts);
-    setCourses(fetchedCourses);
+    
+    setOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
+    setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []);
+    setCourses(Array.isArray(fetchedCourses) ? fetchedCourses : []);
     setUserPoints(points);
     setLoading(false);
   };
@@ -215,7 +217,12 @@ const Dashboard: React.FC = () => {
   };
 
   const handleEditCourse = (course: Course) => {
-      setCourseForm({ ...course });
+      setCourseForm({ 
+          ...course,
+          // Ensure nested objects exist to prevent form crashes
+          instructor: course.instructor || { name: '', title: '', bio: '', imageUrl: '', credentials: [] },
+          location: course.location || { city: '', venue: '', address: '' }
+      });
       setIsEditingCourse(true);
       setShowModal('addCourse');
   };
@@ -264,7 +271,8 @@ const Dashboard: React.FC = () => {
           instructor: instructor,
           location: location,
           imageUrl: courseForm.imageUrl || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
-          agenda: courseForm.agenda || [] 
+          agenda: courseForm.agenda || [],
+          price: courseForm.price || 0
       });
       
       await loadData();
@@ -274,6 +282,7 @@ const Dashboard: React.FC = () => {
           level: 'Intermediate', 
           specialty: Specialty.ORTHOPEDICS, 
           currency: 'CNY',
+          price: 0,
           agenda: [],
           instructor: { name: '', title: '', bio: '', imageUrl: '', credentials: [] },
           location: { city: '', venue: '', address: '' }
@@ -347,11 +356,11 @@ const Dashboard: React.FC = () => {
           title: generatedContent.titleEN,
           title_zh: generatedContent.titleCN,
           description: generatedContent.description,
-          price: generatedContent.price,
+          price: generatedContent.price || 0,
           specialty: generatedContent.specialty as Specialty,
           level: generatedContent.level as any,
           instructor: {
-              ...prev.instructor,
+              ...prev.instructor!,
               name: generatedContent.instructor?.name || 'Instructor',
               title: generatedContent.instructor?.title || 'DVM',
               bio: generatedContent.instructor?.bio || 'Expert',
@@ -529,7 +538,7 @@ const Dashboard: React.FC = () => {
                             </div>
                          </div>
                          <div className="mt-8 relative z-10 flex gap-4">
-                            <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [], instructor: { name: user.name, title: '', bio: '', imageUrl: '', credentials: [] }, location: { city: '', venue: '', address: '' } }); setShowModal('addCourse'); }} className="bg-white text-purple-600 px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-purple-50 transition-all shadow-lg">
+                            <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [], price: 0, instructor: { name: user.name, title: '', bio: '', imageUrl: '', credentials: [] }, location: { city: '', venue: '', address: '' } }); setShowModal('addCourse'); }} className="bg-white text-purple-600 px-6 py-3 rounded-xl font-black text-xs uppercase hover:bg-purple-50 transition-all shadow-lg">
                                 + 发布新课程 (AI)
                             </button>
                          </div>
@@ -546,7 +555,7 @@ const Dashboard: React.FC = () => {
                  <div className="space-y-6 animate-in fade-in duration-500">
                      <div className="flex justify-between items-center">
                         <h3 className="font-bold text-xl text-slate-900">我的课程库</h3>
-                        <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [], instructor: { name: user.name, title: '', bio: '', imageUrl: '', credentials: [] }, location: { city: '', venue: '', address: '' } }); setShowModal('addCourse'); }} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all">
+                        <button onClick={() => { setIsEditingCourse(false); setCourseForm({ level: 'Intermediate', specialty: Specialty.ORTHOPEDICS, agenda: [], price: 0, instructor: { name: user.name, title: '', bio: '', imageUrl: '', credentials: [] }, location: { city: '', venue: '', address: '' } }); setShowModal('addCourse'); }} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all">
                             + 发布课程 (AI)
                         </button>
                      </div>
@@ -558,7 +567,7 @@ const Dashboard: React.FC = () => {
                                      {getStatusBadge(c.status)}
                                  </div>
                                  <div className="h-40 bg-slate-100 rounded-2xl mb-4 overflow-hidden relative">
-                                     <img src={c.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                     <img src={c.imageUrl || 'https://via.placeholder.com/400'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                      <span className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-widest text-purple-600 shadow-sm">
                                          {c.level}
                                      </span>
@@ -567,11 +576,15 @@ const Dashboard: React.FC = () => {
                                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{c.specialty}</span>
                                  </div>
                                  <h4 className="font-black text-slate-900 mb-1 leading-tight">{c.title}</h4>
-                                 {/* Optional chaining added here for robustness */}
-                                 <p className="text-xs text-slate-500 font-medium mb-4">{c.location?.city || 'TBD'} • {c.startDate}</p>
+                                 
+                                 {/* Protected Access: location may be undefined in old data */}
+                                 <p className="text-xs text-slate-500 font-medium mb-4">
+                                     {(c.location && c.location.city) || 'TBD'} • {c.startDate || 'Date Pending'}
+                                 </p>
                                  
                                  <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
-                                     <span className="font-bold text-slate-900">¥{c.price.toLocaleString()}</span>
+                                     {/* Protected Access: price may be missing */}
+                                     <span className="font-bold text-slate-900">¥{(c.price || 0).toLocaleString()}</span>
                                      <div className="flex gap-2">
                                          <button onClick={() => handleEditCourse(c)} className="p-2 text-slate-400 hover:text-purple-600 transition-colors">✎</button>
                                          <button onClick={() => handleDeleteCourse(c.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">🗑</button>
@@ -760,26 +773,26 @@ const Dashboard: React.FC = () => {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-black text-slate-400 uppercase mb-1">City</label>
-                                                <input type="text" placeholder="e.g. Shanghai" value={courseForm.location?.city || ''} onChange={e => setCourseForm(prev => ({...prev, location: {...prev.location!, city: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                                <input type="text" placeholder="e.g. Shanghai" value={courseForm.location?.city || ''} onChange={e => setCourseForm(prev => ({...prev, location: {...(prev.location || {} as any), city: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-black text-slate-400 uppercase mb-1">Venue Name</label>
-                                                <input type="text" placeholder="e.g. Training Center" value={courseForm.location?.venue || ''} onChange={e => setCourseForm(prev => ({...prev, location: {...prev.location!, venue: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                                <input type="text" placeholder="e.g. Training Center" value={courseForm.location?.venue || ''} onChange={e => setCourseForm(prev => ({...prev, location: {...(prev.location || {} as any), venue: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                             </div>
                                         </div>
                                         <div>
                                             <label className="block text-xs font-black text-slate-400 uppercase mb-1">Full Address</label>
-                                            <input type="text" placeholder="Street address..." value={courseForm.location?.address || ''} onChange={e => setCourseForm(prev => ({...prev, location: {...prev.location!, address: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                            <input type="text" placeholder="Street address..." value={courseForm.location?.address || ''} onChange={e => setCourseForm(prev => ({...prev, location: {...(prev.location || {} as any), address: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4 pt-2">
                                             <div>
                                                 <label className="block text-xs font-black text-slate-400 uppercase mb-1">Instructor Name</label>
-                                                <input type="text" placeholder="Dr. Name" value={courseForm.instructor?.name || ''} onChange={e => setCourseForm(prev => ({...prev, instructor: {...prev.instructor!, name: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                                <input type="text" placeholder="Dr. Name" value={courseForm.instructor?.name || ''} onChange={e => setCourseForm(prev => ({...prev, instructor: {...(prev.instructor || {} as any), name: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-black text-slate-400 uppercase mb-1">Instructor Title</label>
-                                                <input type="text" placeholder="DVM, DACVS" value={courseForm.instructor?.title || ''} onChange={e => setCourseForm(prev => ({...prev, instructor: {...prev.instructor!, title: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
+                                                <input type="text" placeholder="DVM, DACVS" value={courseForm.instructor?.title || ''} onChange={e => setCourseForm(prev => ({...prev, instructor: {...(prev.instructor || {} as any), title: e.target.value}}))} className="w-full p-3 border rounded-xl bg-slate-50 text-sm" />
                                             </div>
                                         </div>
 
@@ -942,7 +955,7 @@ const Dashboard: React.FC = () => {
                                             <div className="text-xs text-slate-500 mt-1">{c.specialty}</div>
                                         </td>
                                         <td className="p-6">{c.instructor?.name || 'TBD'}</td>
-                                        <td className="p-6">¥{c.price.toLocaleString()}</td>
+                                        <td className="p-6">¥{(c.price || 0).toLocaleString()}</td>
                                         <td className="p-6">
                                             {c.status === 'Pending' ? <span className="text-amber-400 bg-amber-900/30 px-2 py-1 rounded text-xs animate-pulse">Waiting Review</span> : 
                                              c.status === 'Published' ? <span className="text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded text-xs">Live</span> :
