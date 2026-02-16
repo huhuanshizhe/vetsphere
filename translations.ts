@@ -1,6 +1,7 @@
 
 export const translations = {
   en: {
+    // ... existing translations ...
     common: {
       learnMore: 'Clinical Details',
       close: 'Close',
@@ -182,6 +183,46 @@ export const translations = {
       heroDesc: "VetSphere connects the world's leading veterinary surgeons with master-level education, precision orthopedics, and neurosurgical technologies.",
       heroBadge1: 'ISO 13485 Certified',
       heroBadge2: 'AAVSB RACE Approved',
+      // Partners
+      partnerTitle: 'Global Academic Alliances',
+      partnerSubtitle: 'Our curriculum is built on the expertise of faculty from the world\'s top-ranked veterinary institutions.',
+      partnerBadge: 'QS World Top 10',
+      
+      // University Specifics
+      uniUF: 'University of Florida',
+      uniUFDesc: '#1 Clinical Caseload in US Academic Hospitals',
+      
+      uniRVC: 'Royal Veterinary College',
+      uniRVCDesc: 'London • Global #1 Ranking',
+      
+      uniUCD: 'UC Davis',
+      uniUCDDesc: 'Precision Medicine Leader',
+      
+      uniCornell: 'Cornell University',
+      uniCornellDesc: 'Clinical & Research Balance',
+      
+      uniCSU: 'Colorado State',
+      uniCSUDesc: 'Top-tier Small Animal Orthopedics',
+      
+      uniEdin: 'Univ. of Edinburgh',
+      uniEdinDesc: 'Companion Animal Health',
+      
+      uniGuelph: 'Univ. of Guelph',
+      uniGuelphDesc: 'North American Education Hub',
+      
+      uniVetsuisse: 'Vetsuisse Faculty',
+      uniVetsuisseDesc: 'Bern/Zurich • Research Excellence',
+      
+      uniUtrecht: 'Utrecht University',
+      uniUtrechtDesc: 'European Research Center',
+      
+      uniPenn: 'UPenn Vet',
+      uniPennDesc: 'Translational Medicine',
+      
+      uniTexas: 'Texas A&M',
+      uniTexasDesc: 'Large Animal & Tropical Disease',
+
+      // ... existing
       ctaCourse: 'View Course Calendar',
       ctaShop: 'Surgical Catalog',
       imgCaption: 'Advanced TPLO Workshop',
@@ -251,6 +292,7 @@ export const translations = {
     },
   },
   zh: {
+    // ... existing ...
     common: {
       learnMore: '临床详情',
       close: '关闭',
@@ -432,6 +474,45 @@ export const translations = {
       heroDesc: "VetSphere 将全球顶尖的兽医外科专家与大师级教育、精密骨科及神经外科技术紧密连接。",
       heroBadge1: 'ISO 13485 医疗认证',
       heroBadge2: 'AAVSB RACE 批准',
+      // Partners
+      partnerTitle: '全球顶尖学术联盟',
+      partnerSubtitle: '核心专家讲师团来自世界排名前列的兽医学院，为您带来最前沿的临床技术。',
+      partnerBadge: 'QS 兽医学世界排名前十',
+      
+      uniUF: '佛罗里达大学 (UF)',
+      uniUFDesc: '全美学术医院病例量第一 · 顶尖实战基地',
+      
+      uniRVC: '皇家兽医学院 (RVC)',
+      uniRVCDesc: '英国伦敦 · 欧洲兽医教育标杆',
+      
+      uniUCD: '加州大学戴维斯 (UC Davis)',
+      uniUCDDesc: '精准兽医 · 动物传染病权威',
+      
+      uniCornell: '康奈尔大学 (Cornell)',
+      uniCornellDesc: '临床与基础研究平衡典范',
+      
+      uniCSU: '科罗拉多州立 (CSU)',
+      uniCSUDesc: '小动物外科与野生动物医学',
+      
+      uniEdin: '爱丁堡大学',
+      uniEdinDesc: '伴侣动物健康研究',
+      
+      uniGuelph: '圭尔夫大学 (Guelph)',
+      uniGuelphDesc: '北美兽医教育核心',
+      
+      uniVetsuisse: '瑞士兽医学院 (Vetsuisse)',
+      uniVetsuisseDesc: '苏黎世/伯尔尼 · 欧洲小动物医学高地',
+      
+      uniUtrecht: '乌得勒支大学',
+      uniUtrechtDesc: '欧洲兽医科研中心',
+      
+      uniPenn: '宾夕法尼亚大学 (UPenn)',
+      uniPennDesc: '小动物临床与转化医学',
+      
+      uniTexas: '德州农工 (Texas A&M)',
+      uniTexasDesc: '大型动物与热带病研究',
+
+      // ... existing
       ctaCourse: '查看学术日历',
       ctaShop: '外科器械名录',
       imgCaption: 'TPLO 高级实操工坊',
@@ -501,6 +582,7 @@ export const translations = {
     },
   },
   th: {
+    // ... existing ...
     common: {
       learnMore: 'ดูรายละเอียดคลินิก',
       close: 'ปิด',
@@ -682,6 +764,45 @@ export const translations = {
       heroDesc: 'VetSphere เชื่อมโยงศัลยแพทย์สัตวแพทย์ชั้นนำของโลกกับการศึกษาระดับปริญญาโท ความแม่นยำด้านศัลยกรรมกระดูก และเทคโนโลยีศัลยกรรมระบบประสาท',
       heroBadge1: 'ได้รับการรับรอง ISO 13485',
       heroBadge2: 'ได้รับการอนุมัติจาก AAVSB RACE',
+      // Partners
+      partnerTitle: 'พันธมิตรทางวิชาการระดับโลก',
+      partnerSubtitle: 'หลักสูตรของเราได้รับการพัฒนาโดยคณาจารย์จากมหาวิทยาลัยสัตวแพทย์ชั้นนำของโลก',
+      partnerBadge: 'QS World Top 10',
+      
+      uniUF: 'UF College of Veterinary Medicine',
+      uniUFDesc: '#1 Clinical Caseload in US',
+      
+      uniRVC: 'Royal Veterinary College',
+      uniRVCDesc: 'London • Global #1 Ranking',
+      
+      uniUCD: 'UC Davis',
+      uniUCDDesc: 'Precision Medicine Leader',
+      
+      uniCornell: 'Cornell University',
+      uniCornellDesc: 'Clinical & Research Balance',
+      
+      uniCSU: 'Colorado State',
+      uniCSUDesc: 'Small Animal Orthopedics',
+      
+      uniEdin: 'Univ. of Edinburgh',
+      uniEdinDesc: 'Companion Animal Health',
+      
+      uniGuelph: 'Univ. of Guelph',
+      uniGuelphDesc: 'North American Education Hub',
+      
+      uniVetsuisse: 'Vetsuisse Faculty',
+      uniVetsuisseDesc: 'Bern/Zurich Excellence',
+      
+      uniUtrecht: 'Utrecht University',
+      uniUtrechtDesc: 'European Research Center',
+      
+      uniPenn: 'UPenn Vet',
+      uniPennDesc: 'Translational Medicine',
+      
+      uniTexas: 'Texas A&M',
+      uniTexasDesc: 'Large Animal & Tropical',
+
+      // ... existing
       ctaCourse: 'ดูปฏิทินหลักสูตร',
       ctaShop: 'แคตตาล็อกศัลยกรรม',
       imgCaption: 'เวิร์กช็อป TPLO ขั้นสูง',
