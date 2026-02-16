@@ -75,8 +75,83 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. STATS BAR: Trust Indicators */}
-      <section className="border-y border-slate-100 bg-white">
+      {/* 2. GLOBAL ACADEMIC ALLIANCES: The "Beacon" Section */}
+      <section className="bg-white border-b border-slate-100 py-24 relative overflow-hidden">
+        {/* Subtle patterned background */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-slate-50 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
+        
+        <div className="vs-container relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+             <div className="inline-flex items-center gap-2 mb-4 px-4 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100 shadow-sm">
+                <span className="text-[10px] font-black uppercase tracking-widest">{t.home.partnerBadge}</span>
+             </div>
+             <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-4">{t.home.partnerTitle}</h2>
+             <p className="text-slate-500 font-medium text-lg leading-relaxed">{t.home.partnerSubtitle}</p>
+          </div>
+
+          <div className="grid lg:grid-cols-12 gap-8 mb-8">
+             
+             {/* Strategic Partner (Featured) */}
+             <div className="lg:col-span-5 bg-gradient-to-br from-slate-900 to-blue-900 rounded-3xl p-10 text-white relative overflow-hidden group hover:shadow-2xl transition-all duration-500 flex flex-col justify-between min-h-[320px]">
+                <div className="absolute top-0 right-0 p-8 opacity-10 text-8xl grayscale group-hover:scale-110 transition-transform rotate-12">🐊</div>
+                <div>
+                    <div className="inline-block px-3 py-1 bg-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest mb-4 border border-white/20">Strategic Partner</div>
+                    <h3 className="text-3xl font-black leading-tight mb-4">{t.home.uniUF}</h3>
+                    <p className="text-blue-100 font-medium leading-relaxed text-sm max-w-sm">{t.home.uniUFDesc}</p>
+                </div>
+                <div className="flex gap-2 mt-8">
+                    <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                    <span className="w-2 h-2 rounded-full bg-white/20"></span>
+                    <span className="w-2 h-2 rounded-full bg-white/20"></span>
+                </div>
+             </div>
+
+             {/* Academic Pillars (Top 3) */}
+             <div className="lg:col-span-7 grid md:grid-cols-3 gap-4">
+                {[
+                    { title: t.home.uniRVC, desc: t.home.uniRVCDesc, color: 'border-l-4 border-l-blue-500' },
+                    { title: t.home.uniUCD, desc: t.home.uniUCDDesc, color: 'border-l-4 border-l-yellow-500' },
+                    { title: t.home.uniCornell, desc: t.home.uniCornellDesc, color: 'border-l-4 border-l-red-500' }
+                ].map((uni, idx) => (
+                    <div key={idx} className={`bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col ${uni.color}`}>
+                        <div className="w-10 h-10 bg-slate-50 rounded-xl mb-4 flex items-center justify-center text-xl grayscale opacity-50">🏛️</div>
+                        <h4 className="font-black text-slate-900 text-lg leading-tight mb-2">{uni.title}</h4>
+                        <p className="text-xs text-slate-500 font-bold leading-relaxed mt-auto">{uni.desc}</p>
+                    </div>
+                ))}
+             </div>
+          </div>
+
+          {/* Specialist Network Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+             {[
+                 { name: t.home.uniCSU, role: t.home.uniCSUDesc },
+                 { name: t.home.uniPenn, role: t.home.uniPennDesc },
+                 { name: t.home.uniVetsuisse, role: t.home.uniVetsuisseDesc },
+                 { name: t.home.uniEdin, role: t.home.uniEdinDesc },
+                 { name: t.home.uniUtrecht, role: t.home.uniUtrechtDesc },
+                 { name: t.home.uniTexas, role: t.home.uniTexasDesc },
+             ].map((u, i) => (
+                 <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100 hover:bg-white hover:border-slate-200 transition-colors group">
+                     <div className="h-8 mb-2 opacity-30 group-hover:opacity-100 transition-opacity text-2xl">🎓</div>
+                     <p className="text-xs font-black text-slate-900 mb-1 leading-tight">{u.name}</p>
+                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wide truncate">{u.role}</p>
+                 </div>
+             ))}
+          </div>
+
+          <div className="mt-12 flex justify-center">
+             <div className="inline-flex items-center gap-3 px-6 py-3 bg-slate-900 rounded-full text-white text-xs font-bold shadow-lg">
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                Faculty are Board-Certified Diplomates (ACVS / ECVS) from these institutions.
+             </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 3. STATS BAR: Trust Indicators */}
+      <section className="border-b border-slate-100 bg-white">
         <div className="vs-container py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
@@ -95,7 +170,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. CORE DISCIPLINES (The "Business") */}
+      {/* 4. CORE DISCIPLINES (The "Business") */}
       <section className="py-24 bg-white">
         <div className="vs-container">
           <div className="text-center max-w-3xl mx-auto mb-16">
@@ -177,7 +252,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. EQUIPMENT SHOWCASE: Hardware Focus */}
+      {/* 5. EQUIPMENT SHOWCASE: Hardware Focus */}
       <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
         {/* Abstract background detail */}
         <div className="absolute top-0 right-0 w-1/2 h-full bg-emerald-900/10 -skew-x-12"></div>
@@ -236,7 +311,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* 5. GLOBAL NETWORK / MAP REPLACEMENT */}
+      {/* 6. GLOBAL NETWORK / MAP REPLACEMENT */}
       <section className="py-24 bg-slate-50 border-t border-slate-200">
         <div className="vs-container">
           <div className="grid lg:grid-cols-12 gap-12">
@@ -293,7 +368,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* 6. CTA SECTION */}
+      {/* 7. CTA SECTION */}
       <section className="py-24 bg-white">
         <div className="vs-container">
           <div className="bg-slate-900 rounded-[3rem] p-12 md:p-20 text-center relative overflow-hidden">
