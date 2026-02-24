@@ -1,6 +1,21 @@
 
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 import { Message } from "../types";
+
+const apiKey = import.meta.env.VITE_AI_API_KEY;
+const rawBaseURL = import.meta.env.VITE_AI_BASE_URL;
+// Normalize baseURL: most proxies expect /v1 at the end
+const baseURL = rawBaseURL && !rawBaseURL.includes('/v1') 
+  ? (rawBaseURL.endsWith('/') ? `${rawBaseURL}v1` : `${rawBaseURL}/v1`)
+  : rawBaseURL;
+
+const modelName = import.meta.env.VITE_AI_MODEL || "google/gemini-3-flash-preview";
+
+const openai = new OpenAI({
+  apiKey: apiKey,
+  baseURL: baseURL,
+  dangerouslyAllowBrowser: true // Since we are calling from frontend
+});
 
 export const DEFAULT_SYSTEM_INSTRUCTION = `
 You are the "VetSphere Surgical Specialist", an AI expert specialized in veterinary surgery education (Orthopedics, Neurosurgery, Soft Tissue) and precision medical devices.
@@ -38,35 +53,24 @@ export const saveAIConfig = (config: { temperature: number, topP: number }) => {
     localStorage.setItem('VS_AI_CONFIG', JSON.stringify(config));
 };
 
-function fileToGenerativePart(base64Data: string, mimeType: string) {
-  return {
-    inlineData: {
-      data: base64Data,
-      mimeType
-    },
-  };
-}
-
 // Specialized function for structured data generation (e.g. Course Outlines)
 export const generateStructuredData = async (prompt: string): Promise<any> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        // Force a specific system instruction for data generation tasks to avoid persona pollution
-        systemInstruction: "You are a professional veterinary curriculum designer. Output strict JSON only.",
-        temperature: 0.7,
-      },
+    const response = await openai.chat.completions.create({
+      model: modelName,
+      messages: [
+        { role: "system", content: "You are a professional veterinary curriculum designer. Output strict JSON only." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
     });
     
-    const text = response.text;
+    const text = response.choices[0].message.content;
     if (!text) throw new Error("No data returned from AI");
     return JSON.parse(text);
   } catch (error) {
-    console.error("Gemini Structured Data Error:", error);
+    console.error("AI Structured Data Error:", error);
     throw error;
   }
 };
@@ -77,8 +81,6 @@ export const generateCourseTranslations = async (
   sourceDesc: string, 
   sourceLang: 'en' | 'zh' | 'th'
 ): Promise<any> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
   const prompt = `
     Task: Translate the following Veterinary Course content into the missing languages (English, Chinese Simplified, Thai).
     
@@ -100,20 +102,20 @@ export const generateCourseTranslations = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.3, // Lower temperature for more accurate translation
-      },
+    const response = await openai.chat.completions.create({
+      model: modelName,
+      messages: [
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
     });
     
-    const text = response.text;
+    const text = response.choices[0].message.content;
     if (!text) throw new Error("No translation returned");
     return JSON.parse(text);
   } catch (error) {
-    console.error("Gemini Translation Error:", error);
+    console.error("AI Translation Error:", error);
     throw error;
   }
 };
@@ -125,63 +127,46 @@ export const getGeminiResponse = async (
   userRole?: string,
   imageBase64?: string
 ): Promise<{ text: string; sources?: { title: string; uri: string }[] }> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const contents = history.map(msg => ({
-    role: msg.role,
-    parts: [{ text: msg.content }]
+  // history already includes the latest user message from AIChat.tsx
+  const messages: any[] = history.map(msg => ({
+    role: msg.role === 'model' ? 'assistant' : 'user',
+    content: msg.content
   }));
 
-  const currentUserParts: any[] = [{ text: prompt }];
-  
-  if (imageBase64) {
-      const imagePart = fileToGenerativePart(imageBase64, 'image/jpeg');
-      currentUserParts.unshift(imagePart);
+  const systemInstruction = customSystemInstruction || getSystemInstruction();
+  messages.unshift({ role: "system", content: systemInstruction });
+
+  // If there's an image, we should attach it to the last user message
+  if (imageBase64 && messages.length > 0 && messages[messages.length - 1].role === 'user') {
+      const lastMsg = messages[messages.length - 1];
+      lastMsg.content = [
+          { type: "text", text: typeof lastMsg.content === 'string' ? lastMsg.content : prompt },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/jpeg;base64,${imageBase64}`
+            }
+          }
+      ];
   }
 
-  contents.push({
-    role: 'user',
-    parts: currentUserParts
-  });
-
-  // Use custom instruction if provided (for specific tasks), otherwise fallback to stored/default
-  const systemInstruction = customSystemInstruction || getSystemInstruction();
   const config = getAIConfig();
 
   try {
-    const modelName = imageBase64 ? 'gemini-2.5-flash-image' : 'gemini-3-flash-preview';
-
-    const response = await ai.models.generateContent({
+    const response = await openai.chat.completions.create({
       model: modelName, 
-      contents: contents,
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: config.temperature, 
-        topP: config.topP,
-        tools: imageBase64 ? [] : [{ googleSearch: {} }],
-      },
+      messages: messages,
+      temperature: config.temperature, 
+      top_p: config.topP,
     });
 
-    const text = response.text || "Connection issue. Please try again.";
-    
-    const sources: { title: string; uri: string }[] = [];
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    
-    if (chunks) {
-      chunks.forEach((chunk: any) => {
-        if (chunk.web?.uri && chunk.web?.title) {
-          sources.push({ title: chunk.web.title, uri: chunk.web.uri });
-        }
-      });
-    }
-
-    const uniqueSources = Array.from(new Set(sources.map(s => s.uri)))
-        .map(uri => sources.find(s => s.uri === uri)!);
-
-    return { text, sources: uniqueSources };
+    const text = response.choices[0].message.content || "Connection issue. Please try again.";
+    return { text, sources: [] };
 
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return { text: "VetSphere AI is temporarily unavailable. Please try again later." };
+    console.error("AI API Error:", error);
+    // Return the error message to the UI so the user knows what happened
+    return { text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your API configuration.` };
   }
 };
