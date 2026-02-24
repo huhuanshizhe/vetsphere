@@ -900,7 +900,7 @@ const Dashboard: React.FC = () => {
                             <button onClick={() => { setShowModal(null); setIsEditingCourse(false); }} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">取消</button>
                             <button onClick={handleSaveCourse} className="px-8 py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-all">
                                 {isEditingCourse 
-                                    ? (user.role === 'Admin' ? '保存修改 (Update)' : '提交修改审核 (Submit for Review)') 
+                                    ? '提交修改审核 (Submit for Review)' 
                                     : '提交发布审核 (Submit for Review)'}
                             </button>
                         </div>

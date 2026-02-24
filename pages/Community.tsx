@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Specialty, Post } from '../types';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -416,7 +418,11 @@ const Community: React.FC = () => {
                       <div className="bg-white p-8 rounded-3xl border border-vs/20 shadow-xl">
                          <h5 className="text-xs font-black text-vs uppercase tracking-widest mb-4">{t.community.aiAnalysis}</h5>
                          {aiResponse ? (
-                           <div className="text-xs font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{aiResponse}</div>
+                           <div className="markdown-body prose prose-slate max-w-none prose-sm">
+                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                               {aiResponse}
+                             </ReactMarkdown>
+                           </div>
                          ) : isAiAnalyzing ? (
                            <div className="flex flex-col items-center py-10"><div className="w-8 h-8 border-2 border-vs border-t-transparent rounded-full animate-spin mb-4"></div><p className="text-[9px] font-black text-slate-400 uppercase">{t.community.analyzing}</p></div>
                          ) : (

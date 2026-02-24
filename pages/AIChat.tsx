@@ -1,5 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Message } from '../types';
 import { getGeminiResponse, DEFAULT_SYSTEM_INSTRUCTION } from '../services/gemini';
 import { useAuth } from '../context/AuthContext';
@@ -91,7 +93,15 @@ const AIChat: React.FC = () => {
                   <div className={`p-5 md:p-6 rounded-3xl text-sm md:text-base font-medium leading-relaxed ${
                     msg.role === 'user' ? 'bg-vs text-white shadow-lg shadow-vs/20' : 'bg-slate-50 text-slate-800 border border-slate-100'
                   }`}>
-                    {msg.content}
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : (
+                      <div className="markdown-body prose prose-slate max-w-none prose-sm md:prose-base">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                     {msg.sources && (
                         <div className="mt-4 pt-4 border-t border-slate-200/30 flex flex-col gap-2">
                             {msg.sources.map((s, i) => (

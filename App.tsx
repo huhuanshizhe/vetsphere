@@ -12,6 +12,9 @@ import Checkout from './pages/Checkout';
 import Auth from './pages/Auth';
 import Community from './pages/Community';
 import NotFound from './pages/NotFound';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import RefundPolicy from './pages/RefundPolicy';
 import ScrollToTop from './components/ScrollToTop';
 import SEO from './components/SEO';
 import { CartProvider } from './context/CartContext';
@@ -128,6 +131,11 @@ const AppContent = () => {
             {/* Dashboard (Unified Route, Internal Logic handles layout) */}
             <Route path="/dashboard" element={<Dashboard />} />
 
+            {/* Legal Pages */}
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/refund" element={<RefundPolicy />} />
+
             {/* --- HIDDEN ADMIN / PARTNER ROUTES (Standalone) --- */}
             
             {/* Super Admin Portal */}
@@ -176,6 +184,14 @@ const AppContent = () => {
                     </button>
                   </div>
                 </div>
+
+                <div className="pt-6 border-t border-slate-800/50">
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    {t.footer.address.line1}<br/>
+                    {t.footer.address.line2}<br/>
+                    {t.footer.address.line3}
+                  </p>
+                </div>
               </div>
 
               {/* Links - Spans 8 columns */}
@@ -207,8 +223,9 @@ const AppContent = () => {
                   <ul className="space-y-4 text-sm font-medium text-slate-500">
                     <li><Link to="#" className="hover:text-emerald-400 transition-colors">{t.footer.links.about}</Link></li>
                     <li><Link to="#" className="hover:text-emerald-400 transition-colors">{t.footer.links.careers}</Link></li>
-                    <li><Link to="#" className="hover:text-emerald-400 transition-colors">{t.footer.links.privacy}</Link></li>
-                    <li><Link to="#" className="hover:text-emerald-400 transition-colors">{t.footer.links.terms}</Link></li>
+                    <li><Link to="/privacy" className="hover:text-emerald-400 transition-colors">{t.footer.links.privacy}</Link></li>
+                    <li><Link to="/terms" className="hover:text-emerald-400 transition-colors">{t.footer.links.terms}</Link></li>
+                    <li><Link to="/refund" className="hover:text-emerald-400 transition-colors">{t.footer.links.refund}</Link></li>
                   </ul>
                 </div>
               </div>
