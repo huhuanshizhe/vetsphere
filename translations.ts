@@ -174,6 +174,12 @@ export const translations = {
         careers: 'Academic Careers',
         privacy: 'Privacy Protocol',
         terms: 'Terms of Professionalism',
+        refund: 'Refund Policy',
+      },
+      address: {
+        line1: 'VetSphere Global Headquarters',
+        line2: '123 Surgical Way, Suite 400',
+        line3: 'Zurich, CH-8001, Switzerland'
       }
     },
     home: {
@@ -465,6 +471,12 @@ export const translations = {
         careers: '学术职业',
         privacy: '隐私协议',
         terms: '执业条款',
+        refund: '退款政策',
+      },
+      address: {
+        line1: 'VetSphere 全球总部',
+        line2: '123 Surgical Way, Suite 400',
+        line3: '苏黎世, CH-8001, 瑞士'
       }
     },
     home: {
@@ -755,6 +767,12 @@ export const translations = {
         careers: 'ร่วมงานกับเรา',
         privacy: 'นโยบายความเป็นส่วนตัว',
         terms: 'ข้อกำหนดวิชาชีพ',
+        refund: 'นโยบายการคืนเงิน',
+      },
+      address: {
+        line1: 'สำนักงานใหญ่ VetSphere Global',
+        line2: '123 Surgical Way, Suite 400',
+        line3: 'ซูริก, CH-8001, สวิตเซอร์แลนด์'
       }
     },
     home: {
@@ -853,6 +871,9 @@ export const translations = {
       featSupplyDesc: 'การสั่งซื้อวัสดุฝังที่ราบรื่นซึ่งตรงกับข้อกำหนดที่เรียนรู้ในการฝึกอบรม',
       featDigital: 'การสนับสนุนดิจิทัล',
       featDigitalDesc: 'การวางแผนก่อนการผ่าตัดด้วย AI และการจัดการสินค้าคงคลังอัจฉริยะ',
+      ctaTitle1: 'พร้อมที่จะยกระดับ',
+      ctaTitle2: 'การปฏิบัติงานศัลยกรรมของคุณหรือยัง?',
+      ctaDesc: 'เข้าร่วมเครือข่ายมืออาชีพที่ได้รับความไว้วางใจจากโรงพยาบาลสอนสัตวแพทย์และศูนย์เฉพาะทางเอกชนทั่วโลก',
       ctaButtonPrimary: 'สมัครสมาชิก',
       ctaButtonSecondary: 'ดูกรณีศึกษา'
     },
