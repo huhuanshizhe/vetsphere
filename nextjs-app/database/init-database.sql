@@ -317,7 +317,57 @@ CREATE POLICY "Admins can manage shipping" ON shipping_templates FOR ALL USING (
 );
 
 -- =====================================================
--- 13. HELPER FUNCTIONS
+-- 13. ORDER TRACKING
+-- =====================================================
+CREATE TABLE IF NOT EXISTS order_tracking (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    location TEXT,
+    description TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add shipping columns to orders table if not exist
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_carrier TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS estimated_delivery DATE;
+
+ALTER TABLE order_tracking ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own order tracking" ON order_tracking FOR SELECT USING (
+    EXISTS (SELECT 1 FROM orders WHERE orders.id = order_tracking.order_id AND orders.user_id = auth.uid())
+);
+CREATE POLICY "System can manage tracking" ON order_tracking FOR ALL USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_order_tracking_order_id ON order_tracking(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_tracking_created_at ON order_tracking(created_at);
+
+-- =====================================================
+-- 14. CONTENT MODERATION (Posts)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS content_moderation (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content_type TEXT NOT NULL CHECK (content_type IN ('post', 'comment', 'product', 'course')),
+    content_id TEXT NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'flagged')),
+    reason TEXT,
+    reviewed_by UUID REFERENCES auth.users(id),
+    reviewed_at TIMESTAMPTZ,
+    auto_flagged BOOLEAN DEFAULT FALSE,
+    auto_flag_reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE content_moderation ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage moderation" ON content_moderation FOR ALL USING (
+    EXISTS (SELECT 1 FROM auth.users WHERE id = auth.uid() AND raw_user_meta_data->>'role' = 'Admin')
+);
+
+CREATE INDEX IF NOT EXISTS idx_moderation_status ON content_moderation(status);
+CREATE INDEX IF NOT EXISTS idx_moderation_content ON content_moderation(content_type, content_id);
+
+-- =====================================================
+-- 15. HELPER FUNCTIONS
 -- =====================================================
 
 -- Function: Calculate User Level
