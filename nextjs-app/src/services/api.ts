@@ -4,24 +4,28 @@ import { PRODUCTS_CN, COURSES_CN } from '@/lib/constants';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.vetsphere.net';
 
-const INITIAL_POSTS: Post[] = [
+// Production mode: disable mock data fallback
+const USE_MOCK_FALLBACK = process.env.NODE_ENV === 'development';
+
+// Seed data for initial setup (only used in development or when DB is empty)
+const SEED_POSTS: Post[] = [
   {
     id: 'case-001',
-    title: '\u590D\u6742\u7C89\u788E\u6027\u80A1\u9AA8\u9AA8\u6298\u7684 TPLO + \u9501\u5B9A\u94A2\u677F\u8054\u5408\u56FA\u5B9A',
-    content: '\u60A3\u72AC\u4E3A3\u5C81\u62C9\u5E03\u62C9\u591A\uFF0C\u906D\u9047\u8F66\u7978\u5BFC\u81F4\u80A1\u9AA8\u8FDC\u7AEF\u7C89\u788E\u6027\u9AA8\u6298\uFF0C\u540C\u65F6\u4F34\u6709\u4EA4\u53C9\u97E7\u5E26\u65AD\u88C2\u3002\u6211\u4EEC\u91C7\u7528\u4E86\u53CC\u677F\u56FA\u5B9A\u6280\u672F...',
+    title: '复杂粉碎性股骨骨折的 TPLO + 锁定钢板联合固定',
+    content: '患犬为3岁拉布拉多，遭遇车祸导致股骨远端粉碎性骨折，同时伴有交叉韧带断裂。我们采用了双板固定技术...',
     specialty: Specialty.ORTHOPEDICS,
     media: [{ type: 'image', url: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80' }],
     stats: { likes: 42, comments: 12, saves: 28 },
     createdAt: '2025-05-15',
     isAiAnalyzed: true,
-    author: { name: 'Dr. Zhang', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80', level: 'Expert', hospital: '\u4E0A\u6D77\u4E2D\u5FC3\u5BA0\u7269\u533B\u9662' },
+    author: { name: 'Dr. Zhang', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=100&q=80', level: 'Expert', hospital: '上海中心宠物医院' },
     patientInfo: { species: 'Canine (Labrador)', age: '3y', weight: '32kg' },
     sections: { diagnosis: 'Distal Femoral Comminuted Fracture', plan: 'Dual Plate Fixation + TPLO Stabilization', outcome: 'Post-op 8 weeks: Good weight bearing.' }
   },
   {
     id: 'case-002',
-    title: '\u795E\u7ECF\u5916\u79D1\uFF1AL3-L4 \u690E\u95F4\u76D8\u7A81\u51FA\u5BFC\u81F4\u7684\u622A\u7627\u75C5\u4F8B\u62A5\u544A',
-    content: '\u8BE5\u75C5\u4F8B\u5C55\u793A\u4E86\u534A\u690E\u677F\u5207\u9664\u672F\u5728\u6025\u6027 IVDD \u5904\u7406\u4E2D\u7684\u5E94\u7528\uFF0C\u672F\u540E\u914D\u5408\u9AD8\u538B\u6C27\u6CBB\u7597\u6548\u679C\u663E\u8457\u3002',
+    title: '神经外科：L3-L4 椎间盘突出导致的截瘫病例报告',
+    content: '该病例展示了半椎板切除术在急性 IVDD 处理中的应用，术后配合高压氧治疗效果显著。',
     specialty: Specialty.NEUROSURGERY,
     media: [{ type: 'image', url: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80' }],
     stats: { likes: 35, comments: 8, saves: 15 },
@@ -33,43 +37,90 @@ const INITIAL_POSTS: Post[] = [
   }
 ];
 
-let MOCK_PRODUCTS = [...PRODUCTS_CN];
-
-const STORAGE_KEY_COURSES = 'vetsphere_mock_courses_v2';
-const loadCourses = () => {
-  if (typeof window === 'undefined') return [...COURSES_CN];
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_COURSES);
-    return saved ? JSON.parse(saved) : [...COURSES_CN];
-  } catch {
-    return [...COURSES_CN];
-  }
-};
-let MOCK_COURSES = loadCourses();
-
-const saveCourses = (courses: Course[]) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY_COURSES, JSON.stringify(courses));
-  }
-};
+// Seed data references (only used when USE_MOCK_FALLBACK is true)
+const SEED_PRODUCTS = USE_MOCK_FALLBACK ? [...PRODUCTS_CN] : [];
+const SEED_COURSES = USE_MOCK_FALLBACK ? [...COURSES_CN] : [];
 
 export const api = {
-  async awardPoints(userId: string, amount: number, reason: string): Promise<number> {
-    console.log(`[Points] User ${userId} awarded ${amount} pts for ${reason}`);
-    const current = parseInt(localStorage.getItem(`pts_${userId}`) || "500");
-    const updated = current + amount;
-    localStorage.setItem(`pts_${userId}`, updated.toString());
-    return updated;
+  // =====================================================
+  // POINTS SYSTEM (Database-backed)
+  // =====================================================
+  async awardPoints(userId: string, amount: number, reason: string): Promise<{ points: number; level: string }> {
+    try {
+      const { data, error } = await supabase.rpc('award_user_points', {
+        p_user_id: userId,
+        p_amount: amount,
+        p_reason: reason
+      });
+      
+      if (error) throw error;
+      
+      const result = data?.[0] || { new_total: 500, new_level: 'Resident' };
+      return { points: result.new_total, level: result.new_level };
+    } catch (e) {
+      console.error('Award points error:', e);
+      // Fallback to localStorage if DB fails
+      const current = parseInt(localStorage.getItem(`pts_${userId}`) || "500");
+      const updated = current + amount;
+      localStorage.setItem(`pts_${userId}`, updated.toString());
+      return { points: updated, level: this.calculateLevel(updated) };
+    }
   },
 
-  async fetchUserPoints(userId: string): Promise<number> {
-    return parseInt(localStorage.getItem(`pts_${userId}`) || "500");
+  async fetchUserPoints(userId: string): Promise<{ points: number; level: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('user_points')
+        .select('total_points, level')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error || !data) {
+        // Initialize points for new user
+        await supabase.from('user_points').insert({ user_id: userId, total_points: 500, level: 'Resident' });
+        return { points: 500, level: 'Resident' };
+      }
+      
+      return { points: data.total_points, level: data.level };
+    } catch {
+      return { points: 500, level: 'Resident' };
+    }
+  },
+
+  async getPointsHistory(userId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('point_transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) return [];
+      return data.map((t: any) => ({
+        id: t.id,
+        amount: t.amount,
+        reason: t.reason,
+        balanceAfter: t.balance_after,
+        createdAt: t.created_at
+      }));
+    } catch {
+      return [];
+    }
+  },
+
+  calculateLevel(points: number): string {
+    if (points >= 10000) return 'Master';
+    if (points >= 5000) return 'Expert';
+    if (points >= 2000) return 'Senior';
+    if (points >= 1000) return 'Specialist';
+    return 'Resident';
   },
 
   async getProducts(): Promise<Product[]> {
     try {
       const { data, error } = await supabase.from('products').select('*');
-      if (error || !data || data.length === 0) return MOCK_PRODUCTS;
+      if (error || !data || data.length === 0) return USE_MOCK_FALLBACK ? SEED_PRODUCTS : [];
       return data.map((p: any) => ({
         id: p.id, name: p.name, brand: p.brand, price: p.price, specialty: p.specialty,
         group: p.group_category, imageUrl: p.image_url, description: p.description,
@@ -78,7 +129,7 @@ export const api = {
         stockStatus: p.stock_status || 'In Stock',
         supplier: p.supplier_info || { name: 'Verified Supplier', origin: 'Global', rating: 5.0 }
       }));
-    } catch { return MOCK_PRODUCTS; }
+    } catch { return USE_MOCK_FALLBACK ? SEED_PRODUCTS : []; }
   },
 
   async manageProduct(action: 'create' | 'update' | 'delete', product: Partial<Product>): Promise<void> {
@@ -96,7 +147,7 @@ export const api = {
   async getCourses(): Promise<Course[]> {
     try {
       const { data, error } = await supabase.from('courses').select('*').order('start_date', { ascending: true });
-      if (error || !data || data.length === 0) return [...MOCK_COURSES];
+      if (error || !data || data.length === 0) return USE_MOCK_FALLBACK ? SEED_COURSES : [];
       return data.map((c: any) => ({
         id: c.id, title: c.title, specialty: c.specialty, level: c.level,
         price: c.price, currency: c.currency || 'CNY',
@@ -105,7 +156,7 @@ export const api = {
         imageUrl: c.image_url, description: c.description,
         status: c.status || 'Published', agenda: c.agenda || []
       }));
-    } catch { return [...MOCK_COURSES]; }
+    } catch { return USE_MOCK_FALLBACK ? SEED_COURSES : []; }
   },
 
   async manageCourse(action: 'create' | 'update' | 'delete', course: Partial<Course>): Promise<void> {
@@ -123,7 +174,7 @@ export const api = {
   async getPosts(): Promise<Post[]> {
     try {
       const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-      if (error || !data || data.length === 0) return INITIAL_POSTS;
+      if (error || !data || data.length === 0) return USE_MOCK_FALLBACK ? SEED_POSTS : [];
       return data.map((p: any) => ({
         id: p.id, title: p.title, content: p.content, specialty: p.specialty,
         media: p.media || [], stats: p.stats || { likes: 0, comments: 0, saves: 0 },
@@ -131,7 +182,7 @@ export const api = {
         isAiAnalyzed: p.is_ai_analyzed, author: p.author_info,
         patientInfo: p.patient_info, sections: p.sections
       }));
-    } catch { return INITIAL_POSTS; }
+    } catch { return USE_MOCK_FALLBACK ? SEED_POSTS : []; }
   },
 
   async createPost(post: Partial<Post>, user: any): Promise<void> {
@@ -145,12 +196,161 @@ export const api = {
     await this.awardPoints(user.id, 200, "Publishing Clinical Case");
   },
 
-  async interactWithPost(postId: string, type: 'like' | 'save'): Promise<void> {
-    console.log(`Interaction: ${type} on post ${postId}`);
+  // =====================================================
+  // POST INTERACTIONS (Likes, Saves - Database-backed)
+  // =====================================================
+  async interactWithPost(postId: string, type: 'like' | 'save', userId?: string): Promise<{ success: boolean; newCount: number }> {
+    try {
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+      }
+      
+      if (!userId) return { success: false, newCount: 0 };
+      
+      // Check if interaction already exists
+      const { data: existing } = await supabase
+        .from('post_interactions')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .eq('interaction_type', type)
+        .single();
+      
+      if (existing) {
+        // Remove interaction (toggle off)
+        await supabase.from('post_interactions').delete().eq('id', existing.id);
+      } else {
+        // Add interaction
+        await supabase.from('post_interactions').insert({
+          post_id: postId,
+          user_id: userId,
+          interaction_type: type
+        });
+      }
+      
+      // Get updated count
+      const { count } = await supabase
+        .from('post_interactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', postId)
+        .eq('interaction_type', type);
+      
+      return { success: true, newCount: count || 0 };
+    } catch (e) {
+      console.error('Post interaction error:', e);
+      return { success: false, newCount: 0 };
+    }
   },
 
-  async addComment(postId: string, comment: any): Promise<void> {
-    console.log(`New comment on ${postId}:`, comment);
+  async getUserInteractions(postIds: string[], userId?: string): Promise<Record<string, { liked: boolean; saved: boolean }>> {
+    try {
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+      }
+      
+      if (!userId) return {};
+      
+      const { data } = await supabase
+        .from('post_interactions')
+        .select('post_id, interaction_type')
+        .eq('user_id', userId)
+        .in('post_id', postIds);
+      
+      const result: Record<string, { liked: boolean; saved: boolean }> = {};
+      postIds.forEach(id => { result[id] = { liked: false, saved: false }; });
+      
+      data?.forEach((i: any) => {
+        if (result[i.post_id]) {
+          if (i.interaction_type === 'like') result[i.post_id].liked = true;
+          if (i.interaction_type === 'save') result[i.post_id].saved = true;
+        }
+      });
+      
+      return result;
+    } catch {
+      return {};
+    }
+  },
+
+  // =====================================================
+  // POST COMMENTS (Database-backed)
+  // =====================================================
+  async addComment(postId: string, content: string, user: any, parentId?: string): Promise<any> {
+    try {
+      const newComment = {
+        post_id: postId,
+        user_id: user.id,
+        author_name: user.name || user.email?.split('@')[0] || 'Anonymous',
+        author_avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'U')}&background=random`,
+        content,
+        parent_id: parentId || null
+      };
+      
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert(newComment)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Award points for commenting
+      await this.awardPoints(user.id, 10, 'Commenting on clinical case');
+      
+      return {
+        id: data.id,
+        postId: data.post_id,
+        authorName: data.author_name,
+        authorAvatar: data.author_avatar,
+        content: data.content,
+        parentId: data.parent_id,
+        createdAt: data.created_at
+      };
+    } catch (e) {
+      console.error('Add comment error:', e);
+      return null;
+    }
+  },
+
+  async getComments(postId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      
+      if (error) return [];
+      
+      return data.map((c: any) => ({
+        id: c.id,
+        postId: c.post_id,
+        userId: c.user_id,
+        authorName: c.author_name,
+        authorAvatar: c.author_avatar,
+        content: c.content,
+        parentId: c.parent_id,
+        createdAt: c.created_at
+      }));
+    } catch {
+      return [];
+    }
+  },
+
+  async deleteComment(commentId: string, userId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('post_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', userId);
+      
+      return !error;
+    } catch {
+      return false;
+    }
   },
 
   async getShippingTemplates(): Promise<ShippingTemplate[]> {
