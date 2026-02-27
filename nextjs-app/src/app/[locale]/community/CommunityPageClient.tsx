@@ -45,6 +45,22 @@ const Community: React.FC = () => {
     fetchPosts();
   }, []);
 
+  // Load user interactions when posts change
+  useEffect(() => {
+    const loadUserInteractions = async () => {
+      if (user && posts.length > 0) {
+        const postIds = posts.map(p => p.id);
+        const interactions = await api.getUserInteractions(postIds, user.id);
+        const likedState: Record<string, boolean> = {};
+        Object.entries(interactions).forEach(([postId, state]) => {
+          likedState[postId] = state.liked;
+        });
+        setIsLiked(likedState);
+      }
+    };
+    loadUserInteractions();
+  }, [user, posts.length]);
+
   const fetchPosts = async () => {
     setLoading(true);
     const data = await api.getPosts();
@@ -52,11 +68,22 @@ const Community: React.FC = () => {
     setLoading(false);
   };
 
-  const handleLike = (postId: string, e?: React.MouseEvent) => {
+  // Load comments when a post is selected
+  const loadComments = async (postId: string) => {
+    const commentsData = await api.getComments(postId);
+    setComments(commentsData);
+  };
+
+  const handleLike = async (postId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setIsLiked(prev => ({ ...prev, [postId]: !prev[postId] }));
-    api.interactWithPost(postId, 'like');
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, stats: { ...p.stats, likes: p.stats.likes + (isLiked[postId] ? -1 : 1) } } : p));
+    if (!user) {
+      addNotification({ id: `login-${Date.now()}`, type: 'system', title: 'Login Required', message: 'Please login to like posts', read: false, timestamp: new Date() });
+      return;
+    }
+    const wasLiked = isLiked[postId] || false;
+    setIsLiked(prev => ({ ...prev, [postId]: !wasLiked }));
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, stats: { ...p.stats, likes: p.stats.likes + (wasLiked ? -1 : 1) } } : p));
+    await api.interactWithPost(postId, 'like', user.id);
   };
 
   // --- REFINED SOCIAL SHARING LOGIC ---
@@ -147,12 +174,21 @@ const Community: React.FC = () => {
     resetForm();
   };
 
-  const submitComment = () => {
-    if (!commentInput.trim() || !user) return;
-    const newComment = { id: Date.now(), author: user.name, content: commentInput, date: 'Just now' };
-    setComments([newComment, ...comments]);
-    setCommentInput('');
-    api.addComment(selectedPost!.id, newComment);
+  const submitComment = async () => {
+    if (!commentInput.trim() || !user || !selectedPost) return;
+    
+    const newComment = await api.addComment(selectedPost.id, commentInput, user);
+    if (newComment) {
+      setComments([newComment, ...comments]);
+      setCommentInput('');
+      // Update post stats locally
+      setPosts(prev => prev.map(p => 
+        p.id === selectedPost.id 
+          ? { ...p, stats: { ...p.stats, comments: p.stats.comments + 1 } } 
+          : p
+      ));
+      addNotification({ id: `comment-${Date.now()}`, type: 'system', title: '+10 Points', message: 'Thanks for contributing!', read: false, timestamp: new Date() });
+    }
   };
 
   const resetForm = () => {
@@ -204,7 +240,7 @@ const Community: React.FC = () => {
               {filteredPosts.map(post => (
                 <div 
                   key={post.id} 
-                  onClick={() => { setSelectedPost(post); setAiResponse(null); setComments([]); }}
+                  onClick={() => { setSelectedPost(post); setAiResponse(null); setComments([]); loadComments(post.id); }}
                   className="vs-card-refined p-8 bg-white flex flex-col group cursor-pointer"
                 >
                   <div className="flex justify-between items-start mb-6">
