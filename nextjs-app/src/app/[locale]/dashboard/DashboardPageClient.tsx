@@ -94,6 +94,7 @@ const Dashboard: React.FC = () => {
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [userPoints, setUserPoints] = useState(user?.points || 0);
+  const [userLevel, setUserLevel] = useState(user?.level || 'Resident');
   
   // UI State
   const [activeTab, setActiveTab] = useState('Overview');
@@ -176,11 +177,11 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     const shouldFetchAllOrders = user?.role === 'Admin' || user?.role === 'ShopSupplier' || user?.role === 'CourseProvider';
     
-    const [fetchedOrders, fetchedProducts, fetchedCourses, points] = await Promise.all([
+    const [fetchedOrders, fetchedProducts, fetchedCourses, pointsData] = await Promise.all([
         api.getOrders(shouldFetchAllOrders ? undefined : user?.email),
         api.getProducts(),
         api.getCourses(),
-        user?.id ? api.fetchUserPoints(user.id) : Promise.resolve(0)
+        user?.id ? api.fetchUserPoints(user.id) : Promise.resolve({ points: 0, level: 'Resident' })
     ]);
     
     // Fetch enrollments for doctors
@@ -192,7 +193,10 @@ const Dashboard: React.FC = () => {
     setOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
     setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []);
     setCourses(Array.isArray(fetchedCourses) ? fetchedCourses : []);
-    setUserPoints(points);
+    if (typeof pointsData === 'object' && pointsData !== null) {
+      setUserPoints(pointsData.points);
+      setUserLevel(pointsData.level);
+    }
     setLoading(false);
   };
 
