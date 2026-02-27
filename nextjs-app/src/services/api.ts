@@ -159,6 +159,120 @@ export const api = {
     } catch { return USE_MOCK_FALLBACK ? SEED_COURSES : []; }
   },
 
+  // Course Search and Filter
+  async searchCourses(params: {
+    query?: string;
+    specialty?: string;
+    level?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    startDateFrom?: string;
+    startDateTo?: string;
+    sortBy?: 'price' | 'date' | 'title';
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<Course[]> {
+    try {
+      let query = supabase.from('courses').select('*').eq('status', 'Published');
+      
+      if (params.query) {
+        query = query.or(`title.ilike.%${params.query}%,description.ilike.%${params.query}%`);
+      }
+      if (params.specialty) {
+        query = query.eq('specialty', params.specialty);
+      }
+      if (params.level) {
+        query = query.eq('level', params.level);
+      }
+      if (params.minPrice !== undefined) {
+        query = query.gte('price', params.minPrice);
+      }
+      if (params.maxPrice !== undefined) {
+        query = query.lte('price', params.maxPrice);
+      }
+      if (params.startDateFrom) {
+        query = query.gte('start_date', params.startDateFrom);
+      }
+      if (params.startDateTo) {
+        query = query.lte('start_date', params.startDateTo);
+      }
+      
+      // Sorting
+      const sortColumn = params.sortBy === 'price' ? 'price' : params.sortBy === 'title' ? 'title' : 'start_date';
+      query = query.order(sortColumn, { ascending: params.sortOrder !== 'desc' });
+      
+      const { data, error } = await query;
+      if (error || !data) return [];
+      
+      return data.map((c: any) => ({
+        id: c.id, title: c.title, specialty: c.specialty, level: c.level,
+        price: c.price, currency: c.currency || 'CNY',
+        startDate: c.start_date, endDate: c.end_date,
+        location: c.location || {}, instructor: c.instructor || {},
+        imageUrl: c.image_url, description: c.description,
+        status: c.status || 'Published', agenda: c.agenda || []
+      }));
+    } catch {
+      return [];
+    }
+  },
+
+  // Product Search and Filter
+  async searchProducts(params: {
+    query?: string;
+    specialty?: string;
+    group?: string;
+    brand?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    stockStatus?: string;
+    sortBy?: 'price' | 'name';
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<Product[]> {
+    try {
+      let query = supabase.from('products').select('*');
+      
+      if (params.query) {
+        query = query.or(`name.ilike.%${params.query}%,description.ilike.%${params.query}%,brand.ilike.%${params.query}%`);
+      }
+      if (params.specialty) {
+        query = query.eq('specialty', params.specialty);
+      }
+      if (params.group) {
+        query = query.eq('group_category', params.group);
+      }
+      if (params.brand) {
+        query = query.eq('brand', params.brand);
+      }
+      if (params.minPrice !== undefined) {
+        query = query.gte('price', params.minPrice);
+      }
+      if (params.maxPrice !== undefined) {
+        query = query.lte('price', params.maxPrice);
+      }
+      if (params.stockStatus) {
+        query = query.eq('stock_status', params.stockStatus);
+      }
+      
+      // Sorting
+      const sortColumn = params.sortBy === 'name' ? 'name' : 'price';
+      query = query.order(sortColumn, { ascending: params.sortOrder !== 'desc' });
+      
+      const { data, error } = await query;
+      if (error || !data) return [];
+      
+      return data.map((p: any) => ({
+        id: p.id, name: p.name, brand: p.brand, price: p.price, specialty: p.specialty,
+        group: p.group_category, imageUrl: p.image_url, description: p.description,
+        longDescription: p.long_description || p.description,
+        specs: p.specs || {}, compareData: p.compare_data,
+        stockStatus: p.stock_status || 'In Stock',
+        supplier: p.supplier_info || { name: 'Verified Supplier', origin: 'Global', rating: 5.0 }
+      }));
+    } catch {
+      return [];
+    }
+  },
+
   async manageCourse(action: 'create' | 'update' | 'delete', course: Partial<Course>): Promise<void> {
     if (action === 'create') {
       const payload = { id: `c-${Date.now()}`, title: course.title, specialty: course.specialty, level: course.level, price: course.price, currency: course.currency || 'CNY', start_date: course.startDate, end_date: course.endDate, location: course.location, instructor: course.instructor, image_url: course.imageUrl, description: course.description, status: course.status || 'Pending', agenda: course.agenda || [] };
