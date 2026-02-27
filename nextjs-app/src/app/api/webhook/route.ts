@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { sendPaymentReceivedEmail, sendOrderConfirmation, sendCourseEnrollmentEmail } from '@/lib/email';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,60 @@ async function updateOrderAndEnrollments(orderId: string, status: 'Paid' | 'refu
     .eq('order_id', orderId);
 
   console.log(`[Webhook] Order ${orderId} updated to ${status}`);
+}
+
+async function sendPaymentEmails(orderId: string, amount: number) {
+  try {
+    // Fetch order details
+    const { data: order } = await supabaseAdmin
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (!order) return;
+
+    const customerEmail = order.customer_email;
+    const customerName = order.customer_name || 'Customer';
+
+    // Send payment received email
+    await sendPaymentReceivedEmail(customerEmail, {
+      customerName,
+      orderId,
+      amount,
+      paymentMethod: 'Stripe'
+    });
+
+    // Send order confirmation email
+    const items = order.items || [];
+    await sendOrderConfirmation(customerEmail, {
+      orderId,
+      customerName,
+      items: items.map((item: any) => ({
+        name: item.name,
+        quantity: item.quantity || 1,
+        price: item.price
+      })),
+      totalAmount: order.total_amount,
+      orderUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://vetsphere.pro'}/user?tab=orders`
+    });
+
+    // Send course enrollment emails for course items
+    const courseItems = items.filter((item: any) => item.type === 'course');
+    for (const course of courseItems) {
+      await sendCourseEnrollmentEmail(customerEmail, {
+        studentName: customerName,
+        courseTitle: course.name,
+        startDate: course.startDate || 'TBD',
+        location: course.location || 'Online',
+        courseUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://vetsphere.pro'}/courses/${course.id}`
+      });
+    }
+
+    console.log(`[Webhook] Emails sent for order ${orderId}`);
+  } catch (error) {
+    console.error('[Webhook] Email send error:', error);
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -83,6 +138,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         
         if (orderId) {
           await updateOrderAndEnrollments(orderId, 'Paid');
+          // Send confirmation emails
+          await sendPaymentEmails(orderId, paymentIntent.amount / 100);
           console.log(`[Webhook] Payment succeeded for order: ${orderId}`);
         }
         break;

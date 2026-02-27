@@ -107,6 +107,15 @@ const CoursesPageClient: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const { addToCart } = useCart();
 
+  // Advanced filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [levelFilter, setLevelFilter] = useState<string>('All');
+  const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 100000 });
+  const [sortBy, setSortBy] = useState<'date' | 'price-asc' | 'price-desc' | 'name'>('date');
+
+  const levels = ['All', 'Introductory', 'Intermediate', 'Advanced'];
+
   useEffect(() => {
     api.getCourses().then(data => {
         setCourses(data);
@@ -157,18 +166,192 @@ const CoursesPageClient: React.FC = () => {
   // Only show published courses on public page
   const visibleCourses = courses.filter(c => c.status === 'Published');
 
-  const filteredCourses = filter === 'All' 
-    ? visibleCourses 
-    : visibleCourses.filter(c => c.specialty === filter);
+  // Apply all filters
+  const filteredCourses = visibleCourses
+    .filter(c => {
+      // Specialty filter
+      if (filter !== 'All' && c.specialty !== filter) return false;
+      // Level filter
+      if (levelFilter !== 'All' && c.level !== levelFilter) return false;
+      // Price filter
+      if (c.price < priceRange.min || c.price > priceRange.max) return false;
+      // Search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const title = (language === 'zh' ? c.title_zh : language === 'th' ? c.title_th : c.title) || c.title;
+        const desc = (language === 'zh' ? c.description_zh : language === 'th' ? c.description_th : c.description) || c.description;
+        if (!title.toLowerCase().includes(query) && 
+            !desc?.toLowerCase().includes(query) &&
+            !c.instructor.name.toLowerCase().includes(query) &&
+            !c.location.city.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'price-asc': return a.price - b.price;
+        case 'price-desc': return b.price - a.price;
+        case 'name': return a.title.localeCompare(b.title);
+        case 'date':
+        default:
+          return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+      }
+    });
+
+  const activeFilterCount = [
+    filter !== 'All',
+    levelFilter !== 'All',
+    priceRange.min > 0 || priceRange.max < 100000,
+    searchQuery.length > 0
+  ].filter(Boolean).length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 pt-32">
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-8">
         <div className="max-w-xl space-y-4">
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">{t.courses.title}</h1>
           <p className="text-slate-500 font-medium">{t.courses.subtitle}</p>
         </div>
-        <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl">
+        
+        {/* Search & Filter Toggle */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 md:w-64">
+            <input
+              type="text"
+              placeholder={language === 'zh' ? '搜索课程...' : 'Search courses...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-vs/20 focus:border-vs text-sm"
+            />
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition ${
+              showFilters || activeFilterCount > 0
+                ? 'bg-vs text-white border-vs'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            {language === 'zh' ? '筛选' : 'Filter'}
+            {activeFilterCount > 0 && (
+              <span className="ml-1 w-5 h-5 bg-white/20 rounded-full text-xs flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded Filters Panel */}
+      {showFilters && (
+        <div className="mb-8 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-top-2 duration-200">
+          <div className="grid md:grid-cols-4 gap-6">
+            {/* Specialty */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                {language === 'zh' ? '专业方向' : 'Specialty'}
+              </label>
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-vs/20 focus:border-vs"
+              >
+                <option value="All">{language === 'zh' ? '全部专业' : 'All Specialties'}</option>
+                {Object.values(Specialty).map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Level */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                {language === 'zh' ? '难度等级' : 'Level'}
+              </label>
+              <select
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-vs/20 focus:border-vs"
+              >
+                {levels.map(l => (
+                  <option key={l} value={l}>{l === 'All' ? (language === 'zh' ? '全部等级' : 'All Levels') : l}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Price Range */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                {language === 'zh' ? '价格范围' : 'Price Range'}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={priceRange.min || ''}
+                  onChange={(e) => setPriceRange(p => ({ ...p, min: Number(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-vs/20 focus:border-vs"
+                />
+                <span className="text-slate-400">-</span>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={priceRange.max === 100000 ? '' : priceRange.max}
+                  onChange={(e) => setPriceRange(p => ({ ...p, max: Number(e.target.value) || 100000 }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-vs/20 focus:border-vs"
+                />
+              </div>
+            </div>
+
+            {/* Sort */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                {language === 'zh' ? '排序方式' : 'Sort By'}
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-vs/20 focus:border-vs"
+              >
+                <option value="date">{language === 'zh' ? '开课日期' : 'Start Date'}</option>
+                <option value="price-asc">{language === 'zh' ? '价格从低到高' : 'Price: Low to High'}</option>
+                <option value="price-desc">{language === 'zh' ? '价格从高到低' : 'Price: High to Low'}</option>
+                <option value="name">{language === 'zh' ? '课程名称' : 'Course Name'}</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Clear Filters */}
+          {activeFilterCount > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => {
+                  setFilter('All');
+                  setLevelFilter('All');
+                  setPriceRange({ min: 0, max: 100000 });
+                  setSearchQuery('');
+                  setSortBy('date');
+                }}
+                className="text-sm font-bold text-slate-500 hover:text-vs transition"
+              >
+                {language === 'zh' ? '清除所有筛选' : 'Clear All Filters'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Quick Specialty Tabs (when filters hidden) */}
+      {!showFilters && (
+        <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl mb-8">
           {['All', ...Object.values(Specialty)].map(s => (
             <button
               key={s}
@@ -183,6 +366,15 @@ const CoursesPageClient: React.FC = () => {
             </button>
           ))}
         </div>
+      )}
+
+      {/* Results Count */}
+      <div className="mb-6 flex items-center justify-between">
+        <p className="text-sm text-slate-500">
+          {language === 'zh' 
+            ? `显示 ${filteredCourses.length} 门课程` 
+            : `Showing ${filteredCourses.length} course${filteredCourses.length !== 1 ? 's' : ''}`}
+        </p>
       </div>
 
       {loading ? (

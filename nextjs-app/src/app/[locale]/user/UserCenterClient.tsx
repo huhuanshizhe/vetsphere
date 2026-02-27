@@ -34,6 +34,11 @@ const UserCenterClient: React.FC = () => {
     bio: ''
   });
 
+  // Tracking state
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [trackingData, setTrackingData] = useState<any>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push(`/${locale}/auth`);
@@ -113,6 +118,55 @@ const UserCenterClient: React.FC = () => {
       });
     }
     setIsEditing(false);
+  };
+
+  // Load tracking info for an order
+  const loadTracking = async (order: Order) => {
+    if (selectedOrder?.id === order.id && trackingData) {
+      // Toggle off if clicking same order
+      setSelectedOrder(null);
+      setTrackingData(null);
+      return;
+    }
+    
+    setSelectedOrder(order);
+    setTrackingLoading(true);
+    setTrackingData(null);
+    
+    try {
+      const response = await fetch(`/api/orders/${order.id}/tracking`);
+      if (response.ok) {
+        const data = await response.json();
+        setTrackingData(data);
+      }
+    } catch (error) {
+      console.error('Failed to load tracking:', error);
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const getTrackingStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'pending': '待发货',
+      'shipped': '已发货',
+      'in_transit': '运输中',
+      'out_for_delivery': '派送中',
+      'delivered': '已签收',
+      'exception': '异常'
+    };
+    return labels[status] || status;
+  };
+
+  const getTrackingStatusColor = (status: string) => {
+    switch (status) {
+      case 'delivered': return 'bg-emerald-500';
+      case 'out_for_delivery': return 'bg-blue-500';
+      case 'in_transit': return 'bg-cyan-500';
+      case 'shipped': return 'bg-indigo-500';
+      case 'exception': return 'bg-red-500';
+      default: return 'bg-slate-400';
+    }
   };
 
   const tabs: { id: TabType; label: string; icon: string }[] = [
@@ -304,24 +358,125 @@ const UserCenterClient: React.FC = () => {
                   ) : (
                     <div className="space-y-4">
                       {orders.map(order => (
-                        <div key={order.id} className="border border-slate-200 rounded-xl p-4 hover:shadow-md transition">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <span className="font-mono text-sm text-slate-500">#{order.id}</span>
-                              <span className="ml-3 text-sm text-slate-400">{order.date}</span>
+                        <div key={order.id} className="border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition">
+                          {/* Order Header - Clickable */}
+                          <div 
+                            onClick={() => loadTracking(order)}
+                            className="p-4 cursor-pointer hover:bg-slate-50 transition"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <span className="font-mono text-sm text-slate-500">#{order.id.slice(0, 8)}</span>
+                                <span className="ml-3 text-sm text-slate-400">{order.date}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
+                                  {order.status}
+                                </span>
+                                <svg 
+                                  className={`w-4 h-4 text-slate-400 transition-transform ${selectedOrder?.id === order.id ? 'rotate-180' : ''}`}
+                                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
-                              {order.status}
-                            </span>
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-slate-600">
+                                {order.items?.length || 0} item(s)
+                              </div>
+                              <div className="text-lg font-black text-slate-900">
+                                ¥{order.totalAmount?.toLocaleString() || 0}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm text-slate-600">
-                              {order.items?.length || 0} item(s)
+                          
+                          {/* Tracking Panel - Expandable */}
+                          {selectedOrder?.id === order.id && (
+                            <div className="border-t border-slate-200 bg-slate-50 p-4">
+                              {trackingLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                  <div className="animate-spin w-6 h-6 border-3 border-vs border-t-transparent rounded-full" />
+                                  <span className="ml-3 text-slate-500 text-sm">加载物流信息...</span>
+                                </div>
+                              ) : trackingData ? (
+                                <div className="space-y-4">
+                                  {/* Tracking Header */}
+                                  <div className="flex flex-wrap items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                      <div>
+                                        <p className="text-xs text-slate-500">承运商</p>
+                                        <p className="font-bold text-slate-900">{trackingData.carrier || '待指定'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-slate-500">运单号</p>
+                                        <p className="font-mono font-bold text-slate-900">{trackingData.trackingNumber || '待分配'}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-3 h-3 rounded-full ${getTrackingStatusColor(trackingData.status)}`} />
+                                      <span className="font-bold text-sm">{getTrackingStatusLabel(trackingData.status)}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  {trackingData.estimatedDelivery && (
+                                    <div className="bg-white rounded-lg px-4 py-3 border border-slate-200">
+                                      <span className="text-sm text-slate-500">预计送达: </span>
+                                      <span className="font-bold text-slate-900">
+                                        {new Date(trackingData.estimatedDelivery).toLocaleDateString('zh-CN', { 
+                                          month: 'long', day: 'numeric', weekday: 'long' 
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Tracking Timeline */}
+                                  {trackingData.events && trackingData.events.length > 0 && (
+                                    <div className="mt-4">
+                                      <h4 className="text-sm font-bold text-slate-700 mb-3">物流轨迹</h4>
+                                      <div className="relative space-y-0">
+                                        {trackingData.events.map((event: any, idx: number) => (
+                                          <div key={event.id || idx} className="flex gap-3 pb-4 last:pb-0">
+                                            {/* Timeline Line */}
+                                            <div className="flex flex-col items-center">
+                                              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                                                idx === 0 ? 'bg-vs ring-4 ring-vs/20' : 'bg-slate-300'
+                                              }`} />
+                                              {idx < trackingData.events.length - 1 && (
+                                                <div className="w-0.5 flex-1 bg-slate-200 mt-1" />
+                                              )}
+                                            </div>
+                                            {/* Event Content */}
+                                            <div className="flex-1 pb-2">
+                                              <p className={`text-sm font-medium ${idx === 0 ? 'text-slate-900' : 'text-slate-600'}`}>
+                                                {event.description}
+                                              </p>
+                                              {event.location && (
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                  📍 {event.location}
+                                                </p>
+                                              )}
+                                              <p className="text-xs text-slate-400 mt-1">
+                                                {new Date(event.timestamp).toLocaleString('zh-CN', {
+                                                  month: 'numeric', day: 'numeric',
+                                                  hour: '2-digit', minute: '2-digit'
+                                                })}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-center py-6 text-slate-500">
+                                  <div className="text-3xl mb-2">📭</div>
+                                  <p className="text-sm">暂无物流信息</p>
+                                </div>
+                              )}
                             </div>
-                            <div className="text-lg font-black text-slate-900">
-                              ¥{order.totalAmount?.toLocaleString() || 0}
-                            </div>
-                          </div>
+                          )}
                         </div>
                       ))}
                     </div>
