@@ -47,17 +47,29 @@ const UserCenterClient: React.FC = () => {
     setLoading(true);
 
     try {
-      const [fetchedOrders, fetchedEnrollments, fetchedPoints, fetchedHistory] = await Promise.all([
+      const [fetchedOrders, fetchedEnrollments, fetchedPoints, fetchedHistory, fetchedProfile] = await Promise.all([
         api.getOrders(user.email),
         api.getEnrollments(user.id),
         api.fetchUserPoints(user.id),
-        api.getPointsHistory(user.id)
+        api.getPointsHistory(user.id),
+        api.getUserProfile(user.id)
       ]);
 
       setOrders(fetchedOrders);
       setEnrollments(fetchedEnrollments);
       setPointsData(fetchedPoints);
       setPointsHistory(fetchedHistory);
+      
+      // Load profile data into form
+      if (fetchedProfile) {
+        setProfileForm({
+          name: fetchedProfile.displayName || user.name || '',
+          hospital: fetchedProfile.hospital || '',
+          specialty: fetchedProfile.specialty || '',
+          phone: fetchedProfile.phone || '',
+          bio: fetchedProfile.bio || ''
+        });
+      }
     } catch (error) {
       console.error('Failed to load user data:', error);
     } finally {
@@ -71,15 +83,35 @@ const UserCenterClient: React.FC = () => {
   };
 
   const handleSaveProfile = async () => {
-    // TODO: Implement profile save to database
-    addNotification({
-      id: `profile-${Date.now()}`,
-      type: 'system',
-      title: 'Profile Updated',
-      message: 'Your profile has been saved successfully.',
-      read: false,
-      timestamp: new Date()
+    if (!user?.id) return;
+    
+    const success = await api.saveUserProfile(user.id, {
+      displayName: profileForm.name,
+      hospital: profileForm.hospital,
+      specialty: profileForm.specialty,
+      phone: profileForm.phone,
+      bio: profileForm.bio
     });
+
+    if (success) {
+      addNotification({
+        id: `profile-${Date.now()}`,
+        type: 'system',
+        title: 'Profile Updated',
+        message: 'Your profile has been saved successfully.',
+        read: false,
+        timestamp: new Date()
+      });
+    } else {
+      addNotification({
+        id: `profile-err-${Date.now()}`,
+        type: 'system',
+        title: 'Save Failed',
+        message: 'Failed to save profile. Please try again.',
+        read: false,
+        timestamp: new Date()
+      });
+    }
     setIsEditing(false);
   };
 

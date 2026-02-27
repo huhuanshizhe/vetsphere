@@ -683,5 +683,109 @@ export const api = {
         level: 'Resident' 
       } 
     };
+  },
+
+  // =====================================================
+  // USER PROFILE MANAGEMENT
+  // =====================================================
+  async getUserProfile(userId: string): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error || !data) {
+        // Return default profile if not found
+        return {
+          id: userId,
+          displayName: '',
+          avatarUrl: '',
+          hospital: '',
+          specialty: '',
+          bio: '',
+          phone: '',
+          role: 'Doctor'
+        };
+      }
+      
+      return {
+        id: data.id,
+        displayName: data.display_name,
+        avatarUrl: data.avatar_url,
+        hospital: data.hospital,
+        specialty: data.specialty,
+        bio: data.bio,
+        phone: data.phone,
+        role: data.role
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  async saveUserProfile(userId: string, profile: {
+    displayName?: string;
+    avatarUrl?: string;
+    hospital?: string;
+    specialty?: string;
+    bio?: string;
+    phone?: string;
+  }): Promise<boolean> {
+    try {
+      const payload = {
+        id: userId,
+        display_name: profile.displayName,
+        avatar_url: profile.avatarUrl,
+        hospital: profile.hospital,
+        specialty: profile.specialty,
+        bio: profile.bio,
+        phone: profile.phone,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert(payload, { onConflict: 'id' });
+      
+      if (error) {
+        console.error('Save profile error:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      console.error('Save profile error:', e);
+      return false;
+    }
+  },
+
+  async updateUserAvatar(userId: string, file: File): Promise<string | null> {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('user-avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Avatar upload error:', uploadError);
+        return null;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-avatars')
+        .getPublicUrl(filePath);
+
+      // Update profile with new avatar URL
+      await this.saveUserProfile(userId, { avatarUrl: publicUrl });
+
+      return publicUrl;
+    } catch {
+      return null;
+    }
   }
 };
