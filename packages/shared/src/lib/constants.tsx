@@ -1,5 +1,5 @@
 
-import { Specialty, Course, Product, UserRole } from '../types';
+import { Specialty, Course, Product, UserRole, Certification, CourseProductRelation } from '../types';
 
 // --- VISUAL THEME SYSTEM ---
 export const PORTAL_THEME: Record<UserRole, any> = {
@@ -367,7 +367,11 @@ export const PRODUCTS: Product[] = [
     description: 'German-engineered oscillating saw optimized for TPLO procedures with low vibration and high torque.',
     longDescription: 'This system features a fully sealed waterproof design, supporting autoclave sterilization. Its unique quick-coupling interface fits major global saw blade brands, making it ideal for high-volume surgical centers.',
     specs: { 'No-load Speed': '0-15000 rpm', 'Weight': '820g', 'Sterilization': '134°C Autoclave', 'Noise Level': '<65dB' },
-    stockStatus: 'In Stock'
+    stockStatus: 'In Stock',
+    purchaseMode: 'hybrid',
+    clinicalCategory: 'surgery-anesthesia',
+    certifications: [{ type: 'ISO 13485', number: 'DE-2024-0891', issuer: 'TÜV SÜD', validUntil: '2027-12' }, { type: 'CE', number: 'CE-0123-SAW', issuer: 'BSI', validUntil: '2027-06' }],
+    categorySlug: 'surgery-anesthesia',
   },
   {
     id: 'p2',
@@ -381,7 +385,11 @@ export const PRODUCTS: Product[] = [
     description: 'Medical Grade 5 Titanium locking plates designed for superior biological stability.',
     longDescription: 'The VetOrtho locking system is designed to minimize bone contact pressure, preserving periosteal blood supply. Anodized surface treatment enhances biocompatibility and reduces post-op infection risks.',
     specs: { 'Material': 'Ti-6Al-4V ELI', 'Surface': 'Anodized (Type II)', 'Thickness': '2.4mm - 3.8mm' },
-    stockStatus: 'In Stock'
+    stockStatus: 'In Stock',
+    purchaseMode: 'direct',
+    clinicalCategory: 'surgery-anesthesia',
+    certifications: [{ type: 'ISO 13485', number: 'CN-2024-TLP-02', issuer: 'SGS', validUntil: '2027-09' }],
+    categorySlug: 'surgery-anesthesia',
   },
   {
     id: 'p3',
@@ -395,7 +403,11 @@ export const PRODUCTS: Product[] = [
     description: 'Swiss-crafted tips designed for delicate corneal and intraocular maneuvers.',
     longDescription: 'Hand-finished tips (0.1mm) ensure ultimate tactile feedback under the microscope. Lightweight handle design effectively reduces surgeon fatigue during long procedures.',
     specs: { 'Length': '115mm', 'Tip Size': '0.1mm', 'Material': 'Non-magnetic Stainless Steel' },
-    stockStatus: 'Low Stock'
+    stockStatus: 'Low Stock',
+    purchaseMode: 'direct',
+    clinicalCategory: 'surgery-anesthesia',
+    certifications: [{ type: 'FDA 510(k)', number: 'K241234', issuer: 'FDA', validUntil: '2028-03' }],
+    categorySlug: 'surgery-anesthesia',
   },
   {
     id: 'p4',
@@ -409,8 +421,82 @@ export const PRODUCTS: Product[] = [
     description: 'Box of 12. Excellent knot security and minimal tissue reaction.',
     longDescription: 'PGA sutures degrade via hydrolysis, providing a stable wound support period (approx. 21-28 days). Coated surface ensures smooth passage through tissue.',
     specs: { 'Sizes': '2-0 / 3-0 / 4-0', 'Length': '75cm', 'Needle': 'Reverse Cutting 3/8' },
-    stockStatus: 'In Stock'
-  }
+    stockStatus: 'In Stock',
+    purchaseMode: 'direct',
+    clinicalCategory: 'daily-supplies',
+    categorySlug: 'daily-supplies',
+  },
+  {
+    id: 'p5',
+    name: 'VetSono Pro Portable Ultrasound',
+    brand: 'VetSono',
+    supplier: { name: 'VetSono Medical Technology', origin: 'Japan', rating: 4.9 },
+    group: 'PowerTools',
+    price: 28500,
+    specialty: Specialty.ULTRASOUND,
+    imageUrl: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80',
+    description: 'Compact portable ultrasound with 12MHz linear and 5MHz convex probes. Ideal for small animal abdominal and cardiac imaging.',
+    longDescription: 'VetSono Pro delivers hospital-grade imaging in a portable form factor. Features include Color Doppler, PW/CW Doppler, M-mode, and automated measurements. Battery life of 3 hours enables field use.',
+    specs: { 'Probes': '12MHz Linear + 5MHz Convex', 'Display': '15.6" HD LED', 'Weight': '5.2kg', 'Battery': '3h continuous' },
+    stockStatus: 'In Stock',
+    purchaseMode: 'inquiry',
+    clinicalCategory: 'imaging-diagnostics',
+    certifications: [{ type: 'ISO 13485', number: 'JP-2024-USP-05', issuer: 'JQA', validUntil: '2028-01' }, { type: 'CE', number: 'CE-0197-USP', issuer: 'TÜV Rheinland' }],
+    categorySlug: 'imaging-diagnostics',
+  },
+  {
+    id: 'p6',
+    name: 'Multi-Frequency Ultrasound Probe Set (3/7/12MHz)',
+    brand: 'VetSono',
+    supplier: { name: 'VetSono Medical Technology', origin: 'Japan', rating: 4.9 },
+    group: 'PowerTools',
+    price: 8900,
+    specialty: Specialty.ULTRASOUND,
+    imageUrl: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=600&q=80',
+    description: 'Professional probe set covering abdominal, cardiac, and musculoskeletal imaging. Compatible with VetSono Pro and most major brands.',
+    longDescription: 'Three probes optimized for veterinary use: 3MHz sector for deep abdominal/cardiac, 7MHz micro-convex for small parts, 12MHz linear for superficial structures and MSK. Crystal element technology provides exceptional resolution.',
+    specs: { 'Frequencies': '3 / 7 / 12 MHz', 'Cable Length': '2.1m', 'Connector': 'Universal USB-C' },
+    stockStatus: 'In Stock',
+    purchaseMode: 'direct',
+    clinicalCategory: 'imaging-diagnostics',
+    categorySlug: 'imaging-diagnostics',
+  },
+  {
+    id: 'p7',
+    name: 'Phacoemulsification System VetPhaco-3000',
+    brand: 'PrecisionEye',
+    supplier: { name: 'Precision Eye Instruments', origin: 'USA', rating: 5.0 },
+    group: 'PowerTools',
+    price: 45000,
+    specialty: Specialty.EYE_SURGERY,
+    imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80',
+    description: 'Complete phacoemulsification unit with integrated vitrectomy function. Designed specifically for veterinary cataract surgery.',
+    longDescription: 'The VetPhaco-3000 features intelligent fluidics that adapt to anterior chamber depth, reducing surge risk. Dual-linear foot pedal provides precise control. Includes IOL insertion toolkit.',
+    specs: { 'Phaco Frequency': '40kHz', 'Vacuum': '0-650mmHg', 'Aspiration': '0-65cc/min', 'Display': '10.1" Touchscreen' },
+    stockStatus: 'In Stock',
+    purchaseMode: 'inquiry',
+    clinicalCategory: 'surgery-anesthesia',
+    certifications: [{ type: 'FDA 510(k)', number: 'K240567', issuer: 'FDA', validUntil: '2028-06' }, { type: 'ISO 13485', number: 'US-2024-PHC-07', issuer: 'NSF International' }],
+    categorySlug: 'surgery-anesthesia',
+  },
+  {
+    id: 'p8',
+    name: 'Arthroscopy Tower System VetScope-HD',
+    brand: 'SurgiTech',
+    supplier: { name: 'SurgiTech Germany GmbH', origin: 'Germany', rating: 4.9 },
+    group: 'PowerTools',
+    price: 38000,
+    specialty: Specialty.ORTHOPEDICS,
+    imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80',
+    description: 'Full HD arthroscopy system with 2.7mm and 4.0mm scopes, LED light source, and fluid management pump.',
+    longDescription: 'VetScope-HD provides crystal-clear intra-articular visualization. The integrated recording system captures surgery footage for case review and training. Compact tower design saves OR floor space.',
+    specs: { 'Resolution': '1920x1080 Full HD', 'Scope Diameter': '2.7mm / 4.0mm', 'Light Source': 'LED 50W', 'Recording': '4K/1080p USB' },
+    stockStatus: 'In Stock',
+    purchaseMode: 'hybrid',
+    clinicalCategory: 'surgery-anesthesia',
+    certifications: [{ type: 'ISO 13485', number: 'DE-2024-ART-08', issuer: 'TÜV SÜD', validUntil: '2027-11' }, { type: 'CE', number: 'CE-0123-ART', issuer: 'BSI' }],
+    categorySlug: 'surgery-anesthesia',
+  },
 ];
 
 // Alias exports to satisfy Dashboard.tsx imports and allow future expansion
@@ -421,3 +507,146 @@ export const COURSES_CN = COURSES;
 export const PRODUCTS_EN = PRODUCTS;
 export const PRODUCTS_TH = PRODUCTS;
 export const PRODUCTS_CN = PRODUCTS;
+
+// ---- SEED: Course-Product Relations ----
+// Maps courses to products with relationship types, day indexes, and instructor notes.
+// Used as mock fallback when course_product_relations DB table is empty.
+
+const productMap = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
+
+function rel(
+  id: string,
+  courseId: string,
+  productId: string,
+  relationshipType: 'required' | 'recommended' | 'mentioned',
+  relationType: 'course' | 'module' | 'instructor',
+  dayIndex: number | null,
+  displayOrder: number,
+  noteEn?: string,
+  noteTh?: string,
+  noteJa?: string,
+): CourseProductRelation {
+  return {
+    id,
+    courseId,
+    productId,
+    relationshipType,
+    relationType,
+    dayIndex,
+    displayOrder,
+    instructorNoteEn: noteEn,
+    instructorNoteTh: noteTh,
+    instructorNoteJa: noteJa,
+    product: productMap[productId],
+  };
+}
+
+export const SEED_COURSE_PRODUCT_RELATIONS: Record<string, CourseProductRelation[]> = {
+  // ── Ultrasound Basic (5-day) ─────────────────────────────
+  'csavs-ultra-basic-2026': [
+    rel('cpr-u1', 'csavs-ultra-basic-2026', 'p5', 'required', 'course', null, 1,
+      'Primary ultrasound unit used throughout the course',
+      'เครื่องอัลตราซาวด์หลักที่ใช้ตลอดหลักสูตร',
+      'コース全体で使用するメイン超音波ユニット'),
+    rel('cpr-u2', 'csavs-ultra-basic-2026', 'p6', 'required', 'module', 1, 2,
+      'Multi-frequency probes for physics & artifact exercises',
+      'โพรบหลายความถี่สำหรับฝึกฟิสิกส์และอาร์ติแฟกต์',
+      '物理学とアーチファクト演習用マルチ周波数プローブ'),
+    rel('cpr-u3', 'csavs-ultra-basic-2026', 'p6', 'required', 'module', 3, 3,
+      'High-frequency probe for kidney & adrenal imaging',
+      'โพรบความถี่สูงสำหรับภาพไตและต่อมหมวกไต',
+      '腎臓・副腎イメージング用高周波プローブ'),
+    rel('cpr-u4', 'csavs-ultra-basic-2026', 'p6', 'required', 'module', 5, 4,
+      'Doppler-capable probes for vascular assessment',
+      'โพรบที่รองรับ Doppler สำหรับประเมินหลอดเลือด',
+      '血管評価用ドップラー対応プローブ'),
+    rel('cpr-u5', 'csavs-ultra-basic-2026', 'p4', 'recommended', 'module', 5, 5,
+      'Sutures for ultrasound-guided FNA practice',
+      'ไหมเย็บสำหรับฝึก FNA ด้วยอัลตราซาวด์',
+      '超音波ガイド下FNA練習用縫合糸'),
+    rel('cpr-u6', 'csavs-ultra-basic-2026', 'p1', 'mentioned', 'instructor', null, 6,
+      'Dr. Bosma recommends for clinics expanding to surgical services',
+      'Dr. Bosma แนะนำสำหรับคลินิกที่ขยายบริการศัลยกรรม',
+      'Bosma先生が手術サービス拡大クリニックに推奨'),
+  ],
+
+  // ── Soft Tissue Surgery (3-day) ──────────────────────────
+  'csavs-soft-2026': [
+    rel('cpr-s1', 'csavs-soft-2026', 'p4', 'required', 'course', null, 1,
+      'Essential sutures for all soft tissue procedures',
+      'ไหมเย็บที่จำเป็นสำหรับหัตถการเนื้อเยื่ออ่อนทั้งหมด',
+      '全軟部組織手技に必須の縫合糸'),
+    rel('cpr-s2', 'csavs-soft-2026', 'p1', 'required', 'module', 1, 2,
+      'Liver lobectomy using powered stapler system',
+      'การตัดกลีบตับด้วยระบบ stapler แบบมีกำลัง',
+      'パワーステープラーシステムによる肝葉切除'),
+    rel('cpr-s3', 'csavs-soft-2026', 'p3', 'recommended', 'module', 2, 3,
+      'Fine forceps for pericardectomy and TECA procedures',
+      'คีมละเอียดสำหรับการตัดเยื่อหุ้มหัวใจและ TECA',
+      '心膜切除術とTECA手技用精密鉗子'),
+    rel('cpr-s4', 'csavs-soft-2026', 'p2', 'recommended', 'module', 3, 4,
+      'Mini plates for reconstructive flap stabilization',
+      'แผ่นเพลทขนาดเล็กเพื่อยึดแผ่นเนื้อเยื่อในการสร้างใหม่',
+      '再建皮弁の固定用ミニプレート'),
+    rel('cpr-s5', 'csavs-soft-2026', 'p5', 'mentioned', 'instructor', null, 5,
+      'Dr. Proot recommends intraoperative ultrasound for hepatic surgery',
+      'Dr. Proot แนะนำอัลตราซาวด์ระหว่างผ่าตัดสำหรับศัลยกรรมตับ',
+      'Proot先生が肝臓手術における術中超音波を推奨'),
+  ],
+
+  // ── Ophthalmology (3-day) ────────────────────────────────
+  'csavs-eye-2026': [
+    rel('cpr-e1', 'csavs-eye-2026', 'p3', 'required', 'course', null, 1,
+      'Primary micro-forceps used in all ophthalmic practicals',
+      'คีมจุลภาคหลักที่ใช้ในการฝึกปฏิบัติทางจักษุทั้งหมด',
+      '全眼科実習で使用する主要マイクロ鉗子'),
+    rel('cpr-e2', 'csavs-eye-2026', 'p7', 'required', 'module', 3, 2,
+      'Phaco system for Day 3 cataract surgery practicals',
+      'ระบบ Phaco สำหรับฝึกผ่าตัดต้อกระจกวันที่ 3',
+      '3日目白内障手術実習用Phacoシステム'),
+    rel('cpr-e3', 'csavs-eye-2026', 'p4', 'required', 'module', 1, 3,
+      '8-0 / 9-0 sutures for corneal suturing exercises',
+      'ไหมเย็บ 8-0 / 9-0 สำหรับฝึกเย็บกระจกตา',
+      '角膜縫合練習用8-0/9-0縫合糸'),
+    rel('cpr-e4', 'csavs-eye-2026', 'p4', 'required', 'module', 2, 4,
+      'Sutures for corneal reconstruction and graft techniques',
+      'ไหมเย็บสำหรับเทคนิคการสร้างกระจกตาใหม่และการปลูกถ่าย',
+      '角膜再建・移植技術用縫合糸'),
+    rel('cpr-e5', 'csavs-eye-2026', 'p5', 'mentioned', 'instructor', null, 5,
+      'Dr. Sanchez recommends ocular ultrasound for pre-surgical lens assessment',
+      'Dr. Sanchez แนะนำอัลตราซาวด์ตาสำหรับประเมินเลนส์ก่อนผ่าตัด',
+      'Sanchez先生が術前水晶体評価に眼科超音波を推奨'),
+  ],
+
+  // ── Joint Surgery (3-day) ────────────────────────────────
+  'csavs-joint-2026': [
+    rel('cpr-j1', 'csavs-joint-2026', 'p8', 'required', 'course', null, 1,
+      'Full arthroscopy tower for practical sessions',
+      'ระบบอาร์โทรสโคปีครบชุดสำหรับฝึกปฏิบัติ',
+      '実習セッション用フル関節鏡タワー'),
+    rel('cpr-j2', 'csavs-joint-2026', 'p1', 'required', 'module', 2, 2,
+      'Power tools for arthrotomy approach demonstration',
+      'เครื่องมือไฟฟ้าสำหรับสาธิตวิธีเข้า arthrotomy',
+      '関節切開アプローチデモンストレーション用パワーツール'),
+    rel('cpr-j3', 'csavs-joint-2026', 'p2', 'required', 'module', 3, 3,
+      'Locking plates for stifle arthrotomy stabilization',
+      'แผ่นเพลทล็อคสำหรับยึดการตัดข้อเข่า',
+      '膝関節切開安定化用ロッキングプレート'),
+    rel('cpr-j4', 'csavs-joint-2026', 'p8', 'required', 'module', 2, 4,
+      'Arthroscope 2.7mm for basic joint exploration',
+      'กล้องอาร์โทรสโคป 2.7 มม. สำหรับสำรวจข้อต่อเบื้องต้น',
+      '基本関節探索用2.7mm関節鏡'),
+    rel('cpr-j5', 'csavs-joint-2026', 'p8', 'required', 'module', 3, 5,
+      'Arthroscope 4.0mm for advanced stifle procedures',
+      'กล้องอาร์โทรสโคป 4.0 มม. สำหรับหัตถการข้อเข่าขั้นสูง',
+      '高度膝関節手技用4.0mm関節鏡'),
+    rel('cpr-j6', 'csavs-joint-2026', 'p4', 'recommended', 'module', 3, 6,
+      'Sutures for post-arthrotomy wound closure',
+      'ไหมเย็บสำหรับปิดแผลหลัง arthrotomy',
+      '関節切開後創閉鎖用縫合糸'),
+    rel('cpr-j7', 'csavs-joint-2026', 'p5', 'mentioned', 'instructor', null, 7,
+      'Dr. Pozzi recommends ultrasound for joint effusion assessment',
+      'Dr. Pozzi แนะนำอัลตราซาวด์สำหรับประเมินน้ำในข้อ',
+      'Pozzi先生が関節液貯留評価に超音波を推奨'),
+  ],
+};

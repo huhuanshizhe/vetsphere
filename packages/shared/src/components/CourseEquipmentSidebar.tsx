@@ -6,12 +6,14 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import type { CourseProductRelation } from '../types';
+import { useSiteConfig } from '../context/SiteConfigContext';
 import ClinicalConsultationModal from './ClinicalConsultationModal';
 import InquiryModal from './InquiryModal';
 
 const translations = {
   en: {
     title: 'Equipment & Kits Used in This Course',
+    intlTitle: 'Essential Equipment for This Training',
     addToCart: 'Add to Cart',
     requestQuote: 'Request Quote',
     buy: 'Buy',
@@ -27,6 +29,7 @@ const translations = {
   },
   zh: {
     title: '本课程使用的设备套件',
+    intlTitle: '本课程使用的设备套件',
     addToCart: '加入购物车',
     requestQuote: '申请报价',
     buy: '购买',
@@ -42,6 +45,7 @@ const translations = {
   },
   th: {
     title: 'อุปกรณ์และชุดเครื่องมือที่ใช้ในหลักสูตรนี้',
+    intlTitle: 'อุปกรณ์ที่จำเป็นสำหรับการฝึกอบรมนี้',
     addToCart: 'เพิ่มลงตะกร้า',
     requestQuote: 'ขอใบเสนอราคา',
     buy: 'ซื้อ',
@@ -57,6 +61,7 @@ const translations = {
   },
   ja: {
     title: 'このコースで使用する機器・キット',
+    intlTitle: 'このトレーニングに必要な機器',
     addToCart: 'カートに追加',
     requestQuote: '見積もり依頼',
     buy: '購入',
@@ -82,6 +87,7 @@ export default function CourseEquipmentSidebar({ relations, locale }: CourseEqui
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
+  const { isINTL } = useSiteConfig();
   const t = translations[language as keyof typeof translations] || translations.en;
 
   const [addedId, setAddedId] = useState<string | null>(null);
@@ -128,7 +134,7 @@ export default function CourseEquipmentSidebar({ relations, locale }: CourseEqui
     <>
       <div id="equipment-kits" className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
         <h3 className="font-black text-sm text-slate-900 mb-4 flex items-center gap-2">
-          <span className="text-lg">&#128736;</span> {t.title}
+          <span className="text-lg">&#128736;</span> {isINTL ? t.intlTitle : t.title}
         </h3>
 
         <div className="space-y-3">
@@ -237,7 +243,11 @@ export default function CourseEquipmentSidebar({ relations, locale }: CourseEqui
         {/* View All Link */}
         {totalCount > 0 && (
           <a
-            href="#module-equipment"
+            href="#equipment-modules"
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('equipment-modules')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
             className="mt-4 flex items-center justify-center gap-1 text-xs font-bold text-vs hover:text-emerald-700 transition-colors py-2"
           >
             {t.viewAll} ({totalCount}) &#8595;

@@ -79,7 +79,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
     language,
     locale: language,
     setLanguage,
-    t: translations[language] || translations.en
+    t: (translations as unknown as Record<string, typeof translations['en']>)[language] || translations.en
   };
 
   return (

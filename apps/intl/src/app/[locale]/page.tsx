@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import JsonLd, { faqSchema, breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
-import IntlHomePageClient from '@vetsphere/shared/pages/intl/IntlHomePageClient';
+import IntlUpgradeHomePageClient from '@vetsphere/shared/pages/intl/IntlUpgradeHomePageClient';
 import { siteConfig } from '@/config/site.config';
 
 export const metadata: Metadata = {
@@ -54,7 +54,7 @@ export default function HomePage() {
       <JsonLd data={breadcrumbSchema([
         { name: 'Home', url: siteConfig.siteUrl },
       ])} />
-      <IntlHomePageClient />
+      <IntlUpgradeHomePageClient />
     </>
   );
 }

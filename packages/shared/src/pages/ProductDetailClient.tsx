@@ -10,6 +10,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { useSiteConfig } from '../context/SiteConfigContext';
 import CourseRelationsBlock from '../components/CourseRelationsBlock';
 
 interface ProductDetailClientProps {
@@ -23,6 +24,7 @@ const ProductDetailClient: React.FC<ProductDetailClientProps> = ({ productId }) 
   const { isAuthenticated, user } = useAuth();
   const { addNotification } = useNotification();
   const { addToCart } = useCart();
+  const { isINTL } = useSiteConfig();
   
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -307,14 +309,47 @@ const ProductDetailClient: React.FC<ProductDetailClientProps> = ({ productId }) 
               </div>
             </div>
 
-            {/* Description */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-black text-slate-900">
-                {language === 'zh' ? '产品描述' : 'Product Description'}
-              </h2>
-              <p className="text-slate-600 leading-relaxed">{product.description}</p>
-              <p className="text-slate-500 leading-relaxed text-sm">{product.longDescription}</p>
-            </div>
+            {/* Description / Clinical Application */}
+            {isINTL ? (
+              <div className="bg-white rounded-2xl p-6 border border-slate-100 space-y-5">
+                <h2 className="text-xl font-black text-slate-900">
+                  {language === 'ja' ? '臨床応用' : language === 'th' ? 'การประยุกต์ใช้ทางคลินิก' : 'Clinical Application'}
+                </h2>
+                {product.clinicalCategory && (
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full">
+                      {product.clinicalCategory.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </span>
+                  </div>
+                )}
+                <p className="text-slate-600 leading-relaxed">{product.description}</p>
+                {product.longDescription && (
+                  <p className="text-slate-500 leading-relaxed text-sm">{product.longDescription}</p>
+                )}
+                {product.certifications && product.certifications.length > 0 && (
+                  <div className="pt-4 border-t border-slate-100">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                      {language === 'ja' ? '認証・規格' : language === 'th' ? 'การรับรองและมาตรฐาน' : 'Certifications & Standards'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {product.certifications.map((cert, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full">
+                          {cert.type}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h2 className="text-xl font-black text-slate-900">
+                  {language === 'zh' ? '产品描述' : 'Product Description'}
+                </h2>
+                <p className="text-slate-600 leading-relaxed">{product.description}</p>
+                <p className="text-slate-500 leading-relaxed text-sm">{product.longDescription}</p>
+              </div>
+            )}
 
             {/* Specifications */}
             <div className="bg-white rounded-2xl p-6 border border-slate-100">

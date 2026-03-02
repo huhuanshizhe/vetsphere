@@ -55,9 +55,10 @@ const translations = {
 interface InstructorToolsBlockProps {
   relations: CourseProductRelation[];
   locale: string;
+  instructorName?: string;
 }
 
-export default function InstructorToolsBlock({ relations, locale }: InstructorToolsBlockProps) {
+export default function InstructorToolsBlock({ relations, locale, instructorName }: InstructorToolsBlockProps) {
   const router = useRouter();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
@@ -100,7 +101,12 @@ export default function InstructorToolsBlock({ relations, locale }: InstructorTo
     <>
       <div id="instructor-tools" className="mt-6 pt-6 border-t border-slate-100">
         <h4 className="text-sm font-black text-slate-700 mb-3 flex items-center gap-2">
-          <span>&#9733;</span> {t.title}
+          <span>&#9733;</span> {instructorName
+            ? (language === 'ja' ? `${instructorName} 推奨ツール` :
+               language === 'th' ? `เครื่องมือแนะนำโดย ${instructorName}` :
+               language === 'zh' ? `${instructorName} 推荐工具` :
+               `Tools Recommended by ${instructorName}`)
+            : t.title}
         </h4>
         <div className="space-y-2.5">
           {instructorItems.map(relation => {

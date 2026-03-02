@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '../context/LanguageContext';
+import { useSiteConfig } from '../context/SiteConfigContext';
 import type { CourseProductRelation, Course } from '../types';
 
 interface CourseRelationsBlockProps {
@@ -58,10 +59,27 @@ async function getProductCourses(productId: string): Promise<CourseProductRelati
   }
 }
 
+const intlTranslations = {
+  en: {
+    title: 'Used in Our Training Programs',
+    subtitle: 'Learn to use this equipment with expert guidance from board-certified specialists',
+  },
+  th: {
+    title: 'ใช้ในโปรแกรมฝึกอบรมของเรา',
+    subtitle: 'เรียนรู้การใช้อุปกรณ์นี้พร้อมคำแนะนำจากผู้เชี่ยวชาญที่ได้รับการรับรอง',
+  },
+  ja: {
+    title: '当社トレーニングプログラムで使用',
+    subtitle: '認定専門医の専門的なガイダンスのもとでこの機器の使い方を学ぶ',
+  },
+};
+
 export default function CourseRelationsBlock({ productId, locale }: CourseRelationsBlockProps) {
   const router = useRouter();
   const { language } = useLanguage();
+  const { isINTL } = useSiteConfig();
   const t = translations[language as keyof typeof translations] || translations.en;
+  const intlT = intlTranslations[language as keyof typeof intlTranslations] || intlTranslations.en;
 
   const [relations, setRelations] = useState<CourseProductRelation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,9 +133,9 @@ export default function CourseRelationsBlock({ productId, locale }: CourseRelati
       {/* Header */}
       <div>
         <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-          <span>🎓</span> {t.title}
+          <span>🎓</span> {isINTL ? intlT.title : t.title}
         </h3>
-        <p className="text-sm text-slate-500 mt-1">{t.subtitle}</p>
+        <p className="text-sm text-slate-500 mt-1">{isINTL ? intlT.subtitle : t.subtitle}</p>
       </div>
 
       {/* Content */}
