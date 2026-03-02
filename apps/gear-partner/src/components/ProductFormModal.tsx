@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import type { Product, ProductGroup, Specialty } from '@vetsphere/shared/types';
+import { useState, useCallback, useMemo } from 'react';
+import type { Product } from '@vetsphere/shared/types';
+import { useSiteConfig } from '@vetsphere/shared/context/SiteConfigContext';
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -10,23 +11,29 @@ interface ProductFormModalProps {
   onSubmit: (product: Partial<Product>, asDraft: boolean) => Promise<void>;
 }
 
-const SPECIALTIES: Specialty[] = ['Orthopedics', 'Ophthalmology', 'Neurology', 'Cardiology', 'Oncology', 'Dentistry', 'Dermatology', 'Emergency', 'Rehabilitation'];
-const GROUPS: ProductGroup[] = ['PowerTools', 'Implants', 'HandInstruments', 'Consumables', 'Equipment'];
-const GROUP_LABELS: Record<string, string> = {
-  PowerTools: '电动工具', Implants: '植入物', HandInstruments: '手术器械', Consumables: '耗材', Equipment: '设备',
-};
-const SPECIALTY_LABELS: Record<string, string> = {
-  Orthopedics: '骨科', Ophthalmology: '眼科', Neurology: '神经科', Cardiology: '心脏科',
-  Oncology: '肿瘤科', Dentistry: '牙科', Dermatology: '皮肤科', Emergency: '急诊', Rehabilitation: '康复科',
-};
-
-const STEPS = [
-  { id: 0, title: '基本信息', icon: '📋' },
-  { id: 1, title: '详细信息', icon: '📝' },
-  { id: 2, title: '预览确认', icon: '✅' },
-];
-
 export default function ProductFormModal({ isOpen, initialData, onClose, onSubmit }: ProductFormModalProps) {
+  const { siteConfig } = useSiteConfig();
+
+  // Read categories from config
+  const groupDimension = useMemo(() =>
+    siteConfig.shopCategories?.dimensions.find(d => d.key === 'group'),
+    [siteConfig.shopCategories]
+  );
+  const specialtyDimension = useMemo(() =>
+    siteConfig.shopCategories?.dimensions.find(d => d.key === 'specialty'),
+    [siteConfig.shopCategories]
+  );
+  const groups = useMemo(() => groupDimension?.categories ?? [], [groupDimension]);
+  const specialties = useMemo(() => specialtyDimension?.categories ?? [], [specialtyDimension]);
+  const getLabel = (cat: { key: string; labels: Record<string, string> }) =>
+    cat.labels['zh'] || cat.labels['en'] || Object.values(cat.labels)[0] || cat.key;
+
+  const STEPS = [
+    { id: 0, title: '基本信息', icon: '📋' },
+    { id: 1, title: '详细信息', icon: '📝' },
+    { id: 2, title: '预览确认', icon: '✅' },
+  ];
+
   const isEdit = !!initialData;
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -110,7 +117,7 @@ export default function ProductFormModal({ isOpen, initialData, onClose, onSubmi
     return {
       ...(initialData?.id ? { id: initialData.id } : {}),
       name: name.trim(), brand: brand.trim(),
-      specialty: specialty as Specialty, group: group as ProductGroup,
+      specialty: specialty as any, group: group as any,
       price: parseFloat(price), stockQuantity: parseInt(stockQuantity),
       description: description.trim(), longDescription: longDescription.trim(),
       imageUrl, specs: specsObj,
@@ -179,14 +186,14 @@ export default function ProductFormModal({ isOpen, initialData, onClose, onSubmi
                   <label className="block text-sm font-bold text-gray-300 mb-1.5">专科方向 *</label>
                   <select value={specialty} onChange={e => setSpecialty(e.target.value)} className="w-full px-3 py-2.5 bg-blue-500/5 border border-blue-500/20 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/40">
                     <option value="">选择专科</option>
-                    {SPECIALTIES.map(s => <option key={s} value={s}>{SPECIALTY_LABELS[s] || s}</option>)}
+                    {specialties.map(s => <option key={s.key} value={s.key}>{getLabel(s)}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-1.5">商品分组 *</label>
                   <select value={group} onChange={e => setGroup(e.target.value)} className="w-full px-3 py-2.5 bg-blue-500/5 border border-blue-500/20 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/40">
                     <option value="">选择分组</option>
-                    {GROUPS.map(g => <option key={g} value={g}>{GROUP_LABELS[g] || g}</option>)}
+                    {groups.map(g => <option key={g.key} value={g.key}>{getLabel(g)}</option>)}
                   </select>
                 </div>
               </div>
@@ -263,7 +270,7 @@ export default function ProductFormModal({ isOpen, initialData, onClose, onSubmi
                 </div>
                 <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4">
                   <p className="text-xs text-gray-500 mb-1">专科 / 分组</p>
-                  <p className="text-white font-bold">{SPECIALTY_LABELS[specialty] || specialty} · {GROUP_LABELS[group] || group}</p>
+                  <p className="text-white font-bold">{specialties.find(s => s.key === specialty)?.labels['zh'] || specialty} · {groups.find(g => g.key === group)?.labels['zh'] || group}</p>
                 </div>
                 <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4">
                   <p className="text-xs text-gray-500 mb-1">价格 / 库存</p>

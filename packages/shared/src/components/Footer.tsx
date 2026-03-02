@@ -35,10 +35,22 @@ const Footer: React.FC = () => {
         {/* Brand & Newsletter */}
         <div className="lg:col-span-4 space-y-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-900/20">
-              <span className="text-white font-black text-sm">VS</span>
-            </div>
-            <span className="text-white font-black text-2xl tracking-tighter">VetSphere</span>
+            {isCN ? (
+              <>
+                <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo-cn.jpg" alt="" className="h-full w-auto max-w-none object-cover brightness-110" style={{ aspectRatio: '1/1', objectPosition: '28% center' }} />
+                </div>
+                <span className="text-white font-black text-2xl tracking-tight">宠医界</span>
+              </>
+            ) : (
+              <>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-900/20">
+                  <span className="text-white font-black text-sm">VS</span>
+                </div>
+                <span className="text-white font-black text-2xl tracking-tighter">VetSphere</span>
+              </>
+            )}
           </div>
           <p className="text-sm leading-relaxed max-w-xs text-slate-500 font-medium">
             {t.footer.brandDesc}

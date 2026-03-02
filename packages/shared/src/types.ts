@@ -14,6 +14,92 @@ export type ProductGroup = 'PowerTools' | 'Implants' | 'HandInstruments' | 'Cons
 
 export type CourseStatus = 'Pending' | 'Published' | 'Rejected' | 'Draft';
 
+// ============================================
+// B2B Commerce Types
+// ============================================
+
+/** Purchase mode determines how a product can be acquired */
+export type PurchaseMode = 'direct' | 'inquiry' | 'hybrid';
+
+/** Clinical workflow categories for INTL B2B platform */
+export type ClinicalCategory = 
+  | 'imaging-diagnostics'
+  | 'surgery-anesthesia'
+  | 'in-house-lab'
+  | 'daily-supplies'
+  | 'course-equipment';
+
+/** Product certification/compliance information */
+export interface Certification {
+  type: string;      // 'ISO 13485', 'CE', 'FDA', etc.
+  number: string;
+  issuer: string;
+  validUntil?: string;
+}
+
+/** Hierarchical product category for SEO-friendly URLs */
+export interface ProductCategory {
+  id: string;
+  slug: string;
+  parentId?: string;
+  nameEn: string;
+  nameTh?: string;
+  nameJa?: string;
+  descriptionEn?: string;
+  descriptionTh?: string;
+  descriptionJa?: string;
+  icon?: string;
+  displayOrder: number;
+  isActive: boolean;
+  metaTitleEn?: string;
+  metaDescriptionEn?: string;
+  children?: ProductCategory[];
+}
+
+/** Course-product relationship type */
+export type RelationshipType = 'required' | 'recommended' | 'mentioned';
+
+/** Links products to courses with instructor notes */
+export interface CourseProductRelation {
+  id: string;
+  courseId: string;
+  productId: string;
+  relationshipType: RelationshipType;
+  instructorNoteEn?: string;
+  instructorNoteTh?: string;
+  instructorNoteJa?: string;
+  displayOrder: number;
+  createdAt?: string;
+  createdBy?: string;
+  // Populated on client
+  product?: Product;
+  course?: Course;
+}
+
+/** Inquiry/quote request status */
+export type InquiryStatus = 'pending' | 'replied' | 'quoted' | 'converted' | 'archived';
+
+/** B2B inquiry request for products */
+export interface InquiryRequest {
+  id: string;
+  productId: string;
+  userId?: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  companyName?: string;
+  message: string;
+  quantity?: number;
+  status: InquiryStatus;
+  adminNotes?: string;
+  source?: string;
+  createdAt: string;
+  updatedAt?: string;
+  repliedAt?: string;
+  // Populated on client
+  product?: Product;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -71,6 +157,14 @@ export interface Product {
     origin: string;
     rating: number;
   };
+  // B2B Commerce fields
+  purchaseMode?: PurchaseMode;
+  clinicalCategory?: ClinicalCategory;
+  subCategory?: string;
+  clinicalUseCase?: string;
+  certifications?: Certification[];
+  instructorRecommendation?: string;
+  categorySlug?: string;
 }
 
 export interface Course {

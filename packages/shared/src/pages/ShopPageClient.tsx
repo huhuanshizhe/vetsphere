@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '../services/api';
 import { useCart } from '../context/CartContext';
@@ -9,19 +9,39 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useSiteConfig } from '../context/SiteConfigContext';
-import { Specialty, ProductGroup, Product } from '../types';
+import { Product } from '../types';
+import type { CategoryDimension } from '../site-config.types';
 
-const validProductGroups: ProductGroup[] = ['PowerTools', 'Implants', 'HandInstruments', 'Consumables', 'Equipment'];
-
-// Product group translations (multi-language)
-const groupTranslations: Record<string, Record<string, string>> = {
-  'PowerTools': { zh: '电动工具', th: 'เครื่องมือไฟฟ้า', ja: '電動工具' },
-  'Implants': { zh: '植入物', th: 'อุปกรณ์ปลูกถ่าย', ja: 'インプラント' },
-  'HandInstruments': { zh: '手术器械', th: 'เครื่องมือผ่าตัด', ja: '手術器具' },
-  'Consumables': { zh: '耗材', th: 'วัสดุสิ้นเปลือง', ja: '消耗品' },
-  'Equipment': { zh: '设备', th: 'อุปกรณ์', ja: '機器' },
-  'All': { zh: '全部', th: 'ทั้งหมด', ja: 'すべて' },
-};
+/** Fallback dimensions when shopCategories is not configured */
+const defaultDimensions: CategoryDimension[] = [
+  {
+    key: 'group',
+    field: 'group',
+    displayName: { zh: '产品分组', en: 'Product Group' },
+    displayAs: 'tabs',
+    categories: [
+      { key: 'PowerTools', labels: { zh: '电动工具', en: 'Power Tools', th: 'เครื่องมือไฟฟ้า', ja: '電動工具' } },
+      { key: 'Implants', labels: { zh: '植入物', en: 'Implants', th: 'อุปกรณ์ปลูกถ่าย', ja: 'インプラント' } },
+      { key: 'HandInstruments', labels: { zh: '手术器械', en: 'Hand Instruments', th: 'เครื่องมือผ่าตัด', ja: '手術器具' } },
+      { key: 'Consumables', labels: { zh: '耗材', en: 'Consumables', th: 'วัสดุสิ้นเปลือง', ja: '消耗品' } },
+      { key: 'Equipment', labels: { zh: '设备', en: 'Equipment', th: 'อุปกรณ์', ja: '機器' } },
+    ],
+  },
+  {
+    key: 'specialty',
+    field: 'specialty',
+    displayName: { zh: '专科方向', en: 'Specialty' },
+    displayAs: 'sidebar',
+    categories: [
+      { key: 'Orthopedics', labels: { zh: '骨科', en: 'Orthopedics' } },
+      { key: 'Neurosurgery', labels: { zh: '神经外科', en: 'Neurosurgery' } },
+      { key: 'Soft Tissue', labels: { zh: '软组织', en: 'Soft Tissue' } },
+      { key: 'Eye Surgery', labels: { zh: '眼科', en: 'Eye Surgery' } },
+      { key: 'Exotics', labels: { zh: '异宠', en: 'Exotics' } },
+      { key: 'Ultrasound', labels: { zh: '超声', en: 'Ultrasound' } },
+    ],
+  },
+];
 
 const ShopPageClient: React.FC = () => {
   const router = useRouter();
@@ -30,18 +50,32 @@ const ShopPageClient: React.FC = () => {
   const { t, locale, language } = useLanguage();
   const { isAuthenticated, user } = useAuth();
   const { addNotification } = useNotification();
-  const { isCN, market } = useSiteConfig();
+  const { isCN, market, siteConfig } = useSiteConfig();
+
+  // Config-driven category dimensions
+  const dimensions = useMemo(() =>
+    siteConfig.shopCategories?.dimensions ?? defaultDimensions,
+    [siteConfig.shopCategories]
+  );
+  const tabDimensions = useMemo(() => dimensions.filter(d => d.displayAs === 'tabs'), [dimensions]);
+  const sidebarDimensions = useMemo(() => dimensions.filter(d => d.displayAs === 'sidebar'), [dimensions]);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // UI State
-  const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | 'All'>('All');
-  const [selectedGroup, setSelectedGroup] = useState<ProductGroup | 'All'>('All');
+  // Generic filter state: { group: 'All', specialty: 'All', ... }
+  const [filters, setFilters] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const [showCartHint, setShowCartHint] = useState(false);
   const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'name'>('default');
+
+  // Helper: get filter for a dimension (default 'All')
+  const getFilter = (dimKey: string) => filters[dimKey] || 'All';
+  const setFilter = (dimKey: string, value: string) => setFilters(prev => ({ ...prev, [dimKey]: value }));
+  const getCategoryLabel = (cat: { key: string; labels: Record<string, string> }) =>
+    cat.labels[language] || cat.labels['en'] || Object.values(cat.labels)[0] || cat.key;
 
   useEffect(() => {
     api.getProducts().then(data => {
@@ -50,13 +84,19 @@ const ShopPageClient: React.FC = () => {
     });
   }, []);
 
-  // Read group param from URL for deep-linking (e.g. /shop?group=PowerTools)
+  // Read URL params for deep-linking (e.g. /shop?group=PowerTools&specialty=Orthopedics)
   useEffect(() => {
-    const groupParam = searchParams.get('group');
-    if (groupParam && validProductGroups.includes(groupParam as ProductGroup)) {
-      setSelectedGroup(groupParam as ProductGroup);
+    const newFilters: Record<string, string> = {};
+    dimensions.forEach(dim => {
+      const paramVal = searchParams.get(dim.key);
+      if (paramVal && dim.categories.some(c => c.key === paramVal)) {
+        newFilters[dim.key] = paramVal;
+      }
+    });
+    if (Object.keys(newFilters).length > 0) {
+      setFilters(prev => ({ ...prev, ...newFilters }));
     }
-  }, [searchParams]);
+  }, [searchParams, dimensions]);
 
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
@@ -129,13 +169,18 @@ const ShopPageClient: React.FC = () => {
 
   const filteredProducts = products.filter(p => {
     if (p.status && p.status !== 'Published') return false;
-    const matchSpec = selectedSpecialty === 'All' || p.specialty === selectedSpecialty;
-    const matchGroup = selectedGroup === 'All' || p.group === selectedGroup;
+    // Check each dimension filter
+    for (const dim of dimensions) {
+      const filterVal = getFilter(dim.key);
+      if (filterVal !== 'All') {
+        if ((p as any)[dim.field] !== filterVal) return false;
+      }
+    }
     const matchSearch = !searchQuery || 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchSpec && matchGroup && matchSearch;
+    return matchSearch;
   }).sort((a, b) => {
     switch (sortBy) {
       case 'price-asc': return a.price - b.price;
@@ -160,21 +205,25 @@ const ShopPageClient: React.FC = () => {
             </p>
           </div>
           
-          <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm overflow-x-auto max-w-full">
-            <button 
-               onClick={() => setSelectedGroup('All')}
-               className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedGroup === 'All' ? 'bg-vs text-white' : 'text-slate-400 hover:text-slate-900'}`}
-            >
-              {t.shop.allItems}
-            </button>
-            {['PowerTools', 'Implants', 'HandInstruments', 'Consumables', 'Equipment'].map(g => (
-              <button 
-                key={g}
-                onClick={() => setSelectedGroup(g as any)}
-                className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedGroup === g ? 'bg-vs text-white shadow-lg shadow-vs/20' : 'text-slate-400 hover:text-slate-900'}`}
-              >
-                {groupTranslations[g]?.[language] || g}
-              </button>
+          <div className="flex flex-col gap-3">
+            {tabDimensions.map(dim => (
+              <div key={dim.key} className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm overflow-x-auto max-w-full">
+                <button 
+                   onClick={() => setFilter(dim.key, 'All')}
+                   className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${getFilter(dim.key) === 'All' ? 'bg-vs text-white' : 'text-slate-400 hover:text-slate-900'}`}
+                >
+                  {t.shop.allItems}
+                </button>
+                {dim.categories.map(cat => (
+                  <button 
+                    key={cat.key}
+                    onClick={() => setFilter(dim.key, cat.key)}
+                    className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${getFilter(dim.key) === cat.key ? 'bg-vs text-white shadow-lg shadow-vs/20' : 'text-slate-400 hover:text-slate-900'}`}
+                  >
+                    {getCategoryLabel(cat)}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
         </div>
@@ -202,21 +251,32 @@ const ShopPageClient: React.FC = () => {
                 </div>
              </div>
 
-             <div className="space-y-6">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">{t.shop.byDiscipline}</h4>
-                <div className="flex flex-col gap-1">
-                   {['All', ...Object.values(Specialty)].map(s => (
+             {sidebarDimensions.map(dim => (
+               <div key={dim.key} className="space-y-6">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                    {dim.displayName[language] || dim.displayName['en'] || Object.values(dim.displayName)[0] || dim.key}
+                  </h4>
+                  <div className="flex flex-col gap-1">
                      <button 
-                        key={s}
-                        onClick={() => setSelectedSpecialty(s as any)}
-                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${selectedSpecialty === s ? 'bg-vs/5 text-vs' : 'text-slate-500 hover:bg-slate-50'}`}
+                        onClick={() => setFilter(dim.key, 'All')}
+                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${getFilter(dim.key) === 'All' ? 'bg-vs/5 text-vs' : 'text-slate-500 hover:bg-slate-50'}`}
                      >
-                        {s === 'All' ? t.courses.allSpecialties : s}
-                        {selectedSpecialty === s && <span className="w-1.5 h-1.5 bg-vs rounded-full"></span>}
+                        {t.courses.allSpecialties}
+                        {getFilter(dim.key) === 'All' && <span className="w-1.5 h-1.5 bg-vs rounded-full"></span>}
                      </button>
-                   ))}
-                </div>
-             </div>
+                     {dim.categories.map(cat => (
+                       <button 
+                          key={cat.key}
+                          onClick={() => setFilter(dim.key, cat.key)}
+                          className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${getFilter(dim.key) === cat.key ? 'bg-vs/5 text-vs' : 'text-slate-500 hover:bg-slate-50'}`}
+                       >
+                          {getCategoryLabel(cat)}
+                          {getFilter(dim.key) === cat.key && <span className="w-1.5 h-1.5 bg-vs rounded-full"></span>}
+                       </button>
+                     ))}
+                  </div>
+               </div>
+             ))}
 
              <div className="p-6 bg-slate-900 rounded-2xl text-white relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-2 opacity-20">🤖</div>
