@@ -1,5 +1,5 @@
 // Types
-export type { SiteConfig, SupportedLocale, PaymentProvider } from './site-config.types';
+export type { SiteConfig, SupportedLocale, PaymentProvider, CategoryItem, CategoryDimension, ShopCategoriesConfig } from './site-config.types';
 export * from './types';
 
 // Translations

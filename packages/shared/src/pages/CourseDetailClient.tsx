@@ -11,6 +11,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { getLocalizedPrice } from '../services/translation';
+import ProductRelationsBlock from '../components/ProductRelationsBlock';
 
 interface CourseDetailClientProps {
   courseId: string;
@@ -482,6 +483,9 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
                 )}
               </div>
             )}
+
+            {/* Equipment Used in This Training */}
+            <ProductRelationsBlock courseId={courseId} locale={locale} />
           </div>
 
           {/* Right Sidebar */}

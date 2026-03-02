@@ -72,6 +72,14 @@ function mapProduct(p: any): Product {
     rejectionReason: p.rejection_reason || undefined,
     updatedAt: p.updated_at || undefined,
     supplier: p.supplier_info || { name: 'Verified Supplier', origin: 'Global', rating: 5.0 },
+    // B2B Commerce fields
+    purchaseMode: p.purchase_mode || 'direct',
+    clinicalCategory: p.clinical_category || undefined,
+    subCategory: p.sub_category || undefined,
+    clinicalUseCase: p.clinical_use_case || undefined,
+    certifications: p.certifications || undefined,
+    instructorRecommendation: p.instructor_recommendation || undefined,
+    categorySlug: p.category_slug || undefined,
   };
 }
 

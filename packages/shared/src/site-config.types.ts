@@ -2,6 +2,37 @@ export type SupportedLocale = 'zh' | 'en' | 'th' | 'ja';
 export type PaymentProvider = 'Alipay' | 'Wechat' | 'Stripe' | 'Airwallex' | 'Quote';
 export type MarketType = 'cn' | 'intl' | 'admin' | 'edu-partner' | 'gear-partner';
 
+/** Single category item within a dimension */
+export interface CategoryItem {
+  /** Key stored in DB, e.g. 'PowerTools' */
+  key: string;
+  /** Multi-language display labels, e.g. { zh: '电动工具', en: 'Power Tools' } */
+  labels: Record<string, string>;
+  /** Optional icon/emoji */
+  icon?: string;
+  /** URL slug for SEO-friendly category pages */
+  slug?: string;
+}
+
+/** A filterable dimension (e.g. product group, specialty) */
+export interface CategoryDimension {
+  /** Dimension identifier, e.g. 'group', 'specialty' */
+  key: string;
+  /** Product field to match against, e.g. 'group', 'specialty' */
+  field: string;
+  /** Multi-language dimension title */
+  displayName: Record<string, string>;
+  /** Available categories in this dimension */
+  categories: CategoryItem[];
+  /** How to render: 'tabs' = top bar, 'sidebar' = sidebar filters */
+  displayAs: 'tabs' | 'sidebar';
+}
+
+/** Shop categories configuration per market */
+export interface ShopCategoriesConfig {
+  dimensions: CategoryDimension[];
+}
+
 export interface SiteConfig {
   /** Market type: 'cn' for China, 'intl' for International */
   market: MarketType;
@@ -38,4 +69,6 @@ export interface SiteConfig {
     aiConsultation: boolean;
     communityPosts: boolean;
   };
+  /** Market-specific shop category configuration */
+  shopCategories?: ShopCategoriesConfig;
 }

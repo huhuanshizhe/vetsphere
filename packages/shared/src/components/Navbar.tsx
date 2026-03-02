@@ -65,23 +65,38 @@ const Navbar: React.FC = () => {
       <div className="w-full max-w-[1440px] mx-auto px-4 md:px-16 h-16 md:h-20 flex items-center justify-between">
 
         {/* Logo */}
-        <Link href={localePath('/')} className="flex items-center gap-3.5 group relative">
-          <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
-            <div className="absolute inset-0 border-2 border-[#00A884]/20 rounded-xl rotate-12 group-hover:rotate-90 transition-transform duration-700"></div>
-            <div className="absolute inset-0 border-2 border-[#00A884] rounded-xl -rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-sm"></div>
-            <div className="relative w-8 h-8 bg-[#00A884] rounded-lg flex flex-col items-center justify-center shadow-lg shadow-[#00A884]/20 overflow-hidden">
-              <span className="text-[11px] font-black text-white leading-none tracking-tighter">VS</span>
-              <div className="absolute top-1 left-1 w-1.5 h-1.5 bg-white/30 rounded-full"></div>
-            </div>
-          </div>
-          <div className="flex flex-col justify-center">
-            <span className="text-[20px] font-extrabold tracking-tight text-slate-900 leading-none group-hover:text-[#00A884] transition-colors duration-300">
-              VetSphere
-            </span>
-            <span className="text-[9px] font-black text-[#00A884]/70 uppercase tracking-[0.25em] mt-1.5 transition-all duration-300 group-hover:text-[#00A884] group-hover:translate-x-0.5">
-              {isCN ? '兽医外科平台' : 'Surgical Global'}
-            </span>
-          </div>
+        <Link href={localePath('/')} className="flex items-center gap-3 group relative">
+          {isCN ? (
+            <>
+              {/* Logo icon: crop to show only the left sphere from the full logo image */}
+              <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo-cn.jpg" alt="" className="h-full w-auto max-w-none object-cover" style={{ aspectRatio: '1/1', objectPosition: '28% center' }} />
+              </div>
+              <span className="text-[22px] font-black tracking-tight text-[#1a6e4e] leading-none group-hover:text-[#00A884] transition-colors duration-300">
+                宠医界
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
+                <div className="absolute inset-0 border-2 border-[#00A884]/20 rounded-xl rotate-12 group-hover:rotate-90 transition-transform duration-700"></div>
+                <div className="absolute inset-0 border-2 border-[#00A884] rounded-xl -rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-sm"></div>
+                <div className="relative w-8 h-8 bg-[#00A884] rounded-lg flex flex-col items-center justify-center shadow-lg shadow-[#00A884]/20 overflow-hidden">
+                  <span className="text-[11px] font-black text-white leading-none tracking-tighter">VS</span>
+                  <div className="absolute top-1 left-1 w-1.5 h-1.5 bg-white/30 rounded-full"></div>
+                </div>
+              </div>
+              <div className="flex flex-col justify-center">
+                <span className="text-[20px] font-extrabold tracking-tight text-slate-900 leading-none group-hover:text-[#00A884] transition-colors duration-300">
+                  VetSphere
+                </span>
+                <span className="text-[9px] font-black text-[#00A884]/70 uppercase tracking-[0.25em] mt-1.5 transition-all duration-300 group-hover:text-[#00A884] group-hover:translate-x-0.5">
+                  Surgical Global
+                </span>
+              </div>
+            </>
+          )}
         </Link>
 
         {/* Desktop Navigation */}
