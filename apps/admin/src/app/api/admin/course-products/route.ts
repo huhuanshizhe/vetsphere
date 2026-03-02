@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
         instructor_note_th,
         instructor_note_ja,
         display_order,
+        day_index,
+        relation_type,
         created_at,
         product:products(
           id,
@@ -63,6 +65,8 @@ export async function GET(request: NextRequest) {
         instructorNoteTh: item.instructor_note_th,
         instructorNoteJa: item.instructor_note_ja,
         displayOrder: item.display_order,
+        dayIndex: item.day_index ?? null,
+        relationType: item.relation_type || 'course',
         createdAt: item.created_at,
         product: product ? {
           id: product.id,
@@ -90,7 +94,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, courseId, productId, relationId, relationshipType, instructorNoteEn, instructorNoteTh, instructorNoteJa } = body;
+    const { action, courseId, productId, relationId, relationshipType, instructorNoteEn, instructorNoteTh, instructorNoteJa, dayIndex, relationType } = body;
 
     if (!action) {
       return NextResponse.json(
@@ -117,6 +121,8 @@ export async function POST(request: NextRequest) {
           instructor_note_en: instructorNoteEn || null,
           instructor_note_th: instructorNoteTh || null,
           instructor_note_ja: instructorNoteJa || null,
+          day_index: dayIndex ?? null,
+          relation_type: relationType || 'course',
           display_order: 0,
         })
         .select()
@@ -147,6 +153,8 @@ export async function POST(request: NextRequest) {
           instructorNoteTh: data.instructor_note_th,
           instructorNoteJa: data.instructor_note_ja,
           displayOrder: data.display_order,
+          dayIndex: data.day_index ?? null,
+          relationType: data.relation_type || 'course',
           createdAt: data.created_at,
         },
       });
@@ -166,6 +174,8 @@ export async function POST(request: NextRequest) {
       if (instructorNoteEn !== undefined) updateData.instructor_note_en = instructorNoteEn;
       if (instructorNoteTh !== undefined) updateData.instructor_note_th = instructorNoteTh;
       if (instructorNoteJa !== undefined) updateData.instructor_note_ja = instructorNoteJa;
+      if (dayIndex !== undefined) updateData.day_index = dayIndex;
+      if (relationType !== undefined) updateData.relation_type = relationType;
 
       const { error } = await supabase
         .from('course_product_relations')

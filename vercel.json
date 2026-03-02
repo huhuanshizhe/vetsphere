@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm run build:edu",
+  "installCommand": "pnpm install",
+  "outputDirectory": "apps/edu-partner/.next"
+}

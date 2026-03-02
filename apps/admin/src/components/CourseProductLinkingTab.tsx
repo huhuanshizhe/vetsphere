@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '@vetsphere/shared/services/api';
-import type { Course, Product, CourseProductRelation, RelationshipType } from '@vetsphere/shared/types';
+import type { Course, Product, CourseProductRelation, RelationshipType, RelationType } from '@vetsphere/shared/types';
 
 export default function CourseProductLinkingTab() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -19,6 +19,8 @@ export default function CourseProductLinkingTab() {
   const [newRelation, setNewRelation] = useState({
     productId: '',
     relationshipType: 'recommended' as RelationshipType,
+    relationType: 'course' as RelationType,
+    dayIndex: null as number | null,
     instructorNoteEn: '',
     instructorNoteTh: '',
     instructorNoteJa: '',
@@ -100,6 +102,8 @@ export default function CourseProductLinkingTab() {
           courseId: selectedCourseId,
           productId: newRelation.productId,
           relationshipType: newRelation.relationshipType,
+          relationType: newRelation.relationType,
+          dayIndex: newRelation.relationType === 'module' ? newRelation.dayIndex : null,
           instructorNoteEn: newRelation.instructorNoteEn || undefined,
           instructorNoteTh: newRelation.instructorNoteTh || undefined,
           instructorNoteJa: newRelation.instructorNoteJa || undefined,
@@ -120,6 +124,8 @@ export default function CourseProductLinkingTab() {
       setNewRelation({
         productId: '',
         relationshipType: 'recommended',
+        relationType: 'course',
+        dayIndex: null,
         instructorNoteEn: '',
         instructorNoteTh: '',
         instructorNoteJa: '',
@@ -308,6 +314,22 @@ export default function CourseProductLinkingTab() {
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-500 uppercase tracking-wider">{product.brand}</p>
                           <h4 className="font-bold text-white truncate">{product.name}</h4>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {relation.relationType && relation.relationType !== 'course' && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                relation.relationType === 'instructor' 
+                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+                                  : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                              }`}>
+                                {relation.relationType === 'instructor' ? '讲师推荐' : '模块设备'}
+                              </span>
+                            )}
+                            {relation.dayIndex && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                                Day {relation.dayIndex}
+                              </span>
+                            )}
+                          </div>
                           {relation.instructorNoteEn && (
                             <p className="text-xs text-amber-400 mt-1 italic truncate">
                               &quot;{relation.instructorNoteEn}&quot;
@@ -352,6 +374,8 @@ export default function CourseProductLinkingTab() {
                       setNewRelation({
                         productId: '',
                         relationshipType: 'recommended',
+                        relationType: 'course',
+                        dayIndex: null,
                         instructorNoteEn: '',
                         instructorNoteTh: '',
                         instructorNoteJa: '',
@@ -417,6 +441,60 @@ export default function CourseProductLinkingTab() {
                       <option value="mentioned">提及 - 课程中有提到</option>
                     </select>
                   </div>
+
+                  {/* Relation Scope */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-300 mb-1.5">推荐范围</label>
+                    <div className="flex gap-2">
+                      {([
+                        { value: 'course', label: '课程通用', desc: '课程级别的设备推荐' },
+                        { value: 'module', label: '模块/天数', desc: '关联到具体培训日' },
+                        { value: 'instructor', label: '讲师推荐', desc: '讲师个人推荐工具' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setNewRelation(prev => ({ 
+                            ...prev, 
+                            relationType: opt.value,
+                            dayIndex: opt.value !== 'module' ? null : prev.dayIndex,
+                          }))}
+                          className={`flex-1 p-3 rounded-xl border text-left transition-colors ${
+                            newRelation.relationType === opt.value
+                              ? 'bg-blue-500/20 border-blue-500 text-white'
+                              : 'bg-blue-500/5 border-blue-500/10 text-gray-400 hover:border-blue-500/30'
+                          }`}
+                        >
+                          <p className="text-xs font-bold">{opt.label}</p>
+                          <p className="text-[10px] mt-0.5 opacity-70">{opt.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Day Selection (only for module type) */}
+                  {newRelation.relationType === 'module' && selectedCourse?.agenda && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-300 mb-1.5">
+                        关联培训日 <span className="text-red-400">*</span>
+                      </label>
+                      <select
+                        value={newRelation.dayIndex ?? ''}
+                        onChange={e => setNewRelation(prev => ({ 
+                          ...prev, 
+                          dayIndex: e.target.value ? parseInt(e.target.value) : null 
+                        }))}
+                        className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500/40"
+                      >
+                        <option value="">-- 请选择培训日 --</option>
+                        {selectedCourse.agenda.map((day, idx) => (
+                          <option key={idx} value={idx + 1}>
+                            {day.day} - {day.date}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* Instructor Note */}
                   <div>

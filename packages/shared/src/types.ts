@@ -59,6 +59,9 @@ export interface ProductCategory {
 /** Course-product relationship type */
 export type RelationshipType = 'required' | 'recommended' | 'mentioned';
 
+/** Relation scope: course-level, module/day-specific, or instructor pick */
+export type RelationType = 'course' | 'module' | 'instructor';
+
 /** Links products to courses with instructor notes */
 export interface CourseProductRelation {
   id: string;
@@ -71,6 +74,9 @@ export interface CourseProductRelation {
   displayOrder: number;
   createdAt?: string;
   createdBy?: string;
+  // Enhanced fields for day/module grouping
+  dayIndex?: number | null;
+  relationType?: RelationType;
   // Populated on client
   product?: Product;
   course?: Course;
