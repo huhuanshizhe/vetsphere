@@ -21,9 +21,9 @@ const levelTranslations: Record<string, Record<string, string>> = {
   'All': { zh: '全部', th: 'ทั้งหมด', ja: 'すべて' },
 };
 
-const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAuthenticated: boolean }> = ({ course, onSelect, isAuthenticated }) => {
+const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAuthenticated: boolean; equipmentCount?: number }> = ({ course, onSelect, isAuthenticated, equipmentCount }) => {
   const { t, language, locale } = useLanguage();
-  const { isCN } = useSiteConfig();
+  const { isCN, isINTL } = useSiteConfig();
   const router = useRouter();
 
   // Helper for localized content
@@ -107,6 +107,16 @@ const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAu
         <div className="flex items-center gap-2 mb-3">
           <span className="w-2 h-2 rounded-full bg-vs"></span>
           <span className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{course.specialty}</span>
+          {isINTL && equipmentCount !== undefined && equipmentCount > 0 && (
+            <a
+              href={`/${locale}/courses/${course.id}#equipment-kits`}
+              onClick={(e) => e.stopPropagation()}
+              className="ml-auto flex items-center gap-1 text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              {equipmentCount} equipment
+            </a>
+          )}
         </div>
         
         <h3 
@@ -166,7 +176,7 @@ const CoursesPageClient: React.FC = () => {
   const { t, language, locale } = useLanguage();  
   const { isAuthenticated, user } = useAuth();
   const { addNotification } = useNotification();
-  const { isCN } = useSiteConfig();
+  const { isCN, isINTL } = useSiteConfig();
   const initialFilter = searchParams.get('specialty') || 'All';
   
   const [courses, setCourses] = useState<Course[]>([]);
@@ -174,6 +184,7 @@ const CoursesPageClient: React.FC = () => {
   const [filter, setFilter] = useState<Specialty | 'All'>(initialFilter as Specialty | 'All');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const { addToCart } = useCart();
+  const [equipmentCounts, setEquipmentCounts] = useState<Record<string, number>>({});
 
   // Advanced filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -190,6 +201,24 @@ const CoursesPageClient: React.FC = () => {
         setLoading(false);
     });
   }, []);
+
+  // Fetch equipment counts for INTL site
+  useEffect(() => {
+    if (!isINTL || courses.length === 0) return;
+    const published = courses.filter(c => c.status === 'Published');
+    Promise.all(
+      published.map(c =>
+        fetch(`/api/courses/${c.id}/products`)
+          .then(r => r.ok ? r.json() : { relations: [] })
+          .then(data => ({ id: c.id, count: (data.relations || []).length }))
+          .catch(() => ({ id: c.id, count: 0 }))
+      )
+    ).then(results => {
+      const counts: Record<string, number> = {};
+      results.forEach(r => { counts[r.id] = r.count; });
+      setEquipmentCounts(counts);
+    });
+  }, [courses, isINTL]);
 
   const handleRegister = (course: Course) => {
     if (!isAuthenticated) {
@@ -460,7 +489,7 @@ const CoursesPageClient: React.FC = () => {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredCourses.map(course => (
-            <CourseCard key={course.id} course={course} onSelect={setSelectedCourse} isAuthenticated={isAuthenticated} />
+            <CourseCard key={course.id} course={course} onSelect={setSelectedCourse} isAuthenticated={isAuthenticated} equipmentCount={equipmentCounts[course.id]} />
             ))}
             {filteredCourses.length === 0 && (
             <div className="col-span-full py-20 text-center bg-slate-50 rounded-[32px] border border-dashed border-slate-200">

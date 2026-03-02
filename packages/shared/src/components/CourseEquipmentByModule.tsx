@@ -27,6 +27,8 @@ const translations = {
     loginToView: 'Login to View',
     added: 'Added!',
     noEquipment: 'No equipment recommendations for this course yet.',
+    viewFullList: 'View full equipment list',
+    hideList: 'Hide equipment list',
   },
   zh: {
     title: '按培训模块分类的设备与耗材',
@@ -45,6 +47,8 @@ const translations = {
     loginToView: '登录查看',
     added: '已添加!',
     noEquipment: '暂无设备推荐',
+    viewFullList: '查看全部设备列表',
+    hideList: '收起设备列表',
   },
   th: {
     title: 'อุปกรณ์และวัสดุสิ้นเปลืองตามโมดูลการฝึกอบรม',
@@ -63,6 +67,8 @@ const translations = {
     loginToView: 'เข้าสู่ระบบเพื่อดู',
     added: 'เพิ่มแล้ว!',
     noEquipment: 'ยังไม่มีคำแนะนำอุปกรณ์สำหรับหลักสูตรนี้',
+    viewFullList: 'ดูรายการอุปกรณ์ทั้งหมด',
+    hideList: 'ซ่อนรายการอุปกรณ์',
   },
   ja: {
     title: 'トレーニングモジュール別の機器・消耗品',
@@ -81,6 +87,8 @@ const translations = {
     loginToView: 'ログインして確認',
     added: '追加済み!',
     noEquipment: 'このコースにはまだ機器の推奨がありません',
+    viewFullList: '全機器リストを見る',
+    hideList: '機器リストを隠す',
   },
 };
 
@@ -88,6 +96,7 @@ interface CourseEquipmentByModuleProps {
   relations: CourseProductRelation[];
   locale: string;
   agenda: Course['agenda'];
+  initialCollapsed?: boolean;
 }
 
 interface GroupedEquipment {
@@ -97,7 +106,7 @@ interface GroupedEquipment {
   items: CourseProductRelation[];
 }
 
-export default function CourseEquipmentByModule({ relations, locale, agenda }: CourseEquipmentByModuleProps) {
+export default function CourseEquipmentByModule({ relations, locale, agenda, initialCollapsed = false }: CourseEquipmentByModuleProps) {
   const router = useRouter();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
@@ -107,6 +116,7 @@ export default function CourseEquipmentByModule({ relations, locale, agenda }: C
   const [addedId, setAddedId] = useState<string | null>(null);
   const [consultationProduct, setConsultationProduct] = useState<CourseProductRelation | null>(null);
   const [inquiryProduct, setInquiryProduct] = useState<CourseProductRelation | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
 
   // Exclude instructor-only items
   const equipmentRelations = relations.filter(r => r.relationType !== 'instructor');
@@ -189,152 +199,180 @@ export default function CourseEquipmentByModule({ relations, locale, agenda }: C
   return (
     <>
       <div id="module-equipment" className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-        {/* Header */}
-        <div className="mb-8">
+        {/* Header with collapse toggle */}
+        <div className="mb-4">
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
             <span className="text-3xl">&#128736;</span> {t.title}
           </h2>
           <p className="text-sm text-slate-500 mt-1">{t.subtitle}</p>
         </div>
 
-        {/* Grouped Sections */}
-        <div className="space-y-8">
-          {groups.map(group => (
-            <div key={group.key}>
-              {/* Group Header */}
-              <div className="flex items-center gap-3 mb-4">
-                {group.dayIndex !== null && (
-                  <span className="bg-vs/10 text-vs px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest">
-                    {t.dayPrefix} {group.dayIndex}
-                  </span>
-                )}
-                <h3 className="text-lg font-black text-slate-800">{group.label}</h3>
-                <span className="text-xs font-bold text-slate-400">({group.items.length})</span>
-              </div>
+        {/* Collapse toggle */}
+        {isCollapsed ? (
+          <button
+            onClick={() => setIsCollapsed(false)}
+            className="w-full flex items-center justify-center gap-2 py-3 text-sm font-bold text-vs hover:text-emerald-700 transition-colors border border-dashed border-slate-200 rounded-xl hover:border-vs/40"
+          >
+            {t.viewFullList} ({equipmentRelations.length})
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        ) : (
+          <>
+            {/* Grouped Sections */}
+            <div className="space-y-8">
+              {groups.map(group => (
+                <div key={group.key}>
+                  {/* Group Header */}
+                  <div className="flex items-center gap-3 mb-4">
+                    {group.dayIndex !== null && (
+                      <span className="bg-vs/10 text-vs px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest">
+                        {t.dayPrefix} {group.dayIndex}
+                      </span>
+                    )}
+                    <h3 className="text-lg font-black text-slate-800">{group.label}</h3>
+                    <span className="text-xs font-bold text-slate-400">({group.items.length})</span>
+                  </div>
 
-              {/* Product Cards Grid */}
-              <div className="grid md:grid-cols-2 gap-4">
-                {group.items.map(relation => {
-                  const product = relation.product;
-                  if (!product) return null;
+                  {/* Product Cards Grid */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {group.items.map(relation => {
+                      const product = relation.product;
+                      if (!product) return null;
 
-                  const mode = product.purchaseMode || 'direct';
-                  const badge = getRelationBadge(relation.relationshipType);
-                  const isAdded = addedId === product.id;
+                      const mode = product.purchaseMode || 'direct';
+                      const badge = getRelationBadge(relation.relationshipType);
+                      const isAdded = addedId === product.id;
 
-                  return (
-                    <div
-                      key={relation.id}
-                      className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-vs/50 hover:shadow-md transition-all group"
-                    >
-                      <div className="flex gap-4">
-                        {/* Product Image */}
+                      return (
                         <div
-                          className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-white border border-slate-100 cursor-pointer"
-                          onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                          key={relation.id}
+                          className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-vs/50 hover:shadow-md transition-all group"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={product.imageUrl}
-                            alt={product.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          />
-                        </div>
+                          <div className="flex gap-4">
+                            {/* Product Image */}
+                            <div
+                              className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-white border border-slate-100 cursor-pointer"
+                              onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                            </div>
 
-                        {/* Product Info */}
-                        <div className="flex-1 min-w-0">
-                          {/* Badges Row */}
-                          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${badge.color}`}>
-                              {badge.label}
-                            </span>
-                            {relation.dayIndex && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600">
-                                {t.usedInDay} {relation.dayIndex}{language === 'zh' ? '天' : ''}
-                              </span>
-                            )}
-                            {product.clinicalCategory && (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">
-                                {product.clinicalCategory}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Name & Brand */}
-                          <h4
-                            className="font-bold text-slate-900 line-clamp-1 cursor-pointer hover:text-vs transition-colors text-sm"
-                            onClick={() => router.push(`/${locale}/shop/${product.id}`)}
-                          >
-                            {product.name}
-                          </h4>
-                          <p className="text-xs text-slate-400">{product.brand}</p>
-
-                          {/* Price + CTA */}
-                          <div className="flex items-center justify-between mt-2">
-                            <div>
-                              {mode === 'inquiry' ? (
-                                <span className="text-xs font-bold text-blue-600">{t.contactForPrice}</span>
-                              ) : isAuthenticated ? (
-                                <span className="text-sm font-black text-vs">
-                                  {currencySymbol}{product.price?.toLocaleString()}
+                            {/* Product Info */}
+                            <div className="flex-1 min-w-0">
+                              {/* Badges Row */}
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${badge.color}`}>
+                                  {badge.label}
                                 </span>
-                              ) : (
-                                <span className="text-[10px] font-bold text-vs">&#128274; {t.loginToView}</span>
-                              )}
-                            </div>
+                                {relation.dayIndex && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600">
+                                    {t.usedInDay} {relation.dayIndex}{language === 'zh' ? '天' : ''}
+                                  </span>
+                                )}
+                                {product.clinicalCategory && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">
+                                    {product.clinicalCategory}
+                                  </span>
+                                )}
+                              </div>
 
-                            <div className="flex gap-1.5">
-                              {mode === 'direct' && (
-                                <button
-                                  onClick={() => handleAddToCart(relation)}
-                                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                                    isAdded
-                                      ? 'bg-emerald-100 text-emerald-700'
-                                      : 'bg-vs text-white hover:bg-emerald-600 active:scale-95'
-                                  }`}
-                                >
-                                  {isAdded ? t.added : t.addToCart}
-                                </button>
-                              )}
-                              {mode === 'inquiry' && (
-                                <button
-                                  onClick={() => setConsultationProduct(relation)}
-                                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all"
-                                >
-                                  {t.requestQuote}
-                                </button>
-                              )}
-                              {mode === 'hybrid' && (
-                                <>
-                                  <button
-                                    onClick={() => handleAddToCart(relation)}
-                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                                      isAdded
-                                        ? 'bg-emerald-100 text-emerald-700'
-                                        : 'bg-vs text-white hover:bg-emerald-600 active:scale-95'
-                                    }`}
-                                  >
-                                    {isAdded ? t.added : t.buy}
-                                  </button>
-                                  <button
-                                    onClick={() => setInquiryProduct(relation)}
-                                    className="px-2 py-1 rounded-lg text-[10px] font-bold border border-blue-200 text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
-                                  >
-                                    {t.bulkQuote}
-                                  </button>
-                                </>
-                              )}
+                              {/* Name & Brand */}
+                              <h4
+                                className="font-bold text-slate-900 line-clamp-1 cursor-pointer hover:text-vs transition-colors text-sm"
+                                onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                              >
+                                {product.name}
+                              </h4>
+                              <p className="text-xs text-slate-400">{product.brand}</p>
+
+                              {/* Price + CTA */}
+                              <div className="flex items-center justify-between mt-2">
+                                <div>
+                                  {mode === 'inquiry' ? (
+                                    <span className="text-xs font-bold text-blue-600">{t.contactForPrice}</span>
+                                  ) : isAuthenticated ? (
+                                    <span className="text-sm font-black text-vs">
+                                      {currencySymbol}{product.price?.toLocaleString()}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-vs">&#128274; {t.loginToView}</span>
+                                  )}
+                                </div>
+
+                                <div className="flex gap-1.5">
+                                  {mode === 'direct' && (
+                                    <button
+                                      onClick={() => handleAddToCart(relation)}
+                                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                        isAdded
+                                          ? 'bg-emerald-100 text-emerald-700'
+                                          : 'bg-vs text-white hover:bg-emerald-600 active:scale-95'
+                                      }`}
+                                    >
+                                      {isAdded ? t.added : t.addToCart}
+                                    </button>
+                                  )}
+                                  {mode === 'inquiry' && (
+                                    <button
+                                      onClick={() => setConsultationProduct(relation)}
+                                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all"
+                                    >
+                                      {t.requestQuote}
+                                    </button>
+                                  )}
+                                  {mode === 'hybrid' && (
+                                    <>
+                                      <button
+                                        onClick={() => handleAddToCart(relation)}
+                                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                          isAdded
+                                            ? 'bg-emerald-100 text-emerald-700'
+                                            : 'bg-vs text-white hover:bg-emerald-600 active:scale-95'
+                                        }`}
+                                      >
+                                        {isAdded ? t.added : t.buy}
+                                      </button>
+                                      <button
+                                        onClick={() => setInquiryProduct(relation)}
+                                        className="px-2 py-1 rounded-lg text-[10px] font-bold border border-blue-200 text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+                                      >
+                                        {t.bulkQuote}
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+
+            {/* Collapse button at bottom */}
+            {initialCollapsed && (
+              <button
+                onClick={() => setIsCollapsed(true)}
+                className="mt-6 w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {t.hideList}
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       {/* Modals */}

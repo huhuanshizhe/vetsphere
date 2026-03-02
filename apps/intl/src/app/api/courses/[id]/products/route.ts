@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { SEED_COURSE_PRODUCT_RELATIONS } from '@vetsphere/shared/lib/constants';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -54,15 +55,11 @@ export async function GET(
 
     if (error) {
       console.error('Error fetching product relations:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch product relations' },
-        { status: 500 }
-      );
+      // Fall through to seed data fallback below
     }
 
     // Filter to only include published products and map to client format
-    // Note: Supabase returns joined relations - cast through unknown for type safety
-    const relations = data
+    const relations = (data || [])
       .filter(item => {
         const product = item.product as unknown as Record<string, unknown> | null;
         return product && product.id;
@@ -97,7 +94,41 @@ export async function GET(
         };
       });
 
-    return NextResponse.json({ relations });
+    // If DB returned results, use them
+    if (relations.length > 0) {
+      return NextResponse.json({ relations });
+    }
+
+    // ── Mock fallback: use seed data when DB is empty ──
+    const seedRelations = SEED_COURSE_PRODUCT_RELATIONS[courseId] || [];
+    const fallback = seedRelations.map(r => ({
+      id: r.id,
+      courseId: r.courseId,
+      productId: r.productId,
+      relationshipType: r.relationshipType,
+      instructorNoteEn: r.instructorNoteEn || null,
+      instructorNoteTh: r.instructorNoteTh || null,
+      instructorNoteJa: r.instructorNoteJa || null,
+      displayOrder: r.displayOrder,
+      dayIndex: r.dayIndex ?? null,
+      relationType: r.relationType || 'course',
+      createdAt: null,
+      product: r.product ? {
+        id: r.product.id,
+        name: r.product.name,
+        brand: r.product.brand,
+        price: r.product.price,
+        specialty: r.product.specialty,
+        group: r.product.group,
+        imageUrl: r.product.imageUrl,
+        description: r.product.description,
+        stockStatus: r.product.stockStatus,
+        purchaseMode: r.product.purchaseMode || 'direct',
+        clinicalCategory: r.product.clinicalCategory || null,
+      } : null,
+    }));
+
+    return NextResponse.json({ relations: fallback });
 
   } catch (error) {
     console.error('Course products API error:', error);

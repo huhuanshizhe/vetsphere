@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { SEED_COURSE_PRODUCT_RELATIONS, COURSES } from '@vetsphere/shared/lib/constants';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -56,15 +57,10 @@ export async function GET(
 
     if (error) {
       console.error('Error fetching course relations:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch course relations' },
-        { status: 500 }
-      );
     }
 
     // Filter to only include published courses and map to client format
-    // Note: Supabase returns joined relations - cast through unknown for type safety
-    const relations = data
+    const relations = (data || [])
       .filter(item => {
         const course = item.course as unknown as Record<string, unknown> | null;
         return course && course.status === 'Published';
@@ -101,7 +97,51 @@ export async function GET(
         };
       });
 
-    return NextResponse.json({ relations });
+    if (relations.length > 0) {
+      return NextResponse.json({ relations });
+    }
+
+    // Mock fallback: reverse-lookup seed data by productId
+    const courseMap = Object.fromEntries(COURSES.map(c => [c.id, c]));
+    const fallback: Array<Record<string, unknown>> = [];
+
+    for (const [courseId, rels] of Object.entries(SEED_COURSE_PRODUCT_RELATIONS)) {
+      for (const r of rels) {
+        if (r.productId === productId) {
+          const course = courseMap[courseId];
+          if (course && course.status === 'Published') {
+            fallback.push({
+              id: r.id,
+              courseId: r.courseId,
+              productId: r.productId,
+              relationshipType: r.relationshipType,
+              instructorNoteEn: r.instructorNoteEn || null,
+              instructorNoteTh: r.instructorNoteTh || null,
+              instructorNoteJa: r.instructorNoteJa || null,
+              displayOrder: r.displayOrder,
+              createdAt: null,
+              course: {
+                id: course.id,
+                title: course.title,
+                description: course.description,
+                specialty: course.specialty,
+                level: course.level,
+                price: course.price,
+                currency: course.currency,
+                startDate: course.startDate,
+                endDate: course.endDate,
+                imageUrl: course.imageUrl,
+                location: course.location,
+                instructor: course.instructor,
+                status: course.status,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({ relations: fallback });
 
   } catch (error) {
     console.error('Course relations API error:', error);

@@ -15,10 +15,11 @@ import {
 import {
   Menu,
   X,
+  TrendingUp,
   GraduationCap,
   ShoppingBag,
   Building2,
-  Mail,
+  Hospital,
   User,
   LogOut,
   Globe,
@@ -28,10 +29,11 @@ import {
 // Navigation translations
 const navTranslations = {
   en: {
-    courses: 'Courses',
-    shop: 'Shop',
+    upgrade: 'Upgrade',
+    training: 'Training',
+    equipment: 'Equipment',
+    forClinics: 'For Clinics',
     about: 'About',
-    contact: 'Contact',
     signIn: 'Sign In',
     signOut: 'Sign Out',
     userCenter: 'My Account',
@@ -40,10 +42,11 @@ const navTranslations = {
     teachingCenter: 'Teaching Center',
   },
   th: {
-    courses: 'หลักสูตร',
-    shop: 'ร้านค้า',
+    upgrade: 'อัปเกรด',
+    training: 'การฝึกอบรม',
+    equipment: 'อุปกรณ์',
+    forClinics: 'สำหรับคลินิก',
     about: 'เกี่ยวกับเรา',
-    contact: 'ติดต่อเรา',
     signIn: 'เข้าสู่ระบบ',
     signOut: 'ออกจากระบบ',
     userCenter: 'บัญชีของฉัน',
@@ -52,10 +55,11 @@ const navTranslations = {
     teachingCenter: 'ศูนย์การสอน',
   },
   ja: {
-    courses: 'コース',
-    shop: 'ショップ',
+    upgrade: 'アップグレード',
+    training: 'トレーニング',
+    equipment: '機器',
+    forClinics: 'クリニック向け',
     about: '会社概要',
-    contact: 'お問い合わせ',
     signIn: 'ログイン',
     signOut: 'ログアウト',
     userCenter: 'マイアカウント',
@@ -85,10 +89,11 @@ export function IntlNavbar({ locale }: IntlNavbarProps) {
   const t = navTranslations[language as keyof typeof navTranslations] || navTranslations.en;
 
   const navigation = [
-    { name: t.courses, href: `/${locale}/courses`, icon: GraduationCap },
-    { name: t.shop, href: `/${locale}/shop`, icon: ShoppingBag },
+    { name: t.upgrade, href: `/${locale}`, icon: TrendingUp },
+    { name: t.training, href: `/${locale}/courses`, icon: GraduationCap },
+    { name: t.equipment, href: `/${locale}/shop`, icon: ShoppingBag },
+    { name: t.forClinics, href: `/${locale}/for-clinics`, icon: Hospital },
     { name: t.about, href: `/${locale}/about`, icon: Building2 },
-    { name: t.contact, href: `/${locale}/contact`, icon: Mail },
   ];
 
   const handleLanguageChange = (newLang: string) => {
