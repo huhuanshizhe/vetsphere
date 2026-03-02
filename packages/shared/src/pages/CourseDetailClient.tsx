@@ -15,6 +15,7 @@ import { getLocalizedPrice } from '../services/translation';
 import CourseEquipmentSidebar from '../components/CourseEquipmentSidebar';
 import CourseEquipmentByModule from '../components/CourseEquipmentByModule';
 import InstructorToolsBlock from '../components/InstructorToolsBlock';
+import ClinicalConsultationModal from '../components/ClinicalConsultationModal';
 
 interface CourseDetailClientProps {
   courseId: string;
@@ -63,6 +64,7 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
   const [loading, setLoading] = useState(true);
   const [equipmentRelations, setEquipmentRelations] = useState<CourseProductRelation[]>([]);
   const [relatedCourses, setRelatedCourses] = useState<Course[]>([]);
+  const [showAdvisorModal, setShowAdvisorModal] = useState(false);
 
   // Get current locale from pathname
   const locale = pathname.split('/')[1] || 'en';
@@ -847,10 +849,7 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
                   : (language === 'ja' ? 'ログインして申込' : language === 'th' ? 'เข้าสู่ระบบเพื่อลงทะเบียน' : 'Login to Register')}
               </button>
               <button
-                onClick={() => {
-                  const subject = encodeURIComponent(`Clinical Training Inquiry: ${title}`);
-                  window.location.href = `mailto:training@vetsphere.com?subject=${subject}`;
-                }}
+                onClick={() => setShowAdvisorModal(true)}
                 className="px-8 py-4 bg-transparent border-2 border-slate-600 text-slate-300 rounded-2xl font-bold text-sm hover:border-slate-400 hover:text-white transition-all flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -861,6 +860,16 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
             </div>
           </div>
         </div>
+      )}
+
+      {/* Clinical Advisor Consultation Modal */}
+      {course && (
+        <ClinicalConsultationModal
+          isOpen={showAdvisorModal}
+          onClose={() => setShowAdvisorModal(false)}
+          productId={courseId}
+          productName={title}
+        />
       )}
     </div>
   );
