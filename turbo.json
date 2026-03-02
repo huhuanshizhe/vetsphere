@@ -1,5 +1,28 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "AI_API_KEY",
+    "AI_BASE_URL",
+    "AI_MODEL",
+    "DASHSCOPE_API_KEY",
+    "ALIPAY_APP_ID",
+    "ALIPAY_PRIVATE_KEY",
+    "ALIPAY_PUBLIC_KEY",
+    "ALIPAY_GATEWAY",
+    "ALIPAY_NOTIFY_URL",
+    "WECHAT_APP_ID",
+    "WECHAT_MCH_ID",
+    "WECHAT_API_KEY",
+    "WECHAT_API_V3_KEY",
+    "WECHAT_SERIAL_NO",
+    "WECHAT_PRIVATE_KEY_PATH",
+    "WECHAT_NOTIFY_URL",
+    "STRIPE_SECRET_KEY"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

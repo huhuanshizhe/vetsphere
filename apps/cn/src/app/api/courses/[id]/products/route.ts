@@ -20,7 +20,6 @@ export async function GET(
       );
     }
 
-    // Get course-product relations with product details
     const { data, error } = await supabase
       .from('course_product_relations')
       .select(`
@@ -60,8 +59,6 @@ export async function GET(
       );
     }
 
-    // Filter to only include published products and map to client format
-    // Note: Supabase returns joined relations - cast through unknown for type safety
     const relations = data
       .filter(item => {
         const product = item.product as unknown as Record<string, unknown> | null;

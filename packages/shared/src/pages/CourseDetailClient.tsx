@@ -5,13 +5,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../services/api';
-import { Course } from '../types';
+import { Course, CourseProductRelation } from '../types';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { getLocalizedPrice } from '../services/translation';
-import ProductRelationsBlock from '../components/ProductRelationsBlock';
+import CourseEquipmentSidebar from '../components/CourseEquipmentSidebar';
+import CourseEquipmentByModule from '../components/CourseEquipmentByModule';
+import InstructorToolsBlock from '../components/InstructorToolsBlock';
 
 interface CourseDetailClientProps {
   courseId: string;
@@ -27,6 +29,7 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
   
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [equipmentRelations, setEquipmentRelations] = useState<CourseProductRelation[]>([]);
 
   // Get current locale from pathname
   const locale = pathname.split('/')[1] || 'en';
@@ -37,6 +40,14 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
       setCourse(found || null);
       setLoading(false);
     });
+  }, [courseId]);
+
+  // Fetch equipment relations
+  useEffect(() => {
+    fetch(`/api/courses/${courseId}/products`)
+      .then(res => res.ok ? res.json() : { relations: [] })
+      .then(data => setEquipmentRelations(data.relations || []))
+      .catch(() => setEquipmentRelations([]));
   }, [courseId]);
 
   const getLocalizedContent = (course: Course) => {
@@ -351,6 +362,8 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
                       &quot;{instructor.bio}&quot;
                     </p>
                   )}
+                  {/* Instructor Recommended Tools */}
+                  <InstructorToolsBlock relations={equipmentRelations} locale={locale} />
                 </div>
               </div>
             </div>
@@ -484,8 +497,12 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
               </div>
             )}
 
-            {/* Equipment Used in This Training */}
-            <ProductRelationsBlock courseId={courseId} locale={locale} />
+            {/* Equipment & Consumables by Training Module */}
+            <CourseEquipmentByModule 
+              relations={equipmentRelations} 
+              locale={locale}
+              agenda={course.agenda}
+            />
           </div>
 
           {/* Right Sidebar */}
@@ -537,6 +554,9 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
                     : (language === 'zh' ? '登录后报名' : language === 'ja' ? 'ログインして申込' : 'Login to Register')}
                 </button>
               </div>
+
+              {/* Equipment & Kits Sidebar */}
+              <CourseEquipmentSidebar relations={equipmentRelations} locale={locale} />
 
               {/* Course Details */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">

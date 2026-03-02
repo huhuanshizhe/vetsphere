@@ -9,6 +9,9 @@ export { translations } from './translations';
 export { default as JsonLd, organizationSchema, websiteSchema, courseSchema, productSchema, faqSchema, breadcrumbSchema, howToSchema, videoSchema, articleSchema, eventSchema } from './components/JsonLd';
 export { default as OptimizedImage } from './components/OptimizedImage';
 export { default as Skeleton } from './components/Skeleton';
+export { default as CourseEquipmentSidebar } from './components/CourseEquipmentSidebar';
+export { default as CourseEquipmentByModule } from './components/CourseEquipmentByModule';
+export { default as InstructorToolsBlock } from './components/InstructorToolsBlock';
 
 // Context
 export { AuthProvider, useAuth } from './context/AuthContext';
