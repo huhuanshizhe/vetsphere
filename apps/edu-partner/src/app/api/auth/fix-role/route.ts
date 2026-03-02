@@ -1,0 +1,54 @@
+import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
+
+// API to fix existing user's role to CourseProvider
+export async function POST(req: NextRequest) {
+  try {
+    const { email } = await req.json();
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tvxrgbntiksskywsroax.supabase.co';
+
+    if (!serviceRoleKey) {
+      return NextResponse.json({ error: 'Service role key not configured' }, { status: 500 });
+    }
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    // Get user by email
+    const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
+    if (listError) throw listError;
+
+    const user = users.find(u => u.email === email);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Update user role to CourseProvider
+    const { data, error: updateError } = await adminClient.auth.admin.updateUserById(user.id, {
+      user_metadata: { 
+        ...user.user_metadata,
+        role: 'CourseProvider'
+      }
+    });
+
+    if (updateError) throw updateError;
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `User ${email} role updated to CourseProvider`,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        role: data.user.user_metadata?.role
+      }
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 });
+  }
+}
