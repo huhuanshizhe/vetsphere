@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
-import TermsPageClient from '@vetsphere/shared/pages/TermsPageClient';
+import CnTermsPage from '@vetsphere/shared/pages/cn/CnTermsPage';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service',
-  description: 'VetSphere Terms of Service - Read the terms and conditions for using VetSphere platform.',
+  title: '用户协议 - VetSphere',
+  description: 'VetSphere 用户协议 - 阅读使用 VetSphere 平台的服务条款和条件。',
+  keywords: ['用户协议', '服务条款', 'VetSphere'],
 };
 
 export default function TermsPage() {
-  return <TermsPageClient />;
+  return <CnTermsPage />;
 }
