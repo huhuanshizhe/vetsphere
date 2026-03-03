@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   BookOpen, Filter, Search, Star, Clock, Users, Award, ArrowRight,
@@ -9,196 +9,168 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
+import { Course } from '../../types';
 
 // Course category
 interface CourseCategory {
   id: string;
   name: string;
   icon: React.ReactNode;
-  count: number;
-}
-
-// Course card
-interface CourseCardProps {
-  id: string;
-  title: string;
-  instructor: string;
-  category: string;
-  duration: string;
-  students: number;
-  rating: number;
-  price: number;
-  image?: string;
-  featured?: boolean;
-  upcoming?: boolean;
-  locale: string;
 }
 
 const CATEGORIES: CourseCategory[] = [
-  { id: 'all', name: '全部课程', icon: <BookOpen className="w-5 h-5" />, count: 24 },
-  { id: 'surgery', name: '外科手术', icon: <Stethoscope className="w-5 h-5" />, count: 8 },
-  { id: 'ultrasound', name: '超声影像', icon: <Target className="w-5 h-5" />, count: 5 },
-  { id: 'ophthalmology', name: '眼科专科', icon: <Eye className="w-5 h-5" />, count: 4 },
-  { id: 'general', name: '全科基础', icon: <Heart className="w-5 h-5" />, count: 7 },
+  { id: 'all', name: '全部课程', icon: <BookOpen className="w-5 h-5" /> },
+  { id: 'Orthopedics', name: '骨科手术', icon: <Stethoscope className="w-5 h-5" /> },
+  { id: 'Soft Tissue', name: '软组织外科', icon: <Heart className="w-5 h-5" /> },
+  { id: 'Eye Surgery', name: '眼科手术', icon: <Eye className="w-5 h-5" /> },
+  { id: 'Ultrasound', name: '超声影像', icon: <Target className="w-5 h-5" /> },
 ];
 
+// Helper to get localized content
+const getLocalizedTitle = (course: Course, lang: string): string => {
+  if (lang === 'zh' && course.title_zh) return course.title_zh;
+  return course.title;
+};
+
+const getLocalizedDescription = (course: Course, lang: string): string => {
+  if (lang === 'zh' && course.description_zh) return course.description_zh;
+  return course.description;
+};
+
 // Course Card Component
-const CourseCard: React.FC<CourseCardProps> = ({
-  id, title, instructor, category, duration, students, rating, price, image, featured, upcoming, locale
-}) => (
-  <Link 
-    href={`/${locale}/courses/${id}`}
-    className={`group block bg-white rounded-2xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden ${
-      featured ? 'border-blue-200 ring-2 ring-blue-100' : 'border-slate-200 hover:border-slate-300'
-    }`}
-  >
-    {/* Image */}
-    <div className="relative aspect-video bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
-      {image ? (
-        <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <GraduationCap className="w-12 h-12 text-slate-300" />
-        </div>
-      )}
-      {featured && (
-        <div className="absolute top-3 left-3 px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center gap-1.5">
-          <Star className="w-3.5 h-3.5 fill-current" />
-          <span>推荐</span>
-        </div>
-      )}
-      {upcoming && (
-        <div className="absolute top-3 right-3 px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center gap-1.5">
-          <Calendar className="w-3.5 h-3.5" />
-          <span>即将开课</span>
-        </div>
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <div className="absolute bottom-3 right-3 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-        <Play className="w-5 h-5 text-slate-700 fill-current" />
-      </div>
-    </div>
-
-    {/* Content */}
-    <div className="p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg">{category}</span>
-        <div className="flex items-center gap-1 text-amber-500">
-          <Star className="w-3.5 h-3.5 fill-current" />
-          <span className="text-xs font-bold">{rating.toFixed(1)}</span>
-        </div>
-      </div>
-
-      <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-        {title}
-      </h3>
-
-      <p className="text-sm text-slate-500 mb-4">讲师: {instructor}</p>
-
-      <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
-        <div className="flex items-center gap-1.5">
-          <Clock className="w-4 h-4" />
-          <span>{duration}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Users className="w-4 h-4" />
-          <span>{students}人学习</span>
+const CourseCard: React.FC<{ course: Course; locale: string; language: string; featured?: boolean }> = ({
+  course, locale, language, featured
+}) => {
+  const title = getLocalizedTitle(course, language);
+  const instructor = course.instructor;
+  const instructorName = language === 'zh' && instructor.name_zh ? instructor.name_zh : instructor.name;
+  
+  // Calculate days
+  const startDate = new Date(course.startDate);
+  const endDate = new Date(course.endDate);
+  const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  
+  // Check if upcoming (within 60 days)
+  const now = new Date();
+  const daysUntilStart = Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const isUpcoming = daysUntilStart > 0 && daysUntilStart <= 60;
+  
+  return (
+    <Link 
+      href={`/${locale}/courses/${course.id}`}
+      className={`group block bg-white rounded-2xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden ${
+        featured ? 'border-blue-200 ring-2 ring-blue-100' : 'border-slate-200 hover:border-slate-300'
+      }`}
+    >
+      {/* Image */}
+      <div className="relative aspect-video bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
+        {course.imageUrl ? (
+          <img src={course.imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <GraduationCap className="w-12 h-12 text-slate-300" />
+          </div>
+        )}
+        {featured && (
+          <div className="absolute top-3 left-3 px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center gap-1.5">
+            <Star className="w-3.5 h-3.5 fill-current" />
+            <span>推荐</span>
+          </div>
+        )}
+        {isUpcoming && (
+          <div className="absolute top-3 right-3 px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>即将开课</span>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute bottom-3 right-3 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+          <Play className="w-5 h-5 text-slate-700 fill-current" />
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-        <div className="text-xl font-black text-slate-900">
-          ¥{price.toLocaleString()}
+      {/* Content */}
+      <div className="p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg">{course.specialty}</span>
+          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg">{course.level}</span>
         </div>
-        <span className="text-sm font-bold text-blue-600 group-hover:text-blue-700 flex items-center gap-1">
-          查看详情
-          <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-        </span>
+
+        <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+          {title}
+        </h3>
+
+        <p className="text-sm text-slate-500 mb-4">讲师: {instructorName}</p>
+
+        <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-4 h-4" />
+            <span>{days}天</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-4 h-4" />
+            <span>{course.location?.city || '待定'}</span>
+          </div>
+          {course.enrolledCount !== undefined && (
+            <div className="flex items-center gap-1.5">
+              <Users className="w-4 h-4" />
+              <span>{course.enrolledCount}人报名</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div className="text-xl font-black text-slate-900">
+            ¥{course.price.toLocaleString()}
+          </div>
+          <span className="text-sm font-bold text-blue-600 group-hover:text-blue-700 flex items-center gap-1">
+            查看详情
+            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+          </span>
+        </div>
       </div>
-    </div>
-  </Link>
-);
+    </Link>
+  );
+};
 
 const CnCoursesPage: React.FC = () => {
-  const { locale } = useLanguage();
+  const { locale, language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sample courses data for CN market
-  const sampleCourses = [
-    {
-      id: 'tplo-basics',
-      title: 'TPLO手术基础与实操训练',
-      instructor: 'Dr. 张明华',
-      category: '外科手术',
-      duration: '3天',
-      students: 156,
-      rating: 4.9,
-      price: 12800,
-      featured: true,
-      upcoming: true,
-    },
-    {
-      id: 'abdominal-ultrasound',
-      title: '腹部超声诊断进阶课程',
-      instructor: 'Dr. 李文静',
-      category: '超声影像',
-      duration: '2天',
-      students: 203,
-      rating: 4.8,
-      price: 6800,
-      featured: true,
-    },
-    {
-      id: 'soft-tissue-surgery',
-      title: '软组织外科手术技巧',
-      instructor: 'Dr. 王建国',
-      category: '外科手术',
-      duration: '2天',
-      students: 128,
-      rating: 4.7,
-      price: 8800,
-    },
-    {
-      id: 'eye-examination',
-      title: '眼科检查与常见眼病诊治',
-      instructor: 'Dr. 陈晓燕',
-      category: '眼科专科',
-      duration: '1.5天',
-      students: 89,
-      rating: 4.9,
-      price: 5800,
-    },
-    {
-      id: 'cardiac-ultrasound',
-      title: '心脏超声基础与病例解读',
-      instructor: 'Dr. 刘海波',
-      category: '超声影像',
-      duration: '2天',
-      students: 112,
-      rating: 4.6,
-      price: 7800,
-      upcoming: true,
-    },
-    {
-      id: 'clinical-diagnosis',
-      title: '临床诊断思维训练课程',
-      instructor: 'Dr. 赵雪梅',
-      category: '全科基础',
-      duration: '2天',
-      students: 245,
-      rating: 4.8,
-      price: 4800,
-    },
-  ];
+  // Fetch courses from API
+  useEffect(() => {
+    api.getCourses().then(data => {
+      // Filter only published courses
+      const publishedCourses = data.filter(c => c.status === 'Published');
+      setCourses(publishedCourses);
+      setLoading(false);
+    }).catch(() => {
+      setLoading(false);
+    });
+  }, []);
 
-  const filteredCourses = sampleCourses.filter(course => {
-    const matchesCategory = activeCategory === 'all' || course.category === CATEGORIES.find(c => c.id === activeCategory)?.name;
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         course.instructor.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter courses
+  const filteredCourses = courses.filter(course => {
+    const matchesCategory = activeCategory === 'all' || course.specialty === activeCategory;
+    const title = getLocalizedTitle(course, language);
+    const instructorName = language === 'zh' && course.instructor?.name_zh 
+      ? course.instructor.name_zh 
+      : course.instructor?.name || '';
+    const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         instructorName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  // Get category counts
+  const getCategoryCount = (categoryId: string): number => {
+    if (categoryId === 'all') return courses.length;
+    return courses.filter(c => c.specialty === categoryId).length;
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -258,7 +230,7 @@ const CnCoursesPage: React.FC = () => {
                 <span className={`px-2 py-0.5 rounded-full text-xs ${
                   activeCategory === category.id ? 'bg-white/20' : 'bg-slate-200'
                 }`}>
-                  {category.count}
+                  {getCategoryCount(category.id)}
                 </span>
               </button>
             ))}
@@ -269,7 +241,11 @@ const CnCoursesPage: React.FC = () => {
       {/* Course Grid */}
       <section className="py-16">
         <div className="container mx-auto px-4 lg:px-8">
-          {filteredCourses.length > 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : filteredCourses.length > 0 ? (
             <>
               <div className="flex items-center justify-between mb-8">
                 <p className="text-slate-600">
@@ -277,13 +253,19 @@ const CnCoursesPage: React.FC = () => {
                 </p>
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <Filter className="w-4 h-4" />
-                  <span>按热度排序</span>
+                  <span>按开课时间排序</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCourses.map((course) => (
-                  <CourseCard key={course.id} {...course} locale={locale} />
+                {filteredCourses.map((course, index) => (
+                  <CourseCard 
+                    key={course.id} 
+                    course={course} 
+                    locale={locale} 
+                    language={language}
+                    featured={index < 2}
+                  />
                 ))}
               </div>
             </>
