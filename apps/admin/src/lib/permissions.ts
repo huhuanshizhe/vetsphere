@@ -2,7 +2,7 @@
  * Admin 权限检查工具
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // 权限模块定义
 export const PERMISSION_MODULES = {
@@ -124,7 +124,7 @@ export function parsePermissionCode(code: string): {
  * 获取用户权限列表（从数据库）
  */
 export async function getUserPermissions(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, 'public', any>,
   userId: string
 ): Promise<string[]> {
   try {

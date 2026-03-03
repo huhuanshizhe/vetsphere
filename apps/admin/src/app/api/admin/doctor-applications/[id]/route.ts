@@ -58,9 +58,10 @@ function mapDbToClient(row: any) {
 // GET: 获取单个申请详情
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: '未授权' }, { status: 401 });
@@ -75,7 +76,7 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from('doctor_applications')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
     
     if (error) {
@@ -95,9 +96,10 @@ export async function GET(
 // POST: 审核操作 (approve/reject)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: '未授权' }, { status: 401 });
@@ -120,7 +122,7 @@ export async function POST(
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('doctor_applications')
       .select('status')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
     
     if (fetchError || !existing) {
@@ -155,7 +157,7 @@ export async function POST(
     const { data, error } = await supabaseAdmin
       .from('doctor_applications')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
     
