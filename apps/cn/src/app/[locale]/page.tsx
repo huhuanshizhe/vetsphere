@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import JsonLd, { faqSchema, breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
-import HomePageClient from '@vetsphere/shared/pages/HomePageClient';
+import CnHomePageClient from '@vetsphere/shared/pages/cn/CnHomePageClient';
 import { siteConfig } from '@/config/site.config';
 
 export const metadata: Metadata = {
-  title: 'VetSphere | 全球宠物医生专业教育与器械平台',
-  description: 'VetSphere is the leading global platform for veterinary surgeons. Professional surgery courses (TPLO, IVDD, Soft Tissue), precision medical equipment, AI surgical consultation, and a vibrant clinical community.',
-  keywords: ['veterinary surgery courses', 'CSAVS training', 'TPLO workshop', 'veterinary orthopedic equipment', 'vet continuing education', '兽医外科培训', '宠物医生课程'],
+  title: '宠医界 | 宠物医生职业成长与客户经营平台',
+  description: '宠医界为中国小动物兽医提供专业进阶、职业发展、创业支持与客户经营工具。从学习到临床，从职业到创业，构建你的长期竞争力。',
+  keywords: ['宠物医生', '兽医职业发展', '宠物医疗创业', '兽医培训', '临床工具', '宠医界', '宠物医生成长', '兽医课程'],
   alternates: {
     canonical: `${siteConfig.siteUrl}`,
     languages: Object.fromEntries(
@@ -14,40 +14,36 @@ export const metadata: Metadata = {
     ),
   },
   openGraph: {
-    title: 'VetSphere | Global Veterinary Surgery Education & Equipment',
-    description: 'Professional surgery courses, precision medical equipment, AI consultation, and a global clinical community for veterinary surgeons.',
+    title: '宠医界 | 宠物医生职业成长与客户经营平台',
+    description: '围绕临床进阶、职业发展、创业支持与客户经营，为中国宠物医生提供长期、持续的事业发展平台。',
     url: siteConfig.siteUrl,
-    siteName: siteConfig.siteName,
+    siteName: '宠医界',
     type: 'website',
     locale: 'zh_CN',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'VetSphere | Global Veterinary Surgery Platform',
-    description: 'Professional surgery courses, precision equipment, AI consultation for veterinary surgeons.',
+    title: '宠医界 | 宠物医生职业成长与客户经营平台',
+    description: '为中国宠物医生提供专业进阶、职业发展、创业支持与客户经营工具。',
   },
 };
 
 const homeFaqs = [
   {
-    question: 'What is VetSphere?',
-    answer: 'VetSphere is a global professional development platform for veterinary surgeons, offering hands-on surgery courses (Orthopedics, Neurosurgery, Soft Tissue), precision medical equipment, AI-powered surgical consultation, and a clinical case-sharing community.',
+    question: '宠医界是什么？',
+    answer: '宠医界是围绕宠物医生职业全生命周期的一站式事业发展平台，提供专业课程、临床工具、职业发展和创业支持服务。',
   },
   {
-    question: 'What courses does VetSphere offer?',
-    answer: 'VetSphere offers professional veterinary surgery workshops including TPLO training, joint surgery, soft tissue surgery, ophthalmology certification (VOSC), and abdominal ultrasound courses. All courses are taught by board-certified diplomates (ACVS/ECVS/DECVS).',
+    question: '宠医界提供哪些课程？',
+    answer: '平台提供骨科、神经外科、软组织外科等专科进阶课程，由ACVS/ECVS认证的资深导师授课，包含理论学习和实操培训。',
   },
   {
-    question: 'Who are the instructors at VetSphere?',
-    answer: 'Our faculty consists of 50+ board-certified veterinary surgeons from world-leading institutions including University of Florida, Royal Veterinary College (UK), UC Davis, Cornell University, and University of Zurich.',
+    question: '宠医界的临床工具有哪些？',
+    answer: '平台提供电子病历管理、宠物与客户档案、家庭医生式问诊和健康服务推荐等临床工具，帮助医生提升日常诊疗效率。',
   },
   {
-    question: 'Does VetSphere ship surgical equipment internationally?',
-    answer: 'Yes. VetSphere provides ISO 13485 certified surgical instruments and implants with global shipping to over 35 countries. We offer TPLO saw systems, titanium locking plates, micro-ophthalmic instruments, and more.',
-  },
-  {
-    question: 'What is the VetSphere AI Surgical Consultant?',
-    answer: 'The VetSphere AI is a 24/7 surgical consultation tool powered by advanced AI. It can analyze X-rays and CT scans, provide surgical planning assistance, recommend equipment, and support English, Chinese, and Thai languages.',
+    question: '宠医界如何支持医生创业？',
+    answer: '平台提供新型宠物健康管理中心模型、创业工具包、服务项目设计和客户经营支持，帮助医生从临床走向事业发展。',
   },
 ];
 
@@ -56,9 +52,9 @@ export default function HomePage() {
     <>
       <JsonLd data={faqSchema(homeFaqs)} />
       <JsonLd data={breadcrumbSchema([
-        { name: 'Home', url: siteConfig.siteUrl },
+        { name: '首页', url: siteConfig.siteUrl },
       ])} />
-      <HomePageClient />
+      <CnHomePageClient />
     </>
   );
 }

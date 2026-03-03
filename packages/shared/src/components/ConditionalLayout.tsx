@@ -6,6 +6,8 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { IntlNavbar } from '../components/intl/IntlNavbar';
 import { IntlFooter } from '../components/intl/IntlFooter';
+import { CnNavbar } from '../components/cn/CnNavbar';
+import { CnFooter } from '../components/cn/CnFooter';
 import ScrollToTop from '../components/ScrollToTop';
 import { useAuth } from '../context/AuthContext';
 import { useSiteConfig } from '../context/SiteConfigContext';
@@ -19,7 +21,7 @@ import type { SupportedLocale } from '../site-config.types';
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { isINTL, siteConfig } = useSiteConfig();
+  const { isINTL, isCN, siteConfig } = useSiteConfig();
 
   // Get locale from pathname
   const segments = pathname.split('/');
@@ -32,6 +34,7 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
       : pathname;
 
     if (['/partners/gear', '/partners/edu', '/live'].includes(cleanPath)) return true;
+    if (cleanPath.startsWith('/doctor')) return true;
     if (cleanPath === '/dashboard') {
       return user?.role && user.role !== 'Doctor';
     }
@@ -41,8 +44,16 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
   const standalone = isStandalonePage();
 
   // Choose market-specific navigation components
-  const NavbarComponent = isINTL ? () => <IntlNavbar locale={locale} /> : Navbar;
-  const FooterComponent = isINTL ? () => <IntlFooter locale={locale} /> : Footer;
+  const NavbarComponent = isCN
+    ? () => <CnNavbar locale={locale} />
+    : isINTL
+    ? () => <IntlNavbar locale={locale} />
+    : Navbar;
+  const FooterComponent = isCN
+    ? () => <CnFooter locale={locale} />
+    : isINTL
+    ? () => <IntlFooter locale={locale} />
+    : Footer;
 
   return (
     <>

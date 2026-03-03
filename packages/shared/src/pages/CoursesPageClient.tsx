@@ -316,10 +316,25 @@ const CoursesPageClient: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 pt-32">
+      {/* CN Site: Link to Growth System Page */}
+      {isCN && (
+        <div className="mb-6 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-emerald-600 text-lg">💡</span>
+            <span className="text-sm text-slate-700">想按成长方向选择？先查看<strong className="text-emerald-700">成长体系</strong>，了解系统化学习路径</span>
+          </div>
+          <a
+            href={`/${locale}/growth-system`}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shrink-0"
+          >
+            查看成长体系
+          </a>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-8">
         <div className="max-w-xl space-y-4">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">{t.courses.title}</h1>
-          <p className="text-slate-500 font-medium">{t.courses.subtitle}</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">{isCN ? '课程中心' : t.courses.title}</h1>
+          <p className="text-slate-500 font-medium">{isCN ? '浏览全部课程，找到适合你的学习内容' : t.courses.subtitle}</p>
         </div>
         
         {/* Search & Filter Toggle */}
