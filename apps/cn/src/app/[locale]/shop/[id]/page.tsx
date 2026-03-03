@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import JsonLd, { productSchema, breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
-import ProductDetailClient from '@vetsphere/shared/pages/ProductDetailClient';
+import CnProductDetailClient from '@vetsphere/shared/pages/cn/CnProductDetailClient';
 import { PRODUCTS_CN } from '@vetsphere/shared';
 import { Product } from '@vetsphere/shared/types';
 import { supabase } from '@vetsphere/shared/services/supabase';
@@ -10,7 +10,7 @@ import { siteConfig } from '@/config/site.config';
 const locales = siteConfig.locales;
 type Locale = (typeof locales)[number];
 
-// Get product data by ID - tries DB first, falls back to constants
+// 获取商品数据 - 优先数据库，回退常量
 async function getProductById(id: string): Promise<Product | undefined> {
   try {
     const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
@@ -29,9 +29,12 @@ async function getProductById(id: string): Promise<Product | undefined> {
   return PRODUCTS_CN.find(p => p.id === id);
 }
 
-// Generate static params for all products
+// 生成静态参数
 export async function generateStaticParams() {
   const params: { locale: string; id: string }[] = [];
+  
+  // Mock 商品 ID
+  const mockIds = ['suture-kit-basic', 'tplo-saw-blade-set', 'ultrasound-system-pro'];
   
   try {
     const { data } = await supabase.from('products').select('id');
@@ -39,6 +42,10 @@ export async function generateStaticParams() {
       for (const locale of locales) {
         for (const row of data) {
           params.push({ locale, id: (row as any).id });
+        }
+        // 添加 Mock 商品
+        for (const mockId of mockIds) {
+          params.push({ locale, id: mockId });
         }
       }
       return params;
@@ -49,12 +56,16 @@ export async function generateStaticParams() {
     for (const product of PRODUCTS_CN) {
       params.push({ locale, id: product.id });
     }
+    // 添加 Mock 商品
+    for (const mockId of mockIds) {
+      params.push({ locale, id: mockId });
+    }
   }
   
   return params;
 }
 
-// Dynamic metadata for SEO
+// 动态 SEO 元数据
 export async function generateMetadata({ 
   params 
 }: { 
@@ -65,28 +76,28 @@ export async function generateMetadata({
   
   if (!product) {
     return {
-      title: 'Product Not Found',
-      description: 'The requested product could not be found.',
+      title: '商品未找到 | 临床器械与耗材 | 宠医界',
+      description: '您访问的商品不存在或已下架',
     };
   }
 
   const productUrl = `${siteConfig.siteUrl}/${locale}/shop/${id}`;
   const title = product.name;
-  const description = `${product.description} Brand: ${product.brand}. ${product.stockStatus}.`;
+  const description = `${product.description} 品牌：${product.brand}。`;
 
   return {
-    title: `${title} | VetSphere Equipment`,
-    description: `${description} ${product.longDescription}`,
+    title: `${title} | 临床器械与耗材 | 宠医界`,
+    description: `${description} ${product.longDescription || ''}`.slice(0, 160),
     keywords: [
       product.name,
       product.brand,
-      product.specialty,
-      product.group,
-      'veterinary equipment',
-      'surgical instruments',
+      '兽医器械',
+      '宠物医疗设备',
+      '临床器械',
+      '宠医界',
     ],
     openGraph: {
-      title,
+      title: `${title} | 宠医界`,
       description,
       url: productUrl,
       type: 'website',
@@ -101,7 +112,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: `${title} | 宠医界`,
       description,
       images: [product.imageUrl],
     },
@@ -122,30 +133,36 @@ export default async function ProductDetailPage({
   const { locale, id } = await params;
   const product = await getProductById(id);
 
-  if (!product) {
+  // 检查是否为 Mock 商品
+  const mockIds = ['suture-kit-basic', 'tplo-saw-blade-set', 'ultrasound-system-pro'];
+  const isMockProduct = mockIds.includes(id);
+
+  if (!product && !isMockProduct) {
     notFound();
   }
 
   return (
     <>
-      {/* Breadcrumb Schema */}
+      {/* 面包屑 Schema */}
       <JsonLd data={breadcrumbSchema([
-        { name: 'Home', url: `${siteConfig.siteUrl}/${locale}` },
-        { name: 'Equipment Shop', url: `${siteConfig.siteUrl}/${locale}/shop` },
-        { name: product.name, url: `${siteConfig.siteUrl}/${locale}/shop/${id}` },
+        { name: '首页', url: `${siteConfig.siteUrl}/${locale}` },
+        { name: '临床器械与耗材', url: `${siteConfig.siteUrl}/${locale}/shop` },
+        { name: product?.name || '商品详情', url: `${siteConfig.siteUrl}/${locale}/shop/${id}` },
       ])} />
       
-      {/* Product Schema */}
-      <JsonLd data={productSchema(siteConfig, {
-        name: product.name,
-        description: product.longDescription || product.description,
-        price: product.price,
-        imageUrl: product.imageUrl,
-        brand: product.brand,
-        stockStatus: product.stockStatus,
-      })} />
+      {/* 产品 Schema */}
+      {product && (
+        <JsonLd data={productSchema(siteConfig, {
+          name: product.name,
+          description: product.longDescription || product.description,
+          price: product.price,
+          imageUrl: product.imageUrl,
+          brand: product.brand,
+          stockStatus: product.stockStatus,
+        })} />
+      )}
       
-      <ProductDetailClient productId={id} />
+      <CnProductDetailClient productId={id} />
     </>
   );
 }

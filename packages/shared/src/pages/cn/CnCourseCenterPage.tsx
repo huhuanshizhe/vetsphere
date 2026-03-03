@@ -1,25 +1,37 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   BookOpen, GraduationCap, Stethoscope, Award, Briefcase, Rocket,
   Filter, Search, X, ChevronRight, ArrowRight, Check, Star,
   Clock, MapPin, Users, Play, Calendar, Sparkles, TrendingUp,
-  Target, Heart, Eye, Mic, AlertCircle, CheckCircle2
+  Target, Heart, Eye, Mic, AlertCircle, CheckCircle2, RotateCcw
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Course } from '../../types';
+import PublicCourseSection, { PublicCourse } from './components/PublicCourseSection';
+import { AICourseAdvisor } from '../../components/cn/AICourseAdvisor';
+import {
+  CourseStage,
+  CourseSpecialty,
+  GrowthTrack,
+  ResolvedPreset,
+  resolveGrowthPreset,
+  applyPresetToFilters,
+  shouldExitTrackMode,
+  buildUrlParams,
+  GROWTH_TRACK_PRESETS,
+} from '../../lib/growth-track-preset';
 
 // ============================================================================
 // 类型定义
 // ============================================================================
 
-/** 课程阶段（一级分类） */
-type CourseStage = 'all' | 'certification' | 'clinical-basics' | 'specialty-advanced' | 'advanced-practice' | 'career-growth';
+// CourseStage 和 CourseSpecialty 已从 growth-track-preset 导入
 
 /** 筛选器状态 */
 interface FilterState {
@@ -30,6 +42,16 @@ interface FilterState {
   audience: string;
   goal: string;
   search: string;
+}
+
+/** 成长体系承接状态 */
+interface GrowthSystemState {
+  /** 解析后的预设 */
+  resolved: ResolvedPreset | null;
+  /** 是否处于成长体系模式 */
+  isActive: boolean;
+  /** 是否用户已手动退出 */
+  userExited: boolean;
 }
 
 /** 扩展的课程数据（含分类信息） */
@@ -397,6 +419,115 @@ const CurrentViewStatus: React.FC<{
   );
 };
 
+/** 成长体系来源提示条 */
+const GrowthSourceBanner: React.FC<{
+  resolved: ResolvedPreset;
+  locale: string;
+  onClearDirection: () => void;
+}> = ({ resolved, locale, onClearDirection }) => {
+  if (!resolved.isGrowthSystemSource || !resolved.preset) return null;
+  
+  const preset = resolved.preset;
+  
+  return (
+    <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-xl p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+            <TrendingUp className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium text-emerald-700">来自成长体系</span>
+              <span className="text-emerald-400">|</span>
+              <span className="text-sm font-bold text-slate-900">{preset.label}</span>
+            </div>
+            <p className="text-sm text-slate-600">
+              已按成长方向为你预设筛选，可继续调整或清除方向查看全部课程
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 sm:shrink-0">
+          <Link
+            href={`/${locale}/growth-system`}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+            返回成长体系
+          </Link>
+          <button
+            onClick={onClearDirection}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X className="w-4 h-4" />
+            清除方向筛选
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** 方向说明模块 */
+const GrowthDirectionInfo: React.FC<{
+  resolved: ResolvedPreset;
+}> = ({ resolved }) => {
+  if (!resolved.isGrowthSystemSource || !resolved.preset) return null;
+  
+  const preset = resolved.preset;
+  
+  // 阶段名称映射
+  const stageLabels: Record<string, string> = {
+    'certification': '考证入行',
+    'clinical-basics': '临床基础',
+    'specialty-advanced': '专科进阶',
+    'advanced-practice': '高端实操',
+    'career-growth': '事业发展',
+  };
+  
+  // Tailwind 不支持动态类名，需要使用完整的类名映射
+  const colorStyles: Record<string, { bg: string; text: string }> = {
+    blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
+    emerald: { bg: 'bg-emerald-100', text: 'text-emerald-600' },
+    purple: { bg: 'bg-purple-100', text: 'text-purple-600' },
+    teal: { bg: 'bg-teal-100', text: 'text-teal-600' },
+    amber: { bg: 'bg-amber-100', text: 'text-amber-600' },
+    rose: { bg: 'bg-rose-100', text: 'text-rose-600' },
+  };
+  
+  const colors = colorStyles[preset.color] || colorStyles.blue;
+  
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 ${colors.bg} rounded-xl flex items-center justify-center shrink-0`}>
+          <Target className={`w-5 h-5 ${colors.text}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-bold text-slate-900 mb-1">{preset.label}</h3>
+          <p className="text-sm text-slate-600 mb-3">{preset.description}</p>
+          
+          {/* 推荐路径 */}
+          {preset.recommendedStageOrder.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-500">推荐路径：</span>
+              {preset.recommendedStageOrder.map((stage, idx) => (
+                <React.Fragment key={stage}>
+                  {idx > 0 && <ArrowRight className="w-3 h-3 text-slate-300" />}
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
+                    {stageLabels[stage] || stage}
+                  </span>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /** 课程卡片 */
 const CourseCard: React.FC<{
   course: ExtendedCourse;
@@ -562,13 +693,13 @@ const AddToPlanModal: React.FC<{
               onClick={onGoToMyCourses}
               className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors"
             >
-              前往我的课程
+              查看我的课程
             </button>
             <button
               onClick={onContinueBrowse}
               className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
             >
-              继续浏览课程
+              继续浏览课程中心
             </button>
           </div>
         </div>
@@ -585,8 +716,16 @@ const CnCourseCenterPage: React.FC = () => {
   const { locale } = useLanguage();
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
-  // 状态
+  // ========== 成长体系状态 ==========
+  const [growthState, setGrowthState] = useState<GrowthSystemState>({
+    resolved: null,
+    isActive: false,
+    userExited: false,
+  });
+  
+  // ========== 筛选状态 ==========
   const [courses, setCourses] = useState<ExtendedCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
@@ -600,6 +739,74 @@ const CnCourseCenterPage: React.FC = () => {
   });
   const [showAddModal, setShowAddModal] = useState(false);
   const [addedCourseName, setAddedCourseName] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [showAIAdvisor, setShowAIAdvisor] = useState(false);
+  
+  // ========== 从 URL 解析成长体系参数 ==========
+  useEffect(() => {
+    if (isInitialized) return;
+    
+    const source = searchParams.get('source');
+    const track = searchParams.get('track');
+    const direction = searchParams.get('direction'); // 兼容成长体系页的参数
+    const category = searchParams.get('category'); // 兼容旧版参数
+    const stage = searchParams.get('stage');
+    const specialty = searchParams.get('specialty');
+    
+    // 解析预设
+    const resolved = resolveGrowthPreset({
+      source,
+      track,
+      direction,
+      category,
+      stage,
+      specialty,
+    });
+    
+    // 如果有有效的成长体系来源
+    if (resolved.isGrowthSystemSource && resolved.preset) {
+      setGrowthState({
+        resolved,
+        isActive: true,
+        userExited: false,
+      });
+      
+      // 应用预设到筛选器
+      setFilters(prev => applyPresetToFilters(resolved, prev));
+    } else if (stage || specialty) {
+      // 没有 track 但有直接的筛选参数
+      setFilters(prev => ({
+        ...prev,
+        stage: (resolved.appliedStage || prev.stage) as CourseStage,
+        specialty: resolved.appliedSpecialty || prev.specialty,
+      }));
+    }
+    
+    setIsInitialized(true);
+  }, [searchParams, isInitialized]);
+  
+  // ========== URL 同步 ==========
+  const updateUrl = useCallback((newFilters: FilterState, newGrowthState: GrowthSystemState) => {
+    const params = new URLSearchParams();
+    
+    // 如果仍处于成长体系模式，保留 track 和 source
+    if (newGrowthState.isActive && newGrowthState.resolved?.track) {
+      params.set('source', 'growth-system');
+      params.set('track', newGrowthState.resolved.track);
+    }
+    
+    // 添加筛选参数（非默认值）
+    if (newFilters.stage !== 'all') {
+      params.set('stage', newFilters.stage);
+    }
+    if (newFilters.specialty !== 'all') {
+      params.set('specialty', newFilters.specialty);
+    }
+    
+    // 更新 URL（不触发页面刷新）
+    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, []);
   
   // 加载课程数据
   useEffect(() => {
@@ -634,11 +841,22 @@ const CnCourseCenterPage: React.FC = () => {
     return counts;
   }, [courses]);
   
-  // 筛选课程
+  // ========== 筛选和排序课程 ==========
   const filteredCourses = useMemo(() => {
-    return courses.filter(course => {
-      // 阶段筛选
-      if (filters.stage !== 'all' && course.stage !== filters.stage) return false;
+    // 先筛选
+    let result = courses.filter(course => {
+      // 阶段筛选 - 成长体系多阶段模式下特殊处理
+      if (filters.stage !== 'all' && course.stage !== filters.stage) {
+        return false;
+      }
+      
+      // 多阶段方向：如果没有锁定阶段，只保留推荐阶段内的课程
+      if (growthState.isActive && growthState.resolved?.preset?.isMultiStage && filters.stage === 'all') {
+        const stageOrder = growthState.resolved.stageOrderForSort;
+        if (stageOrder.length > 0 && course.stage && !stageOrder.includes(course.stage as CourseStage)) {
+          return false;
+        }
+      }
       
       // 专科筛选
       if (filters.specialty !== 'all') {
@@ -672,29 +890,114 @@ const CnCourseCenterPage: React.FC = () => {
       
       return true;
     });
-  }, [courses, filters]);
+    
+    // 成长体系模式下的路径优先排序
+    if (growthState.isActive && growthState.resolved?.stageOrderForSort.length) {
+      const stageOrder = growthState.resolved.stageOrderForSort;
+      result = result.sort((a, b) => {
+        const aStageIndex = stageOrder.indexOf(a.stage as CourseStage);
+        const bStageIndex = stageOrder.indexOf(b.stage as CourseStage);
+        
+        // 在推荐路径中的排在前面
+        const aInPath = aStageIndex >= 0;
+        const bInPath = bStageIndex >= 0;
+        
+        if (aInPath && !bInPath) return -1;
+        if (!aInPath && bInPath) return 1;
+        if (aInPath && bInPath) return aStageIndex - bStageIndex;
+        
+        return 0;
+      });
+    }
+    
+    return result;
+  }, [courses, filters, growthState]);
   
-  // 处理阶段切换
-  const handleStageChange = (stage: CourseStage) => {
-    setFilters(prev => ({ ...prev, stage }));
-  };
+  // ========== 处理阶段切换 ==========
+  const handleStageChange = useCallback((stage: CourseStage) => {
+    const newFilters = { ...filters, stage };
+    
+    // 检查是否应退出 track 模式
+    if (growthState.isActive && growthState.resolved) {
+      const shouldExit = shouldExitTrackMode(growthState.resolved, {
+        stage,
+        specialty: filters.specialty,
+      });
+      
+      if (shouldExit) {
+        const newGrowthState = { ...growthState, isActive: false, userExited: true };
+        setGrowthState(newGrowthState);
+        setFilters(newFilters);
+        updateUrl(newFilters, newGrowthState);
+        return;
+      }
+    }
+    
+    setFilters(newFilters);
+    updateUrl(newFilters, growthState);
+  }, [filters, growthState, updateUrl]);
   
-  // 处理筛选器变更
-  const handleFilterChange = (key: keyof FilterState) => (value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
+  // ========== 处理筛选器变更 ==========
+  const handleFilterChange = useCallback((key: keyof FilterState) => (value: string) => {
+    const newFilters = { ...filters, [key]: value };
+    
+    // 检查核心筛选变更是否应退出 track 模式
+    if ((key === 'stage' || key === 'specialty') && growthState.isActive && growthState.resolved) {
+      const shouldExit = shouldExitTrackMode(growthState.resolved, {
+        stage: key === 'stage' ? value as CourseStage : filters.stage,
+        specialty: key === 'specialty' ? value : filters.specialty,
+      });
+      
+      if (shouldExit) {
+        const newGrowthState = { ...growthState, isActive: false, userExited: true };
+        setGrowthState(newGrowthState);
+        setFilters(newFilters);
+        updateUrl(newFilters, newGrowthState);
+        return;
+      }
+    }
+    
+    setFilters(newFilters);
+    updateUrl(newFilters, growthState);
+  }, [filters, growthState, updateUrl]);
   
-  // 清除筛选
-  const handleClearFilters = () => {
-    setFilters(prev => ({
-      ...prev,
+  // ========== 清除筛选 ==========
+  const handleClearFilters = useCallback(() => {
+    const newFilters = {
+      ...filters,
       specialty: 'all',
       format: 'all',
       level: 'all',
       audience: 'all',
       goal: 'all',
-    }));
-  };
+    };
+    setFilters(newFilters);
+    updateUrl(newFilters, growthState);
+  }, [filters, growthState, updateUrl]);
+  
+  // ========== 清除成长方向筛选（退出 track 模式） ==========
+  const handleClearDirection = useCallback(() => {
+    const newGrowthState: GrowthSystemState = {
+      resolved: null,
+      isActive: false,
+      userExited: true,
+    };
+    const newFilters: FilterState = {
+      stage: 'all',
+      specialty: 'all',
+      format: 'all',
+      level: 'all',
+      audience: 'all',
+      goal: 'all',
+      search: '',
+    };
+    
+    setGrowthState(newGrowthState);
+    setFilters(newFilters);
+    
+    // 清除 URL 参数
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
   
   // 处理加入学习计划
   const handleAddToPlan = (course: ExtendedCourse) => {
@@ -705,6 +1008,18 @@ const CnCourseCenterPage: React.FC = () => {
     
     // 模拟加入计划
     setAddedCourseName(course.title_zh || course.title);
+    setShowAddModal(true);
+  };
+  
+  // 处理公益课报名
+  const handlePublicCourseEnroll = (course: PublicCourse) => {
+    if (!isAuthenticated) {
+      router.push(`/${locale}/auth?redirect=/courses/${course.slug}?source=public-course`);
+      return;
+    }
+    
+    // 模拟报名成功
+    setAddedCourseName(course.title);
     setShowAddModal(true);
   };
   
@@ -748,6 +1063,27 @@ const CnCourseCenterPage: React.FC = () => {
           />
         </div>
       </section>
+      
+      {/* 成长体系承接区域 - 仅在成长体系模式下显示 */}
+      {growthState.isActive && growthState.resolved && (
+        <section className="py-4">
+          <div className="container mx-auto px-4 lg:px-8 space-y-4">
+            <GrowthSourceBanner
+              resolved={growthState.resolved}
+              locale={locale}
+              onClearDirection={handleClearDirection}
+            />
+            <GrowthDirectionInfo resolved={growthState.resolved} />
+          </div>
+        </section>
+      )}
+      
+      {/* 公益课专区 */}
+      <PublicCourseSection
+        locale={locale}
+        currentStage={filters.stage}
+        onEnroll={handlePublicCourseEnroll}
+      />
       
       {/* 筛选器区域 */}
       <section className="py-6 border-y border-slate-100 bg-white/80 backdrop-blur-sm sticky top-16 z-20">
@@ -888,6 +1224,22 @@ const CnCourseCenterPage: React.FC = () => {
         onContinueBrowse={() => setShowAddModal(false)}
         onGoToMyCourses={() => router.push(`/${locale}/doctor/courses`)}
         courseName={addedCourseName}
+      />
+      
+      {/* 悬浮 AI 选课顾问按钮 */}
+      <button
+        onClick={() => setShowAIAdvisor(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full font-bold shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 hover:-translate-y-0.5 transition-all"
+      >
+        <Sparkles className="w-5 h-5" />
+        <span className="hidden sm:inline">AI 选课顾问</span>
+      </button>
+      
+      {/* AI 选课顾问弹窗 */}
+      <AICourseAdvisor
+        isOpen={showAIAdvisor}
+        onClose={() => setShowAIAdvisor(false)}
+        locale={locale}
       />
     </main>
   );

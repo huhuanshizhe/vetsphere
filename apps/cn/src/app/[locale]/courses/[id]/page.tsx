@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import JsonLd, { courseSchema, breadcrumbSchema, eventSchema } from '@vetsphere/shared/components/JsonLd';
-import CourseDetailClient from '@vetsphere/shared/pages/CourseDetailClient';
+import CnCourseDetailClient from '@vetsphere/shared/pages/cn/CnCourseDetailClient';
 import { COURSES_CN } from '@vetsphere/shared';
 import { Course } from '@vetsphere/shared/types';
 import { supabase } from '@vetsphere/shared/services/supabase';
@@ -91,15 +91,16 @@ export async function generateMetadata({
   const courseUrl = `${siteConfig.siteUrl}/${locale}/courses/${id}`;
 
   return {
-    title: `${title} | VetSphere`,
-    description: `${description} Instructor: ${course.instructor.name}. Location: ${course.location.city}. Date: ${course.startDate} - ${course.endDate}.`,
+    title: `${title} | 课程中心 | 宠医界`,
+    description: `${description} 主讲导师：${course.instructor.name_zh || course.instructor.name}。授课地点：${course.location.city_zh || course.location.city}。时间：${course.startDate} - ${course.endDate}。`,
     keywords: [
       course.specialty,
       course.level,
-      'veterinary surgery course',
-      'wet-lab training',
-      course.instructor.name,
-      course.location.city,
+      '宠物医生培训',
+      '兽医外科课程',
+      '实操培训',
+      course.instructor.name_zh || course.instructor.name,
+      course.location.city_zh || course.location.city,
     ],
     openGraph: {
       title,
@@ -188,7 +189,7 @@ export default async function CourseDetailPage({
         },
       })} />
       
-      <CourseDetailClient courseId={id} />
+      <CnCourseDetailClient courseId={id} />
     </>
   );
 }

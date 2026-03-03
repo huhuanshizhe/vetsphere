@@ -4,6 +4,7 @@ export function generateStaticParams() {
   return [{ locale: 'zh' }];
 }
 
-export default function CareerDevPage({ params }: { params: { locale: string } }) {
-  return <CareerDevelopmentPage locale={params.locale} />;
+export default async function CareerDevPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  return <CareerDevelopmentPage locale={locale} />;
 }

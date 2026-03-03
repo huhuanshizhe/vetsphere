@@ -4,6 +4,6 @@ export function generateStaticParams() {
   return [{ locale: 'zh' }];
 }
 
-export default function GrowthSystemRoute({ params }: { params: { locale: string } }) {
-  return <GrowthSystemPage locale={params.locale} />;
+export default function GrowthSystemRoute() {
+  return <GrowthSystemPage />;
 }

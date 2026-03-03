@@ -17,8 +17,9 @@ import ProductManagementTab from '@/components/ProductManagementTab';
 import ShopOrderTab from '@/components/ShopOrderTab';
 import CourseProductLinkingTab from '@/components/CourseProductLinkingTab';
 import InquiryManagementTab from '@/components/InquiryManagementTab';
+import DoctorAuditTab from '@/components/DoctorAuditTab';
 
-const TABS = ['概览', 'AI 大脑中枢', '全局课程管理', '课程订单', '商品管理', '商城订单', '询盘管理', '课程-设备关联', '用户管理', '财务报表', '退款管理'];
+const TABS = ['概览', 'AI 大脑中枢', '医生审核', '全局课程管理', '课程订单', '商品管理', '商城订单', '询盘管理', '课程-设备关联', '用户管理', '财务报表', '退款管理'];
 
 interface AdminUser {
   id: string;
@@ -134,6 +135,7 @@ export default function AdminDashboardPage() {
     >
       {activeTab === '概览' && <OverviewTab stats={stats} />}
       {activeTab === 'AI 大脑中枢' && <AIBrainCenterTab />}
+      {activeTab === '医生审核' && <DoctorAuditTab onRefresh={loadData} />}
       {activeTab === '全局课程管理' && <CourseAuditTab courses={courses} onRefresh={refreshCourses} />}
       {activeTab === '课程订单' && <CourseOrderTab orders={courseOrders} onRefresh={loadData} />}
       {activeTab === '商品管理' && <ProductManagementTab products={adminProducts} onRefresh={loadData} />}

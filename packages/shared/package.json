@@ -19,6 +19,8 @@
     "./pages/cn/doctor/*": "./src/pages/cn/doctor/*.tsx",
     "./pages/cn/doctor/modules/*": "./src/pages/cn/doctor/modules/*.tsx",
     "./types": "./src/types.ts",
+    "./types/cn-product-detail": "./src/types/cn-product-detail.ts",
+    "./types/cn-product-mock": "./src/types/cn-product-mock.ts",
     "./site-config": "./src/site-config.types.ts",
     "./translations": "./src/translations.ts"
   },

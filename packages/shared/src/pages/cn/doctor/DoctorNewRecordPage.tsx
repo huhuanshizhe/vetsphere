@@ -5,8 +5,20 @@ import Link from 'next/link';
 import { useLanguage } from '../../../context/LanguageContext';
 import {
   ArrowLeft, User, PawPrint, Calendar, Stethoscope, FileText,
-  Upload, Save, CheckCircle, CalendarPlus, ChevronDown,
+  Upload, Save, CheckCircle, CalendarPlus, ChevronDown, Sparkles,
 } from 'lucide-react';
+import { AIRecordAssistant } from '../../../components/cn/doctor/AIRecordAssistant';
+
+// ─── Form Data Type for AI ───
+interface RecordFormData {
+  chiefComplaint: string;
+  symptoms: string;
+  examResult: string;
+  diagnosis: string;
+  treatment: string;
+  medication: string;
+  revisitAdvice: string;
+}
 
 // ─── Placeholder Data ───
 const OWNERS = [
@@ -85,6 +97,55 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
   const [visitType, setVisitType] = useState('first');
   const [source, setSource] = useState('clinic');
   const [needFollowUp, setNeedFollowUp] = useState(false);
+  
+  // AI Assistant state
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  
+  // Form data for AI integration
+  const [chiefComplaint, setChiefComplaint] = useState('');
+  const [symptoms, setSymptoms] = useState('');
+  const [examResult, setExamResult] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [treatment, setTreatment] = useState('');
+  const [medication, setMedication] = useState('');
+  const [revisitAdvice, setRevisitAdvice] = useState('');
+  const [followUpGoal, setFollowUpGoal] = useState('');
+  const [followUpNote, setFollowUpNote] = useState('');
+  
+  // Pack form data for AI assistant
+  const formDataForAI: RecordFormData = {
+    chiefComplaint,
+    symptoms,
+    examResult,
+    diagnosis,
+    treatment,
+    medication,
+    revisitAdvice,
+  };
+  
+  // Handle AI applying single field
+  const handleApplyField = (field: keyof RecordFormData, value: string) => {
+    switch (field) {
+      case 'chiefComplaint': setChiefComplaint(value); break;
+      case 'symptoms': setSymptoms(value); break;
+      case 'examResult': setExamResult(value); break;
+      case 'diagnosis': setDiagnosis(value); break;
+      case 'treatment': setTreatment(value); break;
+      case 'medication': setMedication(value); break;
+      case 'revisitAdvice': setRevisitAdvice(value); break;
+    }
+  };
+  
+  // Handle AI applying all fields
+  const handleApplyAll = (data: Partial<RecordFormData>) => {
+    if (data.chiefComplaint) setChiefComplaint(data.chiefComplaint);
+    if (data.symptoms) setSymptoms(data.symptoms);
+    if (data.examResult) setExamResult(data.examResult);
+    if (data.diagnosis) setDiagnosis(data.diagnosis);
+    if (data.treatment) setTreatment(data.treatment);
+    if (data.medication) setMedication(data.medication);
+    if (data.revisitAdvice) setRevisitAdvice(data.revisitAdvice);
+  };
 
   const availablePets = selectedOwnerId ? PETS_BY_OWNER[selectedOwnerId] || [] : [];
 
@@ -95,17 +156,27 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href={`/${locale}/doctor/records`}
-          className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">{dw.recordsNewTitle || '新建病历'}</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{dw.recordsNewSubtitle || '记录本次诊疗过程，为后续随访与健康管理提供依据。'}</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/${locale}/doctor/records`}
+            className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">{dw.recordsNewTitle || '新建病历'}</h1>
+            <p className="text-sm text-slate-500 mt-0.5">{dw.recordsNewSubtitle || '记录本次诊疗过程，为后续随访与健康管理提供依据。'}</p>
+          </div>
         </div>
+        <button
+          onClick={() => setShowAIAssistant(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-medium hover:from-violet-600 hover:to-purple-700 transition-all shadow-md shadow-violet-200"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span className="hidden sm:inline">AI 辅助录入</span>
+          <span className="sm:hidden">AI</span>
+        </button>
       </div>
 
       {/* Form Sections */}
@@ -184,6 +255,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
           <FormField label={dw.recordsFormComplaint || '主诉'} required>
             <textarea
               rows={3}
+              value={chiefComplaint}
+              onChange={(e) => setChiefComplaint(e.target.value)}
               placeholder={dw.recordsFormComplaintPlaceholder || '描述宠物就诊原因、宠主主诉内容...'}
               className={textareaClass}
             />
@@ -192,6 +265,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
           <FormField label={dw.recordsFormSymptoms || '当前表现 / 症状'}>
             <textarea
               rows={3}
+              value={symptoms}
+              onChange={(e) => setSymptoms(e.target.value)}
               placeholder={dw.recordsFormSymptomsPlaceholder || '描述宠物当前症状、体征表现...'}
               className={textareaClass}
             />
@@ -200,6 +275,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
           <FormField label={dw.recordsFormExamResult || '初步检查结果'}>
             <textarea
               rows={3}
+              value={examResult}
+              onChange={(e) => setExamResult(e.target.value)}
               placeholder={dw.recordsFormExamPlaceholder || '记录体格检查、影像检查等结果...'}
               className={textareaClass}
             />
@@ -219,6 +296,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
           <FormField label={dw.recordsFormDiagnosis || '初步判断 / 诊断'}>
             <textarea
               rows={2}
+              value={diagnosis}
+              onChange={(e) => setDiagnosis(e.target.value)}
               placeholder={dw.recordsFormDiagnosisPlaceholder || '记录初步诊断结论...'}
               className={textareaClass}
             />
@@ -227,6 +306,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
           <FormField label={dw.recordsFormTreatment || '处置方案'}>
             <textarea
               rows={3}
+              value={treatment}
+              onChange={(e) => setTreatment(e.target.value)}
               placeholder={dw.recordsFormTreatmentPlaceholder || '记录本次处置方案、操作内容...'}
               className={textareaClass}
             />
@@ -235,6 +316,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
           <FormField label={dw.recordsFormMedication || '用药建议'}>
             <textarea
               rows={2}
+              value={medication}
+              onChange={(e) => setMedication(e.target.value)}
               placeholder={dw.recordsFormMedicationPlaceholder || '记录用药方案...'}
               className={textareaClass}
             />
@@ -243,6 +326,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
           <FormField label={dw.recordsFormRevisitAdvice || '到院/复诊建议'}>
             <textarea
               rows={2}
+              value={revisitAdvice}
+              onChange={(e) => setRevisitAdvice(e.target.value)}
               placeholder={dw.recordsFormRevisitPlaceholder || '记录复诊建议、注意事项...'}
               className={textareaClass}
             />
@@ -287,6 +372,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
               <FormField label={dw.recordsFormFollowUpGoal || '随访目标'}>
                 <textarea
                   rows={2}
+                  value={followUpGoal}
+                  onChange={(e) => setFollowUpGoal(e.target.value)}
                   placeholder={dw.recordsFormFollowUpGoalPlaceholder || '描述随访目标...'}
                   className={textareaClass}
                 />
@@ -295,6 +382,8 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
               <FormField label={dw.recordsFormFollowUpNote || '随访备注'}>
                 <textarea
                   rows={2}
+                  value={followUpNote}
+                  onChange={(e) => setFollowUpNote(e.target.value)}
                   placeholder={dw.recordsFormFollowUpNotePlaceholder || '其他备注信息...'}
                   className={textareaClass}
                 />
@@ -326,6 +415,15 @@ export function DoctorNewRecordPage({ locale }: { locale: string }) {
           </div>
         </div>
       </div>
+
+      {/* AI Record Assistant Modal */}
+      <AIRecordAssistant
+        isOpen={showAIAssistant}
+        onClose={() => setShowAIAssistant(false)}
+        formData={formDataForAI}
+        onApplyField={handleApplyField}
+        onApplyAll={handleApplyAll}
+      />
     </div>
   );
 }

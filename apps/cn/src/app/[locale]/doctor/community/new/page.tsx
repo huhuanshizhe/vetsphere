@@ -4,6 +4,7 @@ export function generateStaticParams() {
   return [{ locale: 'zh' }];
 }
 
-export default function NewCommunityPostRoute({ params }: { params: { locale: string } }) {
-  return <DoctorNewCommunityPostPage locale={params.locale} />;
+export default async function NewCommunityPostRoute({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  return <DoctorNewCommunityPostPage locale={locale} />;
 }

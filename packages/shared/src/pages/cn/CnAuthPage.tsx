@@ -1,19 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle2,
+  Mail, Lock, User, Eye, EyeOff, ArrowRight,
   Sparkles, GraduationCap, Users, Award, Shield, Phone
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/supabase';
 
 const CnAuthPage: React.FC = () => {
   const { locale } = useLanguage();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, applicationStatus, refreshApplicationStatus } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -27,12 +29,38 @@ const CnAuthPage: React.FC = () => {
   });
   const [error, setError] = useState('');
 
-  // Redirect if already authenticated
-  React.useEffect(() => {
-    if (isAuthenticated) {
-      router.push(`/${locale}/doctor`);
+  // 根据申请状态确定重定向目标
+  const getRedirectByStatus = (status: string | null): string => {
+    switch (status) {
+      case 'approved':
+        // 已通过 - 可以进入医生工作台
+        const redirectParam = searchParams.get('redirect');
+        if (redirectParam && redirectParam.startsWith('/')) {
+          return redirectParam;
+        }
+        return `/${locale}/doctor`;
+      case 'pending_review':
+        // 待审核 - 跳转到状态页
+        return `/${locale}/register/status`;
+      case 'rejected':
+        // 已拒绝 - 跳转到状态页（可查看原因并重新提交）
+        return `/${locale}/register/status`;
+      case 'draft':
+        // 草稿 - 继续填写申请
+        return `/${locale}/register/doctor`;
+      default:
+        // 无申请记录 - 开始申请流程
+        return `/${locale}/register/doctor`;
     }
-  }, [isAuthenticated, locale, router]);
+  };
+
+  // 登录后重定向逻辑
+  useEffect(() => {
+    if (isAuthenticated) {
+      const redirectUrl = getRedirectByStatus(applicationStatus);
+      router.push(redirectUrl);
+    }
+  }, [isAuthenticated, applicationStatus, router, locale]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,23 +68,72 @@ const CnAuthPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      if (!isLogin && !formData.agreeTerms) {
-        setError('请先同意用户协议和隐私政策');
-        setIsSubmitting(false);
-        return;
+      if (isLogin) {
+        // 登录流程
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        
+        if (signInError) {
+          if (signInError.message.includes('Invalid login credentials')) {
+            setError('邮箱或密码错误');
+          } else if (signInError.message.includes('Email not confirmed')) {
+            setError('请先验证您的邮箱');
+          } else {
+            setError(signInError.message);
+          }
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (data.user) {
+          // 登录成功后刷新申请状态
+          await refreshApplicationStatus();
+          // 状态更新后 useEffect 会自动处理跳转
+        }
+      } else {
+        // 注册流程
+        if (!formData.agreeTerms) {
+          setError('请先同意用户协议和隐私政策');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              name: formData.name,
+              phone: formData.phone,
+            },
+          },
+        });
+        
+        if (signUpError) {
+          if (signUpError.message.includes('already registered')) {
+            setError('该邮箱已注册，请直接登录');
+          } else {
+            setError(signUpError.message);
+          }
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (data.user) {
+          // 注册成功 - 新用户直接跳转到申请流程
+          login({
+            id: data.user.id,
+            email: data.user.email || '',
+            name: formData.name || formData.email.split('@')[0],
+            role: 'Doctor',
+            points: 0,
+            level: 'Resident',
+          });
+          router.push(`/${locale}/register/doctor`);
+        }
       }
-      
-      // Demo login - in production, this would call actual auth API
-      const demoUser = {
-        id: 'demo-user',
-        email: formData.email,
-        name: formData.name || formData.email.split('@')[0],
-        role: 'Doctor' as const,
-        points: 0,
-        level: 'Resident',
-      };
-      login(demoUser);
-      router.push(`/${locale}/doctor`);
     } catch (err: any) {
       setError(err.message || '操作失败，请稍后重试');
       setIsSubmitting(false);

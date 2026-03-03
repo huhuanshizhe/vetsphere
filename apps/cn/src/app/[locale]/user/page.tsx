@@ -1,11 +1,15 @@
-import type { Metadata } from 'next';
-import UserCenterClient from '@vetsphere/shared/pages/UserCenterClient';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'User Center | VetSphere',
-  description: 'Manage your profile, orders, and enrolled courses',
-};
-
-export default function UserCenterPage() {
-  return <UserCenterClient />;
+/**
+ * /user 页面重定向
+ * 
+ * /user 不再作为独立主入口，直接重定向到医生工作台设置页的个人资料分区
+ */
+export default async function UserCenterPage({ 
+  params 
+}: { 
+  params: Promise<{ locale: string }> 
+}) {
+  const { locale } = await params;
+  redirect(`/${locale}/doctor/settings?tab=profile`);
 }

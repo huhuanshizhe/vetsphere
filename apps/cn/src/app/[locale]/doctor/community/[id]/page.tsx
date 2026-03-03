@@ -8,6 +8,7 @@ export function generateStaticParams() {
   ];
 }
 
-export default function CommunityPostDetailRoute({ params }: { params: { locale: string; id: string } }) {
-  return <DoctorCommunityPostDetailPage locale={params.locale} postId={params.id} />;
+export default async function CommunityPostDetailRoute({ params }: { params: Promise<{ locale: string; id: string }> }) {
+  const { locale, id } = await params;
+  return <DoctorCommunityPostDetailPage locale={locale} postId={id} />;
 }
