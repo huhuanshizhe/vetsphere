@@ -4,6 +4,7 @@ export function generateStaticParams() {
   return [{ locale: 'zh' }];
 }
 
-export default function ToolsPage({ params }: { params: { locale: string } }) {
-  return <ClinicalToolsPage locale={params.locale} />;
+export default async function ToolsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  return <ClinicalToolsPage locale={locale} />;
 }

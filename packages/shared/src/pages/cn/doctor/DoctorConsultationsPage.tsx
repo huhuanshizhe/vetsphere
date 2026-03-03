@@ -7,8 +7,9 @@ import {
   Search, SlidersHorizontal, MessageCircle, Clock, CheckCircle2, ArrowRight,
   User, PawPrint, Calendar, Phone, FileText, ClipboardList, CalendarPlus,
   Send, AlertCircle, Eye, Plus, ChevronRight, MessageSquare, Stethoscope,
-  Heart, Shield, Image as ImageIcon,
+  Heart, Shield, Image as ImageIcon, Sparkles,
 } from 'lucide-react';
+import { AIConsultationAssistant } from '../../../components/cn/doctor/AIConsultationAssistant';
 
 // ─── Types ───
 type ConsultType = 'first' | 'revisit' | 'postop' | 'longterm';
@@ -151,6 +152,7 @@ export function DoctorConsultationsPage({ locale }: { locale: string }) {
   const [selectedConsultId, setSelectedConsultId] = useState<string | null>('1');
   const [inputMessage, setInputMessage] = useState('');
   const [mobileView, setMobileView] = useState<'list' | 'conversation' | 'info'>('list');
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   const filteredConsults = useMemo(() => {
     let list = CONSULTATIONS;
@@ -187,6 +189,22 @@ export function DoctorConsultationsPage({ locale }: { locale: string }) {
   const handleSelectConsult = (id: string) => {
     setSelectedConsultId(id);
     setMobileView('conversation');
+  };
+
+  // AI Assistant context
+  const aiContext = selectedConsult ? {
+    petName: selectedConsult.petName,
+    petBreed: selectedConsult.petBreed,
+    petAge: selectedConsult.petAge,
+    ownerName: selectedConsult.ownerName,
+    consultType: CONSULT_TYPE_CONFIG[selectedConsult.consultType].label,
+    messages: selectedConsult.messages,
+    recentRecords: selectedConsult.recentRecords,
+  } : null;
+
+  // Handle AI applying reply
+  const handleApplyReply = (reply: string) => {
+    setInputMessage(reply);
   };
 
   return (
@@ -433,6 +451,13 @@ export function DoctorConsultationsPage({ locale }: { locale: string }) {
                   {/* Input + Actions */}
                   <div className="p-3 border-t border-slate-200 bg-white shrink-0">
                     <div className="flex items-center gap-2 mb-2">
+                      <button
+                        onClick={() => setShowAIAssistant(true)}
+                        className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all shadow-sm"
+                        title="AI 问诊助手"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                      </button>
                       <input
                         type="text"
                         value={inputMessage}
@@ -525,6 +550,16 @@ export function DoctorConsultationsPage({ locale }: { locale: string }) {
             </div>
           </div>
         </>
+      )}
+
+      {/* AI Consultation Assistant */}
+      {aiContext && (
+        <AIConsultationAssistant
+          isOpen={showAIAssistant}
+          onClose={() => setShowAIAssistant(false)}
+          context={aiContext}
+          onApplyReply={handleApplyReply}
+        />
       )}
     </div>
   );

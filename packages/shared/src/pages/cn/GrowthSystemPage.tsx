@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import {
   TrendingUp, BookOpen, Award, Target, Users, Stethoscope, Eye,
   Heart, ArrowRight, CheckCircle2, Sparkles, ChevronRight, Star,
@@ -50,8 +51,33 @@ interface PostTrainingSupport {
   color: string;
 }
 
-// Growth directions data
+// Tailwind safelist – keep these class names visible for Tailwind v4 source scanning
+// bg-blue-100 bg-blue-50 text-blue-600 hover:text-blue-700 hover:border-blue-300 bg-blue-500
+// bg-purple-100 bg-purple-50 text-purple-600 hover:text-purple-700 hover:border-purple-300 bg-purple-500
+// bg-teal-100 bg-teal-50 text-teal-600 hover:text-teal-700 hover:border-teal-300 bg-teal-500
+// bg-emerald-100 bg-emerald-50 text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 bg-emerald-500
+// bg-amber-100 bg-amber-50 text-amber-600 hover:text-amber-700 hover:border-amber-300 bg-amber-500
+// bg-rose-100 bg-rose-50 text-rose-600 hover:text-rose-700 hover:border-rose-300 bg-rose-500 bg-rose-500/20 text-rose-400
+// bg-indigo-100 bg-indigo-50 text-indigo-600 hover:text-indigo-700 hover:border-indigo-300 bg-indigo-500 bg-indigo-500/20 text-indigo-400
+
+// Growth directions data (7 directions matching growth-track-preset.ts)
 const GROWTH_DIRECTIONS: GrowthDirection[] = [
+  {
+    id: 'certification',
+    name: '考证入行',
+    description: '执业资格备考、行业入门规范与基础能力建立',
+    icon: <GraduationCap className="w-6 h-6" />,
+    color: 'rose',
+    courses: 3
+  },
+  {
+    id: 'general',
+    name: '全科基础',
+    description: '临床诊断思维、常见病诊疗、基础操作规范',
+    icon: <Heart className="w-6 h-6" />,
+    color: 'emerald',
+    courses: 6
+  },
   {
     id: 'surgery',
     name: '外科进阶',
@@ -78,20 +104,20 @@ const GROWTH_DIRECTIONS: GrowthDirection[] = [
     courses: 4
   },
   {
-    id: 'general',
-    name: '全科基础',
-    description: '临床诊断思维、常见病诊疗、基础操作规范',
-    icon: <Heart className="w-6 h-6" />,
-    color: 'emerald',
-    courses: 6
-  },
-  {
     id: 'customer',
     name: '客户经营',
     description: '客户沟通、长期关系建立、服务设计与定价',
     icon: <Users className="w-6 h-6" />,
     color: 'amber',
     courses: 3
+  },
+  {
+    id: 'clinic-operations',
+    name: '诊所经营',
+    description: '诊所运营管理、团队建设、创业规划与商业模式',
+    icon: <Store className="w-6 h-6" />,
+    color: 'indigo',
+    courses: 2
   }
 ];
 
@@ -135,7 +161,7 @@ const START_RECOMMENDATIONS: StartRecommendation[] = [
     forWho: '适合毕业1-2年，希望建立系统临床能力的医生',
     suggestion: '建议从"全科基础"方向开始，建立规范化诊疗思维',
     action: '查看全科基础课程',
-    href: '/courses?category=general',
+    href: '/courses?direction=general&source=growth-system',
     color: 'emerald'
   },
   {
@@ -144,7 +170,7 @@ const START_RECOMMENDATIONS: StartRecommendation[] = [
     forWho: '适合有2-5年经验，希望在某个专科领域深入发展的医生',
     suggestion: '建议选择外科/超声/眼科等专科方向，系统进阶',
     action: '查看专科进阶课程',
-    href: '/courses?category=surgery',
+    href: '/courses?direction=surgery&source=growth-system',
     color: 'blue'
   },
   {
@@ -153,7 +179,7 @@ const START_RECOMMENDATIONS: StartRecommendation[] = [
     forWho: '适合有5年以上经验，希望探索更大事业方向的医生',
     suggestion: '建议关注"客户经营"方向，为独立执业或创业做准备',
     action: '查看客户经营课程',
-    href: '/courses?category=customer',
+    href: '/courses?direction=customer&source=growth-system',
     color: 'amber'
   }
 ];
@@ -204,6 +230,14 @@ const POST_TRAINING_SUPPORT: PostTrainingSupport[] = [
 
 // Featured courses per direction
 const FEATURED_COURSES: Record<string, { id: string; name: string; level: string }[]> = {
+  certification: [
+    { id: 'vet-license-prep', name: '执业兽医资格考试备考指南', level: '基础' },
+    { id: 'industry-entry', name: '宠物医疗行业入职规范', level: '基础' }
+  ],
+  general: [
+    { id: 'clinical-thinking', name: '临床诊断思维训练', level: '基础' },
+    { id: 'common-diseases', name: '犬猫常见病诊疗规范', level: '基础' }
+  ],
   surgery: [
     { id: 'csavs-soft-2026', name: 'CSAVS 小动物软组织外科学', level: '进阶' },
     { id: 'csavs-joint-2026', name: 'CSAVS 小动物关节外科学', level: '进阶' }
@@ -216,18 +250,18 @@ const FEATURED_COURSES: Record<string, { id: string; name: string; level: string
     { id: 'csavs-eye-2026', name: 'CSAVS 小动物眼科学', level: '进阶' },
     { id: 'eye-surgery-basic', name: '眼科手术基础', level: '基础' }
   ],
-  general: [
-    { id: 'clinical-thinking', name: '临床诊断思维训练', level: '基础' },
-    { id: 'common-diseases', name: '犬猫常见病诊疗规范', level: '基础' }
-  ],
   customer: [
     { id: 'customer-management', name: '兽医客户管理与服务设计', level: '进阶' },
     { id: 'service-pricing', name: '服务定价与价值沟通', level: '进阶' }
+  ],
+  'clinic-operations': [
+    { id: 'clinic-management', name: '宠物诊所运营管理实务', level: '进阶' },
+    { id: 'startup-planning', name: '诊所创业准备与商业规划', level: '进阶' }
   ]
 };
 
-export function GrowthSystemPage({ locale }: { locale: string }) {
-  const { t } = useLanguage();
+export function GrowthSystemPage() {
+  const { locale } = useLanguage();
   const { isAuthenticated } = useAuth();
 
   return (
@@ -250,13 +284,13 @@ export function GrowthSystemPage({ locale }: { locale: string }) {
               宠医界为宠物医生构建了系统化的专业成长体系，从基础到专科，从临床到事业，持续陪伴你的每一步成长。
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <a
+              <Link
                 href={`/${locale}/courses`}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-emerald-700 rounded-xl text-sm font-bold hover:bg-emerald-50 transition-colors"
               >
                 <BookOpen className="w-4 h-4" />
                 浏览全部课程
-              </a>
+              </Link>
               <a
                 href="#growth-directions"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 text-white border border-white/20 rounded-xl text-sm font-semibold hover:bg-white/20 transition-colors"
@@ -341,12 +375,12 @@ export function GrowthSystemPage({ locale }: { locale: string }) {
                 
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-400">{dir.courses} 门课程</span>
-                  <a
-                    href={`/${locale}/courses?direction=${dir.id}`}
+                  <Link
+                    href={`/${locale}/courses?direction=${dir.id}&source=growth-system`}
                     className={`text-sm font-medium text-${dir.color}-600 hover:text-${dir.color}-700 flex items-center gap-1 group-hover:underline`}
                   >
                     查看方向课程 <ChevronRight className="w-4 h-4" />
-                  </a>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -446,12 +480,12 @@ export function GrowthSystemPage({ locale }: { locale: string }) {
                   <h3 className="font-bold text-slate-900 mb-2">{rec.title}</h3>
                   <p className="text-xs text-slate-400 mb-3">{rec.forWho}</p>
                   <p className="text-sm text-slate-600 mb-4">{rec.suggestion}</p>
-                  <a
+                  <Link
                     href={`/${locale}${rec.href}`}
                     className={`inline-flex items-center gap-1 text-sm font-medium text-${rec.color}-600 hover:text-${rec.color}-700`}
                   >
                     {rec.action} <ArrowRight className="w-4 h-4" />
-                  </a>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -466,7 +500,7 @@ export function GrowthSystemPage({ locale }: { locale: string }) {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {POST_TRAINING_SUPPORT.map(support => (
-              <a
+              <Link
                 key={support.id}
                 href={isAuthenticated ? `/${locale}${support.href}` : `/${locale}/auth`}
                 className="bg-white/10 rounded-xl p-4 text-center hover:bg-white/20 transition-colors group"
@@ -476,19 +510,19 @@ export function GrowthSystemPage({ locale }: { locale: string }) {
                 </div>
                 <h4 className="font-semibold text-sm">{support.name}</h4>
                 <p className="text-xs text-slate-400 mt-1">{support.description}</p>
-              </a>
+              </Link>
             ))}
           </div>
           {!isAuthenticated && (
             <div className="mt-6 text-center">
               <p className="text-sm text-slate-400 mb-3">登录后可使用以上功能</p>
-              <a
+              <Link
                 href={`/${locale}/auth`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 transition-colors"
               >
                 立即登录
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
             </div>
           )}
         </div>
@@ -502,29 +536,29 @@ export function GrowthSystemPage({ locale }: { locale: string }) {
             浏览全部课程，找到适合你当前阶段的学习内容，或登录后获得个性化的成长建议。
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
+            <Link
               href={`/${locale}/courses`}
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-emerald-600 rounded-xl text-sm font-bold hover:bg-emerald-50 transition-colors"
             >
               <BookOpen className="w-4 h-4" />
               浏览全部课程
-            </a>
+            </Link>
             {isAuthenticated ? (
-              <a
+              <Link
                 href={`/${locale}/doctor/courses`}
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-emerald-600 text-white border border-emerald-400 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
               >
                 查看我的课程
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
             ) : (
-              <a
+              <Link
                 href={`/${locale}/auth`}
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-emerald-600 text-white border border-emerald-400 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
               >
                 登录获取建议
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
             )}
           </div>
         </div>

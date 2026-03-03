@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import {
   LayoutDashboard,
   Users,
@@ -16,6 +17,8 @@ import {
   LogOut,
   Menu,
   X,
+  Home,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -79,22 +82,22 @@ export function DoctorSidebar({ locale }: { locale: string }) {
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
-      {/* Brand */}
+      {/* Brand - 点击返回主站 */}
       <div className="px-6 py-5 border-b border-slate-100">
-        <div className="flex items-center gap-3">
+        <Link href={`/${locale}`} className="flex items-center gap-3 group">
           <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-vetsphere.png" alt="宠医界" className="w-full h-full object-contain" />
           </div>
           <div>
-            <span className="font-bold text-slate-900 text-sm block leading-tight">
+            <span className="font-bold text-slate-900 text-sm block leading-tight group-hover:text-amber-600 transition-colors">
               {dw.sidebarBrand || '宠医界'}
             </span>
             <span className="text-[10px] text-slate-400 font-medium">
               {dw.sidebarRole || '医生工作台'}
             </span>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* User info */}
@@ -117,7 +120,7 @@ export function DoctorSidebar({ locale }: { locale: string }) {
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
-            <a
+            <Link
               key={item.id}
               href={item.href}
               onClick={() => isMobile && setIsMobileOpen(false)}
@@ -136,13 +139,21 @@ export function DoctorSidebar({ locale }: { locale: string }) {
                   {item.badge}
                 </span>
               )}
-            </a>
+            </Link>
           );
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="px-3 py-3 border-t border-slate-100">
+      {/* 浏览主站 + Logout */}
+      <div className="px-3 py-3 border-t border-slate-100 space-y-0.5">
+        <Link
+          href={`/${locale}`}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-all"
+        >
+          <Home className="w-5 h-5" />
+          <span>浏览主站</span>
+          <ExternalLink className="w-3.5 h-3.5 ml-auto opacity-50" />
+        </Link>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all"
@@ -158,13 +169,13 @@ export function DoctorSidebar({ locale }: { locale: string }) {
     <>
       {/* Mobile header bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <Link href={`/${locale}`} className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-md overflow-hidden shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-vetsphere.png" alt="宠医界" className="w-full h-full object-contain" />
           </div>
           <span className="font-bold text-slate-900 text-sm">{dw.sidebarBrand || '宠医界'}</span>
-        </div>
+        </Link>
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
           className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"

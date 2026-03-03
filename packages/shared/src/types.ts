@@ -15,6 +15,75 @@ export type ProductGroup = 'PowerTools' | 'Implants' | 'HandInstruments' | 'Cons
 export type CourseStatus = 'Pending' | 'Published' | 'Rejected' | 'Draft';
 
 // ============================================
+// Doctor Application Types (医生入驻申请)
+// ============================================
+
+/** 医生申请状态 */
+export type DoctorApplicationStatus = 'draft' | 'pending_review' | 'approved' | 'rejected';
+
+/** 医生入驻申请完整信息 */
+export interface DoctorApplication {
+  id: string;
+  userId: string;
+  status: DoctorApplicationStatus;
+  
+  // 基本信息
+  fullName: string;
+  phone: string;
+  province?: string;
+  city: string;
+  avatarUrl?: string;
+  
+  // 执业信息
+  hospitalName: string;
+  position: string;
+  specialties: string[];
+  yearsOfExperience?: number;
+  
+  // 资质材料
+  licenseImageUrl?: string;
+  supplementaryUrls: string[];
+  credentialNotes?: string;
+  
+  // 可选信息
+  nickname?: string;
+  email?: string;
+  bio?: string;
+  
+  // 审核信息
+  rejectionReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  submittedAt?: string;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 医生申请表单数据 (用于前端表单) */
+export interface DoctorApplicationFormData {
+  // Step 1: 账号 (由 auth 处理，这里不需要)
+  
+  // Step 2: 医生资料
+  fullName: string;
+  phone: string;
+  province?: string;
+  city: string;
+  hospitalName: string;
+  position: string;
+  specialties: string[];
+  yearsOfExperience?: number;
+  nickname?: string;
+  email?: string;
+  bio?: string;
+  
+  // Step 3: 资质上传
+  licenseImageUrl?: string;
+  supplementaryUrls: string[];
+  credentialNotes?: string;
+}
+
+// ============================================
 // B2B Commerce Types
 // ============================================
 

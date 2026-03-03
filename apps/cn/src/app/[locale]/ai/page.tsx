@@ -1,25 +1,25 @@
 import type { Metadata } from 'next';
-import AIChatPageClient from '@vetsphere/shared/pages/AIChatPageClient';
+import CnAICenterPage from '@vetsphere/shared/pages/cn/CnAICenterPage';
 import { siteConfig } from '@/config/site.config';
 
 export const metadata: Metadata = {
-  title: 'AI Surgical Consultant',
-  description: '24/7 AI-powered veterinary surgical consultation. Analyze X-rays, CT scans, and get expert surgical planning assistance. Supports English, Chinese, and Thai.',
-  keywords: ['veterinary AI', 'surgical AI consultant', 'X-ray analysis', 'veterinary diagnosis AI'],
+  title: 'AI 智能助手 - 临床分析·学习助教·采购顾问·问诊助手',
+  description: '专为宠物医生打造的 AI 能力中心，提供临床分析、学习助教、采购顾问、问诊助手四大核心能力。',
+  keywords: ['兽医AI', 'AI临床助手', 'X光分析', '宠物医生AI', '学习助教', '采购顾问'],
   openGraph: {
-    title: 'AI Surgical Consultant | VetSphere',
-    description: '24/7 AI-powered veterinary surgical consultation. Analyze X-rays, CT scans, and get expert surgical planning assistance.',
+    title: 'AI 智能助手 | VetSphere',
+    description: '专为宠物医生打造的 AI 能力中心，提供临床分析、学习助教、采购顾问、问诊助手四大核心能力。',
     url: `${siteConfig.siteUrl}/ai`,
     siteName: siteConfig.siteName,
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Surgical Consultant | VetSphere',
-    description: '24/7 AI-powered veterinary surgical consultation and X-ray analysis.',
+    title: 'AI 智能助手 | VetSphere',
+    description: '专为宠物医生打造的 AI 能力中心。',
   },
 };
 
 export default function AIChatPage() {
-  return <AIChatPageClient />;
+  return <CnAICenterPage />;
 }

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const baseURL = rawBaseURL && !rawBaseURL.includes('/v1')
       ? (rawBaseURL.endsWith('/') ? `${rawBaseURL}v1` : `${rawBaseURL}/v1`)
       : rawBaseURL;
-    const modelName = process.env.AI_MODEL || 'google/gemini-3-flash-preview';
+    const modelName = process.env.AI_MODEL || 'qwen3.5-plus';
 
     if (!apiKey) {
       return NextResponse.json(

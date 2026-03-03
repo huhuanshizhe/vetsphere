@@ -11,6 +11,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Course } from '../../types';
+import { AICourseAdvisor } from '../../components/cn/AICourseAdvisor';
 
 // Course category
 interface CourseCategory {
@@ -141,6 +142,7 @@ const CnCoursesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAIAdvisor, setShowAIAdvisor] = useState(false);
 
   // Fetch courses from API
   useEffect(() => {
@@ -393,6 +395,22 @@ const CnCoursesPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Floating AI Advisor Button */}
+      <button
+        onClick={() => setShowAIAdvisor(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full font-bold shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 hover:-translate-y-0.5 transition-all"
+      >
+        <Sparkles className="w-5 h-5" />
+        <span className="hidden sm:inline">AI 选课顾问</span>
+      </button>
+
+      {/* AI Course Advisor Modal */}
+      <AICourseAdvisor
+        isOpen={showAIAdvisor}
+        onClose={() => setShowAIAdvisor(false)}
+        locale={locale}
+      />
     </main>
   );
 };
