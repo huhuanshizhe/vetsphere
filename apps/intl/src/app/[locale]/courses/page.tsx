@@ -1,34 +1,55 @@
 import type { Metadata } from 'next';
 import JsonLd, { breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
-import CoursesPageClient from '@vetsphere/shared/pages/CoursesPageClient';
+import IntlCoursesPageClient from '@vetsphere/shared/pages/intl/IntlCoursesPageClient';
 import { siteConfig } from '@/config/site.config';
 
-export const metadata: Metadata = {
-  title: 'Veterinary Surgery Courses & Wet-Lab Training',
-  description: 'Professional veterinary surgery workshops: TPLO, Joint Surgery, Soft Tissue, Ophthalmology (VOSC), and Ultrasound. Taught by ACVS/ECVS board-certified diplomates at locations across China.',
-  keywords: ['veterinary surgery courses', 'TPLO training', 'wet-lab workshop', 'CSAVS', 'veterinary continuing education'],
-  openGraph: {
-    title: 'Veterinary Surgery Courses & Wet-Lab Training | VetSphere',
-    description: 'Professional veterinary surgery workshops: TPLO, Joint Surgery, Soft Tissue, Ophthalmology, and Ultrasound. Taught by ACVS/ECVS board-certified diplomates.',
-    url: `${siteConfig.siteUrl}/courses`,
-    siteName: siteConfig.siteName,
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Veterinary Surgery Courses | VetSphere',
-    description: 'Professional veterinary surgery workshops taught by board-certified diplomates.',
-  },
-};
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
-export default function CoursesPage() {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { locale } = await params;
+
+  const titles: Record<string, string> = {
+    en: 'Veterinary Training Programs | VetSphere',
+    th: 'โปรแกรมฝึกอบรมสัตวแพทย์ | VetSphere',
+    ja: '獣医トレーニングプログラム | VetSphere',
+  };
+
+  const descriptions: Record<string, string> = {
+    en: 'Expert-led veterinary training programs: orthopedic surgery, soft tissue, ophthalmology, and ultrasound. Build clinical skills with hands-on workshops and discover recommended equipment.',
+    th: 'โปรแกรมฝึกอบรมสัตวแพทย์โดยผู้เชี่ยวชาญ: ศัลยกรรมกระดูก, เนื้อเยื่ออ่อน, จักษุวิทยา และอัลตราซาวนด์',
+    ja: '専門家による獣医トレーニングプログラム：整形外科手術、軟部組織、眼科、超音波',
+  };
+
+  return {
+    title: titles[locale] || titles.en,
+    description: descriptions[locale] || descriptions.en,
+    keywords: ['veterinary training', 'clinical workshops', 'TPLO training', 'veterinary surgery courses', 'equipment kits'],
+    openGraph: {
+      title: titles[locale] || titles.en,
+      description: descriptions[locale] || descriptions.en,
+      url: `${siteConfig.siteUrl}/${locale}/courses`,
+      siteName: siteConfig.siteName,
+      type: 'website',
+    },
+    alternates: {
+      languages: Object.fromEntries(
+        siteConfig.locales.map((l: string) => [l, `${siteConfig.siteUrl}/${l}/courses`])
+      ),
+    },
+  };
+}
+
+export default async function CoursesPage({ params }: PageProps) {
+  const { locale } = await params;
   return (
     <>
       <JsonLd data={breadcrumbSchema([
-        { name: 'Home', url: siteConfig.siteUrl },
-        { name: 'Courses', url: `${siteConfig.siteUrl}/courses` },
+        { name: 'Home', url: `${siteConfig.siteUrl}/${locale}` },
+        { name: 'Training', url: `${siteConfig.siteUrl}/${locale}/courses` },
       ])} />
-      <CoursesPageClient />
+      <IntlCoursesPageClient />
     </>
   );
 }

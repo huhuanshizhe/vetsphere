@@ -6,7 +6,8 @@ export const metadata: Metadata = {
   description: 'Voice-activated AI surgical assistant for real-time intraoperative support. Coming soon to VetSphere.',
 };
 
-export default function LiveAssistantPage() {
+export default async function LiveAssistantPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-20 px-4">
       <div className="max-w-lg text-center space-y-6">
@@ -23,7 +24,7 @@ export default function LiveAssistantPage() {
         </div>
         <div className="pt-4">
           <Link
-            href="/"
+            href={`/${locale}`}
             className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all inline-block"
           >
             Back to Home
