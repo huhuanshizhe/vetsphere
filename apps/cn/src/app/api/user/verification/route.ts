@@ -5,13 +5,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-// 有效的认证类型
+// 有效的认证类型（仅3种医生身份需要认证）
 const VALID_VERIFICATION_TYPES = [
   'veterinarian',
   'assistant_doctor',
-  'nurse_care',
-  'student',
-  'researcher_teacher',
+  'rural_veterinarian',
 ];
 
 /**
@@ -227,18 +225,22 @@ export async function POST(request: NextRequest) {
       if (documents.length > 0) {
         const docsToInsert = documents.map((doc: any, index: number) => ({
           verification_request_id: verificationId,
-          file_id: doc.fileId,
-          file_url: doc.fileUrl,
-          file_name: doc.fileName,
-          file_type: doc.fileType,
-          doc_type: doc.docType,
-          doc_type_desc: doc.docTypeDesc,
+          file_id: doc.fileId || null,
+          file_url: doc.fileUrl || doc.documentUrl, // 兼容两种命名
+          file_name: doc.fileName || null,
+          file_type: doc.fileType || null,
+          doc_type: doc.docType || doc.documentType, // 兼容两种命名
+          doc_type_desc: doc.docTypeDesc || doc.documentType || null,
           sort_order: index,
         }));
         
-        await supabaseAdmin
+        const { error: docError } = await supabaseAdmin
           .from('cn_verification_documents')
           .insert(docsToInsert);
+        
+        if (docError) {
+          console.error('Error inserting documents:', docError);
+        }
       }
     }
     
