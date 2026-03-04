@@ -5,17 +5,69 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+// identity_type -> identity_group_v2
+function mapToGroupV2(identityType: string | null): string | null {
+  if (!identityType) return null;
+  const map: Record<string, string> = {
+    veterinarian: 'doctor', assistant_doctor: 'doctor', rural_veterinarian: 'doctor',
+    nurse_care: 'vet_related_staff', researcher_teacher: 'vet_related_staff', pet_service_staff: 'vet_related_staff',
+    student: 'student_academic',
+    industry_practitioner: 'other_related', enthusiast: 'other_related', other: 'other_related',
+  };
+  return map[identityType] || 'other_related';
+}
+
+// identity_type -> doctor_subtype
+function mapToDoctorSubtype(identityType: string | null): string | null {
+  if (!identityType) return null;
+  if (['veterinarian', 'assistant_doctor', 'rural_veterinarian'].includes(identityType)) return identityType;
+  return null;
+}
+
+// identity_group_v2 中文显示名
+function getIdentityLabel(identityGroupV2: string | null, doctorSubtype: string | null): string {
+  if (identityGroupV2 === 'doctor') {
+    const subtypeLabels: Record<string, string> = {
+      veterinarian: '执业兽医师', assistant_doctor: '助理兽医师', rural_veterinarian: '乡村兽医',
+    };
+    return doctorSubtype ? subtypeLabels[doctorSubtype] || '执业兽医' : '执业兽医';
+  }
+  const groupLabels: Record<string, string> = {
+    vet_related_staff: '兽医相关从业人员', student_academic: '兽医相关专业学生/教研人员', other_related: '其他相关人员',
+  };
+  return identityGroupV2 ? groupLabels[identityGroupV2] || '用户' : '用户';
+}
+
+// 构建双轨权限
+function buildPermissions(identityGroupV2: string | null, doctorPrivilegeStatus: string) {
+  const isLoggedIn = true;
+  const isDoctorApproved = identityGroupV2 === 'doctor' && doctorPrivilegeStatus === 'approved';
+  return {
+    can_access_user_center: isLoggedIn,
+    can_purchase_courses: isLoggedIn,
+    can_purchase_products: isLoggedIn,
+    can_manage_orders: isLoggedIn,
+    can_access_growth_system: isLoggedIn,
+    can_access_doctor_workspace: isDoctorApproved,
+    can_access_medical_features: isDoctorApproved,
+    can_access_professional_courses: isDoctorApproved,
+    can_view_restricted_product_info: isDoctorApproved,
+  };
+}
+
 /**
  * GET /api/auth/me
  * 
- * 获取当前用户完整状态 - 这是前端状态分流的核心接口
+ * 获取当前用户完整状态 - 双轨制核心接口
  * 
  * 返回结构:
  * - user: 基础用户信息
- * - identity: 身份信息
+ * - identity: 身份信息（含V2分组）
  * - onboarding: 引导状态
- * - verification: 认证状态
- * - access: 权限信息
+ * - verification: 认证状态（旧字段，兼容）
+ * - doctorAccess: 医生工作台权限状态
+ * - permissions: 双轨权限标记
+ * - access: 旧权限信息（兼容）
  * - redirectHint: 前端跳转提示
  */
 export async function GET(request: NextRequest) {
@@ -25,14 +77,12 @@ export async function GET(request: NextRequest) {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({
         isLoggedIn: false,
-        access: {
-          level: 'guest',
-          permissionFlags: {
-            can_access_growth_system: false,
-            can_access_professional_courses: false,
-            can_submit_professional_application: false,
-            can_view_restricted_product_info: false,
-          },
+        permissions: {
+          can_access_user_center: false, can_purchase_courses: false,
+          can_purchase_products: false, can_manage_orders: false,
+          can_access_growth_system: false, can_access_doctor_workspace: false,
+          can_access_medical_features: false, can_access_professional_courses: false,
+          can_view_restricted_product_info: false,
         },
         redirectHint: 'go_login',
       });
@@ -45,14 +95,12 @@ export async function GET(request: NextRequest) {
     if (authError || !authUser) {
       return NextResponse.json({
         isLoggedIn: false,
-        access: {
-          level: 'guest',
-          permissionFlags: {
-            can_access_growth_system: false,
-            can_access_professional_courses: false,
-            can_submit_professional_application: false,
-            can_view_restricted_product_info: false,
-          },
+        permissions: {
+          can_access_user_center: false, can_purchase_courses: false,
+          can_purchase_products: false, can_manage_orders: false,
+          can_access_growth_system: false, can_access_doctor_workspace: false,
+          can_access_medical_features: false, can_access_professional_courses: false,
+          can_view_restricted_product_info: false,
         },
         redirectHint: 'go_login',
       });
@@ -69,14 +117,13 @@ export async function GET(request: NextRequest) {
     if (cnUser && (cnUser.status === 'disabled' || cnUser.status === 'banned')) {
       return NextResponse.json({
         isLoggedIn: true,
-        user: {
-          id: authUser.id,
-          mobile: cnUser.mobile,
-          status: cnUser.status,
-        },
-        access: {
-          level: 'guest',
-          permissionFlags: {},
+        user: { id: authUser.id, mobile: cnUser.mobile, status: cnUser.status },
+        permissions: {
+          can_access_user_center: false, can_purchase_courses: false,
+          can_purchase_products: false, can_manage_orders: false,
+          can_access_growth_system: false, can_access_doctor_workspace: false,
+          can_access_medical_features: false, can_access_professional_courses: false,
+          can_view_restricted_product_info: false,
         },
         redirectHint: 'go_account_status',
         accountStatusReason: cnUser.status === 'banned' ? '账号已被封禁' : '账号已被禁用',
@@ -107,55 +154,50 @@ export async function GET(request: NextRequest) {
       const verification = verificationRes.data;
       const snapshot = snapshotRes.data;
       
-      // 计算onboarding状态
-      let onboardingStatus = 'not_started';
-      if (!identity) {
+      // 计算onboarding状态 - 身份选择是可选的
+      let onboardingStatus = 'completed';
+      if (snapshot?.onboarding_status === 'identity_pending') {
         onboardingStatus = 'identity_pending';
-      } else if (!profile || !profile.display_name) {
+      } else if (snapshot?.onboarding_status === 'profile_pending') {
         onboardingStatus = 'profile_pending';
-      } else {
-        onboardingStatus = 'completed';
       }
       
-      // 判断是否需要认证
-      const verificationRequired = identity && ['veterinarian', 'assistant_doctor', 'nurse_care', 'student', 'researcher_teacher'].includes(identity.identity_type);
-      
-      // 获取认证状态
+      // 仅3种医生需要认证
+      const verificationRequired = identity && ['veterinarian', 'assistant_doctor', 'rural_veterinarian'].includes(identity.identity_type);
       const verificationStatus = verification?.status || 'not_started';
+      
+      // 计算V2字段
+      const identityGroupV2 = identity ? mapToGroupV2(identity.identity_type) : null;
+      const doctorSubtype = identity ? mapToDoctorSubtype(identity.identity_type) : null;
+      
+      // 计算 doctor_privilege_status
+      let doctorPrivilegeStatus = 'not_applicable';
+      if (identityGroupV2 === 'doctor') {
+        if (verificationStatus === 'approved') doctorPrivilegeStatus = 'approved';
+        else if (['submitted', 'under_review'].includes(verificationStatus)) doctorPrivilegeStatus = 'pending_review';
+        else if (verificationStatus === 'rejected') doctorPrivilegeStatus = 'rejected';
+        else doctorPrivilegeStatus = 'not_started';
+      }
       
       // 计算access_level
       let accessLevel = 'registered_basic';
       if (onboardingStatus === 'completed') {
-        if (verificationStatus === 'approved') {
-          accessLevel = 'verified_professional';
-        } else if (['submitted', 'under_review'].includes(verificationStatus)) {
-          accessLevel = 'verification_pending';
-        } else {
-          accessLevel = 'profiled_user';
-        }
+        if (verificationStatus === 'approved') accessLevel = 'verified_professional';
+        else if (['submitted', 'under_review'].includes(verificationStatus)) accessLevel = 'verification_pending';
+        else accessLevel = 'profiled_user';
       }
       
-      // 计算redirect_hint
+      // 计算redirect_hint - 默认去首页
       let redirectHint = 'go_home';
-      if (onboardingStatus === 'identity_pending') {
+      if (snapshot?.redirect_hint === 'go_identity_select' && onboardingStatus === 'identity_pending') {
         redirectHint = 'go_identity_select';
-      } else if (onboardingStatus === 'profile_pending') {
+      } else if (snapshot?.redirect_hint === 'go_profile_complete' && onboardingStatus === 'profile_pending') {
         redirectHint = 'go_profile_complete';
       } else if (verificationStatus === 'rejected') {
         redirectHint = 'show_rejection_prompt';
-      } else if (verificationRequired && ['not_started', 'draft'].includes(verificationStatus)) {
-        redirectHint = 'show_verification_prompt';
       } else if (['submitted', 'under_review'].includes(verificationStatus)) {
         redirectHint = 'show_verification_pending';
       }
-      
-      // 计算权限标记
-      const permissionFlags = {
-        can_access_growth_system: accessLevel !== 'guest' && accessLevel !== 'registered_basic',
-        can_access_professional_courses: accessLevel === 'verified_professional',
-        can_submit_professional_application: accessLevel === 'profiled_user' && verificationRequired,
-        can_view_restricted_product_info: accessLevel === 'verified_professional',
-      };
       
       userState = {
         user_id: authUser.id,
@@ -168,14 +210,17 @@ export async function GET(request: NextRequest) {
         profile_completion_percent: profile?.profile_completion_percent || 0,
         identity_type: identity?.identity_type,
         identity_group: identity?.identity_group,
+        identity_group_v2: identityGroupV2,
+        doctor_subtype: doctorSubtype,
         onboarding_status: onboardingStatus,
         verification_status: verificationStatus,
         verification_required: verificationRequired,
         verification_reject_reason: verification?.reject_reason,
         identity_verified_flag: verificationStatus === 'approved',
         access_level: accessLevel,
-        permission_flags: permissionFlags,
+        permission_flags: buildPermissions(identityGroupV2, doctorPrivilegeStatus),
         redirect_hint: redirectHint,
+        doctor_privilege_status: doctorPrivilegeStatus,
       };
       
       // 更新或创建状态快照
@@ -187,6 +232,8 @@ export async function GET(request: NextRequest) {
           onboarding_status: userState.onboarding_status,
           identity_type: userState.identity_type,
           identity_group: userState.identity_group,
+          identity_group_v2: userState.identity_group_v2,
+          doctor_subtype: userState.doctor_subtype,
           verification_status: userState.verification_status,
           verification_required: userState.verification_required,
           verification_reject_reason: userState.verification_reject_reason,
@@ -194,11 +241,19 @@ export async function GET(request: NextRequest) {
           access_level: userState.access_level,
           permission_flags: userState.permission_flags,
           redirect_hint: userState.redirect_hint,
+          doctor_privilege_status: userState.doctor_privilege_status,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id,site_code',
         });
     }
+    
+    // 计算V2派生字段（视图路径也需要）
+    const identityGroupV2 = userState.identity_group_v2 || mapToGroupV2(userState.identity_type);
+    const doctorSubtype = userState.doctor_subtype || mapToDoctorSubtype(userState.identity_type);
+    const doctorPrivilegeStatus = userState.doctor_privilege_status || 'not_applicable';
+    const identityLabel = getIdentityLabel(identityGroupV2, doctorSubtype);
+    const permissions = buildPermissions(identityGroupV2, doctorPrivilegeStatus);
     
     // 构建响应
     return NextResponse.json({
@@ -215,6 +270,9 @@ export async function GET(request: NextRequest) {
       identity: {
         identityType: userState.identity_type,
         identityGroup: userState.identity_group,
+        identityGroupV2: identityGroupV2,
+        doctorSubtype: doctorSubtype,
+        identityLabel: identityLabel,
         identityVerifiedFlag: userState.identity_verified_flag,
       },
       onboarding: {
@@ -226,9 +284,17 @@ export async function GET(request: NextRequest) {
         status: userState.verification_status,
         rejectReason: userState.verification_reject_reason,
       },
+      // 新增: 医生工作台权限
+      doctorAccess: {
+        status: doctorPrivilegeStatus,
+        rejectReason: doctorPrivilegeStatus === 'rejected' ? userState.verification_reject_reason : null,
+      },
+      // 新增: 双轨权限标记
+      permissions,
+      // 旧字段保留兼容
       access: {
         level: userState.access_level,
-        permissionFlags: userState.permission_flags || {},
+        permissionFlags: userState.permission_flags || permissions,
       },
       redirectHint: userState.redirect_hint,
     });

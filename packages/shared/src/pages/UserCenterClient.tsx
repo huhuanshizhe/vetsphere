@@ -13,7 +13,7 @@ import Link from 'next/link';
 type TabType = 'overview' | 'profile' | 'orders' | 'courses' | 'points' | 'settings';
 
 const UserCenterClient: React.FC = () => {
-  const { user, logout, isAuthenticated, updateUser } = useAuth();
+  const { user, logout, isAuthenticated, updateUser, loading: authLoading } = useAuth();
   const { t, locale } = useLanguage();
   const { addNotification } = useNotification();
   const router = useRouter();
@@ -47,19 +47,31 @@ const UserCenterClient: React.FC = () => {
   const [refundOrder, setRefundOrder] = useState<Order | null>(null);
 
   useEffect(() => {
+    // Wait for AuthContext to finish initializing
+    if (authLoading) return;
     if (!isAuthenticated) {
       router.push(`/${locale}/auth`);
       return;
     }
     loadUserData();
-  }, [isAuthenticated, locale]);
+  }, [isAuthenticated, authLoading, locale]);
 
   const loadUserData = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
+    // Safety timeout - ensure loading resolves within 10 seconds
+    const timeout = setTimeout(() => {
+      console.warn('UserCenter: loadUserData timeout, forcing loading=false');
+      setLoading(false);
+    }, 10000);
+
     try {
-      const [fetchedOrders, fetchedEnrollments, fetchedPoints, fetchedHistory, fetchedProfile] = await Promise.all([
+      // 使用 Promise.allSettled 避免单个请求失败导致整体阻塞
+      const results = await Promise.allSettled([
         api.getOrders(user.email),
         api.getEnrollments(user.id),
         api.fetchUserPoints(user.id),
@@ -67,13 +79,16 @@ const UserCenterClient: React.FC = () => {
         api.getUserProfile(user.id)
       ]);
 
-      setOrders(fetchedOrders);
-      setEnrollments(fetchedEnrollments);
-      setPointsData(fetchedPoints);
-      setPointsHistory(fetchedHistory);
+      const [ordersResult, enrollmentsResult, pointsResult, historyResult, profileResult] = results;
+
+      if (ordersResult.status === 'fulfilled') setOrders(ordersResult.value || []);
+      if (enrollmentsResult.status === 'fulfilled') setEnrollments(enrollmentsResult.value || []);
+      if (pointsResult.status === 'fulfilled') setPointsData(pointsResult.value || { points: 0, level: 'Resident' });
+      if (historyResult.status === 'fulfilled') setPointsHistory(historyResult.value || []);
       
       // Load profile data into form
-      if (fetchedProfile) {
+      if (profileResult.status === 'fulfilled' && profileResult.value) {
+        const fetchedProfile = profileResult.value;
         setProfileForm({
           name: fetchedProfile.displayName || user.name || '',
           hospital: fetchedProfile.hospital || '',
@@ -89,14 +104,15 @@ const UserCenterClient: React.FC = () => {
     } catch (error) {
       console.error('Failed to load user data:', error);
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   };
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push(`/${locale}`);
   };
 

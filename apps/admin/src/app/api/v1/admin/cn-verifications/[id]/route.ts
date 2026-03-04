@@ -59,7 +59,7 @@ export async function GET(
           display_name, real_name, avatar_file_id, organization_name,
           job_title, experience_years, interest_tags, bio, identity_fields
         ),
-        cn_user_identity_profiles(identity_type, identity_group, identity_selected_at)
+        cn_user_identity_profiles(identity_type, identity_group, identity_group_v2, doctor_subtype, identity_selected_at)
       `)
       .eq('id', id)
       .single();
@@ -129,6 +129,8 @@ export async function GET(
       identity: verification.cn_user_identity_profiles ? {
         identityType: verification.cn_user_identity_profiles.identity_type,
         identityGroup: verification.cn_user_identity_profiles.identity_group,
+        identityGroupV2: verification.cn_user_identity_profiles.identity_group_v2,
+        doctorSubtype: verification.cn_user_identity_profiles.doctor_subtype,
         identitySelectedAt: verification.cn_user_identity_profiles.identity_selected_at,
       } : null,
       auditLogs: (auditLogs || []).map((log: any) => ({
@@ -278,16 +280,23 @@ export async function POST(
         snapshotUpdate.identity_verified_flag = true;
         snapshotUpdate.access_level = 'verified_professional';
         snapshotUpdate.redirect_hint = 'go_home';
+        snapshotUpdate.doctor_privilege_status = 'approved';
         snapshotUpdate.permission_flags = {
+          can_access_user_center: true,
+          can_purchase_courses: true,
+          can_purchase_products: true,
+          can_manage_orders: true,
           can_access_growth_system: true,
+          can_access_doctor_workspace: true,
+          can_access_medical_features: true,
           can_access_professional_courses: true,
-          can_submit_professional_application: false,
           can_view_restricted_product_info: true,
         };
       } else if (action === 'reject') {
         snapshotUpdate.verification_reject_reason = rejectReason;
         snapshotUpdate.access_level = 'profiled_user';
         snapshotUpdate.redirect_hint = 'show_rejection_prompt';
+        snapshotUpdate.doctor_privilege_status = 'rejected';
       }
       
       await supabaseAdmin

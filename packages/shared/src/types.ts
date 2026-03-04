@@ -183,6 +183,25 @@ export interface User {
   points: number;
   level: string;
   avatarUrl?: string;
+  // 双轨制新字段
+  mobile?: string;
+  identityGroupV2?: 'doctor' | 'vet_related_staff' | 'student_academic' | 'other_related';
+  doctorSubtype?: 'veterinarian' | 'assistant_doctor' | 'rural_veterinarian';
+  doctorPrivilegeStatus?: 'not_applicable' | 'not_started' | 'pending_review' | 'approved' | 'rejected';
+  identityLabel?: string; // 中文显示名（如"执业兽医师"、"兽医相关从业人员"）
+}
+
+// 双轨权限标记
+export interface DualTrackPermissions {
+  can_access_user_center: boolean;
+  can_purchase_courses: boolean;
+  can_purchase_products: boolean;
+  can_manage_orders: boolean;
+  can_access_growth_system: boolean;
+  can_access_doctor_workspace: boolean;
+  can_access_medical_features: boolean;
+  can_access_professional_courses: boolean;
+  can_view_restricted_product_info: boolean;
 }
 
 export interface DoctorProfile {

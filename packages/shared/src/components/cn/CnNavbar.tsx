@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -14,6 +14,7 @@ import {
   LogOut,
   User,
   Info,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface CnNavbarProps {
@@ -23,7 +24,20 @@ interface CnNavbarProps {
 export function CnNavbar({ locale }: CnNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const { isAuthenticated, user, logout } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  const { isAuthenticated, user, logout, canAccessDoctorWorkspace, doctorPrivilegeStatus } = useAuth();
+
+  // 避免 SSR 水合不匹配：等待客户端挂载后再渲染认证状态相关的 UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 双轨制：只有认证通过的医生才显示医生工作台入口
+  const showDoctorWorkspace = canAccessDoctorWorkspace;
+  
+  // 是否显示医生认证入口（医生身份但未认证通过）
+  const isDoctor = user?.identityGroupV2 === 'doctor';
+  const showVerificationEntry = isDoctor && !canAccessDoctorWorkspace;
 
   // Main navigation: doctor-first, action-oriented (5 items)
   const navigation = [
@@ -71,7 +85,7 @@ export function CnNavbar({ locale }: CnNavbarProps) {
             关于平台
           </Link>
           
-          {isAuthenticated && user ? (
+          {mounted && isAuthenticated && user ? (
             <div className="relative">
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -110,7 +124,7 @@ export function CnNavbar({ locale }: CnNavbarProps) {
                       </div>
                     </div>
                     {/* Doctor: Personal center */}
-                    {user.role === 'Doctor' && (
+                    {showDoctorWorkspace && (
                       <>
                         <Link href={`/${locale}/doctor`} onClick={() => setIsUserMenuOpen(false)} className="block px-4 py-3 text-sm font-bold text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
                           <Stethoscope className="w-4 h-4 inline mr-2" />医生工作台
@@ -118,6 +132,20 @@ export function CnNavbar({ locale }: CnNavbarProps) {
                         <Link href={`/${locale}/user`} onClick={() => setIsUserMenuOpen(false)} className="block px-4 py-3 text-sm font-bold text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
                           <User className="w-4 h-4 inline mr-2" />个人中心
                         </Link>
+                      </>
+                    )}
+                    {!showDoctorWorkspace && isAuthenticated && (
+                      <>
+                        <Link href={`/${locale}/user`} onClick={() => setIsUserMenuOpen(false)} className="block px-4 py-3 text-sm font-bold text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                          <User className="w-4 h-4 inline mr-2" />个人中心
+                        </Link>
+                        {showVerificationEntry && (
+                          <Link href={`/${locale}/verification/apply`} onClick={() => setIsUserMenuOpen(false)} className="block px-4 py-3 text-sm font-bold text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors">
+                            <ShieldCheck className="w-4 h-4 inline mr-2" />
+                            {doctorPrivilegeStatus === 'pending_review' ? '认证审核中' : 
+                             doctorPrivilegeStatus === 'rejected' ? '重新认证' : '医生身份认证'}
+                          </Link>
+                        )}
                       </>
                     )}
                     {user.role === 'Admin' && (
@@ -209,9 +237,9 @@ export function CnNavbar({ locale }: CnNavbarProps) {
 
           {/* Auth section */}
           <div className="pt-3 border-t border-slate-100 space-y-1">
-            {isAuthenticated && user ? (
+            {mounted && isAuthenticated && user ? (
               <>
-                {user.role === 'Doctor' && (
+                {showDoctorWorkspace && (
                   <>
                     <Link href={`/${locale}/doctor`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50">
                       <Stethoscope className="w-5 h-5 text-slate-400" />医生工作台
@@ -221,9 +249,23 @@ export function CnNavbar({ locale }: CnNavbarProps) {
                     </Link>
                   </>
                 )}
-                {user.role !== 'Doctor' && (
+                {!showDoctorWorkspace && (
+                  <>
+                    <Link href={`/${locale}/user`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50">
+                      <User className="w-5 h-5 text-slate-400" />个人中心
+                    </Link>
+                    {showVerificationEntry && (
+                      <Link href={`/${locale}/verification/apply`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-emerald-600 hover:bg-emerald-50">
+                        <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                        {doctorPrivilegeStatus === 'pending_review' ? '认证审核中' : 
+                         doctorPrivilegeStatus === 'rejected' ? '重新认证' : '医生身份认证'}
+                      </Link>
+                    )}
+                  </>
+                )}
+                {user.role === 'Admin' && (
                   <Link href={`/${locale}/dashboard`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50">
-                    {user.role === 'Admin' ? '管理后台' : user.role === 'ShopSupplier' ? '供应商后台' : '教学中心'}
+                    管理后台
                   </Link>
                 )}
                 <button
