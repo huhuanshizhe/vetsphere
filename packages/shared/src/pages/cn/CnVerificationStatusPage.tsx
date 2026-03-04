@@ -101,13 +101,24 @@ const CnVerificationStatusPage: React.FC = () => {
         
         const data = await res.json();
         
-        if (!data.id) {
+        if (!data.hasVerification || !data.verification) {
           // No verification application, redirect to apply
           router.push(`/${locale}/verification/apply`);
           return;
         }
         
-        setVerification(data);
+        setVerification({
+          id: data.verification.id,
+          status: data.verification.status,
+          verificationType: data.verification.verificationType,
+          realName: data.verification.realName,
+          organizationName: data.verification.organizationName,
+          positionTitle: data.verification.positionTitle,
+          submittedAt: data.verification.submittedAt,
+          reviewedAt: data.verification.reviewedAt,
+          rejectReason: data.verification.rejectReason,
+          approvedLevel: data.verification.approvedLevel,
+        });
       } catch {
         setError('网络错误，请检查您的网络连接');
       } finally {
@@ -132,7 +143,20 @@ const CnVerificationStatusPage: React.FC = () => {
       
       if (res.ok) {
         const data = await res.json();
-        setVerification(data);
+        if (data.hasVerification && data.verification) {
+          setVerification({
+            id: data.verification.id,
+            status: data.verification.status,
+            verificationType: data.verification.verificationType,
+            realName: data.verification.realName,
+            organizationName: data.verification.organizationName,
+            positionTitle: data.verification.positionTitle,
+            submittedAt: data.verification.submittedAt,
+            reviewedAt: data.verification.reviewedAt,
+            rejectReason: data.verification.rejectReason,
+            approvedLevel: data.verification.approvedLevel,
+          });
+        }
       }
     } catch {
       // Ignore
