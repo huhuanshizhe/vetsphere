@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('page_size') || '20');
     const keyword = searchParams.get('keyword');
+    const siteCode = searchParams.get('site_code') || 'cn';
 
     // 构建查询
     let query = supabase
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
         display_order
       `, { count: 'exact' })
       .eq('is_active', true)
+      .eq('site_code', siteCode)
       .order('display_order')
       .order('name');
 

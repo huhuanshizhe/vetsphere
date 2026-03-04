@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     // 查找现有进度记录
     const { data: existingProgress } = await supabase
       .from('learning_progress')
-      .select('id, progress_percent')
+      .select('id, progress_percent, completed_at')
       .eq('user_id', user.id)
       .eq('course_id', course_id)
       .single();

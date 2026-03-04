@@ -37,6 +37,7 @@ export async function GET(
     const specialty = searchParams.get('specialty'); // 专科筛选
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('page_size') || '12');
+    const siteCode = searchParams.get('site_code') || 'cn';
 
     // 查询成长方向
     const { data: track, error: trackError } = await supabase
@@ -44,6 +45,7 @@ export async function GET(
       .select('*')
       .eq('slug', slug)
       .eq('is_active', true)
+      .eq('site_code', siteCode)
       .single();
 
     if (trackError) {
@@ -87,6 +89,7 @@ export async function GET(
       `, { count: 'exact' })
       .contains('growth_tracks', [slug])
       .eq('status', 'published')
+      .eq('site_code', siteCode)
       .is('deleted_at', null);
 
     // 应用阶段/专科筛选

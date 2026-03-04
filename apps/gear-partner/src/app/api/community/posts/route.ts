@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     const keyword = searchParams.get('keyword');
     const sortBy = searchParams.get('sort_by') || 'created_at';
     const sortOrder = searchParams.get('sort_order') || 'desc';
+    const siteCode = searchParams.get('site_code') || 'cn';
 
     let query = supabase
       .from('posts')
@@ -53,7 +54,8 @@ export async function GET(request: NextRequest) {
         profiles:author_id (id, full_name, avatar_url)
       `, { count: 'exact' })
       .eq('status', 'published')
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .eq('site_code', siteCode);
 
     if (postType) {
       query = query.eq('post_type', postType);
@@ -109,7 +111,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, content, post_type, category, cover_image_url, tags } = body;
+    const { title, content, post_type, category, cover_image_url, tags, site_code } = body;
 
     // 从请求头获取用户信息 (需要认证中间件)
     const authHeader = request.headers.get('authorization');
@@ -140,6 +142,7 @@ export async function POST(request: NextRequest) {
         category,
         cover_image_url,
         tags,
+        site_code: site_code || 'cn',
         author_id: user.id,
         status: 'pending', // 新帖子需要审核
         view_count: 0,

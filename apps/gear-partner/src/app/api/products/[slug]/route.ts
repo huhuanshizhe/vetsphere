@@ -31,6 +31,9 @@ export async function GET(
       return apiResponse(400, '缺少商品标识');
     }
 
+    const { searchParams } = new URL(request.url);
+    const siteCode = searchParams.get('site_code') || 'cn';
+
     // 查询商品详情
     const { data: product, error } = await supabase
       .from('products')
@@ -53,6 +56,7 @@ export async function GET(
       `)
       .or(`slug.eq.${slug},id.eq.${slug}`)
       .eq('status', 'published')
+      .eq('site_code', siteCode)
       .is('deleted_at', null)
       .single();
 
@@ -65,11 +69,12 @@ export async function GET(
     }
 
     // 增加浏览量
-    await supabase
-      .from('products')
-      .update({ view_count: (product.view_count || 0) + 1 })
-      .eq('id', product.id)
-      .catch(() => {});
+    try {
+      await supabase
+        .from('products')
+        .update({ view_count: (product.view_count || 0) + 1 })
+        .eq('id', product.id);
+    } catch {}
 
     // 处理图片排序
     const images = (product.product_images || []).sort(
@@ -88,6 +93,7 @@ export async function GET(
       .eq('scene_code', product.scene_code)
       .neq('id', product.id)
       .eq('status', 'published')
+      .eq('site_code', siteCode)
       .is('deleted_at', null)
       .limit(4);
 
