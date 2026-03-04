@@ -223,16 +223,32 @@ export async function POST(request: NextRequest) {
       
       // 插入新文档
       if (documents.length > 0) {
-        const docsToInsert = documents.map((doc: any, index: number) => ({
-          verification_request_id: verificationId,
-          file_id: doc.fileId || null,
-          file_url: doc.fileUrl || doc.documentUrl, // 兼容两种命名
-          file_name: doc.fileName || null,
-          file_type: doc.fileType || null,
-          doc_type: doc.docType || doc.documentType, // 兼容两种命名
-          doc_type_desc: doc.docTypeDesc || doc.documentType || null,
-          sort_order: index,
-        }));
+        // 中文类型到英文枚举的映射
+        const docTypeMapping: Record<string, string> = {
+          '执业兽医师资格证': 'license',
+          '执业助理兽医师资格证': 'license',
+          '乡村兽医登记证': 'license',
+          '身份证': 'profile_page',
+          '工作证明': 'employment_proof',
+          '其他证明': 'other',
+        };
+        
+        const docsToInsert = documents.map((doc: any, index: number) => {
+          const rawDocType = doc.docType || doc.documentType || 'other';
+          const mappedDocType = docTypeMapping[rawDocType] || 'other';
+          const fileUrl = doc.fileUrl || doc.documentUrl || '';
+          
+          return {
+            verification_request_id: verificationId,
+            file_id: fileUrl.split('/').pop() || `doc_${Date.now()}_${index}`, // 从URL提取或生成ID
+            file_url: fileUrl,
+            file_name: doc.fileName || null,
+            file_type: doc.fileType || (fileUrl.match(/\.(pdf)$/i) ? 'pdf' : 'image'),
+            doc_type: mappedDocType,
+            doc_type_desc: rawDocType, // 保存原始中文描述
+            sort_order: index,
+          };
+        });
         
         const { error: docError } = await supabaseAdmin
           .from('cn_verification_documents')
@@ -240,6 +256,7 @@ export async function POST(request: NextRequest) {
         
         if (docError) {
           console.error('Error inserting documents:', docError);
+          // 不阻塞主流程，但记录错误
         }
       }
     }
