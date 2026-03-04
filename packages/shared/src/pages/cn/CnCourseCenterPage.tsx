@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { useCnAuthGuard } from '../../hooks/useCnAuthGuard';
+import CnVerificationBanner from '../../components/cn/CnVerificationBanner';
 import { api } from '../../services/api';
 import { Course } from '../../types';
 import PublicCourseSection, { PublicCourse } from './components/PublicCourseSection';
@@ -715,6 +717,7 @@ const AddToPlanModal: React.FC<{
 const CnCourseCenterPage: React.FC = () => {
   const { locale } = useLanguage();
   const { isAuthenticated } = useAuth();
+  const { userState } = useCnAuthGuard({ showVerificationPrompt: true });
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -1025,6 +1028,11 @@ const CnCourseCenterPage: React.FC = () => {
   
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      {/* CN Auth Verification Banner */}
+      <div className="container mx-auto px-4 lg:px-8 pt-4">
+        <CnVerificationBanner userState={userState} />
+      </div>
+
       {/* 顶部提示条 */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
         <div className="container mx-auto px-4 lg:px-8">

@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { useCnAuthGuard } from '../../hooks/useCnAuthGuard';
+import CnVerificationBanner from '../../components/cn/CnVerificationBanner';
 
 // Growth directions
 interface GrowthDirection {
@@ -263,9 +265,15 @@ const FEATURED_COURSES: Record<string, { id: string; name: string; level: string
 export function GrowthSystemPage() {
   const { locale } = useLanguage();
   const { isAuthenticated } = useAuth();
+  const { userState } = useCnAuthGuard({ showVerificationPrompt: true });
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* CN Auth Verification Banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <CnVerificationBanner userState={userState} />
+      </div>
+
       {/* ===== Hero Section ===== */}
       <div className="bg-gradient-to-br from-emerald-700 via-teal-700 to-emerald-800 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">

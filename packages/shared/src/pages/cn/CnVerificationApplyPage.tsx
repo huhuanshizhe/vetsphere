@@ -1,0 +1,567 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  FileText, Upload, Check, ArrowRight, ArrowLeft, AlertCircle,
+  Sparkles, User, Building2, Briefcase, X, Image, File
+} from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
+
+interface VerificationDocument {
+  id?: string;
+  documentType: string;
+  documentUrl: string;
+  fileName?: string;
+}
+
+interface VerificationData {
+  id?: string;
+  status: string;
+  verificationType: string;
+  realName: string;
+  organizationName: string;
+  positionTitle: string;
+  specialtyTags: string[];
+  typeSpecificFields: Record<string, any>;
+  agreeVerificationStatement: boolean;
+  documents: VerificationDocument[];
+  rejectReason?: string;
+}
+
+// Document type options based on verification type
+const DOCUMENT_TYPES: Record<string, string[]> = {
+  veterinarian: ['执业兽医师资格证', '身份证', '工作证明', '其他证明'],
+  assistant_doctor: ['执业助理兽医师资格证', '身份证', '工作证明', '其他证明'],
+  nurse_care: ['职业资格证', '培训证书', '身份证', '工作证明', '其他证明'],
+  student: ['学生证', '在读证明', '身份证', '其他证明'],
+  researcher_teacher: ['工作证', '职称证书', '学历证书', '身份证', '其他证明'],
+};
+
+// Specialty tags options
+const SPECIALTY_TAGS = [
+  '小动物内科', '小动物外科', '皮肤病', '眼科', '牙科', '骨科',
+  '心脏病', '肿瘤', '急诊重症', '影像诊断', '麻醉', '中兽医',
+  '异宠', '猫科', '行为学', '营养学',
+];
+
+const CnVerificationApplyPage: React.FC = () => {
+  const { locale } = useLanguage();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromOnboarding = searchParams.get('from') === 'onboarding';
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [identityType, setIdentityType] = useState<string>('');
+  
+  const [formData, setFormData] = useState<VerificationData>({
+    status: 'draft',
+    verificationType: '',
+    realName: '',
+    organizationName: '',
+    positionTitle: '',
+    specialtyTags: [],
+    typeSpecificFields: {},
+    agreeVerificationStatement: false,
+    documents: [],
+  });
+
+  // Fetch existing verification and identity
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Get identity type
+        const identityRes = await fetch('/api/user/identity', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        if (!identityRes.ok) {
+          router.push(`/${locale}/onboarding/identity`);
+          return;
+        }
+        
+        const identityData = await identityRes.json();
+        setIdentityType(identityData.identityType);
+        
+        if (!identityData.verificationRequired) {
+          // This identity doesn't require verification
+          router.push(`/${locale}`);
+          return;
+        }
+        
+        // Get existing verification
+        const verRes = await fetch('/api/user/verification', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        if (verRes.ok) {
+          const verData = await verRes.json();
+          if (verData.id) {
+            // Can only edit draft or rejected
+            if (!['draft', 'rejected'].includes(verData.status)) {
+              router.push(`/${locale}/verification/status`);
+              return;
+            }
+            
+            setFormData({
+              id: verData.id,
+              status: verData.status,
+              verificationType: verData.verificationType || identityData.identityType,
+              realName: verData.realName || '',
+              organizationName: verData.organizationName || '',
+              positionTitle: verData.positionTitle || '',
+              specialtyTags: verData.specialtyTags || [],
+              typeSpecificFields: verData.typeSpecificFields || {},
+              agreeVerificationStatement: verData.agreeVerificationStatement || false,
+              documents: verData.documents || [],
+              rejectReason: verData.rejectReason,
+            });
+          } else {
+            // No verification yet, set type from identity
+            setFormData(prev => ({
+              ...prev,
+              verificationType: identityData.identityType,
+            }));
+          }
+        }
+        
+        // Pre-fill from profile
+        const profileRes = await fetch('/api/user/profile', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setFormData(prev => ({
+            ...prev,
+            realName: prev.realName || profileData.realName || '',
+            organizationName: prev.organizationName || profileData.organizationName || '',
+            positionTitle: prev.positionTitle || profileData.jobTitle || '',
+          }));
+        }
+      } catch {
+        setError('加载数据失败，请刷新重试');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [locale, router]);
+
+  // Toggle specialty tag
+  const toggleSpecialtyTag = (tag: string) => {
+    setFormData(prev => ({
+      ...prev,
+      specialtyTags: prev.specialtyTags.includes(tag)
+        ? prev.specialtyTags.filter(t => t !== tag)
+        : [...prev.specialtyTags, tag].slice(0, 3),
+    }));
+  };
+
+  // Add document
+  const addDocument = (type: string, url: string, fileName?: string) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: [...prev.documents, { documentType: type, documentUrl: url, fileName }],
+    }));
+  };
+
+  // Remove document
+  const removeDocument = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Save as draft
+  const handleSaveDraft = async () => {
+    setError('');
+    setIsSaving(true);
+    
+    try {
+      const res = await fetch('/api/user/verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          verificationType: formData.verificationType,
+          realName: formData.realName,
+          organizationName: formData.organizationName,
+          positionTitle: formData.positionTitle,
+          specialtyTags: formData.specialtyTags,
+          typeSpecificFields: formData.typeSpecificFields,
+          agreeVerificationStatement: formData.agreeVerificationStatement,
+          documents: formData.documents,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setError(data.error || '保存失败');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Update form data with returned ID
+      setFormData(prev => ({ ...prev, id: data.id, status: 'draft' }));
+      setIsSaving(false);
+    } catch {
+      setError('网络错误，请检查您的网络连接');
+      setIsSaving(false);
+    }
+  };
+
+  // Submit for review
+  const handleSubmit = async () => {
+    // Validation
+    if (!formData.realName.trim()) {
+      setError('请输入真实姓名');
+      return;
+    }
+    if (!formData.organizationName.trim()) {
+      setError('请输入所在单位');
+      return;
+    }
+    if (!formData.positionTitle.trim()) {
+      setError('请输入职位/角色');
+      return;
+    }
+    if (formData.documents.length === 0) {
+      setError('请至少上传一个证明材料');
+      return;
+    }
+    if (!formData.agreeVerificationStatement) {
+      setError('请确认信息真实性');
+      return;
+    }
+    
+    setError('');
+    setIsSubmitting(true);
+    
+    try {
+      // First save the draft
+      const saveRes = await fetch('/api/user/verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          verificationType: formData.verificationType,
+          realName: formData.realName,
+          organizationName: formData.organizationName,
+          positionTitle: formData.positionTitle,
+          specialtyTags: formData.specialtyTags,
+          typeSpecificFields: formData.typeSpecificFields,
+          agreeVerificationStatement: formData.agreeVerificationStatement,
+          documents: formData.documents,
+        }),
+      });
+      
+      if (!saveRes.ok) {
+        const saveData = await saveRes.json();
+        setError(saveData.error || '保存失败');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Then submit
+      const submitRes = await fetch('/api/user/verification/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      
+      const submitData = await submitRes.json();
+      
+      if (!submitRes.ok) {
+        setError(submitData.error || '提交失败');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Navigate to status page
+      router.push(`/${locale}/verification/status`);
+    } catch {
+      setError('网络错误，请检查您的网络连接');
+      setIsSubmitting(false);
+    }
+  };
+
+  // Get document types for current verification type
+  const documentTypes = DOCUMENT_TYPES[formData.verificationType] || DOCUMENT_TYPES.veterinarian;
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-500">加载中...</p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-bold mb-4">
+            <Sparkles className="w-4 h-4" />
+            <span>专业认证</span>
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 mb-3">
+            提交认证申请
+          </h1>
+          <p className="text-lg text-slate-600">
+            提交您的资质证明，通过审核后解锁更多专业功能
+          </p>
+        </div>
+
+        {/* Back Button */}
+        <button
+          onClick={() => router.back()}
+          className="mb-6 flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">返回</span>
+        </button>
+
+        {/* Rejection Notice */}
+        {formData.status === 'rejected' && formData.rejectReason && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-red-800 mb-1">上次申请未通过</h4>
+                <p className="text-sm text-red-700">{formData.rejectReason}</p>
+                <p className="text-sm text-red-600 mt-2">请修改后重新提交</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Form */}
+        <div className="space-y-6">
+          {/* Basic Info Section */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <User className="w-5 h-5 text-slate-400" />
+              基本信息
+            </h3>
+            
+            {/* Real Name */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                真实姓名 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.realName}
+                onChange={(e) => setFormData(prev => ({ ...prev, realName: e.target.value }))}
+                placeholder="请输入您的真实姓名"
+                maxLength={20}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Organization */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                所在单位 <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  value={formData.organizationName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, organizationName: e.target.value }))}
+                  placeholder="请输入工作单位/就读学校"
+                  maxLength={50}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Position */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                职位/角色 <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  value={formData.positionTitle}
+                  onChange={(e) => setFormData(prev => ({ ...prev, positionTitle: e.target.value }))}
+                  placeholder="如：主治医师、护士长、在读研究生"
+                  maxLength={30}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Specialty Tags Section */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              专业方向 <span className="text-sm font-normal text-slate-400">（选填，最多3个）</span>
+            </h3>
+            <div className="flex flex-wrap gap-2 mt-4">
+              {SPECIALTY_TAGS.map(tag => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => toggleSpecialtyTag(tag)}
+                  className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
+                    formData.specialtyTags.includes(tag)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Documents Section */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-slate-400" />
+              证明材料 <span className="text-red-500">*</span>
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              请上传相关资质证明（如执业证书、学生证、工作证明等）
+            </p>
+
+            {/* Existing Documents */}
+            {formData.documents.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {formData.documents.map((doc, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                    {doc.documentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                      <Image className="w-5 h-5 text-blue-500" />
+                    ) : (
+                      <File className="w-5 h-5 text-slate-500" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 truncate">
+                        {doc.fileName || doc.documentType}
+                      </p>
+                      <p className="text-xs text-slate-400">{doc.documentType}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeDocument(index)}
+                      className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Document */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {documentTypes.map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      const url = prompt(`请输入 ${type} 的图片URL:`);
+                      if (url) {
+                        addDocument(type, url, type);
+                      }
+                    }}
+                    className="p-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-all text-sm font-medium"
+                  >
+                    <Upload className="w-4 h-4 mx-auto mb-1" />
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 text-center">
+                支持JPG、PNG格式，单个文件不超过5MB
+              </p>
+            </div>
+          </div>
+
+          {/* Agreement Section */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.agreeVerificationStatement}
+                onChange={(e) => setFormData(prev => ({ ...prev, agreeVerificationStatement: e.target.checked }))}
+                className="mt-1 w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-slate-600">
+                我确认提交的所有信息真实有效，如有虚假将承担相应责任，并同意平台对我的资质进行审核。
+              </span>
+            </label>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={isSaving}
+              className="flex-1 py-4 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
+            >
+              {isSaving ? '保存中...' : '保存草稿'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex-1 py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <span>提交中...</span>
+              ) : (
+                <>
+                  <span>提交审核</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Skip Option */}
+          {fromOnboarding && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => router.push(`/${locale}`)}
+                className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                暂不认证，稍后再说
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+};
+
+export default CnVerificationApplyPage;

@@ -328,4 +328,4 @@ const FullscreenWizard: React.FC<FullscreenWizardProps> = ({
 
 export default FullscreenWizard;
 export { FullscreenWizard };
-export type { FullscreenWizardProps, WizardStep };
+export type { FullscreenWizardProps };
