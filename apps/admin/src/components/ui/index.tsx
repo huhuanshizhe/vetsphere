@@ -352,7 +352,9 @@ interface StatCardProps {
   value: string | number;
   change?: string;
   changeType?: 'up' | 'down' | 'neutral';
-  icon?: string;
+  icon?: React.ReactNode;
+  color?: string;
+  compact?: boolean;
   href?: string;
 }
 
@@ -362,6 +364,8 @@ export const StatCard: React.FC<StatCardProps> = ({
   change,
   changeType = 'neutral',
   icon,
+  color,
+  compact,
   href,
 }) => {
   const changeColor = {
@@ -370,11 +374,21 @@ export const StatCard: React.FC<StatCardProps> = ({
     neutral: 'text-slate-500',
   }[changeType];
 
+  const colorMap: Record<string, string> = {
+    blue: 'bg-blue-50 text-blue-600',
+    amber: 'bg-amber-50 text-amber-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    purple: 'bg-purple-50 text-purple-600',
+    cyan: 'bg-cyan-50 text-cyan-600',
+    slate: 'bg-slate-50 text-slate-600',
+  };
+  const iconColorClass = color ? colorMap[color] || 'bg-slate-50 text-slate-600' : 'bg-slate-50 text-slate-600';
+
   const content = (
-    <div className="flex items-start justify-between">
+    <div className={`flex items-start justify-between ${compact ? 'gap-2' : ''}`}>
       <div>
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+        <p className={`font-medium text-slate-500 ${compact ? 'text-xs' : 'text-sm'}`}>{label}</p>
+        <p className={`font-bold text-slate-900 ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{value}</p>
         {change && (
           <p className={`text-xs font-medium mt-1 ${changeColor}`}>
             {changeType === 'up' && '↑ '}
@@ -383,7 +397,11 @@ export const StatCard: React.FC<StatCardProps> = ({
           </p>
         )}
       </div>
-      {icon && <span className="text-2xl opacity-60">{icon}</span>}
+      {icon && (
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconColorClass}`}>
+          {icon}
+        </div>
+      )}
     </div>
   );
 
@@ -511,25 +529,42 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange }) => {
 // 快捷操作卡片 - New
 // ============================================================================
 interface QuickActionCardProps {
-  icon: string;
-  label: string;
+  icon: React.ReactNode;
+  title?: string;
+  label?: string;
   description?: string;
   href: string;
+  color?: string;
 }
 
 export const QuickActionCard: React.FC<QuickActionCardProps> = ({
   icon,
+  title,
   label,
   description,
   href,
+  color,
 }) => {
+  const colorMap: Record<string, string> = {
+    blue: 'bg-blue-50 text-blue-600 group-hover:bg-blue-100',
+    amber: 'bg-amber-50 text-amber-600 group-hover:bg-amber-100',
+    emerald: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100',
+    purple: 'bg-purple-50 text-purple-600 group-hover:bg-purple-100',
+    cyan: 'bg-cyan-50 text-cyan-600 group-hover:bg-cyan-100',
+    slate: 'bg-slate-50 text-slate-600 group-hover:bg-slate-100',
+  };
+  const iconColorClass = color ? colorMap[color] || 'bg-slate-50 text-slate-600' : 'bg-slate-50 text-slate-600';
+  const displayLabel = title || label;
+
   return (
     <a
       href={href}
       className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-lg hover:border-emerald-300 hover:shadow-md transition-all text-center group"
     >
-      <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">{icon}</span>
-      <span className="text-sm font-medium text-slate-900">{label}</span>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 transition-colors ${iconColorClass}`}>
+        {icon}
+      </div>
+      {displayLabel && <span className="text-sm font-medium text-slate-900">{displayLabel}</span>}
       {description && (
         <span className="text-xs text-slate-500 mt-0.5">{description}</span>
       )}
