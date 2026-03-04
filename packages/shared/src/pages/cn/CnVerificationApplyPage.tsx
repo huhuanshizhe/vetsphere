@@ -7,6 +7,7 @@ import {
   Sparkles, User, Building2, Briefcase, X, Image, File
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { supabase } from '../../services/supabase';
 
 interface VerificationDocument {
   id?: string;
@@ -73,10 +74,17 @@ const CnVerificationApplyPage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push(`/${locale}/auth`);
+          return;
+        }
+        const token = session.access_token;
+
         // Get identity type
         const identityRes = await fetch('/api/user/identity', {
           method: 'GET',
-          credentials: 'include',
+          headers: { Authorization: `Bearer ${token}` },
         });
         
         if (!identityRes.ok) {
@@ -96,7 +104,7 @@ const CnVerificationApplyPage: React.FC = () => {
         // Get existing verification
         const verRes = await fetch('/api/user/verification', {
           method: 'GET',
-          credentials: 'include',
+          headers: { Authorization: `Bearer ${token}` },
         });
         
         if (verRes.ok) {
@@ -133,7 +141,7 @@ const CnVerificationApplyPage: React.FC = () => {
         // Pre-fill from profile
         const profileRes = await fetch('/api/user/profile', {
           method: 'GET',
-          credentials: 'include',
+          headers: { Authorization: `Bearer ${token}` },
         });
         
         if (profileRes.ok) {
@@ -187,10 +195,19 @@ const CnVerificationApplyPage: React.FC = () => {
     setIsSaving(true);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('请先登录');
+        setIsSaving(false);
+        return;
+      }
+
       const res = await fetch('/api/user/verification', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           verificationType: formData.verificationType,
           realName: formData.realName,
@@ -248,11 +265,21 @@ const CnVerificationApplyPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('请先登录');
+        setIsSubmitting(false);
+        return;
+      }
+      const token = session.access_token;
+
       // First save the draft
       const saveRes = await fetch('/api/user/verification', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           verificationType: formData.verificationType,
           realName: formData.realName,
@@ -275,8 +302,10 @@ const CnVerificationApplyPage: React.FC = () => {
       // Then submit
       const submitRes = await fetch('/api/user/verification/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
       });
       
       const submitData = await submitRes.json();

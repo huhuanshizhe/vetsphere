@@ -8,6 +8,7 @@ import {
   ArrowRight, ArrowLeft, Sparkles, RefreshCw, Home, MessageCircle
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { supabase } from '../../services/supabase';
 
 interface VerificationStatus {
   id: string;
@@ -77,9 +78,15 @@ const CnVerificationStatusPage: React.FC = () => {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push(`/${locale}/auth`);
+          return;
+        }
+
         const res = await fetch('/api/user/verification', {
           method: 'GET',
-          credentials: 'include',
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
         
         if (!res.ok) {
@@ -115,9 +122,12 @@ const CnVerificationStatusPage: React.FC = () => {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
       const res = await fetch('/api/user/verification', {
         method: 'GET',
-        credentials: 'include',
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
       
       if (res.ok) {

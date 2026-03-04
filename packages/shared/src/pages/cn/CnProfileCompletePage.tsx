@@ -7,6 +7,7 @@ import {
   ArrowRight, ArrowLeft, Check, Sparkles, Camera, X
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { supabase } from '../../services/supabase';
 
 // Interest tags options
 const INTEREST_TAGS = [
@@ -64,10 +65,17 @@ const CnProfileCompletePage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push(`/${locale}/auth`);
+          return;
+        }
+        const token = session.access_token;
+
         // Fetch identity first
         const identityRes = await fetch('/api/user/identity', {
           method: 'GET',
-          credentials: 'include',
+          headers: { Authorization: `Bearer ${token}` },
         });
         
         if (!identityRes.ok) {
@@ -86,7 +94,7 @@ const CnProfileCompletePage: React.FC = () => {
         // Fetch existing profile
         const profileRes = await fetch('/api/user/profile', {
           method: 'GET',
-          credentials: 'include',
+          headers: { Authorization: `Bearer ${token}` },
         });
         
         if (profileRes.ok) {
@@ -174,10 +182,19 @@ const CnProfileCompletePage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('请先登录');
+        setIsSubmitting(false);
+        return;
+      }
+
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           displayName: profile.displayName,
           realName: profile.realName || undefined,
