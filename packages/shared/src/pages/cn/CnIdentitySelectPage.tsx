@@ -7,6 +7,7 @@ import {
   ArrowRight, Check, Sparkles
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { supabase } from '../../services/supabase';
 
 // Identity types as defined in the system
 const IDENTITY_TYPES = [
@@ -116,9 +117,12 @@ const CnIdentitySelectPage: React.FC = () => {
   useEffect(() => {
     const fetchCurrentIdentity = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
         const res = await fetch('/api/user/identity', {
           method: 'GET',
-          credentials: 'include',
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
         
         if (res.ok) {
@@ -146,10 +150,19 @@ const CnIdentitySelectPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('请先登录');
+        setIsSubmitting(false);
+        return;
+      }
+
       const res = await fetch('/api/user/identity', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ identityType: selectedIdentity }),
       });
       
