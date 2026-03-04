@@ -4,35 +4,123 @@
 @source "../../**/*.{js,ts,jsx,tsx}";
 @source "../../../../packages/shared/src/**/*.{js,ts,jsx,tsx}";
 
-/* Admin theme colors */
+/* Admin theme colors - Light Mode */
 @theme {
   --color-admin: #10B981;
   --color-admin-dark: #059669;
+  --color-admin-light: #D1FAE5;
 }
 
 :root {
-  --admin-emerald: #10B981;
-  --admin-bg: #0B1120;
-  --admin-sidebar: #000000;
-  --admin-card: rgba(0, 0, 0, 0.2);
+  /* 页面背景 */
+  --admin-bg: #F8FAFC;
+  --admin-bg-secondary: #F1F5F9;
+  
+  /* 卡片与侧边栏 */
+  --admin-card: #FFFFFF;
+  --admin-sidebar: #FFFFFF;
+  --admin-header: #FFFFFF;
+  
+  /* 文字 */
+  --admin-text-primary: #0F172A;
+  --admin-text-secondary: #64748B;
+  --admin-text-muted: #94A3B8;
+  
+  /* 边框 */
+  --admin-border: #E2E8F0;
+  --admin-border-light: #F1F5F9;
+  
+  /* 品牌色 */
+  --admin-brand: #10B981;
+  --admin-brand-dark: #059669;
+  --admin-brand-light: #D1FAE5;
+  --admin-brand-bg: #ECFDF5;
+  
+  /* 状态色 */
+  --admin-success: #10B981;
+  --admin-warning: #F59E0B;
+  --admin-error: #EF4444;
+  --admin-info: #3B82F6;
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--admin-bg);
-  color: #E2E8F0;
+  color: var(--admin-text-primary);
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.01em;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+  line-height: 1.5;
 }
 
-/* Custom scrollbar for dark theme */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #334155; }
+/* Custom scrollbar - Light theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
 
 /* Selection color */
 ::selection {
-  background: rgba(16, 185, 129, 0.3);
-  color: #fff;
+  background: rgba(16, 185, 129, 0.2);
+  color: #0F172A;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--admin-brand);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Typography utilities */
+.text-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--admin-text-primary);
+  letter-spacing: -0.025em;
+}
+
+.text-subtitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--admin-text-primary);
+}
+
+.text-body {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--admin-text-primary);
+}
+
+.text-caption {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--admin-text-secondary);
+}
+
+.text-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--admin-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }

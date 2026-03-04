@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import AdminShell from '@/components/AdminShell';
+import { useSite } from '@/context/SiteContext';
 import { 
   Card, 
   Button, 
@@ -22,6 +22,7 @@ type FilterStatus = 'all' | 'pending_review' | 'approved' | 'rejected';
 
 export default function DoctorVerificationsPage() {
   const supabase = createClient();
+  const { currentSite } = useSite();
   
   // 状态
   const [applications, setApplications] = useState<DoctorApplication[]>([]);
@@ -56,7 +57,8 @@ export default function DoctorVerificationsPage() {
       // 构建查询
       let query = supabase
         .from('doctor_applications')
-        .select('*', { count: 'exact' });
+        .select('*', { count: 'exact' })
+        .eq('site_code', currentSite);
 
       // 状态筛选
       if (filterStatus !== 'all') {
@@ -83,9 +85,9 @@ export default function DoctorVerificationsPage() {
 
       // 加载统计
       const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
-        supabase.from('doctor_applications').select('id', { count: 'exact', head: true }).eq('status', 'pending_review'),
-        supabase.from('doctor_applications').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
-        supabase.from('doctor_applications').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+        supabase.from('doctor_applications').select('id', { count: 'exact', head: true }).eq('site_code', currentSite).eq('status', 'pending_review'),
+        supabase.from('doctor_applications').select('id', { count: 'exact', head: true }).eq('site_code', currentSite).eq('status', 'approved'),
+        supabase.from('doctor_applications').select('id', { count: 'exact', head: true }).eq('site_code', currentSite).eq('status', 'rejected'),
       ]);
 
       setStats({
@@ -100,7 +102,7 @@ export default function DoctorVerificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, filterStatus, searchKeyword, page]);
+  }, [supabase, filterStatus, searchKeyword, page, currentSite]);
 
   useEffect(() => {
     loadData();
@@ -187,10 +189,7 @@ export default function DoctorVerificationsPage() {
   };
 
   return (
-    <AdminShell
-      title="医生审核"
-      subtitle="管理医生注册申请与审核流程"
-    >
+    <>
       {/* 统计卡片 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
@@ -408,7 +407,7 @@ export default function DoctorVerificationsPage() {
       {confirmDialog.open && confirmDialog.type === 'reject' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setConfirmDialog({ open: false, type: 'reject', application: null })} />
-          <div className="relative bg-[#0f1629] border border-white/10 rounded-xl p-6 max-w-md w-full shadow-2xl">
+          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-start gap-4 mb-4">
               <span className="text-2xl">⚠️</span>
               <div className="flex-1">
@@ -471,6 +470,6 @@ export default function DoctorVerificationsPage() {
           </div>
         </div>
       )}
-    </AdminShell>
+    </>
   );
 }

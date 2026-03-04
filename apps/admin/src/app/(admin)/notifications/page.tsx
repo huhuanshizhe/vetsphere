@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useSite } from '@/context/SiteContext';
 import {
   Card,
   Button,
@@ -45,6 +46,7 @@ const PAGE_SIZE = 20;
 
 export default function NotificationsPage() {
   const supabase = createClient();
+  const { currentSite } = useSite();
   
   const [activeTab, setActiveTab] = useState<'templates' | 'history'>('templates');
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
@@ -69,7 +71,7 @@ export default function NotificationsPage() {
     } else {
       loadNotifications();
     }
-  }, [activeTab, filterType, searchKeyword, page]);
+  }, [activeTab, filterType, searchKeyword, page, currentSite]);
 
   async function loadTemplates() {
     setLoading(true);
@@ -78,7 +80,8 @@ export default function NotificationsPage() {
       let query = supabase
         .from('notification_templates')
         .select('*', { count: 'exact' })
-        .is('deleted_at', null);
+        .is('deleted_at', null)
+        .eq('site_code', currentSite);
       
       if (filterType) {
         query = query.eq('type', filterType);
@@ -113,7 +116,8 @@ export default function NotificationsPage() {
         .select(`
           *,
           profiles:user_id (full_name, email)
-        `, { count: 'exact' });
+        `, { count: 'exact' })
+        .eq('site_code', currentSite);
       
       if (filterType) {
         query = query.eq('type', filterType);
@@ -148,10 +152,10 @@ export default function NotificationsPage() {
     todayStart.setHours(0, 0, 0, 0);
     
     const [templatesRes, todayRes, unreadRes, totalNotifRes] = await Promise.all([
-      supabase.from('notification_templates').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-      supabase.from('notifications').select('*', { count: 'exact', head: true }).gte('sent_at', todayStart.toISOString()),
-      supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false),
-      supabase.from('notifications').select('*', { count: 'exact', head: true }),
+      supabase.from('notification_templates').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('site_code', currentSite),
+      supabase.from('notifications').select('*', { count: 'exact', head: true }).gte('sent_at', todayStart.toISOString()).eq('site_code', currentSite),
+      supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false).eq('site_code', currentSite),
+      supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('site_code', currentSite),
     ]);
     
     const totalNotif = totalNotifRes.count || 0;

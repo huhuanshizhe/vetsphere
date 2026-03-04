@@ -408,7 +408,7 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
       {/* Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B1120] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="p-6 border-b border-white/5 flex justify-between items-start">
               <div>

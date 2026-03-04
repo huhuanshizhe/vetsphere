@@ -4,7 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import AdminSidebarNew from './AdminSidebarNew';
+import SiteSwitcher from './SiteSwitcher';
 import { getBreadcrumbs } from '@/config/admin-navigation';
+import { Menu, X, ChevronRight, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -14,7 +17,7 @@ interface AdminShellProps {
 }
 
 /**
- * Admin 后台主布局壳
+ * Admin 后台主布局壳 - 浅色主题版
  * 包含侧边栏、头部、面包屑、主内容区
  */
 const AdminShell: React.FC<AdminShellProps> = ({
@@ -28,6 +31,7 @@ const AdminShell: React.FC<AdminShellProps> = ({
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -65,9 +69,9 @@ const AdminShell: React.FC<AdminShellProps> = ({
 
   if (!user || user.role !== 'Admin') {
     return (
-      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
           <span className="text-slate-500 text-sm">正在验证权限...</span>
         </div>
       </div>
@@ -75,39 +79,29 @@ const AdminShell: React.FC<AdminShellProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-200 flex">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Mobile header */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-[#0a0f1a] border-b border-white/5 px-4 py-3 flex items-center justify-between">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-black font-black text-xs">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white font-black text-xs">
             VS
           </div>
           <div>
-            <span className="font-black text-sm text-white block leading-tight">VetSphere</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Admin</span>
+            <span className="font-bold text-sm text-slate-900 block leading-tight">VetSphere</span>
+            <span className="text-[10px] font-medium text-slate-500">运营中枢</span>
           </div>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 rounded-lg text-white hover:bg-white/10 transition-colors"
+          className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {isMobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
+          {isMobileMenuOpen ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <Menu className="w-6 h-6" />
+          )}
         </button>
       </header>
-
-      {/* Mobile overlay */}
-      {isMobileMenuOpen && isMobile && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 md:hidden" 
-          onClick={() => setIsMobileMenuOpen(false)} 
-        />
-      )}
 
       {/* Sidebar */}
       <AdminSidebarNew
@@ -117,44 +111,54 @@ const AdminShell: React.FC<AdminShellProps> = ({
         isMobile={isMobile}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
       {/* Main content */}
       <main className="flex-1 min-h-screen md:h-screen md:overflow-y-auto">
         <div className="pt-16 md:pt-0">
           {/* Page header */}
-          <div className="sticky top-0 z-20 bg-[#0B1120]/80 backdrop-blur-xl border-b border-white/5">
+          <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-200">
             <div className="px-4 sm:px-6 lg:px-8 py-4">
-              {/* Breadcrumbs */}
-              <nav className="flex items-center gap-2 text-xs text-slate-500 mb-2">
-                {breadcrumbs.map((crumb, index) => (
-                  <React.Fragment key={crumb.href}>
-                    {index > 0 && <span className="text-slate-600">/</span>}
-                    {index === breadcrumbs.length - 1 ? (
-                      <span className="text-slate-400">{crumb.label}</span>
-                    ) : (
-                      <a 
-                        href={crumb.href} 
-                        className="hover:text-slate-300 transition-colors"
-                      >
-                        {crumb.label}
-                      </a>
-                    )}
-                  </React.Fragment>
-                ))}
-              </nav>
+              {/* Top bar: Breadcrumbs + Site Switcher */}
+              <div className="flex items-center justify-between mb-3">
+                {/* Breadcrumbs */}
+                <nav className="flex items-center gap-1.5 text-xs text-slate-500">
+                  {breadcrumbs.map((crumb, index) => (
+                    <React.Fragment key={crumb.href}>
+                      {index > 0 && <ChevronRight className="w-3.5 h-3.5 text-slate-300" />}
+                      {index === breadcrumbs.length - 1 ? (
+                        <span className="text-slate-700 font-medium">{crumb.label}</span>
+                      ) : (
+                        <Link 
+                          href={crumb.href} 
+                          className="hover:text-slate-700 transition-colors"
+                        >
+                          {crumb.label}
+                        </Link>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </nav>
+
+                {/* Site Switcher */}
+                <SiteSwitcher permissions={['*']} size="sm" />
+              </div>
 
               {/* Title & actions */}
               <div className="flex items-center justify-between gap-4">
-                <div>
-                  {title && (
-                    <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                      {title}
-                    </h1>
-                  )}
-                  {subtitle && (
-                    <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
-                  )}
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="min-w-0">
+                    {title && (
+                      <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                        {title}
+                      </h1>
+                    )}
+                    {subtitle && (
+                      <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+                    )}
+                  </div>
                 </div>
                 {actions && (
                   <div className="flex items-center gap-2 shrink-0">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { GrowthTrack, STATUS_COLORS, STATUS_LABELS } from '@/types/admin';
+import { useSite } from '@/context/SiteContext';
 import {
   Card,
   Button,
@@ -18,6 +19,7 @@ import {
 
 export default function GrowthTracksPage() {
   const supabase = createClient();
+  const { currentSite } = useSite();
   
   const [tracks, setTracks] = useState<GrowthTrack[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function GrowthTracksPage() {
 
   useEffect(() => {
     loadTracks();
-  }, [filterGroup, searchKeyword]);
+  }, [filterGroup, searchKeyword, currentSite]);
 
   async function loadTracks() {
     setLoading(true);
@@ -53,6 +55,7 @@ export default function GrowthTracksPage() {
       let query = supabase
         .from('growth_tracks')
         .select('*')
+        .eq('site_code', currentSite)
         .order('group_order')
         .order('display_order');
       
@@ -80,16 +83,19 @@ export default function GrowthTracksPage() {
   async function loadStats() {
     const { count: totalCount } = await supabase
       .from('growth_tracks')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('site_code', currentSite);
     
     const { count: activeCount } = await supabase
       .from('growth_tracks')
       .select('*', { count: 'exact', head: true })
+      .eq('site_code', currentSite)
       .eq('is_active', true);
     
     const { count: readyCount } = await supabase
       .from('growth_tracks')
       .select('*', { count: 'exact', head: true })
+      .eq('site_code', currentSite)
       .eq('is_ready', true);
     
     setStats({
