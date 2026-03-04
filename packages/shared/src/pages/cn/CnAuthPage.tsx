@@ -1,151 +1,321 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Mail, Lock, User, Eye, EyeOff, ArrowRight,
-  Sparkles, GraduationCap, Users, Award, Shield, Phone
+  Lock, Eye, EyeOff, ArrowRight,
+  Sparkles, GraduationCap, Users, Award, Shield, Phone, MessageSquare
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../services/supabase';
+
+// Types for user state from /api/auth/me
+interface UserState {
+  isLoggedIn: boolean;
+  user?: {
+    id: string;
+    mobile: string;
+    status: string;
+    displayName?: string;
+    avatarUrl?: string;
+    realName?: string;
+    organizationName?: string;
+  };
+  identity?: {
+    identityType?: string;
+    identityGroup?: string;
+    identityVerifiedFlag?: boolean;
+  };
+  onboarding?: {
+    status: string;
+    profileCompletionPercent?: number;
+  };
+  verification?: {
+    required: boolean;
+    status?: string;
+    rejectReason?: string;
+  };
+  access?: {
+    level: string;
+    permissionFlags?: Record<string, boolean>;
+  };
+  redirectHint: string;
+  accountStatusReason?: string;
+}
+
+type AuthTab = 'sms' | 'password';
+
+// SMS button states: idle, sending, countdown, resend
+type SmsButtonState = 'idle' | 'sending' | 'countdown' | 'resend';
 
 const CnAuthPage: React.FC = () => {
   const { locale } = useLanguage();
-  const { login, isAuthenticated, applicationStatus, refreshApplicationStatus } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const [isLogin, setIsLogin] = useState(true);
+  // Tab state: 'sms' for SMS code login/register, 'password' for password login
+  const [activeTab, setActiveTab] = useState<AuthTab>('sms');
+  
+  // Form state
+  const [mobile, setMobile] = useState('');
+  const [smsCode, setSmsCode] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
+  
+  // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: '',
-    phone: '',
-    agreeTerms: false,
-  });
   const [error, setError] = useState('');
+  const [smsButtonState, setSmsButtonState] = useState<SmsButtonState>('idle');
+  const [countdown, setCountdown] = useState(0);
 
-  // 根据申请状态确定重定向目标
-  const getRedirectByStatus = (status: string | null): string => {
-    switch (status) {
-      case 'approved':
-        // 已通过 - 可以进入医生工作台
-        const redirectParam = searchParams.get('redirect');
+  // Validate mobile format (Chinese mobile: 1[3-9]\d{9})
+  const isValidMobile = (m: string): boolean => {
+    return /^1[3-9]\d{9}$/.test(m);
+  };
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (countdown <= 0) {
+      if (smsButtonState === 'countdown') {
+        setSmsButtonState('resend');
+      }
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setCountdown(prev => prev - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [countdown, smsButtonState]);
+
+  // Handle redirect based on user state
+  const handleRedirect = useCallback((userState: UserState) => {
+    const { redirectHint } = userState;
+    const redirectParam = searchParams.get('redirect');
+    
+    switch (redirectHint) {
+      case 'go_identity_select':
+        router.push(`/${locale}/onboarding/identity`);
+        break;
+      case 'go_profile_complete':
+        router.push(`/${locale}/onboarding/profile`);
+        break;
+      case 'show_verification_prompt':
+        // Show prompt banner, but allow user to proceed to home
         if (redirectParam && redirectParam.startsWith('/')) {
-          return redirectParam;
+          router.push(redirectParam);
+        } else {
+          router.push(`/${locale}`);
         }
-        return `/${locale}/doctor`;
-      case 'pending_review':
-        // 待审核 - 跳转到状态页
-        return `/${locale}/register/status`;
-      case 'rejected':
-        // 已拒绝 - 跳转到状态页（可查看原因并重新提交）
-        return `/${locale}/register/status`;
-      case 'draft':
-        // 草稿 - 继续填写申请
-        return `/${locale}/register/doctor`;
+        break;
+      case 'show_rejection_prompt':
+        router.push(`/${locale}/verification/status`);
+        break;
+      case 'show_verification_pending':
+        router.push(`/${locale}/verification/status`);
+        break;
+      case 'go_account_status':
+        router.push(`/${locale}/auth/account-status`);
+        break;
+      case 'go_home':
       default:
-        // 无申请记录 - 开始申请流程
-        return `/${locale}/register/doctor`;
+        if (redirectParam && redirectParam.startsWith('/')) {
+          router.push(redirectParam);
+        } else {
+          router.push(`/${locale}`);
+        }
+        break;
+    }
+  }, [locale, router, searchParams]);
+
+  // Fetch user state after successful login
+  const fetchUserState = async (): Promise<UserState | null> => {
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        return null;
+      }
+      
+      const data = await res.json();
+      return data as UserState;
+    } catch {
+      return null;
     }
   };
 
-  // 登录后重定向逻辑
-  useEffect(() => {
-    if (isAuthenticated) {
-      const redirectUrl = getRedirectByStatus(applicationStatus);
-      router.push(redirectUrl);
+  // Send SMS code
+  const handleSendSmsCode = async () => {
+    if (!isValidMobile(mobile)) {
+      setError('请输入正确的手机号');
+      return;
     }
-  }, [isAuthenticated, applicationStatus, router, locale]);
+    
+    setError('');
+    setSmsButtonState('sending');
+    
+    try {
+      const res = await fetch('/api/auth/send-sms-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setError(data.error || '发送失败，请稍后重试');
+        setSmsButtonState('idle');
+        return;
+      }
+      
+      // Start countdown (60 seconds)
+      setCountdown(60);
+      setSmsButtonState('countdown');
+      
+      // In development mode, show code in console
+      if (data.code) {
+        console.log('[DEV] SMS Code:', data.code);
+      }
+    } catch (err) {
+      setError('网络错误，请检查您的网络连接');
+      setSmsButtonState('idle');
+    }
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // SMS login/register submit
+  const handleSmsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isValidMobile(mobile)) {
+      setError('请输入正确的手机号');
+      return;
+    }
+    
+    if (!/^\d{6}$/.test(smsCode)) {
+      setError('请输入6位验证码');
+      return;
+    }
+    
+    if (!agreeTerms) {
+      setError('请先同意用户协议和隐私政策');
+      return;
+    }
+    
     setError('');
     setIsSubmitting(true);
-
+    
     try {
-      if (isLogin) {
-        // 登录流程
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        
-        if (signInError) {
-          if (signInError.message.includes('Invalid login credentials')) {
-            setError('邮箱或密码错误');
-          } else if (signInError.message.includes('Email not confirmed')) {
-            setError('请先验证您的邮箱');
-          } else {
-            setError(signInError.message);
-          }
-          setIsSubmitting(false);
+      const res = await fetch('/api/auth/register-or-login-by-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ mobile, code: smsCode }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        if (data.error?.includes('disabled') || data.error?.includes('banned')) {
+          // Account restricted
+          router.push(`/${locale}/auth/account-status?reason=${encodeURIComponent(data.error)}`);
           return;
         }
-        
-        if (data.user) {
-          // 登录成功后刷新申请状态
-          await refreshApplicationStatus();
-          // 状态更新后 useEffect 会自动处理跳转
-        }
+        setError(data.error || '登录失败，请重试');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Login successful, redirect based on user state
+      if (data.userState) {
+        handleRedirect(data.userState);
       } else {
-        // 注册流程
-        if (!formData.agreeTerms) {
-          setError('请先同意用户协议和隐私政策');
-          setIsSubmitting(false);
-          return;
-        }
-        
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              name: formData.name,
-              phone: formData.phone,
-            },
-          },
-        });
-        
-        if (signUpError) {
-          if (signUpError.message.includes('already registered')) {
-            setError('该邮箱已注册，请直接登录');
-          } else {
-            setError(signUpError.message);
-          }
-          setIsSubmitting(false);
-          return;
-        }
-        
-        if (data.user) {
-          // 注册成功 - 新用户直接跳转到申请流程
-          login({
-            id: data.user.id,
-            email: data.user.email || '',
-            name: formData.name || formData.email.split('@')[0],
-            role: 'Doctor',
-            points: 0,
-            level: 'Resident',
-          });
-          router.push(`/${locale}/register/doctor`);
+        // Fallback: fetch user state
+        const userState = await fetchUserState();
+        if (userState) {
+          handleRedirect(userState);
+        } else {
+          router.push(`/${locale}`);
         }
       }
-    } catch (err: any) {
-      setError(err.message || '操作失败，请稍后重试');
+    } catch (err) {
+      setError('网络错误，请检查您的网络连接');
       setIsSubmitting(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+  // Password login submit
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isValidMobile(mobile)) {
+      setError('请输入正确的手机号');
+      return;
+    }
+    
+    if (!password || password.length < 8) {
+      setError('密码至少8位');
+      return;
+    }
+    
+    setError('');
+    setIsSubmitting(true);
+    
+    try {
+      const res = await fetch('/api/auth/login-by-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ mobile, password }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        if (data.error?.includes('disabled') || data.error?.includes('banned')) {
+          router.push(`/${locale}/auth/account-status?reason=${encodeURIComponent(data.error)}`);
+          return;
+        }
+        setError(data.error || '登录失败，请检查手机号和密码');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Login successful
+      if (data.userState) {
+        handleRedirect(data.userState);
+      } else {
+        const userState = await fetchUserState();
+        if (userState) {
+          handleRedirect(userState);
+        } else {
+          router.push(`/${locale}`);
+        }
+      }
+    } catch (err) {
+      setError('网络错误，请检查您的网络连接');
+      setIsSubmitting(false);
+    }
+  };
+
+  // Get SMS button text based on state
+  const getSmsButtonText = (): string => {
+    switch (smsButtonState) {
+      case 'sending':
+        return '发送中...';
+      case 'countdown':
+        return `${countdown}s后重试`;
+      case 'resend':
+        return '重新发送';
+      default:
+        return '获取验证码';
+    }
   };
 
   const benefits = [
@@ -166,14 +336,11 @@ const CnAuthPage: React.FC = () => {
           </div>
           
           <h1 className="text-4xl font-black text-slate-900 mb-6 leading-tight">
-            {isLogin ? '欢迎回来' : '加入 VetSphere'}
+            欢迎加入 VetSphere
           </h1>
           
           <p className="text-xl text-slate-600 mb-10 leading-relaxed">
-            {isLogin 
-              ? '登录您的账户，继续您的学习和成长之旅。'
-              : '创建账户，开启专业成长之路，与数千名兽医同行一起进步。'
-            }
+            登录或注册账户，开启专业成长之路，与数千名兽医同行一起进步。
           </p>
 
           <div className="space-y-4">
@@ -190,37 +357,41 @@ const CnAuthPage: React.FC = () => {
 
         {/* Right - Form */}
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 p-8 md:p-10">
-          {/* Toggle */}
+          {/* Tab Toggle */}
           <div className="flex bg-slate-100 rounded-2xl p-1.5 mb-8">
             <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-                isLogin 
+              onClick={() => { setActiveTab('sms'); setError(''); }}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'sms' 
                   ? 'bg-white text-slate-900 shadow-sm' 
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              登录
+              <MessageSquare className="w-4 h-4" />
+              验证码登录
             </button>
             <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
-                !isLogin 
+              onClick={() => { setActiveTab('password'); setError(''); }}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'password' 
                   ? 'bg-white text-slate-900 shadow-sm' 
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              注册
+              <Lock className="w-4 h-4" />
+              密码登录
             </button>
           </div>
 
           {/* Mobile Header */}
           <div className="lg:hidden mb-8">
             <h2 className="text-2xl font-black text-slate-900 mb-2">
-              {isLogin ? '登录账户' : '创建账户'}
+              {activeTab === 'sms' ? '手机验证码登录' : '密码登录'}
             </h2>
             <p className="text-slate-500">
-              {isLogin ? '输入您的账户信息' : '填写以下信息完成注册'}
+              {activeTab === 'sms' 
+                ? '新用户将自动注册账户' 
+                : '使用手机号和密码登录'}
             </p>
           </div>
 
@@ -231,132 +402,177 @@ const CnAuthPage: React.FC = () => {
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name (Register only) */}
-            {!isLogin && (
+          {/* SMS Code Form */}
+          {activeTab === 'sms' && (
+            <form onSubmit={handleSmsSubmit} className="space-y-5">
+              {/* Mobile */}
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">姓名</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="请输入您的姓名"
-                    required={!isLogin}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">邮箱</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="请输入邮箱地址"
-                  required
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Phone (Register only) */}
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">手机号 <span className="text-slate-400 font-normal">(选填)</span></label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">手机号</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 11))}
                     placeholder="请输入手机号"
+                    maxLength={11}
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
-            )}
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">密码</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder={isLogin ? '请输入密码' : '设置密码 (至少8位)'}
-                  required
-                  minLength={8}
-                  className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+              {/* SMS Code */}
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">验证码</label>
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={smsCode}
+                      onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="6位验证码"
+                      maxLength={6}
+                      className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSendSmsCode}
+                    disabled={!isValidMobile(mobile) || smsButtonState === 'sending' || smsButtonState === 'countdown'}
+                    className={`px-5 py-4 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${
+                      smsButtonState === 'countdown'
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                        : isValidMobile(mobile) && smsButtonState !== 'sending'
+                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {getSmsButtonText()}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Terms (Register only) */}
-            {!isLogin && (
+              {/* Terms Agreement */}
               <div className="flex items-start gap-3">
                 <input
                   type="checkbox"
-                  name="agreeTerms"
-                  checked={formData.agreeTerms}
-                  onChange={handleInputChange}
-                  id="agreeTerms"
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  id="agreeTermsSms"
                   className="mt-1 w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="agreeTerms" className="text-sm text-slate-600">
+                <label htmlFor="agreeTermsSms" className="text-sm text-slate-600">
                   我已阅读并同意{' '}
                   <Link href={`/${locale}/terms`} className="text-blue-600 hover:underline">用户协议</Link>
                   {' '}和{' '}
                   <Link href={`/${locale}/privacy`} className="text-blue-600 hover:underline">隐私政策</Link>
                 </label>
               </div>
-            )}
 
-            {/* Forgot Password (Login only) */}
-            {isLogin && (
-              <div className="text-right">
-                <button type="button" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                  忘记密码？
-                </button>
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting || !isValidMobile(mobile) || !/^\d{6}$/.test(smsCode) || !agreeTerms}
+                className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <span>登录中...</span>
+                ) : (
+                  <>
+                    <span>立即进入</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-sm text-slate-500">
+                未注册手机号将自动创建账户
+              </p>
+            </form>
+          )}
+
+          {/* Password Form */}
+          {activeTab === 'password' && (
+            <form onSubmit={handlePasswordSubmit} className="space-y-5">
+              {/* Mobile */}
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">手机号</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="tel"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    placeholder="请输入手机号"
+                    maxLength={11}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
               </div>
-            )}
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? (
-                <span>处理中...</span>
-              ) : (
-                <>
-                  <span>{isLogin ? '登录' : '注册'}</span>
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
-          </form>
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">密码</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="请输入密码"
+                    className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Remember & Forgot Password */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberLogin}
+                    onChange={(e) => setRememberLogin(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-slate-600">记住登录</span>
+                </label>
+                <Link 
+                  href={`/${locale}/auth/set-password?mode=reset`}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  忘记密码?
+                </Link>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting || !isValidMobile(mobile) || !password}
+                className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <span>登录中...</span>
+                ) : (
+                  <>
+                    <span>登录</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-sm text-slate-500">
+                还没有密码？请使用验证码登录后设置
+              </p>
+            </form>
+          )}
 
           {/* Divider */}
           <div className="relative my-8">
@@ -370,7 +586,10 @@ const CnAuthPage: React.FC = () => {
 
           {/* Social Login */}
           <div className="space-y-3">
-            <button className="w-full py-3.5 bg-[#07C160] text-white rounded-xl font-bold hover:bg-[#06AD56] transition-colors flex items-center justify-center gap-2">
+            <button 
+              type="button"
+              className="w-full py-3.5 bg-[#07C160] text-white rounded-xl font-bold hover:bg-[#06AD56] transition-colors flex items-center justify-center gap-2"
+            >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-3.09-6.024-7.062-6.121zm-2.036 2.891c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982z"/>
               </svg>
