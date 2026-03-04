@@ -216,7 +216,7 @@ const CnAuthPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ mobile, code: smsCode }),
+        body: JSON.stringify({ mobile, code: smsCode, agreeTerms }),
       });
       
       const data = await res.json();
