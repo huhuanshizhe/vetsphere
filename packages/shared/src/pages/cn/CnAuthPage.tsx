@@ -8,6 +8,7 @@ import {
   Sparkles, GraduationCap, Users, Award, Shield, Phone, MessageSquare
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { supabase } from '../../services/supabase';
 
 // Types for user state from /api/auth/me
 interface UserState {
@@ -232,11 +233,18 @@ const CnAuthPage: React.FC = () => {
         return;
       }
       
-      // Login successful, redirect based on user state
-      if (data.userState) {
-        handleRedirect(data.userState);
+      // Login successful - establish Supabase client session
+      if (data.authToken) {
+        await supabase.auth.verifyOtp({
+          token_hash: data.authToken,
+          type: 'magiclink',
+        });
+      }
+      
+      // Redirect based on user state
+      if (data.redirectHint) {
+        handleRedirect(data as unknown as UserState);
       } else {
-        // Fallback: fetch user state
         const userState = await fetchUserState();
         if (userState) {
           handleRedirect(userState);
@@ -287,9 +295,17 @@ const CnAuthPage: React.FC = () => {
         return;
       }
       
-      // Login successful
-      if (data.userState) {
-        handleRedirect(data.userState);
+      // Login successful - establish Supabase client session
+      if (data.session?.accessToken && data.session?.refreshToken) {
+        await supabase.auth.setSession({
+          access_token: data.session.accessToken,
+          refresh_token: data.session.refreshToken,
+        });
+      }
+      
+      // Redirect based on user state
+      if (data.redirectHint) {
+        handleRedirect(data as unknown as UserState);
       } else {
         const userState = await fetchUserState();
         if (userState) {
