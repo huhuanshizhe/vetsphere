@@ -368,7 +368,7 @@ const CnAuthPage: React.FC = () => {
               }`}
             >
               <MessageSquare className="w-4 h-4" />
-              登录/注册
+              验证码登录
             </button>
             <button
               onClick={() => { setActiveTab('password'); setError(''); }}
@@ -386,11 +386,11 @@ const CnAuthPage: React.FC = () => {
           {/* Mobile Header */}
           <div className="lg:hidden mb-8">
             <h2 className="text-2xl font-black text-slate-900 mb-2">
-              {activeTab === 'sms' ? '手机号登录/注册' : '密码登录'}
+              {activeTab === 'sms' ? '手机验证码登录' : '密码登录'}
             </h2>
             <p className="text-slate-500">
               {activeTab === 'sms' 
-                ? '输入手机号，新用户自动创建账户' 
+                ? '新用户将自动注册账户' 
                 : '使用手机号和密码登录'}
             </p>
           </div>
