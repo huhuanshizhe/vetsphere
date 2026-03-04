@@ -180,16 +180,16 @@ export async function POST(request: NextRequest) {
         // 不阻止登录，后续可修复
       }
       
-      // 创建初始状态快照
+      // 创建初始状态快照 - 新用户直接可用，无需强制身份选择
       await supabaseAdmin
         .from('cn_user_state_snapshots')
         .insert({
           user_id: userId,
           site_code: 'cn',
-          onboarding_status: 'identity_pending',
+          onboarding_status: 'completed',
           verification_status: 'not_started',
           access_level: 'registered_basic',
-          redirect_hint: 'go_identity_select',
+          redirect_hint: 'go_home',
         });
       
       // 创建profiles记录（兼容现有系统）
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
         .from('profiles')
         .upsert({
           id: userId,
-          role: 'Doctor',
+          role: 'User',
           created_at: new Date().toISOString(),
         });
     }
@@ -224,10 +224,32 @@ export async function POST(request: NextRequest) {
       user_id: userId,
       mobile,
       user_status: 'active',
-      onboarding_status: isNewUser ? 'identity_pending' : 'not_started',
+      onboarding_status: 'completed',
       verification_status: 'not_started',
       access_level: 'registered_basic',
-      redirect_hint: isNewUser ? 'go_identity_select' : 'go_home',
+      redirect_hint: 'go_home',
+      identity_group_v2: null,
+      doctor_subtype: null,
+      doctor_privilege_status: 'not_applicable',
+    };
+    
+    // 新用户强制跳转到首页（身份选择是可选的，不再强制）
+    const finalRedirectHint = isNewUser ? 'go_home' : (state.redirect_hint || 'go_home');
+    
+    // 计算双轨权限
+    const identityGroupV2 = state.identity_group_v2;
+    const doctorPrivilegeStatus = state.doctor_privilege_status || 'not_applicable';
+    const isDoctorApproved = identityGroupV2 === 'doctor' && doctorPrivilegeStatus === 'approved';
+    const permissions = {
+      can_access_user_center: true,
+      can_purchase_courses: true,
+      can_purchase_products: true,
+      can_manage_orders: true,
+      can_access_growth_system: true,
+      can_access_doctor_workspace: isDoctorApproved,
+      can_access_medical_features: isDoctorApproved,
+      can_access_professional_courses: isDoctorApproved,
+      can_view_restricted_product_info: isDoctorApproved,
     };
     
     return NextResponse.json({
@@ -243,10 +265,12 @@ export async function POST(request: NextRequest) {
       identity: {
         identityType: state.identity_type,
         identityGroup: state.identity_group,
+        identityGroupV2: identityGroupV2,
+        doctorSubtype: state.doctor_subtype,
         identityVerifiedFlag: state.identity_verified_flag,
       },
       onboarding: {
-        status: state.onboarding_status,
+        status: isNewUser ? 'completed' : (state.onboarding_status || 'completed'),
         profileCompletionPercent: state.profile_completion_percent || 0,
       },
       verification: {
@@ -254,11 +278,16 @@ export async function POST(request: NextRequest) {
         status: state.verification_status,
         rejectReason: state.verification_reject_reason,
       },
+      doctorAccess: {
+        status: doctorPrivilegeStatus,
+        rejectReason: doctorPrivilegeStatus === 'rejected' ? state.verification_reject_reason : null,
+      },
+      permissions,
       access: {
         level: state.access_level,
-        permissionFlags: state.permission_flags || {},
+        permissionFlags: state.permission_flags || permissions,
       },
-      redirectHint: state.redirect_hint,
+      redirectHint: finalRedirectHint,
       // 返回用于前端登录的凭证
       // 注意：实际生产环境应该使用更安全的session管理
       authToken: signInData?.properties?.hashed_token,

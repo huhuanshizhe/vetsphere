@@ -83,14 +83,44 @@ export async function POST(request: NextRequest) {
       .eq('user_id', cnUser.id)
       .single();
     
+    // 默认状态 - 身份选择是可选的，老用户也默认跳转首页
     const state = userState || {
       user_id: cnUser.id,
       mobile,
       user_status: 'active',
-      onboarding_status: 'not_started',
+      onboarding_status: 'completed',
       verification_status: 'not_started',
       access_level: 'registered_basic',
       redirect_hint: 'go_home',
+      identity_group_v2: null,
+      doctor_subtype: null,
+      doctor_privilege_status: 'not_applicable',
+    };
+    
+    // 强制老用户跳转首页，除非有特殊状态需要处理
+    let finalRedirectHint = 'go_home';
+    if (state.redirect_hint === 'go_account_status') {
+      finalRedirectHint = 'go_account_status';
+    } else if (state.redirect_hint === 'show_rejection_prompt') {
+      finalRedirectHint = 'show_rejection_prompt';
+    } else if (state.redirect_hint === 'show_verification_pending') {
+      finalRedirectHint = 'show_verification_pending';
+    }
+    
+    // 计算双轨权限
+    const identityGroupV2 = state.identity_group_v2;
+    const doctorPrivilegeStatus = state.doctor_privilege_status || 'not_applicable';
+    const isDoctorApproved = identityGroupV2 === 'doctor' && doctorPrivilegeStatus === 'approved';
+    const permissions = {
+      can_access_user_center: true,
+      can_purchase_courses: true,
+      can_purchase_products: true,
+      can_manage_orders: true,
+      can_access_growth_system: true,
+      can_access_doctor_workspace: isDoctorApproved,
+      can_access_medical_features: isDoctorApproved,
+      can_access_professional_courses: isDoctorApproved,
+      can_view_restricted_product_info: isDoctorApproved,
     };
     
     return NextResponse.json({
@@ -105,10 +135,12 @@ export async function POST(request: NextRequest) {
       identity: {
         identityType: state.identity_type,
         identityGroup: state.identity_group,
+        identityGroupV2: identityGroupV2,
+        doctorSubtype: state.doctor_subtype,
         identityVerifiedFlag: state.identity_verified_flag,
       },
       onboarding: {
-        status: state.onboarding_status,
+        status: 'completed', // 老用户不再需要 onboarding
         profileCompletionPercent: state.profile_completion_percent || 0,
       },
       verification: {
@@ -116,11 +148,16 @@ export async function POST(request: NextRequest) {
         status: state.verification_status,
         rejectReason: state.verification_reject_reason,
       },
+      doctorAccess: {
+        status: doctorPrivilegeStatus,
+        rejectReason: doctorPrivilegeStatus === 'rejected' ? state.verification_reject_reason : null,
+      },
+      permissions,
       access: {
         level: state.access_level,
-        permissionFlags: state.permission_flags || {},
+        permissionFlags: state.permission_flags || permissions,
       },
-      redirectHint: state.redirect_hint,
+      redirectHint: finalRedirectHint,
       session: {
         accessToken: signInData.session?.access_token,
         refreshToken: signInData.session?.refresh_token,

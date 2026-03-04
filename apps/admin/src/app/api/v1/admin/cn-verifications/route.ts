@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         *,
         cn_users!inner(mobile),
         cn_user_profiles(display_name, avatar_file_id),
-        cn_user_identity_profiles(identity_type, identity_group)
+        cn_user_identity_profiles(identity_type, identity_group, identity_group_v2, doctor_subtype)
       `, { count: 'exact' })
       .eq('site_code', 'cn')
       .order('submitted_at', { ascending: false, nullsFirst: false })
@@ -88,6 +88,8 @@ export async function GET(request: NextRequest) {
       avatarUrl: v.cn_user_profiles?.avatar_file_id,
       identityType: v.cn_user_identity_profiles?.identity_type,
       identityGroup: v.cn_user_identity_profiles?.identity_group,
+      identityGroupV2: v.cn_user_identity_profiles?.identity_group_v2,
+      doctorSubtype: v.cn_user_identity_profiles?.doctor_subtype,
       verificationType: v.verification_type,
       status: v.status,
       realName: v.real_name,

@@ -1,15 +1,9 @@
-import { redirect } from 'next/navigation';
+import UserCenterClient from '@vetsphere/shared/pages/UserCenterClient';
 
 /**
- * /user 页面重定向
- * 
- * /user 不再作为独立主入口，直接重定向到医生工作台设置页的个人资料分区
+ * 用户中心页面
+ * 所有登录用户均可访问，管理课程、订单、积分等
  */
-export default async function UserCenterPage({ 
-  params 
-}: { 
-  params: Promise<{ locale: string }> 
-}) {
-  const { locale } = await params;
-  redirect(`/${locale}/doctor/settings?tab=profile`);
+export default function UserCenterPage() {
+  return <UserCenterClient />;
 }

@@ -9,6 +9,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 const VALID_IDENTITY_TYPES = [
   'veterinarian',
   'assistant_doctor',
+  'rural_veterinarian',
   'nurse_care',
   'student',
   'researcher_teacher',
@@ -18,11 +19,18 @@ const VALID_IDENTITY_TYPES = [
   'other',
 ];
 
-// 身份类型到分组的映射
+// 有效的 V2 粗分类
+const VALID_IDENTITY_GROUPS_V2 = ['doctor', 'vet_related_staff', 'student_academic', 'other_related'];
+
+// 有效的医生子类型
+const VALID_DOCTOR_SUBTYPES = ['veterinarian', 'assistant_doctor', 'rural_veterinarian'];
+
+// 身份类型到分组的映射 (旧)
 function mapIdentityTypeToGroup(identityType: string): string {
   const mapping: Record<string, string> = {
     veterinarian: 'professional',
     assistant_doctor: 'professional',
+    rural_veterinarian: 'professional',
     nurse_care: 'professional',
     student: 'student',
     researcher_teacher: 'industry_related',
@@ -34,14 +42,46 @@ function mapIdentityTypeToGroup(identityType: string): string {
   return mapping[identityType] || 'general';
 }
 
+// identity_type -> identity_group_v2
+function mapToGroupV2(identityType: string): string {
+  const map: Record<string, string> = {
+    veterinarian: 'doctor', assistant_doctor: 'doctor', rural_veterinarian: 'doctor',
+    nurse_care: 'vet_related_staff', researcher_teacher: 'vet_related_staff', pet_service_staff: 'vet_related_staff',
+    student: 'student_academic',
+    industry_practitioner: 'other_related', enthusiast: 'other_related', other: 'other_related',
+  };
+  return map[identityType] || 'other_related';
+}
+
+// identity_type -> doctor_subtype
+function mapToDoctorSubtype(identityType: string): string | null {
+  if (['veterinarian', 'assistant_doctor', 'rural_veterinarian'].includes(identityType)) return identityType;
+  return null;
+}
+
 // 判断是否需要认证
 function isVerificationRequired(identityType: string): boolean {
-  return ['veterinarian', 'assistant_doctor', 'nurse_care', 'student', 'researcher_teacher'].includes(identityType);
+  // 只有3种医生身份需要认证（用于医生工作台）
+  return ['veterinarian', 'assistant_doctor', 'rural_veterinarian'].includes(identityType);
+}
+
+// V2粗分类 -> 默认 identity_type（从粗分类选择时使用）
+function groupV2ToDefaultIdentityType(groupV2: string, doctorSubtype?: string): string | null {
+  if (groupV2 === 'doctor' && doctorSubtype) return doctorSubtype;
+  const defaults: Record<string, string> = {
+    vet_related_staff: 'pet_service_staff',
+    student_academic: 'student',
+    other_related: 'other',
+  };
+  return defaults[groupV2] || null;
 }
 
 /**
  * POST /api/user/identity
  * 保存用户身份选择
+ * 支持两种模式：
+ * 1. 旧模式: { identityType } - 直接指定10种之一
+ * 2. 新模式: { identityGroupV2, doctorSubtype? } - 使用4粗分类
  */
 export async function POST(request: NextRequest) {
   try {
@@ -59,15 +99,32 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { identityType, source = 'first_login' } = body;
+    const { identityType: rawIdentityType, identityGroupV2: rawGroupV2, doctorSubtype: rawSubtype, source = 'first_login' } = body;
     
-    // 参数校验
-    if (!identityType) {
+    let identityType: string;
+    let identityGroupV2: string;
+    let doctorSubtype: string | null;
+
+    if (rawGroupV2 && VALID_IDENTITY_GROUPS_V2.includes(rawGroupV2)) {
+      // 新模式: V2粗分类
+      identityGroupV2 = rawGroupV2;
+      if (rawGroupV2 === 'doctor') {
+        if (!rawSubtype || !VALID_DOCTOR_SUBTYPES.includes(rawSubtype)) {
+          return NextResponse.json({ error: '请选择医生子类型' }, { status: 400 });
+        }
+        doctorSubtype = rawSubtype;
+        identityType = rawSubtype; // doctor_subtype 就是 identity_type
+      } else {
+        doctorSubtype = null;
+        identityType = groupV2ToDefaultIdentityType(rawGroupV2) || 'other';
+      }
+    } else if (rawIdentityType && VALID_IDENTITY_TYPES.includes(rawIdentityType)) {
+      // 旧模式: 直接指定 identityType，自动推导 V2 字段
+      identityType = rawIdentityType;
+      identityGroupV2 = mapToGroupV2(identityType);
+      doctorSubtype = mapToDoctorSubtype(identityType);
+    } else {
       return NextResponse.json({ error: '请选择身份类型' }, { status: 400 });
-    }
-    
-    if (!VALID_IDENTITY_TYPES.includes(identityType)) {
-      return NextResponse.json({ error: '无效的身份类型' }, { status: 400 });
     }
     
     const identityGroup = mapIdentityTypeToGroup(identityType);
@@ -81,16 +138,19 @@ export async function POST(request: NextRequest) {
       .eq('site_code', 'cn')
       .single();
     
+    const identityData = {
+      identity_type: identityType,
+      identity_group: identityGroup,
+      identity_group_v2: identityGroupV2,
+      doctor_subtype: doctorSubtype,
+      identity_selected_at: new Date().toISOString(),
+      identity_selection_source: source,
+    };
+
     if (existing) {
-      // 更新现有记录
       const { error: updateError } = await supabaseAdmin
         .from('cn_user_identity_profiles')
-        .update({
-          identity_type: identityType,
-          identity_group: identityGroup,
-          identity_selected_at: new Date().toISOString(),
-          identity_selection_source: source,
-        })
+        .update(identityData)
         .eq('id', existing.id);
       
       if (updateError) {
@@ -98,16 +158,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: '身份保存失败' }, { status: 500 });
       }
     } else {
-      // 创建新记录
       const { error: insertError } = await supabaseAdmin
         .from('cn_user_identity_profiles')
         .insert({
           user_id: user.id,
           site_code: 'cn',
-          identity_type: identityType,
-          identity_group: identityGroup,
-          identity_selected_at: new Date().toISOString(),
-          identity_selection_source: source,
+          ...identityData,
         });
       
       if (insertError) {
@@ -116,8 +172,24 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // 状态快照会通过数据库触发器自动更新
-    // 但为了确保实时性，这里手动更新一次
+    // 手动更新状态快照
+    const { data: currentSnapshot } = await supabaseAdmin
+      .from('cn_user_state_snapshots')
+      .select('onboarding_status')
+      .eq('user_id', user.id)
+      .eq('site_code', 'cn')
+      .single();
+    
+    const onboardingStatus = (currentSnapshot?.onboarding_status === 'completed') 
+      ? 'completed' 
+      : 'profile_pending';
+    const redirectHint = (currentSnapshot?.onboarding_status === 'completed')
+      ? 'go_home'
+      : 'go_profile_complete';
+    
+    // doctor_privilege_status: doctor -> not_started, 其他 -> not_applicable
+    const doctorPrivilegeStatus = identityGroupV2 === 'doctor' ? 'not_started' : 'not_applicable';
+    
     await supabaseAdmin
       .from('cn_user_state_snapshots')
       .upsert({
@@ -125,9 +197,12 @@ export async function POST(request: NextRequest) {
         site_code: 'cn',
         identity_type: identityType,
         identity_group: identityGroup,
-        onboarding_status: 'profile_pending',
+        identity_group_v2: identityGroupV2,
+        doctor_subtype: doctorSubtype,
+        onboarding_status: onboardingStatus,
         verification_required: verificationRequired,
-        redirect_hint: 'go_profile_complete',
+        doctor_privilege_status: doctorPrivilegeStatus,
+        redirect_hint: redirectHint,
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'user_id,site_code',
@@ -138,10 +213,12 @@ export async function POST(request: NextRequest) {
       identity: {
         identityType,
         identityGroup,
+        identityGroupV2,
+        doctorSubtype,
         verificationRequired,
       },
-      nextStep: 'profile_complete',
-      redirectHint: 'go_profile_complete',
+      nextStep: verificationRequired ? 'verification_apply' : 'profile_complete',
+      redirectHint: verificationRequired ? 'go_verification_apply' : redirectHint,
     });
     
   } catch (err) {
@@ -186,6 +263,8 @@ export async function GET(request: NextRequest) {
       identity: {
         identityType: identity.identity_type,
         identityGroup: identity.identity_group,
+        identityGroupV2: identity.identity_group_v2,
+        doctorSubtype: identity.doctor_subtype,
         identitySelectedAt: identity.identity_selected_at,
         identitySelectionSource: identity.identity_selection_source,
         verificationRequired: isVerificationRequired(identity.identity_type),

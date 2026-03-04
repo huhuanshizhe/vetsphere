@@ -30,13 +30,11 @@ interface VerificationData {
   rejectReason?: string;
 }
 
-// Document type options based on verification type
+// Document type options based on verification type (only 3 doctor identities)
 const DOCUMENT_TYPES: Record<string, string[]> = {
   veterinarian: ['执业兽医师资格证', '身份证', '工作证明', '其他证明'],
   assistant_doctor: ['执业助理兽医师资格证', '身份证', '工作证明', '其他证明'],
-  nurse_care: ['职业资格证', '培训证书', '身份证', '工作证明', '其他证明'],
-  student: ['学生证', '在读证明', '身份证', '其他证明'],
-  researcher_teacher: ['工作证', '职称证书', '学历证书', '身份证', '其他证明'],
+  rural_veterinarian: ['乡村兽医登记证', '身份证', '工作证明', '其他证明'],
 };
 
 // Specialty tags options
@@ -88,16 +86,26 @@ const CnVerificationApplyPage: React.FC = () => {
         });
         
         if (!identityRes.ok) {
-          router.push(`/${locale}/onboarding/identity`);
+          // API error - redirect to identity selection
+          router.push(`/${locale}/onboarding/identity?from=verification`);
           return;
         }
         
         const identityData = await identityRes.json();
-        setIdentityType(identityData.identityType);
         
-        if (!identityData.verificationRequired) {
-          // This identity doesn't require verification
-          router.push(`/${locale}`);
+        // Check if user has selected an identity
+        if (!identityData.hasIdentity || !identityData.identity) {
+          // No identity selected - user needs to select one first for verification
+          router.push(`/${locale}/onboarding/identity?from=verification`);
+          return;
+        }
+        
+        setIdentityType(identityData.identity.identityType);
+        
+        if (!identityData.identity.verificationRequired) {
+          // This identity doesn't require verification - show message instead of silent redirect
+          setError('您选择的身份类型不需要进行专业认证。如需更改身份，请前往设置页面。');
+          setIsLoading(false);
           return;
         }
         
@@ -173,7 +181,78 @@ const CnVerificationApplyPage: React.FC = () => {
     }));
   };
 
-  // Add document
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const pendingDocType = React.useRef<string>('');
+
+  // Handle file upload for a document type
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const docType = pendingDocType.current;
+    if (!docType) return;
+
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type)) {
+      setError('不支持的文件格式，请上传 JPG、PNG、WebP 或 PDF 文件');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('文件大小不能超过 5MB');
+      return;
+    }
+
+    setError('');
+    setUploadingType(docType);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('请先登录');
+        setUploadingType(null);
+        return;
+      }
+
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('type', 'license');
+
+      const res = await fetch('/api/upload/credential', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: uploadFormData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || '上传失败，请重试');
+        setUploadingType(null);
+        return;
+      }
+
+      addDocument(docType, data.url, file.name);
+    } catch {
+      setError('上传失败，请检查网络连接');
+    } finally {
+      setUploadingType(null);
+      // Reset input so same file can be selected again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Trigger file input for a specific document type
+  const triggerUpload = (docType: string) => {
+    pendingDocType.current = docType;
+    fileInputRef.current?.click();
+  };
+
+  // Add document to form data
   const addDocument = (type: string, url: string, fileName?: string) => {
     setFormData(prev => ({
       ...prev,
@@ -345,13 +424,13 @@ const CnVerificationApplyPage: React.FC = () => {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-bold mb-4">
             <Sparkles className="w-4 h-4" />
-            <span>专业认证</span>
+            <span>医生身份认证</span>
           </div>
           <h1 className="text-3xl font-black text-slate-900 mb-3">
             提交认证申请
           </h1>
           <p className="text-lg text-slate-600">
-            提交您的资质证明，通过审核后解锁更多专业功能
+            提交您的资质证明，审核通过后可进入医生工作台
           </p>
         </div>
 
@@ -508,27 +587,51 @@ const CnVerificationApplyPage: React.FC = () => {
             )}
 
             {/* Add Document */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
-                {documentTypes.map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => {
-                      const url = prompt(`请输入 ${type} 的图片URL:`);
-                      if (url) {
-                        addDocument(type, url, type);
-                      }
-                    }}
-                    className="p-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-all text-sm font-medium"
-                  >
-                    <Upload className="w-4 h-4 mx-auto mb-1" />
-                    {type}
-                  </button>
-                ))}
+                {documentTypes.map(type => {
+                  const alreadyUploaded = formData.documents.some(d => d.documentType === type);
+                  const isUploading = uploadingType === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      disabled={isUploading}
+                      onClick={() => {
+                        if (alreadyUploaded) {
+                          // Remove existing and re-upload
+                          const idx = formData.documents.findIndex(d => d.documentType === type);
+                          if (idx >= 0) removeDocument(idx);
+                        }
+                        triggerUpload(type);
+                      }}
+                      className={`p-3 border-2 border-dashed rounded-xl text-sm font-medium transition-all ${
+                        alreadyUploaded
+                          ? 'border-emerald-300 bg-emerald-50 text-emerald-600'
+                          : 'border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-600'
+                      } ${isUploading ? 'opacity-60 cursor-wait' : ''}`}
+                    >
+                      {isUploading ? (
+                        <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-1" />
+                      ) : alreadyUploaded ? (
+                        <Check className="w-4 h-4 mx-auto mb-1" />
+                      ) : (
+                        <Upload className="w-4 h-4 mx-auto mb-1" />
+                      )}
+                      {type}
+                    </button>
+                  );
+                })}
               </div>
               <p className="text-xs text-slate-400 text-center">
-                支持JPG、PNG格式，单个文件不超过5MB
+                支持JPG、PNG、WebP、PDF格式，单个文件不超过5MB
               </p>
             </div>
           </div>
