@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { STATUS_COLORS, STATUS_LABELS } from '@/types/admin';
+import { useSite } from '@/context/SiteContext';
 import {
   Card,
   Button,
@@ -34,14 +35,35 @@ interface Course {
   created_at: string;
   updated_at: string;
   instructor_names?: string[];
+  site_views?: SiteView[];
 }
+
+interface SiteView {
+  id: string;
+  course_id: string;
+  site_code: string;
+  is_enabled: boolean;
+  publish_status: 'draft' | 'published' | 'offline';
+  title_override?: string;
+  slug_override?: string;
+  summary_override?: string;
+  display_order: number;
+  is_featured: boolean;
+  published_at?: string;
+  course?: Course;
+}
+
+type ViewTab = 'base' | 'site';
 
 const PAGE_SIZE = 20;
 
 export default function CoursesPage() {
   const supabase = createClient();
+  const { currentSite } = useSite();
   
+  const [viewTab, setViewTab] = useState<ViewTab>('base');
   const [courses, setCourses] = useState<Course[]>([]);
+  const [siteViews, setSiteViews] = useState<SiteView[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, published: 0, draft: 0, featured: 0 });
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -58,10 +80,82 @@ export default function CoursesPage() {
   
   const [showFeatureDialog, setShowFeatureDialog] = useState(false);
   const [courseToFeature, setCourseToFeature] = useState<Course | null>(null);
+  
+  // Site view 操作
+  const [initLoading, setInitLoading] = useState<string | null>(null);
+  const [publishLoading, setPublishLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    loadCourses();
-  }, [filterStatus, filterFormat, searchKeyword, page]);
+    if (viewTab === 'base') {
+      loadCourses();
+    } else {
+      loadSiteViews();
+    }
+  }, [filterStatus, filterFormat, searchKeyword, page, viewTab, currentSite]);
+
+  async function loadSiteViews() {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('course_site_views')
+        .select(`*, course:courses(id, title, slug, status, format, level, cover_image_url, instructor_names)`)
+        .eq('site_code', currentSite)
+        .order('display_order', { ascending: true });
+
+      if (filterStatus) {
+        query = query.eq('publish_status', filterStatus);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setSiteViews(data || []);
+    } catch (error) {
+      console.error('加载站点视图失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleInitSiteView(courseId: string) {
+    setInitLoading(courseId);
+    try {
+      const { error } = await supabase
+        .from('course_site_views')
+        .upsert({
+          course_id: courseId,
+          site_code: currentSite,
+          is_enabled: true,
+          publish_status: 'draft',
+        }, { onConflict: 'course_id,site_code' });
+
+      if (error) throw error;
+      loadCourses();
+    } catch (error) {
+      console.error('初始化站点视图失败:', error);
+    } finally {
+      setInitLoading(null);
+    }
+  }
+
+  async function handleSiteViewPublish(siteViewId: string, action: 'published' | 'offline') {
+    setPublishLoading(siteViewId);
+    try {
+      const updateData: any = { publish_status: action };
+      if (action === 'published') updateData.published_at = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('course_site_views')
+        .update(updateData)
+        .eq('id', siteViewId);
+
+      if (error) throw error;
+      loadSiteViews();
+    } catch (error) {
+      console.error('操作失败:', error);
+    } finally {
+      setPublishLoading(null);
+    }
+  }
 
   async function loadCourses() {
     setLoading(true);
@@ -93,6 +187,25 @@ export default function CoursesPage() {
       
       setCourses(data || []);
       setTotal(count || 0);
+      
+      // Attach site view status for each course
+      const ids = (data || []).map(c => c.id);
+      if (ids.length > 0) {
+        const { data: views } = await supabase
+          .from('course_site_views')
+          .select('course_id, site_code, publish_status, is_enabled')
+          .in('course_id', ids);
+        
+        if (views) {
+          const viewMap: Record<string, any[]> = {};
+          views.forEach(v => {
+            if (!viewMap[v.course_id]) viewMap[v.course_id] = [];
+            viewMap[v.course_id].push(v);
+          });
+          setCourses(prev => prev.map(c => ({ ...c, site_views: viewMap[c.id] || [] })));
+        }
+      }
+      
       await loadStats();
     } catch (error) {
       console.error('加载课程列表失败:', error);
@@ -241,13 +354,39 @@ export default function CoursesPage() {
         </Button>
       </div>
 
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="总课程数" value={stats.total} />
-        <StatCard label="已发布" value={stats.published} />
-        <StatCard label="草稿" value={stats.draft} />
-        <StatCard label="推荐课程" value={stats.featured} />
+      {/* 视图切换 Tab */}
+      <div className="flex items-center gap-1 bg-slate-800/60 rounded-lg p-1 w-fit">
+        <button
+          onClick={() => { setViewTab('base'); setPage(1); }}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            viewTab === 'base'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Base 资源库
+        </button>
+        <button
+          onClick={() => { setViewTab('site'); setPage(1); }}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            viewTab === 'site'
+              ? 'bg-slate-700 text-white'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {currentSite === 'cn' ? '🇨🇳 CN' : '🌐 INTL'} 站点视图
+        </button>
       </div>
+
+      {viewTab === 'base' ? (
+        <>
+          {/* 统计卡片 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="总课程数" value={stats.total} />
+            <StatCard label="已发布" value={stats.published} />
+            <StatCard label="草稿" value={stats.draft} />
+            <StatCard label="推荐课程" value={stats.featured} />
+          </div>
 
       {/* 筛选栏 */}
       <Card>
@@ -321,7 +460,7 @@ export default function CoursesPage() {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">难度</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">价格</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">推荐</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">站点视图</th>
                     <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
                   </tr>
                 </thead>
@@ -371,13 +510,20 @@ export default function CoursesPage() {
                         <StatusBadge status={course.status} />
                       </td>
                       <td className="px-6 py-4">
-                        {course.is_featured ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-400">
-                            推荐
-                          </span>
-                        ) : (
-                          <span className="text-slate-500 text-xs">-</span>
-                        )}
+                        <div className="flex gap-1.5">
+                          {(course.site_views || []).map(sv => (
+                            <span key={sv.site_code} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              sv.publish_status === 'published' ? 'bg-emerald-500/20 text-emerald-400' :
+                              sv.publish_status === 'offline' ? 'bg-red-500/20 text-red-400' :
+                              'bg-slate-500/20 text-slate-400'
+                            }`}>
+                              {sv.site_code.toUpperCase()}
+                            </span>
+                          ))}
+                          {(!course.site_views || course.site_views.length === 0) && (
+                            <span className="text-slate-600 text-xs">-</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -402,16 +548,16 @@ export default function CoursesPage() {
                           )}
                           {course.status === 'published' && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setCourseToFeature(course);
-                                  setShowFeatureDialog(true);
-                                }}
-                              >
-                                {course.is_featured ? '取消推荐' : '推荐'}
-                              </Button>
+                              {!(course.site_views || []).find(v => v.site_code === currentSite) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  loading={initLoading === course.id}
+                                  onClick={() => handleInitSiteView(course.id)}
+                                >
+                                  初始化{currentSite.toUpperCase()}
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -445,6 +591,122 @@ export default function CoursesPage() {
           </>
         )}
       </Card>
+        </>
+      ) : (
+        /* Site View Tab */
+        <>
+          <Card>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <Input
+                  placeholder="搜索课程..."
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  icon={
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  }
+                />
+              </div>
+              <div className="w-full md:w-40">
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  options={[
+                    { value: '', label: '全部状态' },
+                    { value: 'draft', label: '草稿' },
+                    { value: 'published', label: '已发布' },
+                    { value: 'offline', label: '已下线' },
+                  ]}
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card padding="none">
+            {loading ? (
+              <LoadingState />
+            ) : siteViews.length === 0 ? (
+              <EmptyState
+                icon="🌐"
+                title={`暂无 ${currentSite.toUpperCase()} 站点视图`}
+                description="请先在 Base 资源库中为课程初始化站点视图"
+              />
+            ) : (
+              <TableContainer>
+                <table className="w-full">
+                  <thead className="bg-slate-800/50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">课程</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">覆盖标题</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">排序</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">推荐</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/50">
+                    {siteViews.map((sv) => (
+                      <tr key={sv.id} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <span className="font-medium text-white line-clamp-1">{sv.course?.title || sv.course_id}</span>
+                            <div className="text-xs text-slate-500">{sv.course?.slug}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-300 text-sm">
+                          {sv.title_override || <span className="text-slate-600">继承 Base</span>}
+                        </td>
+                        <td className="px-6 py-4 text-slate-400 text-sm">{sv.display_order}</td>
+                        <td className="px-6 py-4">
+                          {sv.is_featured ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-400">推荐</span>
+                          ) : (
+                            <span className="text-slate-500 text-xs">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            sv.publish_status === 'published' ? 'bg-emerald-500/20 text-emerald-400' :
+                            sv.publish_status === 'offline' ? 'bg-red-500/20 text-red-400' :
+                            'bg-slate-500/20 text-slate-400'
+                          }`}>
+                            {sv.publish_status === 'published' ? '已发布' : sv.publish_status === 'offline' ? '已下线' : '草稿'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {sv.publish_status !== 'published' && (
+                              <Button
+                                size="sm"
+                                loading={publishLoading === sv.id}
+                                onClick={() => handleSiteViewPublish(sv.id, 'published')}
+                              >
+                                发布
+                              </Button>
+                            )}
+                            {sv.publish_status === 'published' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                loading={publishLoading === sv.id}
+                                onClick={() => handleSiteViewPublish(sv.id, 'offline')}
+                              >
+                                下线
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableContainer>
+            )}
+          </Card>
+        </>
+      )}
 
       {/* 状态变更确认弹窗 */}
       <ConfirmDialog

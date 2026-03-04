@@ -232,7 +232,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
       {/* Detail Modal */}
       {selectedRefund && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B1120] border border-white/10 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-white/5">
               <div className="flex justify-between items-start">
                 <div>

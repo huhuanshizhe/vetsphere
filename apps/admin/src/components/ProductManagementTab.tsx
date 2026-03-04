@@ -234,7 +234,7 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
       {/* Detail Modal */}
       {detailProduct && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B1120] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             <div className="p-5 border-b border-white/5 flex justify-between items-center">
               <h2 className="text-lg font-black text-white">商品详情</h2>
               <button
@@ -309,7 +309,7 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
       {/* Reject Modal */}
       {rejectModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B1120] border border-white/10 rounded-2xl max-w-md w-full">
+          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-md w-full">
             <div className="p-5 border-b border-white/5">
               <h3 className="text-lg font-black text-white">拒绝商品 / 下架</h3>
               <p className="text-xs text-slate-500 mt-1">请输入拒绝或下架原因</p>

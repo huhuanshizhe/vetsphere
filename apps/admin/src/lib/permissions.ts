@@ -19,6 +19,8 @@ export const PERMISSION_MODULES = {
   ai: 'AI配置',
   route: '路由管理',
   system: '系统设置',
+  site_page: '站点页面',
+  clinic_program: '诊所项目',
 } as const;
 
 // 权限动作定义
@@ -213,6 +215,8 @@ export const PAGE_PERMISSIONS: Record<string, string> = {
   '/system/configs': 'system.edit',
   '/analytics': 'system.view',
   '/operation-logs': 'system.view',
+  '/site-pages': 'site_page.view',
+  '/clinic-programs': 'clinic_program.view',
 };
 
 /**

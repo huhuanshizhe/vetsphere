@@ -3,38 +3,65 @@
 import React from 'react';
 import { STATUS_COLORS, STATUS_LABELS } from '@/types/admin';
 
-// 状态徽章
+// ============================================================================
+// 状态徽章 - Light Theme
+// ============================================================================
 interface StatusBadgeProps {
   status: string;
   size?: 'sm' | 'md';
 }
 
+// 浅色主题状态色映射
+const LIGHT_STATUS_COLORS: Record<string, string> = {
+  draft: 'bg-slate-100 text-slate-600',
+  pending: 'bg-amber-50 text-amber-700',
+  pending_review: 'bg-amber-50 text-amber-700',
+  approved: 'bg-emerald-50 text-emerald-700',
+  rejected: 'bg-red-50 text-red-700',
+  published: 'bg-emerald-50 text-emerald-700',
+  offline: 'bg-slate-100 text-slate-600',
+  active: 'bg-emerald-50 text-emerald-700',
+  coming_soon: 'bg-amber-50 text-amber-700',
+  hidden: 'bg-slate-100 text-slate-600',
+  redirect: 'bg-blue-50 text-blue-700',
+  new: 'bg-blue-50 text-blue-700',
+  contacted: 'bg-amber-50 text-amber-700',
+  quoted: 'bg-purple-50 text-purple-700',
+  negotiating: 'bg-orange-50 text-orange-700',
+  converted: 'bg-emerald-50 text-emerald-700',
+  closed: 'bg-slate-100 text-slate-600',
+};
+
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' }) => {
-  const colorClass = STATUS_COLORS[status] || 'bg-slate-500/20 text-slate-400';
+  const colorClass = LIGHT_STATUS_COLORS[status] || 'bg-slate-100 text-slate-600';
   const label = STATUS_LABELS[status] || status;
   
   return (
     <span className={`
-      inline-flex items-center rounded-full font-medium
+      inline-flex items-center rounded-md font-medium
       ${colorClass}
-      ${size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'}
+      ${size === 'sm' ? 'px-1.5 py-0.5 text-[11px]' : 'px-2 py-1 text-xs'}
     `}>
       {label}
     </span>
   );
 };
 
-// 卡片容器
+// ============================================================================
+// 卡片容器 - Light Theme
+// ============================================================================
 interface CardProps {
   children: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  hover?: boolean;
 }
 
 export const Card: React.FC<CardProps> = ({ 
   children, 
   className = '',
   padding = 'md',
+  hover = false,
 }) => {
   const paddingClass = {
     none: '',
@@ -44,13 +71,19 @@ export const Card: React.FC<CardProps> = ({
   }[padding];
 
   return (
-    <div className={`bg-white/[0.02] border border-white/5 rounded-xl ${paddingClass} ${className}`}>
+    <div className={`
+      bg-white border border-slate-200 rounded-lg shadow-sm
+      ${hover ? 'hover:shadow-md hover:border-slate-300 transition-shadow' : ''}
+      ${paddingClass} ${className}
+    `}>
       {children}
     </div>
   );
 };
 
-// 按钮
+// ============================================================================
+// 按钮 - Light Theme
+// ============================================================================
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
@@ -68,19 +101,19 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClass = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseClass = 'inline-flex items-center justify-center font-medium rounded-md transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variantClass = {
-    primary: 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-lg shadow-emerald-500/20',
-    secondary: 'bg-white/5 text-white hover:bg-white/10 border border-white/10',
-    danger: 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20',
-    ghost: 'text-slate-400 hover:text-white hover:bg-white/5',
+    primary: 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm',
+    secondary: 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm',
+    danger: 'bg-red-500 text-white hover:bg-red-600 shadow-sm',
+    ghost: 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
   }[variant];
 
   const sizeClass = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
-    md: 'px-4 py-2 text-sm gap-2',
-    lg: 'px-5 py-2.5 text-sm gap-2',
+    sm: 'px-2.5 py-1.5 text-xs gap-1.5',
+    md: 'px-3.5 py-2 text-sm gap-2',
+    lg: 'px-4 py-2.5 text-sm gap-2',
   }[size];
 
   return (
@@ -100,7 +133,9 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-// 输入框
+// ============================================================================
+// 输入框 - Light Theme
+// ============================================================================
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
@@ -117,36 +152,39 @@ export const Input: React.FC<InputProps> = ({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-xs font-medium text-slate-400">
+        <label className="block text-sm font-medium text-slate-700">
           {label}
         </label>
       )}
       <div className="relative">
         {icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
             {icon}
           </div>
         )}
         <input
           className={`
-            w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white
-            placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50
+            w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900
+            placeholder:text-slate-400 
+            focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500
             transition-colors
             ${icon ? 'pl-10' : ''}
-            ${error ? 'border-red-500/50' : ''}
+            ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
             ${className}
           `}
           {...props}
         />
       </div>
       {error && (
-        <p className="text-xs text-red-400">{error}</p>
+        <p className="text-xs text-red-600">{error}</p>
       )}
     </div>
   );
 };
 
-// 选择框
+// ============================================================================
+// 选择框 - Light Theme
+// ============================================================================
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
@@ -163,34 +201,36 @@ export const Select: React.FC<SelectProps> = ({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-xs font-medium text-slate-400">
+        <label className="block text-sm font-medium text-slate-700">
           {label}
         </label>
       )}
       <select
         className={`
-          w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white
-          focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50
+          w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900
+          focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500
           transition-colors appearance-none cursor-pointer
-          ${error ? 'border-red-500/50' : ''}
+          ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
           ${className}
         `}
         {...props}
       >
         {options.map(opt => (
-          <option key={opt.value} value={opt.value} className="bg-[#0B1120]">
+          <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>
         ))}
       </select>
       {error && (
-        <p className="text-xs text-red-400">{error}</p>
+        <p className="text-xs text-red-600">{error}</p>
       )}
     </div>
   );
 };
 
-// 空状态
+// ============================================================================
+// 空状态 - Light Theme
+// ============================================================================
 interface EmptyStateProps {
   icon?: string;
   title: string;
@@ -207,7 +247,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <span className="text-4xl mb-4">{icon}</span>
-      <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
+      <h3 className="text-base font-semibold text-slate-900 mb-1">{title}</h3>
       {description && (
         <p className="text-sm text-slate-500 mb-4 max-w-sm">{description}</p>
       )}
@@ -216,7 +256,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   );
 };
 
-// 加载状态
+// ============================================================================
+// 加载状态 - Light Theme
+// ============================================================================
 interface LoadingStateProps {
   text?: string;
 }
@@ -230,7 +272,9 @@ export const LoadingState: React.FC<LoadingStateProps> = ({ text = '加载中...
   );
 };
 
-// 确认对话框
+// ============================================================================
+// 确认对话框 - Light Theme
+// ============================================================================
 interface ConfirmDialogProps {
   open: boolean;
   onClose?: () => void;
@@ -276,19 +320,19 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={handleClose} />
-      <div className="relative bg-[#0f1629] border border-white/10 rounded-xl p-6 max-w-md w-full shadow-2xl">
+      <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
+      <div className="relative bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full shadow-xl">
         <div className="flex items-start gap-4">
           <span className="text-2xl">{variantIcon}</span>
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">{title}</h3>
             {displayMessage && (
-              <p className="text-sm text-slate-400">{displayMessage}</p>
+              <p className="text-sm text-slate-500">{displayMessage}</p>
             )}
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 mt-6">
-          <Button variant="ghost" onClick={handleClose} disabled={loading}>
+          <Button variant="secondary" onClick={handleClose} disabled={loading}>
             {cancelText}
           </Button>
           <Button variant={confirmVariant} onClick={onConfirm} loading={loading}>
@@ -300,13 +344,16 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   );
 };
 
-// 统计卡片
+// ============================================================================
+// 统计卡片 - Light Theme
+// ============================================================================
 interface StatCardProps {
   label: string;
   value: string | number;
   change?: string;
   changeType?: 'up' | 'down' | 'neutral';
   icon?: string;
+  href?: string;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -315,51 +362,62 @@ export const StatCard: React.FC<StatCardProps> = ({
   change,
   changeType = 'neutral',
   icon,
+  href,
 }) => {
   const changeColor = {
-    up: 'text-emerald-400',
-    down: 'text-red-400',
-    neutral: 'text-slate-400',
+    up: 'text-emerald-600',
+    down: 'text-red-600',
+    neutral: 'text-slate-500',
   }[changeType];
 
-  return (
-    <Card>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</p>
-          <p className="text-2xl font-bold text-white mt-1">{value}</p>
-          {change && (
-            <p className={`text-xs font-medium mt-1 ${changeColor}`}>
-              {changeType === 'up' && '↑ '}
-              {changeType === 'down' && '↓ '}
-              {change}
-            </p>
-          )}
-        </div>
-        {icon && <span className="text-2xl">{icon}</span>}
+  const content = (
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+        {change && (
+          <p className={`text-xs font-medium mt-1 ${changeColor}`}>
+            {changeType === 'up' && '↑ '}
+            {changeType === 'down' && '↓ '}
+            {change}
+          </p>
+        )}
       </div>
-    </Card>
+      {icon && <span className="text-2xl opacity-60">{icon}</span>}
+    </div>
   );
+
+  if (href) {
+    return (
+      <a href={href} className="block">
+        <Card hover>{content}</Card>
+      </a>
+    );
+  }
+
+  return <Card>{content}</Card>;
 };
 
-// 表格容器
+// ============================================================================
+// 表格容器 - Light Theme
+// ============================================================================
 interface TableContainerProps {
   children: React.ReactNode;
 }
 
 export const TableContainer: React.FC<TableContainerProps> = ({ children }) => {
   return (
-    <div className="overflow-x-auto -mx-4 sm:-mx-5">
-      <div className="inline-block min-w-full align-middle px-4 sm:px-5">
-        <table className="min-w-full">
-          {children}
-        </table>
-      </div>
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-slate-200">
+        {children}
+      </table>
     </div>
   );
 };
 
-// 分页组件
+// ============================================================================
+// 分页组件 - Light Theme
+// ============================================================================
 interface PaginationProps {
   page: number;
   pageSize?: number;
@@ -382,9 +440,9 @@ export const Pagination: React.FC<PaginationProps> = ({
   if (totalPages === 0) return null;
 
   return (
-    <div className="flex items-center justify-between gap-4 pt-4 border-t border-white/5">
+    <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-100">
       {total ? (
-        <p className="text-xs text-slate-500">
+        <p className="text-sm text-slate-500">
           显示 {start}-{end} 条，共 {total} 条
         </p>
       ) : (
@@ -394,19 +452,19 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <span className="px-3 py-1 text-sm text-slate-400">
+        <span className="px-3 py-1.5 text-sm text-slate-600 font-medium">
           {page} / {totalPages}
         </span>
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -415,4 +473,106 @@ export const Pagination: React.FC<PaginationProps> = ({
       </div>
     </div>
   );
+};
+
+// ============================================================================
+// 标签页组件 - New
+// ============================================================================
+interface TabsProps {
+  tabs: { key: string; label: string; icon?: string }[];
+  activeTab: string;
+  onChange: (key: string) => void;
+}
+
+export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange }) => {
+  return (
+    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+      {tabs.map(tab => (
+        <button
+          key={tab.key}
+          onClick={() => onChange(tab.key)}
+          className={`
+            flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all
+            ${activeTab === tab.key
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+            }
+          `}
+        >
+          {tab.icon && <span>{tab.icon}</span>}
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// ============================================================================
+// 快捷操作卡片 - New
+// ============================================================================
+interface QuickActionCardProps {
+  icon: string;
+  label: string;
+  description?: string;
+  href: string;
+}
+
+export const QuickActionCard: React.FC<QuickActionCardProps> = ({
+  icon,
+  label,
+  description,
+  href,
+}) => {
+  return (
+    <a
+      href={href}
+      className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-lg hover:border-emerald-300 hover:shadow-md transition-all text-center group"
+    >
+      <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">{icon}</span>
+      <span className="text-sm font-medium text-slate-900">{label}</span>
+      {description && (
+        <span className="text-xs text-slate-500 mt-0.5">{description}</span>
+      )}
+    </a>
+  );
+};
+
+// ============================================================================
+// 活动动态项 - New
+// ============================================================================
+interface ActivityItemProps {
+  icon?: string;
+  title: string;
+  description: string;
+  time: string;
+  href?: string;
+}
+
+export const ActivityItem: React.FC<ActivityItemProps> = ({
+  icon = '📌',
+  title,
+  description,
+  time,
+  href,
+}) => {
+  const content = (
+    <div className="flex items-start gap-3 py-3">
+      <span className="text-lg">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-900 truncate">{title}</p>
+        <p className="text-sm text-slate-500 truncate">{description}</p>
+      </div>
+      <span className="text-xs text-slate-400 whitespace-nowrap">{time}</span>
+    </div>
+  );
+
+  if (href) {
+    return (
+      <a href={href} className="block hover:bg-slate-50 -mx-4 px-4 rounded-lg transition-colors">
+        {content}
+      </a>
+    );
+  }
+
+  return content;
 };

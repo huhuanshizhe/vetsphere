@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { PurchaseLead, STATUS_COLORS, STATUS_LABELS } from '@/types/admin';
+import { useSite } from '@/context/SiteContext';
 import {
   Card,
   Button,
@@ -21,6 +22,7 @@ const PAGE_SIZE = 20;
 
 export default function LeadsPage() {
   const supabase = createClient();
+  const { currentSite } = useSite();
   
   const [leads, setLeads] = useState<PurchaseLead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     loadLeads();
-  }, [filterStatus, filterType, searchKeyword, page]);
+  }, [filterStatus, filterType, searchKeyword, page, currentSite]);
 
   async function loadLeads() {
     setLoading(true);
@@ -52,7 +54,8 @@ export default function LeadsPage() {
     try {
       let query = supabase
         .from('purchase_leads')
-        .select('*', { count: 'exact' });
+        .select('*', { count: 'exact' })
+        .eq('site_code', currentSite);
       
       if (filterStatus) {
         query = query.eq('status', filterStatus);

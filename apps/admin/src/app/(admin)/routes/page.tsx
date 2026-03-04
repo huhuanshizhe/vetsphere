@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { RouteRegistry, ComingSoonTemplate, STATUS_COLORS, STATUS_LABELS } from '@/types/admin';
+import { useSite } from '@/context/SiteContext';
 import {
   Card,
   Button,
@@ -21,6 +22,7 @@ const PAGE_SIZE = 20;
 
 export default function RoutesPage() {
   const supabase = createClient();
+  const { currentSite } = useSite();
   
   const [routes, setRoutes] = useState<RouteRegistry[]>([]);
   const [templates, setTemplates] = useState<ComingSoonTemplate[]>([]);
@@ -62,7 +64,7 @@ export default function RoutesPage() {
 
   useEffect(() => {
     loadRoutes();
-  }, [filterStatus, filterModule, searchKeyword, page]);
+  }, [filterStatus, filterModule, searchKeyword, page, currentSite]);
 
   async function loadTemplates() {
     const { data } = await supabase
@@ -79,7 +81,8 @@ export default function RoutesPage() {
     try {
       let query = supabase
         .from('route_registry')
-        .select('*', { count: 'exact' });
+        .select('*', { count: 'exact' })
+        .eq('site_code', currentSite);
       
       if (filterStatus) {
         query = query.eq('route_status', filterStatus);
@@ -113,21 +116,25 @@ export default function RoutesPage() {
   async function loadStats() {
     const { count: totalCount } = await supabase
       .from('route_registry')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('site_code', currentSite);
     
     const { count: activeCount } = await supabase
       .from('route_registry')
       .select('*', { count: 'exact', head: true })
+      .eq('site_code', currentSite)
       .eq('route_status', 'active');
     
     const { count: comingSoonCount } = await supabase
       .from('route_registry')
       .select('*', { count: 'exact', head: true })
+      .eq('site_code', currentSite)
       .eq('route_status', 'coming_soon');
     
     const { count: hiddenCount } = await supabase
       .from('route_registry')
       .select('*', { count: 'exact', head: true })
+      .eq('site_code', currentSite)
       .eq('route_status', 'hidden');
     
     setStats({
@@ -228,6 +235,7 @@ export default function RoutesPage() {
           module: newRoute.module,
           description: newRoute.description || null,
           route_status: newRoute.route_status,
+          site_code: currentSite,
           requires_auth: false,
           requires_doctor: false,
           requires_admin: false,

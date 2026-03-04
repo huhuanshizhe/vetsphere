@@ -45,7 +45,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-200 flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-slate-900 text-slate-200 flex flex-col md:flex-row font-sans">
       {/* Mobile header */}
       <header className="md:hidden sticky top-0 z-40 bg-black border-b border-white/5 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
