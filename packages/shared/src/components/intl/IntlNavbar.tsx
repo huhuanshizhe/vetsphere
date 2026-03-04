@@ -89,7 +89,6 @@ export function IntlNavbar({ locale }: IntlNavbarProps) {
   const t = navTranslations[language as keyof typeof navTranslations] || navTranslations.en;
 
   const navigation = [
-    { name: t.upgrade, href: `/${locale}`, icon: TrendingUp },
     { name: t.training, href: `/${locale}/courses`, icon: GraduationCap },
     { name: t.equipment, href: `/${locale}/shop`, icon: ShoppingBag },
     { name: t.forClinics, href: `/${locale}/for-clinics`, icon: Hospital },
