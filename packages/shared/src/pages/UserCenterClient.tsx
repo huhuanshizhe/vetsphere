@@ -522,14 +522,34 @@ const UserCenterClient: React.FC = () => {
                       <h4 className="font-bold text-slate-900 group-hover:text-vs transition">{t.userCenter.editProfile || 'Edit Profile'}</h4>
                       <p className="text-sm text-slate-500 mt-1">{t.userCenter.updateInfo || 'Update your information'}</p>
                     </button>
-                    <button 
-                      onClick={() => setActiveTab('points')}
-                      className="bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-lg hover:border-vs/30 transition group text-left"
-                    >
-                      <div className="text-3xl mb-3">⭐</div>
-                      <h4 className="font-bold text-slate-900 group-hover:text-vs transition">{t.userCenter.viewPoints || 'View Points'}</h4>
-                      <p className="text-sm text-slate-500 mt-1">{t.userCenter.earnRewards || 'Earn rewards and level up'}</p>
-                    </button>
+                    {/* 医生认证入口 - 所有未认证用户都可以看到 */}
+                    {!canAccessDoctorWorkspace ? (
+                      <Link 
+                        href={user.identityGroupV2 === 'doctor' ? `/${locale}/verification/apply` : `/${locale}/onboarding/identity?from=verification`}
+                        className="bg-gradient-to-br from-blue-50 to-emerald-50 border border-blue-200 rounded-2xl p-6 hover:shadow-lg hover:border-blue-400 transition group text-left"
+                      >
+                        <div className="text-3xl mb-3">🩺</div>
+                        <h4 className="font-bold text-blue-700 group-hover:text-blue-800 transition">
+                          {user.identityGroupV2 === 'doctor' 
+                            ? (doctorPrivilegeStatus === 'pending_review' ? '认证进度' : '医生身份认证')
+                            : '申请医生认证'}
+                        </h4>
+                        <p className="text-sm text-slate-600 mt-1">
+                          {user.identityGroupV2 === 'doctor'
+                            ? '提交认证材料，开通医生工作台'
+                            : '如果您是执业兽医，可申请开通医生工作台'}
+                        </p>
+                      </Link>
+                    ) : (
+                      <Link 
+                        href={`/${locale}/doctor`}
+                        className="bg-gradient-to-br from-emerald-50 to-blue-50 border border-emerald-200 rounded-2xl p-6 hover:shadow-lg hover:border-emerald-400 transition group text-left"
+                      >
+                        <div className="text-3xl mb-3">🏥</div>
+                        <h4 className="font-bold text-emerald-700 group-hover:text-emerald-800 transition">医生工作台</h4>
+                        <p className="text-sm text-slate-600 mt-1">访问临床工具、医生社区等专业功能</p>
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}
