@@ -58,9 +58,9 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
     icon: 'Users',
     items: [
       {
-        key: 'admin-users',
-        label: '管理员',
-        icon: 'UserCog',
+        key: 'user-list',
+        label: '用户列表',
+        icon: 'Users',
         href: '/users',
         permission: 'user.view',
       },

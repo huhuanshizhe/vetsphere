@@ -266,7 +266,7 @@ const CnApplicationStatusPage: React.FC = () => {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pt-24 pb-12 px-4">
       <div className="max-w-lg mx-auto">
         {/* 卡片 */}
         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">

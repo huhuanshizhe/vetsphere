@@ -200,8 +200,8 @@ export default function CnVerificationsPage() {
     <>
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">CN站专业认证审核</h1>
-        <p className="text-slate-400 text-sm mt-1">审核中国站用户的专业身份认证申请</p>
+        <h1 className="text-2xl font-bold text-slate-900">CN站专业认证审核</h1>
+        <p className="text-slate-500 text-sm mt-1">审核中国站用户的专业身份认证申请</p>
       </div>
 
       {/* Stats Cards */}
@@ -300,7 +300,7 @@ export default function CnVerificationsPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">
                       申请人
                     </th>
@@ -327,31 +327,31 @@ export default function CnVerificationsPage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-slate-100">
                   {verifications.map((v) => (
-                    <tr key={v.id} className="hover:bg-white/[0.02] transition-colors">
+                    <tr key={v.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3">
                         <div>
-                          <p className="text-sm font-medium text-white">{v.realName || '-'}</p>
+                          <p className="text-sm font-medium text-slate-900">{v.realName || '-'}</p>
                           <p className="text-xs text-slate-500">{v.user?.displayName || '未设置昵称'}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-slate-300">{v.user?.mobile || '-'}</p>
+                        <p className="text-sm text-slate-700">{v.user?.mobile || '-'}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded">
+                        <span className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded">
                           {typeLabels[v.verificationType] || v.verificationType}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-slate-300">{v.organizationName || '-'}</p>
+                        <p className="text-sm text-slate-700">{v.organizationName || '-'}</p>
                         <p className="text-xs text-slate-500">{v.positionTitle || '-'}</p>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {(v.specialtyTags || []).slice(0, 2).map((s, i) => (
-                            <span key={i} className="px-1.5 py-0.5 text-[10px] bg-white/5 text-slate-400 rounded">
+                            <span key={i} className="px-1.5 py-0.5 text-[10px] bg-slate-100 text-slate-600 rounded">
                               {s}
                             </span>
                           ))}
@@ -374,7 +374,7 @@ export default function CnVerificationsPage() {
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             href={`/cn-verifications/${v.id}`}
-                            className="text-xs text-slate-400 hover:text-white transition-colors"
+                            className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
                           >
                             详情
                           </Link>
@@ -433,12 +433,12 @@ export default function CnVerificationsPage() {
       {confirmDialog.open && confirmDialog.type === 'reject' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setConfirmDialog({ open: false, type: 'reject', verification: null })} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
+          <div className="relative bg-white border border-slate-200 rounded-xl p-6 max-w-md w-full shadow-xl">
             <div className="flex items-start gap-4 mb-4">
               <span className="text-2xl">⚠️</span>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-1">审核拒绝</h3>
-                <p className="text-sm text-slate-400">
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">审核拒绝</h3>
+                <p className="text-sm text-slate-500">
                   请选择或填写拒绝 {confirmDialog.verification?.realName || ''} 的原因
                 </p>
               </div>
@@ -459,8 +459,8 @@ export default function CnVerificationsPage() {
                   className={`
                     w-full text-left px-3 py-2 rounded-lg text-sm transition-colors
                     ${rejectReason === reason
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                      ? 'bg-red-50 text-red-700 border border-red-200'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                     }
                   `}
                 >
@@ -474,7 +474,7 @@ export default function CnVerificationsPage() {
               placeholder="或输入其他拒绝原因..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500/50 resize-none h-20"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 resize-none h-20"
             />
             
             <div className="flex items-center justify-end gap-3 mt-6">

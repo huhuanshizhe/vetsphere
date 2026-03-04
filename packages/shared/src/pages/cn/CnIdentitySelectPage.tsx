@@ -172,7 +172,7 @@ const CnIdentitySelectPage: React.FC = () => {
   const selectedIdentityData = IDENTITY_TYPES.find(i => i.id === selectedIdentity);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pt-24 pb-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-10">

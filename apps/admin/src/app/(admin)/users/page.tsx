@@ -7,11 +7,9 @@ import {
   Button,
   Input,
   Select,
-  StatusBadge,
   LoadingState,
   EmptyState,
   StatCard,
-  TableContainer,
   Pagination,
 } from '@/components/ui';
 
@@ -103,9 +101,9 @@ export default function UsersPage() {
   }
 
   function getUserRole(user: User) {
-    if (user.is_admin) return { label: '管理员', color: 'bg-purple-500/20 text-purple-400' };
-    if (user.is_doctor) return { label: '医生', color: 'bg-emerald-500/20 text-emerald-400' };
-    return { label: '普通用户', color: 'bg-slate-500/20 text-slate-400' };
+    if (user.is_admin) return { label: '管理员', color: 'bg-purple-50 text-purple-700' };
+    if (user.is_doctor) return { label: '医生', color: 'bg-emerald-50 text-emerald-700' };
+    return { label: '普通用户', color: 'bg-slate-100 text-slate-600' };
   }
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -113,8 +111,8 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">用户管理</h1>
-        <p className="text-slate-400 mt-1">查看和管理平台用户</p>
+        <h1 className="text-2xl font-bold text-slate-900">用户管理</h1>
+        <p className="text-slate-500 mt-1">查看和管理平台用户</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -154,50 +152,50 @@ export default function UsersPage() {
           <EmptyState title="暂无用户" description="当前筛选条件下没有找到用户" />
         ) : (
           <>
-            <TableContainer>
+            <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-800/50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">用户</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">联系方式</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">角色</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">注册时间</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">最近登录</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">用户</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">联系方式</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">角色</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">注册时间</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">最近登录</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700/50">
+                <tbody className="divide-y divide-slate-100">
                   {users.map((user) => {
                     const role = getUserRole(user);
                     return (
-                      <tr key={user.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                            <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                               {user.avatar_url ? (
                                 <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-lg text-slate-400">{user.full_name?.[0] || user.email?.[0] || '?'}</span>
+                                <span className="text-sm font-bold text-slate-400">{user.full_name?.[0] || user.email?.[0] || '?'}</span>
                               )}
                             </div>
-                            <span className="font-medium text-white">{user.full_name || '未设置'}</span>
+                            <span className="text-sm font-medium text-slate-900">{user.full_name || '未设置'}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm">
-                            <div className="text-slate-300">{user.email}</div>
-                            {user.phone && <div className="text-slate-500">{user.phone}</div>}
+                            <div className="text-slate-700">{user.email}</div>
+                            {user.phone && <div className="text-slate-400 text-xs mt-0.5">{user.phone}</div>}
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${role.color}`}>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${role.color}`}>
                             {role.label}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-sm text-slate-500">
                           {new Date(user.created_at).toLocaleDateString('zh-CN')}
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-sm text-slate-500">
                           {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString('zh-CN') : '-'}
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -210,10 +208,10 @@ export default function UsersPage() {
                   })}
                 </tbody>
               </table>
-            </TableContainer>
+            </div>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
-                <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+              <div className="px-6 py-4 border-t border-slate-100">
+                <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
               </div>
             )}
           </>

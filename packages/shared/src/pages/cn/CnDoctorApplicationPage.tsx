@@ -778,7 +778,7 @@ const CnDoctorApplicationPage: React.FC = () => {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-12 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pt-24 pb-12 px-4">
       <div className="max-w-2xl mx-auto">
         {/* 返回 */}
         <Link
