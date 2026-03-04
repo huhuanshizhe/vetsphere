@@ -12,6 +12,10 @@ const SMS_COOLDOWN_SECONDS = 60;
 const SMS_MAX_PER_HOUR = 5;
 const SMS_MAX_ERRORS = 5;
 
+// 演示测试账号（固定验证码，用于演示和测试）
+const DEMO_MOBILE = process.env.DEMO_TEST_MOBILE || '13800000000';
+const DEMO_CODE = process.env.DEMO_TEST_CODE || '888888';
+
 // 生成随机验证码
 function generateCode(): string {
   return Math.random().toString().slice(2, 2 + SMS_CODE_LENGTH);
@@ -43,6 +47,27 @@ export async function POST(request: NextRequest) {
     // 获取客户端IP
     const forwardedFor = request.headers.get('x-forwarded-for');
     const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : 'unknown';
+    
+    // 演示测试账号：跳过频控，使用固定验证码
+    if (mobile === DEMO_MOBILE) {
+      const expiresAt = new Date(Date.now() + SMS_CODE_EXPIRES_MINUTES * 60 * 1000).toISOString();
+      await supabaseAdmin
+        .from('sms_verification_codes')
+        .insert({
+          mobile,
+          code: DEMO_CODE,
+          purpose,
+          ip_address: ipAddress,
+          expires_at: expiresAt,
+        });
+      
+      return NextResponse.json({
+        success: true,
+        message: '验证码已发送',
+        expiresIn: SMS_CODE_EXPIRES_MINUTES * 60,
+        code: DEMO_CODE,
+      });
+    }
     
     // 频控检查 - 单手机号60秒内不能重复发送
     const cooldownTime = new Date(Date.now() - SMS_COOLDOWN_SECONDS * 1000).toISOString();
