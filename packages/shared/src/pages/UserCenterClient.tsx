@@ -9,11 +9,12 @@ import { api } from '../services/api';
 import { Order, CourseEnrollment } from '../types';
 import { RefundRequestModal } from '../components/RefundRequestModal';
 import Link from 'next/link';
+import { ShieldCheck, Stethoscope, ArrowRight } from 'lucide-react';
 
 type TabType = 'overview' | 'profile' | 'orders' | 'courses' | 'points' | 'settings';
 
 const UserCenterClient: React.FC = () => {
-  const { user, logout, isAuthenticated, updateUser, loading: authLoading } = useAuth();
+  const { user, logout, isAuthenticated, updateUser, loading: authLoading, canAccessDoctorWorkspace, doctorPrivilegeStatus } = useAuth();
   const { t, locale } = useLanguage();
   const { addNotification } = useNotification();
   const router = useRouter();
@@ -337,7 +338,16 @@ const UserCenterClient: React.FC = () => {
                   {pointsData.level}
                 </span>
                 <span className="text-sm text-slate-500">{pointsData.points} {t.dashboard.points}</span>
-                <span className="px-2 py-1 bg-slate-100 rounded text-xs font-medium text-slate-600">{user.role}</span>
+                {user.identityLabel ? (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">{user.identityLabel}</span>
+                ) : (
+                  <span className="px-2 py-1 bg-slate-100 rounded text-xs font-medium text-slate-600">{user.role}</span>
+                )}
+                {canAccessDoctorWorkspace && (
+                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />已认证
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -378,6 +388,40 @@ const UserCenterClient: React.FC = () => {
               {/* Overview Tab */}
               {activeTab === 'overview' && (
                 <div className="space-y-8">
+                  {/* Doctor Upgrade Card - 仅医生身份且未认证时显示 */}
+                  {user.identityGroupV2 === 'doctor' && !canAccessDoctorWorkspace && (
+                    <div className="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-2xl p-6 border border-blue-200">
+                      <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                        <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Stethoscope className="w-7 h-7 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-slate-900 mb-1">
+                            {doctorPrivilegeStatus === 'pending_review' ? '医生认证审核中' :
+                             doctorPrivilegeStatus === 'rejected' ? '医生认证被驳回' :
+                             '开通医生工作台'}
+                          </h3>
+                          <p className="text-sm text-slate-600">
+                            {doctorPrivilegeStatus === 'pending_review' 
+                              ? '您的认证申请正在审核中，审核通过后即可访问医生工作台的专业功能。'
+                              : doctorPrivilegeStatus === 'rejected'
+                              ? '您的认证申请被驳回，请重新提交认证材料。'
+                              : '完成身份认证后，即可访问医生工作台、临床工具、医生社区等专业功能。'}
+                          </p>
+                        </div>
+                        <Link
+                          href={`/${locale}/verification/apply`}
+                          className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition flex items-center gap-2 flex-shrink-0"
+                        >
+                          {doctorPrivilegeStatus === 'pending_review' ? '查看进度' :
+                           doctorPrivilegeStatus === 'rejected' ? '重新认证' :
+                           '立即认证'}
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Personal Card with Stats */}
                   <div className="bg-gradient-to-r from-slate-50 to-emerald-50 rounded-[32px] p-8 border border-slate-100">
                     <div className="flex flex-col md:flex-row items-center gap-8">
