@@ -32,7 +32,7 @@ async function verifyAdmin(token: string) {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -46,7 +46,7 @@ export async function GET(
       return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
     }
     
-    const { id } = params;
+    const { id } = await params;
     
     // 获取认证详情
     const { data: verification, error: queryError } = await supabaseAdmin
@@ -155,7 +155,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -170,7 +170,7 @@ export async function POST(
     }
     
     const { user: adminUser, profile: adminProfile } = adminCheck;
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { action, rejectReason, reviewNote, approvedLevel } = body;
     
