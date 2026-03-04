@@ -22,6 +22,9 @@ function apiResponse<T>(code: number, message: string, data?: T) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const siteCode = searchParams.get('site_code') || 'cn';
+
     // 并行加载所有首页数据
     const [
       featuredCoursesResult,
@@ -36,6 +39,7 @@ export async function GET(request: NextRequest) {
         .select('id, slug, title, subtitle, cover_image_url, price_cny, is_free, format, level, enrollment_count, avg_rating')
         .eq('status', 'published')
         .eq('is_featured', true)
+        .eq('site_code', siteCode)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(8),
@@ -46,6 +50,7 @@ export async function GET(request: NextRequest) {
         .select('id, slug, name, subtitle, cover_image_url, price_min, price_max, brand')
         .eq('status', 'published')
         .eq('is_featured', true)
+        .eq('site_code', siteCode)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(6),
@@ -56,6 +61,7 @@ export async function GET(request: NextRequest) {
         .select('id, slug, name, tagline, icon, color, course_count')
         .eq('is_active', true)
         .eq('is_ready', true)
+        .eq('site_code', siteCode)
         .order('group_order')
         .order('display_order')
         .limit(7),
@@ -71,8 +77,8 @@ export async function GET(request: NextRequest) {
       
       // 统计数据
       Promise.all([
-        supabase.from('courses').select('*', { count: 'exact', head: true }).eq('status', 'published').is('deleted_at', null),
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'published').is('deleted_at', null),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).eq('status', 'published').eq('site_code', siteCode).is('deleted_at', null),
+        supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'published').eq('site_code', siteCode).is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_doctor', true),
       ]),
     ]);

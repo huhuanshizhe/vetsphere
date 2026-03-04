@@ -39,11 +39,13 @@ export async function GET(request: NextRequest) {
     const pageSize = parseInt(searchParams.get('page_size') || '20');
     const type = searchParams.get('type');
     const isRead = searchParams.get('is_read');
+    const siteCode = searchParams.get('site_code') || 'cn';
 
     let query = supabase
       .from('notifications')
       .select('*', { count: 'exact' })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('site_code', siteCode);
 
     if (type) {
       query = query.eq('type', type);
@@ -71,6 +73,7 @@ export async function GET(request: NextRequest) {
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
+      .eq('site_code', siteCode)
       .eq('is_read', false);
 
     return apiResponse(200, '查询成功', {

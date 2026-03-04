@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     const isFree = searchParams.get('is_free');          // true/false
     const isFeatured = searchParams.get('is_featured');  // true/false
     const keyword = searchParams.get('keyword');         // 关键词搜索
+    const siteCode = searchParams.get('site_code') || 'cn'; // 站点代码
     
     // 排序参数
     const sortBy = searchParams.get('sort_by') || 'created_at'; // created_at, enrollment_count, avg_rating
@@ -68,7 +69,8 @@ export async function GET(request: NextRequest) {
         instructor_names
       `, { count: 'exact' })
       .eq('status', 'published')
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .eq('site_code', siteCode);
 
     // 应用筛选
     if (format) {

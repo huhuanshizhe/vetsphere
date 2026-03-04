@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
     const readyOnly = searchParams.get('ready_only') === 'true';
     // 分组筛选
     const groupName = searchParams.get('group');
+    // 站点代码
+    const siteCode = searchParams.get('site_code') || 'cn';
 
     // 构建查询
     let query = supabase
@@ -59,6 +61,7 @@ export async function GET(request: NextRequest) {
         created_at
       `)
       .eq('is_active', true)
+      .eq('site_code', siteCode)
       .order('group_order')
       .order('display_order');
 

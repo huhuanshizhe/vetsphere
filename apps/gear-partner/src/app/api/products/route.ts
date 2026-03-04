@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     const priceMax = searchParams.get('price_max');      // 最高价
     const isFeatured = searchParams.get('is_featured');  // true/false
     const keyword = searchParams.get('keyword');         // 关键词搜索
+    const siteCode = searchParams.get('site_code') || 'cn'; // 站点代码
     
     // 排序参数
     const sortBy = searchParams.get('sort_by') || 'created_at'; // created_at, view_count, price_min
@@ -64,7 +65,8 @@ export async function GET(request: NextRequest) {
         tags
       `, { count: 'exact' })
       .eq('status', 'published')
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .eq('site_code', siteCode);
 
     // 应用筛选
     if (sceneCode) {

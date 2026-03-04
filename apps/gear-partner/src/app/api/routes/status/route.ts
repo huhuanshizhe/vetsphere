@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const path = searchParams.get('path');
+    const siteCode = searchParams.get('site_code') || 'cn';
 
     if (!path) {
       return apiResponse(400, '缺少路径参数');
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('path', path)
+      .eq('site_code', siteCode)
       .maybeSingle();
 
     if (error) {

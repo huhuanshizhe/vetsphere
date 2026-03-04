@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       clinic_stage_code, // 诊所阶段（可选）
       budget_range,      // 预算范围（可选）
       requirement_text,  // 需求描述
+      site_code,         // 站点代码（可选，默认cn）
     } = body;
 
     // 参数校验
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
         clinic_stage_code: clinic_stage_code || null,
         budget_range: budget_range || null,
         requirement_text: requirement_text || null,
+        site_code: site_code || 'cn',
         status: 'new',
       })
       .select()

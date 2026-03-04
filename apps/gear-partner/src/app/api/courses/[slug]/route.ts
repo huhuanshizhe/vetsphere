@@ -31,6 +31,9 @@ export async function GET(
       return apiResponse(400, '缺少课程标识');
     }
 
+    const { searchParams } = new URL(request.url);
+    const siteCode = searchParams.get('site_code') || 'cn';
+
     // 查询课程详情
     const { data: course, error } = await supabase
       .from('courses')
@@ -59,6 +62,7 @@ export async function GET(
       `)
       .or(`slug.eq.${slug},id.eq.${slug}`)
       .eq('status', 'published')
+      .eq('site_code', siteCode)
       .is('deleted_at', null)
       .single();
 
@@ -71,7 +75,7 @@ export async function GET(
     }
 
     // 增加浏览量
-    await supabase.rpc('increment_course_view', { course_id: course.id }).catch(() => {});
+    try { await supabase.rpc('increment_course_view', { course_id: course.id }); } catch {}
 
     // 处理章节排序
     const chapters = (course.course_chapters || []).sort(
