@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     // 升级入口卡
     const identityGroupV2 = snapshot?.identity_group_v2;
-    const doctorPrivilegeStatus = snapshot?.doctor_privilege_status || 'not_applicable';
+    const doctorPrivilegeStatus: string = snapshot?.doctor_privilege_status || 'not_applicable';
     
     // 仅 doctor 组且未 approved 时显示升级卡
     const showDoctorUpgradeCard = identityGroupV2 === 'doctor' && doctorPrivilegeStatus !== 'approved';
