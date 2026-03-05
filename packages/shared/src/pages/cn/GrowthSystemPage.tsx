@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   TrendingUp, BookOpen, Award, Target, Users, Stethoscope, Eye,
   Heart, ArrowRight, CheckCircle2, Sparkles, ChevronRight, Star,
@@ -264,8 +265,10 @@ const FEATURED_COURSES: Record<string, { id: string; name: string; level: string
 
 export function GrowthSystemPage() {
   const { locale } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, canAccessDoctorWorkspace } = useAuth();
   const { userState } = useCnAuthGuard({ showVerificationPrompt: true });
+  const pathname = usePathname();
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -507,10 +510,14 @@ export function GrowthSystemPage() {
             <p className="text-slate-400">学习只是开始，成长档案、社区、职业、创业——持续陪伴</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {POST_TRAINING_SUPPORT.map(support => (
+            {POST_TRAINING_SUPPORT.map(support => {
+              const supportHref = support.id === '1' && !canAccessDoctorWorkspace
+                ? `/${locale}/user?tab=courses`
+                : `/${locale}${support.href}`;
+              return (
               <Link
                 key={support.id}
-                href={isAuthenticated ? `/${locale}${support.href}` : `/${locale}/auth`}
+                href={isAuthenticated ? supportHref : authHref}
                 className="bg-white/10 rounded-xl p-4 text-center hover:bg-white/20 transition-colors group"
               >
                 <div className={`w-12 h-12 bg-${support.color}-500/20 rounded-xl flex items-center justify-center text-${support.color}-400 mx-auto mb-3 group-hover:scale-110 transition-transform`}>
@@ -519,13 +526,14 @@ export function GrowthSystemPage() {
                 <h4 className="font-semibold text-sm">{support.name}</h4>
                 <p className="text-xs text-slate-400 mt-1">{support.description}</p>
               </Link>
-            ))}
+              );
+            })}
           </div>
           {!isAuthenticated && (
             <div className="mt-6 text-center">
               <p className="text-sm text-slate-400 mb-3">登录后可使用以上功能</p>
               <Link
-                href={`/${locale}/auth`}
+                href={authHref}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600 transition-colors"
               >
                 立即登录
@@ -553,7 +561,7 @@ export function GrowthSystemPage() {
             </Link>
             {isAuthenticated ? (
               <Link
-                href={`/${locale}/doctor/courses`}
+                href={canAccessDoctorWorkspace ? `/${locale}/doctor/courses` : `/${locale}/user?tab=courses`}
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-emerald-600 text-white border border-emerald-400 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
               >
                 查看我的课程
@@ -561,7 +569,7 @@ export function GrowthSystemPage() {
               </Link>
             ) : (
               <Link
-                href={`/${locale}/auth`}
+                href={authHref}
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-emerald-600 text-white border border-emerald-400 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
               >
                 登录获取建议

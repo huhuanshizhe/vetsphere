@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   MessageSquare, GraduationCap, Briefcase, Lightbulb, Rocket,
   ArrowRight, ChevronRight, Users, BookOpen, Heart, Clock,
@@ -129,8 +130,10 @@ const AREA_COLORS = {
 
 export function CommunityIntroPage({ locale }: CommunityIntroPageProps) {
   const { isAuthenticated } = useAuth();
+  const pathname = usePathname();
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
 
-  const communityHref = isAuthenticated ? `/${locale}/doctor/community` : `/${locale}/auth`;
+  const communityHref = isAuthenticated ? `/${locale}/doctor/community` : authHref;
   const coursesHref = `/${locale}/courses`;
   const growthHref = `/${locale}/growth-system`;
 
@@ -456,14 +459,14 @@ export function CommunityIntroPage({ locale }: CommunityIntroPageProps) {
             ) : (
               <>
                 <Link
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
                 >
                   <LogIn className="w-5 h-5" />
                   登录进入医生社区
                 </Link>
                 <Link
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border border-indigo-200 text-indigo-700 rounded-xl font-semibold hover:bg-indigo-50 transition-colors"
                 >
                   <UserPlus className="w-5 h-5" />

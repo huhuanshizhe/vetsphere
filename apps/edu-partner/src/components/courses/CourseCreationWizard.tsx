@@ -80,7 +80,7 @@ export default function CourseCreationWizard({
     try {
       const courseData: CourseFormData = {
         ...formData,
-        status: 'Draft',
+        status: 'draft',
       };
       
       await api.manageCourse('create', courseData);
@@ -112,7 +112,7 @@ export default function CourseCreationWizard({
     try {
       const courseData: CourseFormData = {
         ...formData,
-        status: 'Pending',
+        status: 'pending',
       };
       
       await api.manageCourse('create', courseData);

@@ -252,7 +252,7 @@ export const api = {
         imageUrl: c.image_url, description: c.description,
         description_en: c.description_en || null, description_zh: c.description_zh || null, 
         description_th: c.description_th || null, description_ja: c.description_ja || null,
-        status: c.status || 'Published', agenda: c.agenda || [],
+        status: c.status || 'published', agenda: c.agenda || [],
         maxCapacity: c.max_enrollment ?? 30,
         enrolledCount: c.current_enrollment ?? 0,
         enrollmentDeadline: c.enrollment_deadline || null,
@@ -291,7 +291,7 @@ export const api = {
         location: c.location || {}, instructor: c.instructor || {},
         imageUrl: c.image_url, description: c.description,
         description_zh: c.description_zh || null, description_th: c.description_th || null,
-        status: c.status || 'Draft', agenda: c.agenda || [],
+        status: c.status || 'draft', agenda: c.agenda || [],
         maxCapacity: c.max_enrollment ?? 30,
         enrolledCount: c.current_enrollment ?? 0,
         enrollmentDeadline: c.enrollment_deadline || null,
@@ -320,7 +320,7 @@ export const api = {
     sortOrder?: 'asc' | 'desc';
   }): Promise<Course[]> {
     try {
-      let query = supabase.from('courses').select('*').eq('status', 'Published');
+      let query = supabase.from('courses').select('*').eq('status', 'published');
       
       if (params.query) {
         query = query.or(`title.ilike.%${params.query}%,description.ilike.%${params.query}%`);
@@ -361,7 +361,7 @@ export const api = {
         location: c.location || {}, instructor: c.instructor || {},
         imageUrl: c.image_url, description: c.description,
         description_zh: c.description_zh || null, description_th: c.description_th || null,
-        status: c.status || 'Published', agenda: c.agenda || [],
+        status: c.status || 'published', agenda: c.agenda || [],
         maxCapacity: c.max_enrollment ?? 30,
         enrolledCount: c.current_enrollment ?? 0,
         enrollmentDeadline: c.enrollment_deadline || null,
@@ -455,7 +455,7 @@ export const api = {
         instructor: course.instructor || {},
         image_url: course.imageUrl,
         description: course.description,
-        status: course.status || 'Pending',
+        status: course.status || 'pending',
         agenda: course.agenda || [],
         provider_id: user?.id || null,
       };
@@ -1240,6 +1240,37 @@ export const api = {
       return publicUrl;
     } catch {
       return null;
+    }
+  },
+
+  async addToLearningPlan(courseId: string): Promise<any> {
+    const headers = await getAuthHeaders();
+    const response = await fetch('/api/learning/progress', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ course_id: courseId, progress_percent: 0 })
+    });
+    const result = await response.json();
+    if (result.code !== 200) {
+      throw new Error(result.message || '加入学习计划失败');
+    }
+    return result.data;
+  },
+
+  async getLearningProgress(): Promise<{ items: any[]; stats: { total_courses: number; completed_courses: number; total_study_time_minutes: number } }> {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/learning/progress', {
+        method: 'GET',
+        headers
+      });
+      const result = await response.json();
+      if (result.code === 200 && result.data) {
+        return result.data;
+      }
+      return { items: [], stats: { total_courses: 0, completed_courses: 0, total_study_time_minutes: 0 } };
+    } catch {
+      return { items: [], stats: { total_courses: 0, completed_courses: 0, total_study_time_minutes: 0 } };
     }
   }
 };

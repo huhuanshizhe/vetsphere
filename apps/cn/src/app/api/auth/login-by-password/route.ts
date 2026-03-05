@@ -83,6 +83,18 @@ export async function POST(request: NextRequest) {
       .eq('user_id', cnUser.id)
       .single();
     
+    // 始终查询真实的认证请求状态（不依赖快照/触发器）
+    const { data: latestVerification } = await supabaseAdmin
+      .from('cn_verification_requests')
+      .select('status, reject_reason')
+      .eq('user_id', cnUser.id)
+      .eq('site_code', 'cn')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    const realVerificationStatus = latestVerification?.status || 'not_started';
+    
     // 默认状态 - 身份选择是可选的，老用户也默认跳转首页
     const state = userState || {
       user_id: cnUser.id,
@@ -97,19 +109,24 @@ export async function POST(request: NextRequest) {
       doctor_privilege_status: 'not_applicable',
     };
     
-    // 强制老用户跳转首页，除非有特殊状态需要处理
+    // 用真实的认证状态覆盖快照中可能过时的值
+    const identityGroupV2 = state.identity_group_v2;
+    let realDoctorPrivilegeStatus = 'not_applicable';
+    if (identityGroupV2 === 'doctor') {
+      if (realVerificationStatus === 'approved') realDoctorPrivilegeStatus = 'approved';
+      else if (['submitted', 'under_review'].includes(realVerificationStatus)) realDoctorPrivilegeStatus = 'pending_review';
+      else if (realVerificationStatus === 'rejected') realDoctorPrivilegeStatus = 'rejected';
+      else realDoctorPrivilegeStatus = 'not_started';
+    }
+    
+    // 计算跳转提示 - 仅阻塞性条件才特殊跳转，其余一律首页
     let finalRedirectHint = 'go_home';
     if (state.redirect_hint === 'go_account_status') {
       finalRedirectHint = 'go_account_status';
-    } else if (state.redirect_hint === 'show_rejection_prompt') {
-      finalRedirectHint = 'show_rejection_prompt';
-    } else if (state.redirect_hint === 'show_verification_pending') {
-      finalRedirectHint = 'show_verification_pending';
     }
     
     // 计算双轨权限
-    const identityGroupV2 = state.identity_group_v2;
-    const doctorPrivilegeStatus = state.doctor_privilege_status || 'not_applicable';
+    const doctorPrivilegeStatus = realDoctorPrivilegeStatus;
     const isDoctorApproved = identityGroupV2 === 'doctor' && doctorPrivilegeStatus === 'approved';
     const permissions = {
       can_access_user_center: true,
@@ -145,12 +162,12 @@ export async function POST(request: NextRequest) {
       },
       verification: {
         required: state.verification_required || false,
-        status: state.verification_status,
-        rejectReason: state.verification_reject_reason,
+        status: realVerificationStatus,
+        rejectReason: latestVerification?.reject_reason || state.verification_reject_reason,
       },
       doctorAccess: {
         status: doctorPrivilegeStatus,
-        rejectReason: doctorPrivilegeStatus === 'rejected' ? state.verification_reject_reason : null,
+        rejectReason: doctorPrivilegeStatus === 'rejected' ? (latestVerification?.reject_reason || state.verification_reject_reason) : null,
       },
       permissions,
       access: {

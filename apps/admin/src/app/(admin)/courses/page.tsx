@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { STATUS_COLORS, STATUS_LABELS } from '@/types/admin';
 import { useSite } from '@/context/SiteContext';
@@ -23,7 +24,7 @@ interface Course {
   slug: string;
   title: string;
   subtitle?: string;
-  status: 'draft' | 'published' | 'offline';
+  status: 'draft' | 'published' | 'offline' | 'pending' | 'rejected';
   format: string;
   level?: string;
   duration_minutes?: number;
@@ -60,13 +61,14 @@ const PAGE_SIZE = 20;
 export default function CoursesPage() {
   const supabase = createClient();
   const { currentSite } = useSite();
+  const searchParams = useSearchParams();
   
   const [viewTab, setViewTab] = useState<ViewTab>('base');
   const [courses, setCourses] = useState<Course[]>([]);
   const [siteViews, setSiteViews] = useState<SiteView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, published: 0, draft: 0, featured: 0 });
-  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [stats, setStats] = useState({ total: 0, published: 0, draft: 0, pending: 0, featured: 0 });
+  const [filterStatus, setFilterStatus] = useState<string>(searchParams.get('status') || '');
   const [filterFormat, setFilterFormat] = useState<string>('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [page, setPage] = useState(1);
@@ -84,6 +86,14 @@ export default function CoursesPage() {
   // Site view 操作
   const [initLoading, setInitLoading] = useState<string | null>(null);
   const [publishLoading, setPublishLoading] = useState<string | null>(null);
+  
+  // 审核弹窗状态
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [courseToReview, setCourseToReview] = useState<Course | null>(null);
+  const [selectedSites, setSelectedSites] = useState<string[]>(['cn']);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     if (viewTab === 'base') {
@@ -232,6 +242,12 @@ export default function CoursesPage() {
       .is('deleted_at', null)
       .eq('status', 'draft');
     
+    const { count: pendingCount } = await supabase
+      .from('courses')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .eq('status', 'pending');
+    
     const { count: featuredCount } = await supabase
       .from('courses')
       .select('*', { count: 'exact', head: true })
@@ -242,6 +258,7 @@ export default function CoursesPage() {
       total: totalCount || 0,
       published: publishedCount || 0,
       draft: draftCount || 0,
+      pending: pendingCount || 0,
       featured: featuredCount || 0,
     });
   }
@@ -326,6 +343,104 @@ export default function CoursesPage() {
     }
   }
 
+  // 审核通过 - 发布课程并创建站点视图
+  async function handleApprove() {
+    if (!courseToReview || selectedSites.length === 0) return;
+    
+    setReviewLoading(true);
+    try {
+      // 1. 更新课程状态为 published
+      const { error: updateError } = await supabase
+        .from('courses')
+        .update({ 
+          status: 'published', 
+          published_at: new Date().toISOString(),
+          rejection_reason: null,
+        })
+        .eq('id', courseToReview.id);
+      
+      if (updateError) throw updateError;
+      
+      // 2. 为每个选中的站点创建 course_site_views
+      for (const site of selectedSites) {
+        const { error: viewError } = await supabase
+          .from('course_site_views')
+          .upsert({
+            course_id: courseToReview.id,
+            site_code: site,
+            is_enabled: true,
+            publish_status: 'published',
+            published_at: new Date().toISOString(),
+          }, { onConflict: 'course_id,site_code' });
+        
+        if (viewError) {
+          console.error(`创建 ${site} 站点视图失败:`, viewError);
+        }
+      }
+      
+      // 3. 记录审计日志
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('admin_audit_logs').insert({
+        admin_user_id: user?.id,
+        module: 'course',
+        action: 'approve',
+        target_type: 'course',
+        target_id: courseToReview.id,
+        target_name: courseToReview.title,
+        changes_summary: `审核通过课程: ${courseToReview.title}，发布至: ${selectedSites.join(', ').toUpperCase()}`,
+      });
+      
+      setShowApproveDialog(false);
+      setCourseToReview(null);
+      setSelectedSites(['cn']);
+      loadCourses();
+    } catch (error) {
+      console.error('审核通过操作失败:', error);
+      alert('操作失败，请重试');
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
+  // 审核拒绝
+  async function handleReject() {
+    if (!courseToReview || !rejectionReason.trim()) return;
+    
+    setReviewLoading(true);
+    try {
+      const { error } = await supabase
+        .from('courses')
+        .update({ 
+          status: 'rejected', 
+          rejection_reason: rejectionReason.trim(),
+        })
+        .eq('id', courseToReview.id);
+      
+      if (error) throw error;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('admin_audit_logs').insert({
+        admin_user_id: user?.id,
+        module: 'course',
+        action: 'reject',
+        target_type: 'course',
+        target_id: courseToReview.id,
+        target_name: courseToReview.title,
+        changes_summary: `拒绝课程: ${courseToReview.title}，原因: ${rejectionReason.trim()}`,
+      });
+      
+      setShowRejectDialog(false);
+      setCourseToReview(null);
+      setRejectionReason('');
+      loadCourses();
+    } catch (error) {
+      console.error('拒绝操作失败:', error);
+      alert('操作失败，请重试');
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
   const formatLabels: Record<string, string> = {
     video: '视频课程',
     live: '直播课程',
@@ -381,8 +496,9 @@ export default function CoursesPage() {
       {viewTab === 'base' ? (
         <>
           {/* 统计卡片 */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <StatCard label="总课程数" value={stats.total} />
+            <StatCard label="待审核" value={stats.pending} />
             <StatCard label="已发布" value={stats.published} />
             <StatCard label="草稿" value={stats.draft} />
             <StatCard label="推荐课程" value={stats.featured} />
@@ -415,8 +531,10 @@ export default function CoursesPage() {
               }}
               options={[
                 { value: '', label: '全部状态' },
+                { value: 'pending', label: '待审核' },
                 { value: 'draft', label: '草稿' },
                 { value: 'published', label: '已发布' },
+                { value: 'rejected', label: '已拒绝' },
                 { value: 'offline', label: '已下线' },
               ]}
             />
@@ -534,6 +652,31 @@ export default function CoursesPage() {
                           >
                             编辑
                           </Button>
+                          {course.status === 'pending' && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setCourseToReview(course);
+                                  setSelectedSites(['cn']);
+                                  setShowApproveDialog(true);
+                                }}
+                              >
+                                通过
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setCourseToReview(course);
+                                  setRejectionReason('');
+                                  setShowRejectDialog(true);
+                                }}
+                              >
+                                拒绝
+                              </Button>
+                            </>
+                          )}
                           {course.status === 'draft' && (
                             <Button
                               size="sm"
@@ -745,6 +888,128 @@ export default function CoursesPage() {
         }}
         loading={dialogLoading}
       />
+
+      {/* 审核通过 - 选择目标站点弹窗 */}
+      {showApproveDialog && courseToReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-2">审核通过 - 选择目标站点</h3>
+            <p className="text-sm text-slate-400 mb-6">
+              课程「{courseToReview.title}」将被发布，请选择上架的目标站点：
+            </p>
+            
+            <div className="space-y-3 mb-6">
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-slate-700/50 border border-slate-600/50 cursor-pointer hover:bg-slate-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={selectedSites.includes('cn')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedSites(prev => [...prev, 'cn']);
+                    } else {
+                      setSelectedSites(prev => prev.filter(s => s !== 'cn'));
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-slate-500 text-emerald-500 focus:ring-emerald-500 bg-slate-600"
+                />
+                <div>
+                  <span className="text-white font-medium">CN 中国站</span>
+                  <p className="text-xs text-slate-400">发布至宠医界中国站 (cn.vetsphere.com)</p>
+                </div>
+              </label>
+              
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-slate-700/50 border border-slate-600/50 cursor-pointer hover:bg-slate-700 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={selectedSites.includes('intl')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedSites(prev => [...prev, 'intl']);
+                    } else {
+                      setSelectedSites(prev => prev.filter(s => s !== 'intl'));
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-slate-500 text-emerald-500 focus:ring-emerald-500 bg-slate-600"
+                />
+                <div>
+                  <span className="text-white font-medium">INTL 国际站</span>
+                  <p className="text-xs text-slate-400">发布至 VetSphere 国际站 (vetsphere.com)</p>
+                </div>
+              </label>
+            </div>
+            
+            {selectedSites.length === 0 && (
+              <p className="text-xs text-amber-400 mb-4">请至少选择一个目标站点</p>
+            )}
+            
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowApproveDialog(false);
+                  setCourseToReview(null);
+                }}
+                disabled={reviewLoading}
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleApprove}
+                loading={reviewLoading}
+                disabled={selectedSites.length === 0}
+              >
+                确认通过并发布
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 审核拒绝弹窗 */}
+      {showRejectDialog && courseToReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-2">拒绝课程</h3>
+            <p className="text-sm text-slate-400 mb-4">
+              请填写拒绝课程「{courseToReview.title}」的原因，该原因将反馈给课程机构：
+            </p>
+            
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="请输入拒绝原因..."
+              rows={4}
+              className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 resize-none mb-4"
+            />
+            
+            {rejectionReason.trim().length === 0 && (
+              <p className="text-xs text-amber-400 mb-4">请填写拒绝原因</p>
+            )}
+            
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowRejectDialog(false);
+                  setCourseToReview(null);
+                  setRejectionReason('');
+                }}
+                disabled={reviewLoading}
+              >
+                取消
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleReject}
+                loading={reviewLoading}
+                disabled={rejectionReason.trim().length === 0}
+              >
+                确认拒绝
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

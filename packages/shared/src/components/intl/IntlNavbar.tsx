@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteConfig } from '../../context/SiteConfigContext';
 import { useAuth } from '../../context/AuthContext';
@@ -85,7 +86,9 @@ export function IntlNavbar({ locale }: IntlNavbarProps) {
   const { language, setLanguage } = useLanguage();
   const { siteConfig } = useSiteConfig();
   const { isAuthenticated, user, logout } = useAuth();
+  const pathname = usePathname();
 
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
   const t = navTranslations[language as keyof typeof navTranslations] || navTranslations.en;
 
   const navigation = [
@@ -239,7 +242,7 @@ export function IntlNavbar({ locale }: IntlNavbarProps) {
             </div>
           ) : (
             <Link
-              href={`/${locale}/auth`}
+              href={authHref}
               className="py-2.5 px-6 rounded-xl text-sm font-bold bg-slate-900 text-white hover:bg-[#00A884] transition-colors"
             >
               {t.signIn}
@@ -332,7 +335,7 @@ export function IntlNavbar({ locale }: IntlNavbarProps) {
                 </div>
               ) : (
                 <Button variant="default" className="w-full" asChild>
-                  <Link href={`/${locale}/auth`} onClick={() => setMobileMenuOpen(false)}>
+                  <Link href={authHref} onClick={() => setMobileMenuOpen(false)}>
                     {t.signIn}
                   </Link>
                 </Button>

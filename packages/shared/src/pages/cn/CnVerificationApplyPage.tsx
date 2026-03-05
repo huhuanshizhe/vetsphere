@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   FileText, Upload, Check, ArrowRight, ArrowLeft, AlertCircle,
   Sparkles, User, Building2, Briefcase, X, Image, File
@@ -48,6 +48,7 @@ const CnVerificationApplyPage: React.FC = () => {
   const { locale } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const fromOnboarding = searchParams.get('from') === 'onboarding';
   
   const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +75,7 @@ const CnVerificationApplyPage: React.FC = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          router.push(`/${locale}/auth`);
+          router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
           return;
         }
         const token = session.access_token;
@@ -117,25 +118,31 @@ const CnVerificationApplyPage: React.FC = () => {
         
         if (verRes.ok) {
           const verData = await verRes.json();
-          if (verData.id) {
+          if (verData.hasVerification && verData.verification) {
+            const ver = verData.verification;
             // Can only edit draft or rejected
-            if (!['draft', 'rejected'].includes(verData.status)) {
+            if (!['draft', 'rejected'].includes(ver.status)) {
               router.push(`/${locale}/verification/status`);
               return;
             }
             
             setFormData({
-              id: verData.id,
-              status: verData.status,
-              verificationType: verData.verificationType || identityData.identityType,
-              realName: verData.realName || '',
-              organizationName: verData.organizationName || '',
-              positionTitle: verData.positionTitle || '',
-              specialtyTags: verData.specialtyTags || [],
-              typeSpecificFields: verData.typeSpecificFields || {},
-              agreeVerificationStatement: verData.agreeVerificationStatement || false,
-              documents: verData.documents || [],
-              rejectReason: verData.rejectReason,
+              id: ver.id,
+              status: ver.status,
+              verificationType: ver.verificationType || identityData.identityType,
+              realName: ver.realName || '',
+              organizationName: ver.organizationName || '',
+              positionTitle: ver.positionTitle || '',
+              specialtyTags: ver.specialtyTags || [],
+              typeSpecificFields: ver.typeSpecificFields || {},
+              agreeVerificationStatement: ver.agreeVerificationStatement || false,
+              documents: (ver.documents || []).map((d: any) => ({
+                id: d.id,
+                documentType: d.docTypeDesc || d.docType || '',
+                documentUrl: d.fileUrl || '',
+                fileName: d.fileName,
+              })),
+              rejectReason: ver.rejectReason,
             });
           } else {
             // No verification yet, set type from identity

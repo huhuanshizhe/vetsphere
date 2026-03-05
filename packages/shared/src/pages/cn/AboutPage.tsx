@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   GraduationCap, Stethoscope, TrendingUp, Users, Heart,
   Target, Award, Globe, ArrowRight, CheckCircle2
@@ -73,6 +74,9 @@ const VALUE_COLORS = {
 };
 
 export function AboutPage({ locale }: AboutPageProps) {
+  const pathname = usePathname();
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero */}
@@ -210,7 +214,7 @@ export function AboutPage({ locale }: AboutPageProps) {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
-              href={`/${locale}/auth`}
+              href={authHref}
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-emerald-700 rounded-xl font-bold hover:bg-emerald-50 transition-colors"
             >
               立即加入

@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { api } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -46,6 +46,7 @@ const defaultDimensions: CategoryDimension[] = [
 const ShopPageClient: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { addToCart } = useCart();
   const { t, locale, language } = useLanguage();
   const { isAuthenticated, user } = useAuth();
@@ -102,7 +103,7 @@ const ShopPageClient: React.FC = () => {
     e.stopPropagation();
     
     if (!isAuthenticated) {
-        router.push(`/${locale}/auth`);
+        router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
         return;
     }
 
@@ -132,7 +133,7 @@ const ShopPageClient: React.FC = () => {
 
   const handleBuyNow = (product: Product) => {
     if (!isAuthenticated) {
-        router.push(`/${locale}/auth`);
+        router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
         return;
     }
     addToCart({ 
@@ -472,7 +473,7 @@ const ShopPageClient: React.FC = () => {
                     {isAuthenticated ? (
                         <p className="text-3xl font-black text-slate-900 tracking-tighter">¥{selectedProduct.price.toLocaleString()}</p>
                     ) : (
-                        <button onClick={() => router.push(`/${locale}/auth`)} className="text-xl font-black text-vs hover:underline">🔒 {t.auth.loginToView}</button>
+                        <button onClick={() => router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`)} className="text-xl font-black text-vs hover:underline">🔒 {t.auth.loginToView}</button>
                     )}
                  </div>
                  <button 

@@ -48,25 +48,28 @@ export async function GET(
     
     const { id } = await params;
     
-    // 获取认证详情
+    // 获取认证详情 - 不使用 join，因为外键关系可能不存在
     const { data: verification, error: queryError } = await supabaseAdmin
       .from('cn_verification_requests')
-      .select(`
-        *,
-        documents:cn_verification_documents(*),
-        cn_users!inner(mobile, status, registered_at, last_login_at),
-        cn_user_profiles(
-          display_name, real_name, avatar_file_id, organization_name,
-          job_title, experience_years, interest_tags, bio, identity_fields
-        ),
-        cn_user_identity_profiles(identity_type, identity_group, identity_group_v2, doctor_subtype, identity_selected_at)
-      `)
+      .select('*, documents:cn_verification_documents(*)')
       .eq('id', id)
       .single();
     
     if (queryError || !verification) {
+      console.error('Query error:', queryError);
       return NextResponse.json({ error: '未找到认证申请' }, { status: 404 });
     }
+    
+    // 单独查询用户相关信息
+    const [userRes, profileRes, identityRes] = await Promise.all([
+      supabaseAdmin.from('cn_users').select('mobile, status, registered_at, last_login_at').eq('id', verification.user_id).single(),
+      supabaseAdmin.from('cn_user_profiles').select('display_name, real_name, avatar_file_id, organization_name, job_title, experience_years, interest_tags, bio, identity_fields').eq('user_id', verification.user_id).single(),
+      supabaseAdmin.from('cn_user_identity_profiles').select('identity_type, identity_group, identity_group_v2, doctor_subtype, identity_selected_at').eq('user_id', verification.user_id).single(),
+    ]);
+    
+    const cnUser = userRes.data;
+    const cnProfile = profileRes.data;
+    const cnIdentity = identityRes.data;
     
     // 获取审核日志
     const { data: auditLogs } = await supabaseAdmin
@@ -109,29 +112,29 @@ export async function GET(
         createdAt: verification.created_at,
         updatedAt: verification.updated_at,
       },
-      user: {
-        mobile: verification.cn_users?.mobile,
-        status: verification.cn_users?.status,
-        registeredAt: verification.cn_users?.registered_at,
-        lastLoginAt: verification.cn_users?.last_login_at,
-      },
-      profile: verification.cn_user_profiles ? {
-        displayName: verification.cn_user_profiles.display_name,
-        realName: verification.cn_user_profiles.real_name,
-        avatarUrl: verification.cn_user_profiles.avatar_file_id,
-        organizationName: verification.cn_user_profiles.organization_name,
-        jobTitle: verification.cn_user_profiles.job_title,
-        experienceYears: verification.cn_user_profiles.experience_years,
-        interestTags: verification.cn_user_profiles.interest_tags || [],
-        bio: verification.cn_user_profiles.bio,
-        identityFields: verification.cn_user_profiles.identity_fields || {},
+      user: cnUser ? {
+        mobile: cnUser.mobile,
+        status: cnUser.status,
+        registeredAt: cnUser.registered_at,
+        lastLoginAt: cnUser.last_login_at,
       } : null,
-      identity: verification.cn_user_identity_profiles ? {
-        identityType: verification.cn_user_identity_profiles.identity_type,
-        identityGroup: verification.cn_user_identity_profiles.identity_group,
-        identityGroupV2: verification.cn_user_identity_profiles.identity_group_v2,
-        doctorSubtype: verification.cn_user_identity_profiles.doctor_subtype,
-        identitySelectedAt: verification.cn_user_identity_profiles.identity_selected_at,
+      profile: cnProfile ? {
+        displayName: cnProfile.display_name,
+        realName: cnProfile.real_name,
+        avatarUrl: cnProfile.avatar_file_id,
+        organizationName: cnProfile.organization_name,
+        jobTitle: cnProfile.job_title,
+        experienceYears: cnProfile.experience_years,
+        interestTags: cnProfile.interest_tags || [],
+        bio: cnProfile.bio,
+        identityFields: cnProfile.identity_fields || {},
+      } : null,
+      identity: cnIdentity ? {
+        identityType: cnIdentity.identity_type,
+        identityGroup: cnIdentity.identity_group,
+        identityGroupV2: cnIdentity.identity_group_v2,
+        doctorSubtype: cnIdentity.doctor_subtype,
+        identitySelectedAt: cnIdentity.identity_selected_at,
       } : null,
       auditLogs: (auditLogs || []).map((log: any) => ({
         id: log.id,
@@ -177,7 +180,7 @@ export async function POST(
     const { action, rejectReason, reviewNote, approvedLevel } = body;
     
     // 验证action
-    if (!['approve', 'reject', 'start_review'].includes(action)) {
+    if (!['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: '无效的操作' }, { status: 400 });
     }
     
@@ -192,16 +195,11 @@ export async function POST(
       return NextResponse.json({ error: '未找到认证申请' }, { status: 404 });
     }
     
-    // 状态流转验证
-    const allowedTransitions: Record<string, string[]> = {
-      start_review: ['submitted'],
-      approve: ['submitted', 'under_review'],
-      reject: ['submitted', 'under_review'],
-    };
-    
-    if (!allowedTransitions[action].includes(verification.status)) {
+    // 状态流转验证：允许从 submitted 或 under_review 状态审核
+    const reviewableStatuses = ['submitted', 'under_review', 'pending_review'];
+    if (!reviewableStatuses.includes(verification.status)) {
       return NextResponse.json(
-        { error: `当前状态(${verification.status})不允许执行${action}操作` },
+        { error: `当前状态(${verification.status})不允许审核操作` },
         { status: 400 }
       );
     }
@@ -219,11 +217,6 @@ export async function POST(
     let newStatus: string;
     
     switch (action) {
-      case 'start_review':
-        newStatus = 'under_review';
-        updateData.status = newStatus;
-        break;
-        
       case 'approve':
         newStatus = 'approved';
         updateData.status = newStatus;
@@ -313,7 +306,7 @@ export async function POST(
       success: true,
       action,
       newStatus,
-      message: action === 'approve' ? '审核通过' : action === 'reject' ? '已驳回' : '已开始审核',
+      message: action === 'approve' ? '审核通过' : '已驳回',
     });
     
   } catch (err) {

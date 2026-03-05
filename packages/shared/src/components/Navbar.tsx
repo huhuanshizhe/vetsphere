@@ -39,6 +39,7 @@ const Navbar: React.FC = () => {
 
   // Helper to create locale-aware links
   const localePath = (path: string) => `/${locale}${path}`;
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
 
   // Check if path is active (ignoring locale prefix)
   const isActive = (path: string) => {
@@ -250,7 +251,7 @@ const Navbar: React.FC = () => {
             </div>
           ) : (
             <Link
-              href={localePath('/auth')}
+              href={authHref}
               className="py-2.5 px-6 rounded-xl text-sm font-bold bg-slate-900 text-white hover:bg-[#00A884] transition-colors"
             >
               {t.nav.login}
@@ -308,7 +309,7 @@ const Navbar: React.FC = () => {
                 </>
               ) : (
                 <Link
-                  href={localePath('/auth')}
+                  href={authHref}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block py-2.5 px-6 rounded-xl text-sm font-bold bg-slate-900 text-white text-center"
                 >

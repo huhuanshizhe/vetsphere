@@ -14,8 +14,9 @@ import {
   StatCard,
   ConfirmDialog,
 } from '@/components/ui';
+import { supabase } from '@vetsphere/shared/services/supabase';
 
-type FilterStatus = 'all' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+type FilterStatus = 'all' | 'submitted' | 'approved' | 'rejected';
 
 interface VerificationItem {
   id: string;
@@ -41,7 +42,6 @@ export default function CnVerificationsPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     submitted: 0,
-    underReview: 0,
     approved: 0,
     rejected: 0,
   });
@@ -56,6 +56,7 @@ export default function CnVerificationsPage() {
 
   // Action state
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     type: 'approve' | 'reject';
@@ -63,10 +64,22 @@ export default function CnVerificationsPage() {
   }>({ open: false, type: 'approve', verification: null });
   const [rejectReason, setRejectReason] = useState('');
 
+  // 获取 access token
+  const getAccessToken = async (): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  };
+
   // Load data
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const token = await getAccessToken();
+      if (!token) {
+        console.error('No access token');
+        return;
+      }
+
       // Build query params
       const params = new URLSearchParams();
       if (filterStatus !== 'all') {
@@ -82,7 +95,7 @@ export default function CnVerificationsPage() {
       params.set('pageSize', String(pageSize));
 
       const res = await fetch(`/api/v1/admin/cn-verifications?${params.toString()}`, {
-        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) {
@@ -96,7 +109,6 @@ export default function CnVerificationsPage() {
       // Load stats (simple counts from current data - in production, use separate API)
       setStats({
         submitted: data.items?.filter((v: VerificationItem) => v.status === 'submitted').length || 0,
-        underReview: data.items?.filter((v: VerificationItem) => v.status === 'under_review').length || 0,
         approved: data.items?.filter((v: VerificationItem) => v.status === 'approved').length || 0,
         rejected: data.items?.filter((v: VerificationItem) => v.status === 'rejected').length || 0,
       });
@@ -117,11 +129,20 @@ export default function CnVerificationsPage() {
     if (!confirmDialog.verification) return;
     
     setActionLoading(true);
+    setActionMessage(null);
     try {
+      const token = await getAccessToken();
+      if (!token) {
+        setActionMessage({ type: 'error', text: '登录已过期，请重新登录' });
+        return;
+      }
+
       const res = await fetch(`/api/v1/admin/cn-verifications/${confirmDialog.verification.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ action: 'approve' }),
       });
 
@@ -130,11 +151,12 @@ export default function CnVerificationsPage() {
         throw new Error(data.error || 'Approval failed');
       }
 
+      setActionMessage({ type: 'success', text: `已通过 ${confirmDialog.verification.realName} 的认证申请` });
       setConfirmDialog({ open: false, type: 'approve', verification: null });
       loadData();
     } catch (error: any) {
       console.error('Failed to approve:', error);
-      alert(error.message || '审核失败，请重试');
+      setActionMessage({ type: 'error', text: error.message || '审核失败，请重试' });
     } finally {
       setActionLoading(false);
     }
@@ -145,11 +167,20 @@ export default function CnVerificationsPage() {
     if (!confirmDialog.verification || !rejectReason.trim()) return;
     
     setActionLoading(true);
+    setActionMessage(null);
     try {
+      const token = await getAccessToken();
+      if (!token) {
+        setActionMessage({ type: 'error', text: '登录已过期，请重新登录' });
+        return;
+      }
+
       const res = await fetch(`/api/v1/admin/cn-verifications/${confirmDialog.verification.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ action: 'reject', rejectReason }),
       });
 
@@ -158,12 +189,13 @@ export default function CnVerificationsPage() {
         throw new Error(data.error || 'Rejection failed');
       }
 
+      setActionMessage({ type: 'success', text: `已驳回 ${confirmDialog.verification.realName} 的认证申请` });
       setConfirmDialog({ open: false, type: 'reject', verification: null });
       setRejectReason('');
       loadData();
     } catch (error: any) {
       console.error('Failed to reject:', error);
-      alert(error.message || '审核失败，请重试');
+      setActionMessage({ type: 'error', text: error.message || '审核失败，请重试' });
     } finally {
       setActionLoading(false);
     }
@@ -191,13 +223,24 @@ export default function CnVerificationsPage() {
   const statusLabels: Record<string, string> = {
     draft: '草稿',
     submitted: '待审核',
-    under_review: '审核中',
     approved: '已通过',
-    rejected: '已拒绝',
+    rejected: '已驳回',
   };
 
   return (
     <>
+      {/* Action Message */}
+      {actionMessage && (
+        <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-between ${
+          actionMessage.type === 'success' 
+            ? 'bg-green-50 text-green-800 border border-green-200' 
+            : 'bg-red-50 text-red-800 border border-red-200'
+        }`}>
+          <span>{actionMessage.text}</span>
+          <button onClick={() => setActionMessage(null)} className="ml-4 opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">CN站专业认证审核</h1>
@@ -205,16 +248,11 @@ export default function CnVerificationsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <StatCard
           label="待审核"
           value={stats.submitted}
           icon="⏳"
-        />
-        <StatCard
-          label="审核中"
-          value={stats.underReview}
-          icon="🔍"
         />
         <StatCard
           label="已通过"
@@ -222,7 +260,7 @@ export default function CnVerificationsPage() {
           icon="✅"
         />
         <StatCard
-          label="已拒绝"
+          label="已驳回"
           value={stats.rejected}
           icon="❌"
         />
@@ -256,9 +294,8 @@ export default function CnVerificationsPage() {
               options={[
                 { value: 'all', label: '全部状态' },
                 { value: 'submitted', label: '待审核' },
-                { value: 'under_review', label: '审核中' },
                 { value: 'approved', label: '已通过' },
-                { value: 'rejected', label: '已拒绝' },
+                { value: 'rejected', label: '已驳回' },
               ]}
             />
           </div>

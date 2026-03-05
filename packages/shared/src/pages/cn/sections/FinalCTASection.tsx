@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { UserPlus, ArrowRight, Shield } from 'lucide-react';
 
 interface FinalCTASectionProps {
@@ -10,6 +11,8 @@ interface FinalCTASectionProps {
 }
 
 export default function FinalCTASection({ locale, t }: FinalCTASectionProps) {
+  const pathname = usePathname();
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
   const h = t.cnHome;
   return (
     <section className="py-24 bg-gradient-to-b from-slate-900 to-slate-950 relative overflow-hidden">
@@ -33,7 +36,7 @@ export default function FinalCTASection({ locale, t }: FinalCTASectionProps) {
 
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link
-            href={`/${locale}/auth`}
+            href={authHref}
             className="inline-flex items-center justify-center gap-2 px-10 py-4 bg-[#00A884] text-white rounded-2xl font-bold text-base hover:bg-[#009474] transition-all shadow-lg shadow-[#00A884]/20 hover:-translate-y-0.5"
           >
             <UserPlus className="w-5 h-5" />

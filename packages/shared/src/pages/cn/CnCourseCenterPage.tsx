@@ -716,7 +716,7 @@ const AddToPlanModal: React.FC<{
 
 const CnCourseCenterPage: React.FC = () => {
   const { locale } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, canAccessDoctorWorkspace } = useAuth();
   const { userState } = useCnAuthGuard({ showVerificationPrompt: true });
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -742,8 +742,12 @@ const CnCourseCenterPage: React.FC = () => {
   });
   const [showAddModal, setShowAddModal] = useState(false);
   const [addedCourseName, setAddedCourseName] = useState('');
+  const [isAddingToPlan, setIsAddingToPlan] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showAIAdvisor, setShowAIAdvisor] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => { setIsMounted(true); }, []);
   
   // ========== 从 URL 解析成长体系参数 ==========
   useEffect(() => {
@@ -815,7 +819,7 @@ const CnCourseCenterPage: React.FC = () => {
   useEffect(() => {
     api.getCourses().then(data => {
       const publishedCourses = data
-        .filter(c => c.status === 'Published')
+        .filter(c => c.status === 'published')
         .map(inferCourseMetadata);
       setCourses(publishedCourses);
       setLoading(false);
@@ -1003,27 +1007,45 @@ const CnCourseCenterPage: React.FC = () => {
   }, []);
   
   // 处理加入学习计划
-  const handleAddToPlan = (course: ExtendedCourse) => {
+  const handleAddToPlan = async (course: ExtendedCourse) => {
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth?redirect=/doctor/courses`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/user?tab=courses`)}`);
       return;
     }
+    if (isAddingToPlan) return;
     
-    // 模拟加入计划
-    setAddedCourseName(course.title_zh || course.title);
-    setShowAddModal(true);
+    setIsAddingToPlan(true);
+    try {
+      await api.addToLearningPlan(course.id);
+      setAddedCourseName(course.title_zh || course.title);
+      setShowAddModal(true);
+    } catch (error) {
+      console.error('加入学习计划失败:', error);
+      alert('加入学习计划失败，请稍后重试');
+    } finally {
+      setIsAddingToPlan(false);
+    }
   };
   
   // 处理公益课报名
-  const handlePublicCourseEnroll = (course: PublicCourse) => {
+  const handlePublicCourseEnroll = async (course: PublicCourse) => {
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth?redirect=/courses/${course.slug}?source=public-course`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/courses/${course.slug}?source=public-course`)}`);
       return;
     }
+    if (isAddingToPlan) return;
     
-    // 模拟报名成功
-    setAddedCourseName(course.title);
-    setShowAddModal(true);
+    setIsAddingToPlan(true);
+    try {
+      await api.addToLearningPlan(course.id);
+      setAddedCourseName(course.title);
+      setShowAddModal(true);
+    } catch (error) {
+      console.error('加入学习计划失败:', error);
+      alert('加入学习计划失败，请稍后重试');
+    } finally {
+      setIsAddingToPlan(false);
+    }
   };
   
   return (
@@ -1205,20 +1227,23 @@ const CnCourseCenterPage: React.FC = () => {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="max-w-3xl mx-auto text-center text-white">
             <h2 className="text-3xl font-black mb-4">
-              {isAuthenticated ? '继续你的学习之旅' : '登录后解锁个性化学习计划'}
+              {isMounted && isAuthenticated ? '继续你的学习之旅' : '登录后解锁个性化学习计划'}
             </h2>
             <p className="text-slate-400 mb-8">
-              {isAuthenticated 
+              {isMounted && isAuthenticated 
                 ? '查看你的学习进度，管理已加入的课程计划' 
                 : '加入 VetSphere，获取针对你职业阶段的课程推荐和学习规划'
               }
             </p>
             <Link
-              href={isAuthenticated ? `/${locale}/doctor/courses` : `/${locale}/auth?redirect=/doctor/courses`}
+              href={isMounted && isAuthenticated 
+                ? (canAccessDoctorWorkspace ? `/${locale}/doctor/courses` : `/${locale}/user?tab=courses`)
+                : `/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/user?tab=courses`)}`
+              }
               className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl font-bold hover:bg-slate-100 transition-all"
             >
               <GraduationCap className="w-5 h-5" />
-              <span>{isAuthenticated ? '我的课程' : '立即登录'}</span>
+              <span>{isMounted && isAuthenticated ? '我的课程' : '立即登录'}</span>
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -1230,7 +1255,7 @@ const CnCourseCenterPage: React.FC = () => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onContinueBrowse={() => setShowAddModal(false)}
-        onGoToMyCourses={() => router.push(`/${locale}/doctor/courses`)}
+        onGoToMyCourses={() => router.push(canAccessDoctorWorkspace ? `/${locale}/doctor/courses` : `/${locale}/user?tab=courses`)}
         courseName={addedCourseName}
       />
       

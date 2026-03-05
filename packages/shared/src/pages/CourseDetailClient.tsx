@@ -218,7 +218,7 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
     if (!course) return;
     
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     
@@ -713,7 +713,7 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
                     </span>
                   ) : (
                     <button 
-                      onClick={() => router.push(`/${locale}/auth`)}
+                      onClick={() => router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`)}
                       className="text-sm font-black text-vs hover:underline flex items-center gap-1"
                     >
                       &#128274; {language === 'zh' ? '登录查看' : language === 'ja' ? 'ログインして確認' : 'Login to View'}

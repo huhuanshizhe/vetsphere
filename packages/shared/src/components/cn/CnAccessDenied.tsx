@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
 import { getDeniedMessage } from '../../hooks/useCnAuthGuard';
 import { Lock, AlertCircle, Shield, Clock, UserX, ArrowRight, Home } from 'lucide-react';
@@ -44,6 +45,7 @@ const CnAccessDenied: React.FC<CnAccessDeniedProps> = ({
   onVerificationClick,
 }) => {
   const { locale } = useLanguage();
+  const pathname = usePathname();
   const { title, description } = getDeniedMessage(reason);
   const displayTitle = customTitle || title;
   const displayDescription = customDescription || description;
@@ -57,7 +59,7 @@ const CnAccessDenied: React.FC<CnAccessDeniedProps> = ({
       case 'requires_login':
         return (
           <Link
-            href={`/${locale}/auth`}
+            href={`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`}
             className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all"
           >
             <span>去登录</span>

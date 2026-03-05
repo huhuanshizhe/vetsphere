@@ -6,6 +6,7 @@ import {
   ChevronRight, ArrowRight, CheckCircle2, Sparkles, BookOpen,
   Stethoscope, Home, Lock, Star, Rocket, Building, MapPin
 } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -96,10 +97,12 @@ const LOGIN_BENEFITS = [
 export function CareerDevelopmentPage({ locale }: { locale: string }) {
   const { t } = useLanguage();
   const { isAuthenticated, user } = useAuth();
+  const pathname = usePathname();
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
 
   // 根据登录状态决定跳转目标
-  const careerHref = isAuthenticated ? `/${locale}/doctor/career` : `/${locale}/auth`;
-  const startupHref = isAuthenticated ? `/${locale}/doctor/startup` : `/${locale}/auth`;
+  const careerHref = isAuthenticated ? `/${locale}/doctor/career` : authHref;
+  const startupHref = isAuthenticated ? `/${locale}/doctor/startup` : authHref;
   const careerCtaText = isAuthenticated ? '查看职业机会' : '登录后查看职业机会';
   const startupCtaText = isAuthenticated ? '查看创业中心' : '登录后查看创业中心';
 
@@ -137,7 +140,7 @@ export function CareerDevelopmentPage({ locale }: { locale: string }) {
                 </a>
               ) : (
                 <a
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 text-white border border-white/20 rounded-xl text-sm font-semibold hover:bg-white/20 transition-colors"
                 >
                   登录后查看个性化建议
@@ -451,7 +454,7 @@ export function CareerDevelopmentPage({ locale }: { locale: string }) {
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
               <a
-                href={`/${locale}/auth`}
+                href={authHref}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors"
               >
                 立即登录查看建议
@@ -547,7 +550,7 @@ export function CareerDevelopmentPage({ locale }: { locale: string }) {
             ) : (
               <>
                 <a
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-amber-600 rounded-xl text-sm font-bold hover:bg-amber-50 transition-colors"
                 >
                   立即登录查看建议

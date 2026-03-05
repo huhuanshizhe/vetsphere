@@ -24,6 +24,12 @@ export default function DoctorVerificationsPage() {
   const supabase = createClient();
   const { currentSite } = useSite();
   
+  // 获取 access token
+  const getAccessToken = async (): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  };
+  
   // 状态
   const [applications, setApplications] = useState<DoctorApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,29 +120,31 @@ export default function DoctorVerificationsPage() {
     
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from('doctor_applications')
-        .update({
-          status: 'approved',
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq('id', confirmDialog.application.id);
+      const token = await getAccessToken();
+      if (!token) {
+        alert('登录已过期，请重新登录');
+        return;
+      }
 
-      if (error) throw error;
-
-      // 记录审核日志
-      await supabase.from('doctor_audit_logs').insert({
-        application_id: confirmDialog.application.id,
-        action: 'approve',
-        old_status: confirmDialog.application.status,
-        new_status: 'approved',
+      const res = await fetch(`/api/admin/doctor-applications/${confirmDialog.application.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: 'approve' }),
       });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '审核失败');
+      }
 
       setConfirmDialog({ open: false, type: 'approve', application: null });
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to approve:', error);
-      alert('审核失败，请重试');
+      alert(error.message || '审核失败，请重试');
     } finally {
       setActionLoading(false);
     }
@@ -148,32 +156,32 @@ export default function DoctorVerificationsPage() {
     
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from('doctor_applications')
-        .update({
-          status: 'rejected',
-          rejection_reason: rejectReason,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq('id', confirmDialog.application.id);
+      const token = await getAccessToken();
+      if (!token) {
+        alert('登录已过期，请重新登录');
+        return;
+      }
 
-      if (error) throw error;
-
-      // 记录审核日志
-      await supabase.from('doctor_audit_logs').insert({
-        application_id: confirmDialog.application.id,
-        action: 'reject',
-        old_status: confirmDialog.application.status,
-        new_status: 'rejected',
-        reason: rejectReason,
+      const res = await fetch(`/api/admin/doctor-applications/${confirmDialog.application.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: 'reject', reason: rejectReason }),
       });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '审核失败');
+      }
 
       setConfirmDialog({ open: false, type: 'reject', application: null });
       setRejectReason('');
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to reject:', error);
-      alert('审核失败，请重试');
+      alert(error.message || '审核失败，请重试');
     } finally {
       setActionLoading(false);
     }

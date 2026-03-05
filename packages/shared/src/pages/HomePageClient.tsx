@@ -3,13 +3,14 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Specialty } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteConfig } from '../context/SiteConfigContext';
 
 const Home: React.FC = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const { t } = useLanguage();
   const { isCN } = useSiteConfig();
 
@@ -391,7 +392,7 @@ const Home: React.FC = () => {
                  {t.home.ctaDesc}
                </p>
                <div className="flex flex-col sm:flex-row justify-center gap-6 pt-6">
-                 <Link href="/auth" className="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold text-base hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-900/20">
+                 <Link href={`/auth?redirect=${encodeURIComponent(pathname)}`} className="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold text-base hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-900/20">
                    {t.home.ctaButtonPrimary}
                  </Link>
                  <Link href="/community" className="px-10 py-4 bg-white/10 text-white border border-white/20 rounded-2xl font-bold text-base hover:bg-white/20 transition-all">
