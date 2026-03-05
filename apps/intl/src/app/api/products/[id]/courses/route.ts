@@ -63,7 +63,7 @@ export async function GET(
     const relations = (data || [])
       .filter(item => {
         const course = item.course as unknown as Record<string, unknown> | null;
-        return course && course.status === 'Published';
+        return course && course.status === 'published';
       })
       .map(item => {
         const course = item.course as unknown as Record<string, unknown> | null;
@@ -109,7 +109,7 @@ export async function GET(
       for (const r of rels) {
         if (r.productId === productId) {
           const course = courseMap[courseId];
-          if (course && course.status === 'Published') {
+          if (course && course.status === 'published') {
             fallback.push({
               id: r.id,
               courseId: r.courseId,
