@@ -53,7 +53,7 @@ const initialFormData: CourseFormData = {
   endDate: '',
   enrollmentDeadline: '',
   agenda: [],
-  status: 'Draft',
+  status: 'draft',
   services: {
     accommodation: undefined,
     meals: undefined,

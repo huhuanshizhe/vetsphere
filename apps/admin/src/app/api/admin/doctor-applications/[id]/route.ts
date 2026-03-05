@@ -6,19 +6,20 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-// 检查是否为管理员并返回用户 ID
-async function getAdminUser(token: string): Promise<string | null> {
+// 验证Admin权限，返回用户信息
+async function verifyAdmin(token: string) {
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
     if (error || !user) return null;
     
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, full_name')
       .eq('id', user.id)
       .single();
     
-    return profile?.role === 'Admin' ? user.id : null;
+    if (!profile || profile.role !== 'Admin') return null;
+    return { user, profile };
   } catch {
     return null;
   }
@@ -68,8 +69,8 @@ export async function GET(
     }
     
     const token = authHeader.replace('Bearer ', '');
-    const adminId = await getAdminUser(token);
-    if (!adminId) {
+    const admin = await verifyAdmin(token);
+    if (!admin) {
       return NextResponse.json({ error: '权限不足' }, { status: 403 });
     }
     
@@ -106,10 +107,12 @@ export async function POST(
     }
     
     const token = authHeader.replace('Bearer ', '');
-    const adminId = await getAdminUser(token);
-    if (!adminId) {
+    const admin = await verifyAdmin(token);
+    if (!admin) {
       return NextResponse.json({ error: '权限不足' }, { status: 403 });
     }
+    
+    const { user: adminUser, profile: adminProfile } = admin;
     
     const body = await request.json();
     const { action, reason } = body;
@@ -121,7 +124,7 @@ export async function POST(
     // 获取现有申请
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('doctor_applications')
-      .select('status')
+      .select('id, user_id, status, site_code')
       .eq('id', id)
       .single();
     
@@ -132,24 +135,28 @@ export async function POST(
     // 只能审核待审核状态的申请
     if (existing.status !== 'pending_review') {
       return NextResponse.json(
-        { error: '只能审核待审核状态的申请' }, 
+        { error: `当前状态(${existing.status})不允许审核操作` }, 
         { status: 400 }
       );
     }
     
     // 执行审核操作
     const updateData: any = {
-      reviewed_by: adminId,
+      reviewed_by: adminUser.id,
       reviewed_at: new Date().toISOString(),
     };
     
+    let newStatus: string;
+    
     if (action === 'approve') {
+      newStatus = 'approved';
       updateData.status = 'approved';
       updateData.rejection_reason = null;
     } else {
       if (!reason) {
         return NextResponse.json({ error: '请填写拒绝原因' }, { status: 400 });
       }
+      newStatus = 'rejected';
       updateData.status = 'rejected';
       updateData.rejection_reason = reason;
     }
@@ -166,9 +173,70 @@ export async function POST(
       return NextResponse.json({ error: '审核操作失败' }, { status: 500 });
     }
     
+    // 记录审核日志（使用 Service Role Key 绕过 RLS）
+    const { error: auditError } = await supabaseAdmin
+      .from('doctor_audit_logs')
+      .insert({
+        application_id: id,
+        action,
+        old_status: existing.status,
+        new_status: newStatus,
+        reason: action === 'reject' ? reason : null,
+        performed_by: adminUser.id,
+      });
+    
+    if (auditError) {
+      // 审核日志写入失败不阻断主流程，但记录错误
+      console.error('Error writing audit log:', auditError);
+    }
+    
+    // 更新用户状态快照
+    if (existing.user_id) {
+      const snapshotUpdate: any = {
+        verification_status: newStatus,
+        updated_at: new Date().toISOString(),
+      };
+      
+      if (action === 'approve') {
+        snapshotUpdate.identity_verified_flag = true;
+        snapshotUpdate.access_level = 'verified_professional';
+        snapshotUpdate.redirect_hint = 'go_home';
+        snapshotUpdate.doctor_privilege_status = 'approved';
+        snapshotUpdate.permission_flags = {
+          can_access_user_center: true,
+          can_purchase_courses: true,
+          can_purchase_products: true,
+          can_manage_orders: true,
+          can_access_growth_system: true,
+          can_access_doctor_workspace: true,
+          can_access_medical_features: true,
+          can_access_professional_courses: true,
+          can_view_restricted_product_info: true,
+        };
+      } else if (action === 'reject') {
+        snapshotUpdate.verification_reject_reason = reason;
+        snapshotUpdate.access_level = 'profiled_user';
+        snapshotUpdate.redirect_hint = 'show_rejection_prompt';
+        snapshotUpdate.doctor_privilege_status = 'rejected';
+      }
+      
+      const siteCode = existing.site_code || 'cn';
+      const { error: snapshotError } = await supabaseAdmin
+        .from('cn_user_state_snapshots')
+        .update(snapshotUpdate)
+        .eq('user_id', existing.user_id)
+        .eq('site_code', siteCode);
+      
+      if (snapshotError) {
+        console.error('Error updating user state snapshot:', snapshotError);
+      }
+    }
+    
     return NextResponse.json({
       success: true,
       message: action === 'approve' ? '已通过审核' : '已拒绝申请',
+      action,
+      newStatus,
       application: mapDbToClient(data),
     });
   } catch (err) {

@@ -75,7 +75,7 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         key: 'doctor-verifications',
         label: '医生审核',
         icon: 'ClipboardCheck',
-        href: '/doctor-verifications',
+        href: '/cn-verifications',
         permission: 'doctor_verify.view',
         siteScope: 'cn',
       },
@@ -127,6 +127,13 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         label: '课程列表',
         icon: 'BookOpen',
         href: '/courses',
+        permission: 'course.view',
+      },
+      {
+        key: 'courses-pending',
+        label: '待审核课程',
+        icon: 'ClipboardCheck',
+        href: '/courses?status=pending',
         permission: 'course.view',
       },
       {

@@ -13,7 +13,7 @@ type Locale = (typeof locales)[number];
 // Get course data by ID - tries DB first, falls back to constants
 async function getCourseById(id: string): Promise<Course | undefined> {
   try {
-    const { data, error } = await supabase.from('courses').select('*').eq('id', id).single();
+    const { data, error } = await supabase.from('courses').select('*').eq('id', id).eq('status', 'published').single();
     if (!error && data) {
       const c = data as any;
       return {
@@ -22,7 +22,7 @@ async function getCourseById(id: string): Promise<Course | undefined> {
         startDate: c.start_date, endDate: c.end_date,
         location: c.location || {}, instructor: c.instructor || {},
         imageUrl: c.image_url, description: c.description,
-        status: c.status || 'Published', agenda: c.agenda || []
+        status: c.status || 'published', agenda: c.agenda || []
       } as Course;
     }
   } catch {}

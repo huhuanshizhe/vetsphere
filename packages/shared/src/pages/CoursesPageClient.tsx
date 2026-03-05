@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { api } from '../services/api';
 import { Specialty, Course } from '../types';
 import { useCart } from '../context/CartContext';
@@ -25,6 +25,7 @@ const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAu
   const { t, language, locale } = useLanguage();
   const { isCN, isINTL } = useSiteConfig();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Helper for localized content
   const getLocalizedContent = () => {
@@ -141,7 +142,7 @@ const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAu
                 <p className="text-xl font-black text-slate-900">{(() => { const p = getLocalizedPrice(course, language); return `${p.symbol}${p.price.toLocaleString()}`; })()}</p>
               ) : (
                 <button 
-                  onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/auth`); }}
+                  onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`); }}
                   className="flex items-center gap-1.5 text-sm font-black text-vs uppercase hover:underline"
                 >
                   <span className="text-[14px]">🔒</span> {t.auth.loginToView}
@@ -173,6 +174,7 @@ const CourseCard: React.FC<{ course: Course; onSelect: (c: Course) => void; isAu
 const CoursesPageClient: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { t, language, locale } = useLanguage();  
   const { isAuthenticated, user } = useAuth();
   const { addNotification } = useNotification();
@@ -222,7 +224,7 @@ const CoursesPageClient: React.FC = () => {
 
   const handleRegister = (course: Course) => {
     if (!isAuthenticated) {
-        router.push(`/${locale}/auth`);
+        router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
         return;
     }
     // Capacity & deadline validation

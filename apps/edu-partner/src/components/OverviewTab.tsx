@@ -11,8 +11,8 @@ interface OverviewTabProps {
 
 export default function OverviewTab({ courses, orders, onAddCourse }: OverviewTabProps) {
   // Calculate statistics
-  const publishedCourses = courses.filter(c => c.status === 'Published').length;
-  const pendingCourses = courses.filter(c => c.status === 'Pending').length;
+  const publishedCourses = courses.filter(c => c.status === 'published').length;
+  const pendingCourses = courses.filter(c => c.status === 'pending').length;
   const totalEnrollments = courses.reduce((sum, c) => sum + (c.enrolledCount || 0), 0);
   
   // Calculate revenue from course orders
@@ -131,10 +131,10 @@ export default function OverviewTab({ courses, orders, onAddCourse }: OverviewTa
                 <div className="w-32 h-2 bg-red-500/20 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-red-500 rounded-full"
-                    style={{ width: `${courses.length ? (courses.filter(c => c.status === 'Rejected').length / courses.length) * 100 : 0}%` }}
+                    style={{ width: `${courses.length ? (courses.filter(c => c.status === 'rejected').length / courses.length) * 100 : 0}%` }}
                   />
                 </div>
-                <span className="text-white text-sm w-8">{courses.filter(c => c.status === 'Rejected').length}</span>
+                <span className="text-white text-sm w-8">{courses.filter(c => c.status === 'rejected').length}</span>
               </div>
             </div>
           </div>

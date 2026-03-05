@@ -138,8 +138,44 @@ export async function GET(request: NextRequest) {
       .eq('user_id', authUser.id)
       .single();
     
+    // 始终查询真实的认证请求状态（不依赖快照/触发器）
+    const { data: latestVerification } = await supabaseAdmin
+      .from('cn_verification_requests')
+      .select('status, reject_reason')
+      .eq('user_id', authUser.id)
+      .eq('site_code', 'cn')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    const realVerificationStatus = latestVerification?.status || 'not_started';
+    
     if (!stateError && stateData) {
-      userState = stateData;
+      // 视图成功返回，但用真实的认证状态覆盖快照中可能过时的值
+      const identityGroupV2FromView = stateData.identity_group_v2 || mapToGroupV2(stateData.identity_type);
+      
+      let realDoctorPrivilegeStatus = 'not_applicable';
+      if (identityGroupV2FromView === 'doctor') {
+        if (realVerificationStatus === 'approved') realDoctorPrivilegeStatus = 'approved';
+        else if (['submitted', 'under_review'].includes(realVerificationStatus)) realDoctorPrivilegeStatus = 'pending_review';
+        else if (realVerificationStatus === 'rejected') realDoctorPrivilegeStatus = 'rejected';
+        else realDoctorPrivilegeStatus = 'not_started';
+      }
+      
+      // 计算真实的 redirect_hint - 仅阻塞性条件
+      let realRedirectHint = 'go_home';
+      if (stateData.onboarding_status === 'identity_pending' && !stateData.identity_type) {
+        realRedirectHint = 'go_identity_select';
+      }
+      
+      userState = {
+        ...stateData,
+        verification_status: realVerificationStatus,
+        verification_reject_reason: latestVerification?.reject_reason || stateData.verification_reject_reason,
+        doctor_privilege_status: realDoctorPrivilegeStatus,
+        redirect_hint: realRedirectHint,
+        identity_verified_flag: realVerificationStatus === 'approved',
+      };
     } else {
       // 视图不存在或查询失败，手动聚合状态
       const [profileRes, identityRes, verificationRes, snapshotRes] = await Promise.all([
@@ -187,17 +223,13 @@ export async function GET(request: NextRequest) {
         else accessLevel = 'profiled_user';
       }
       
-      // 计算redirect_hint - 默认去首页
+      // 计算redirect_hint - 仅阻塞性条件才特殊跳转
       let redirectHint = 'go_home';
-      if (snapshot?.redirect_hint === 'go_identity_select' && onboardingStatus === 'identity_pending') {
+      
+      if (snapshot?.redirect_hint === 'go_identity_select' && onboardingStatus === 'identity_pending' && !identity) {
         redirectHint = 'go_identity_select';
-      } else if (snapshot?.redirect_hint === 'go_profile_complete' && onboardingStatus === 'profile_pending') {
-        redirectHint = 'go_profile_complete';
-      } else if (verificationStatus === 'rejected') {
-        redirectHint = 'show_rejection_prompt';
-      } else if (['submitted', 'under_review'].includes(verificationStatus)) {
-        redirectHint = 'show_verification_pending';
       }
+      // 认证状态（pending/rejected）不再作为阻塞式跳转 - 用户可通过入口主动查看
       
       userState = {
         user_id: authUser.id,

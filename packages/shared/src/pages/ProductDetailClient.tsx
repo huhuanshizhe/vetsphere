@@ -44,7 +44,7 @@ const ProductDetailClient: React.FC<ProductDetailClientProps> = ({ productId }) 
     if (!product) return;
     
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     
@@ -72,7 +72,7 @@ const ProductDetailClient: React.FC<ProductDetailClientProps> = ({ productId }) 
     if (!product) return;
     
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     

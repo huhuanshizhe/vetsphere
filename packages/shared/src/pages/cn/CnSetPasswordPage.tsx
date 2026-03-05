@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   Lock, Eye, EyeOff, ArrowRight, ArrowLeft, Phone, MessageSquare, Check
 } from 'lucide-react';
@@ -19,6 +19,7 @@ const CnSetPasswordPage: React.FC = () => {
   const { locale } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   
   // Page mode: 'reset' for forgot password, 'set' for setting new password
   const mode: PageMode = (searchParams.get('mode') as PageMode) || 'set';
@@ -204,7 +205,7 @@ const CnSetPasswordPage: React.FC = () => {
   // Handle continue from success
   const handleContinue = () => {
     if (requireRelogin) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
     } else {
       router.push(`/${locale}`);
     }
@@ -431,7 +432,7 @@ const CnSetPasswordPage: React.FC = () => {
           {step !== 'success' && (
             <div className="mt-8 text-center">
               <Link 
-                href={`/${locale}/auth`}
+                href={`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`}
                 className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
               >
                 返回登录

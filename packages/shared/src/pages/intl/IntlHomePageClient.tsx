@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteConfig } from '../../context/SiteConfigContext';
 import { Specialty } from '../../types';
@@ -24,6 +24,7 @@ import {
 
 export default function IntlHomePageClient() {
   const router = useRouter();
+  const pathname = usePathname();
   const { t, language } = useLanguage();
   const { siteConfig } = useSiteConfig();
 
@@ -370,7 +371,7 @@ export default function IntlHomePageClient() {
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-6 pt-6">
                 <Link
-                  href={`/${locale}/auth`}
+                  href={`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`}
                   className="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold text-base hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-900/20"
                 >
                   {h.ctaButton1}

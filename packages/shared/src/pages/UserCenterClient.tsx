@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNotification } from '../context/NotificationContext';
@@ -18,9 +18,18 @@ const UserCenterClient: React.FC = () => {
   const { t, locale } = useLanguage();
   const { addNotification } = useNotification();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const tabParam = searchParams?.get('tab');
+    const validTabs: TabType[] = ['overview', 'profile', 'orders', 'courses', 'points', 'settings'];
+    if (tabParam && validTabs.includes(tabParam as TabType)) {
+      return tabParam as TabType;
+    }
+    return 'overview';
+  });
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
@@ -28,6 +37,7 @@ const UserCenterClient: React.FC = () => {
   const [pointsHistory, setPointsHistory] = useState<any[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [learningPlan, setLearningPlan] = useState<any[]>([]);
 
   // Profile edit state
   const [isEditing, setIsEditing] = useState(false);
@@ -51,7 +61,7 @@ const UserCenterClient: React.FC = () => {
     // Wait for AuthContext to finish initializing
     if (authLoading) return;
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     loadUserData();
@@ -77,15 +87,19 @@ const UserCenterClient: React.FC = () => {
         api.getEnrollments(user.id),
         api.fetchUserPoints(user.id),
         api.getPointsHistory(user.id),
-        api.getUserProfile(user.id)
+        api.getUserProfile(user.id),
+        api.getLearningProgress()
       ]);
 
-      const [ordersResult, enrollmentsResult, pointsResult, historyResult, profileResult] = results;
+      const [ordersResult, enrollmentsResult, pointsResult, historyResult, profileResult, learningResult] = results;
 
       if (ordersResult.status === 'fulfilled') setOrders(ordersResult.value || []);
       if (enrollmentsResult.status === 'fulfilled') setEnrollments(enrollmentsResult.value || []);
       if (pointsResult.status === 'fulfilled') setPointsData(pointsResult.value || { points: 0, level: 'Resident' });
       if (historyResult.status === 'fulfilled') setPointsHistory(historyResult.value || []);
+      if (learningResult.status === 'fulfilled' && learningResult.value) {
+        setLearningPlan(learningResult.value.items || []);
+      }
       
       // Load profile data into form
       if (profileResult.status === 'fulfilled' && profileResult.value) {
@@ -410,11 +424,11 @@ const UserCenterClient: React.FC = () => {
                           </p>
                         </div>
                         <Link
-                          href={`/${locale}/verification/apply`}
+                          href={['pending_review', 'rejected'].includes(doctorPrivilegeStatus || '') ? `/${locale}/verification/status` : `/${locale}/verification/apply`}
                           className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition flex items-center gap-2 flex-shrink-0"
                         >
                           {doctorPrivilegeStatus === 'pending_review' ? '查看进度' :
-                           doctorPrivilegeStatus === 'rejected' ? '重新认证' :
+                           doctorPrivilegeStatus === 'rejected' ? '查看详情' :
                            '立即认证'}
                           <ArrowRight className="w-4 h-4" />
                         </Link>
@@ -525,13 +539,17 @@ const UserCenterClient: React.FC = () => {
                     {/* 医生认证入口 - 所有未认证用户都可以看到 */}
                     {!canAccessDoctorWorkspace ? (
                       <Link 
-                        href={user.identityGroupV2 === 'doctor' ? `/${locale}/verification/apply` : `/${locale}/onboarding/identity?from=verification`}
+                        href={user.identityGroupV2 === 'doctor' 
+                          ? (['pending_review', 'rejected'].includes(doctorPrivilegeStatus || '') ? `/${locale}/verification/status` : `/${locale}/verification/apply`)
+                          : `/${locale}/onboarding/identity?from=verification`}
                         className="bg-gradient-to-br from-blue-50 to-emerald-50 border border-blue-200 rounded-2xl p-6 hover:shadow-lg hover:border-blue-400 transition group text-left"
                       >
                         <div className="text-3xl mb-3">🩺</div>
                         <h4 className="font-bold text-blue-700 group-hover:text-blue-800 transition">
                           {user.identityGroupV2 === 'doctor' 
-                            ? (doctorPrivilegeStatus === 'pending_review' ? '认证进度' : '医生身份认证')
+                            ? (doctorPrivilegeStatus === 'pending_review' ? '认证进度' 
+                               : doctorPrivilegeStatus === 'rejected' ? '认证未通过'
+                               : '医生身份认证')
                             : '申请医生认证'}
                         </h4>
                         <p className="text-sm text-slate-600 mt-1">
@@ -800,51 +818,103 @@ const UserCenterClient: React.FC = () => {
 
               {/* Courses Tab */}
               {activeTab === 'courses' && (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-black text-slate-900 mb-4">{t.userCenter.enrolledCourses}</h2>
-                  {enrollments.length === 0 ? (
-                    <div className="text-center py-16">
-                      <div className="text-6xl mb-4">📚</div>
-                      <p className="text-slate-500 mb-4">{t.userCenter.noCoursesYet}</p>
-                      <Link href={`/${locale}/courses`} className="text-vs font-bold hover:underline">
-                        {t.userCenter.browseCourses} →
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {enrollments.map(enrollment => (
-                        <div key={enrollment.id} className="border border-slate-200 rounded-xl p-4 hover:shadow-md transition">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-bold text-slate-900 line-clamp-1">
-                              {enrollment.course?.title || `Course ${enrollment.courseId}`}
-                            </h3>
-                            <span className={`px-2 py-1 rounded text-xs font-bold ${getStatusColor(enrollment.paymentStatus)}`}>
-                              {enrollment.paymentStatus === 'paid' ? 'Confirmed' : enrollment.paymentStatus}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-500 mb-3">
-                            {t.dashboard.enrolled}: {enrollment.enrollmentDate?.split('T')[0] || ''}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-vs rounded-full transition-all"
-                                style={{ width: `${enrollment.completionStatus === 'completed' ? 100 : enrollment.completionStatus === 'in_progress' ? 50 : 0}%` }}
-                              />
+                <div className="space-y-8">
+                  {/* 学习计划区域 */}
+                  {learningPlan.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-black text-slate-900">我的学习计划</h2>
+                        <span className="text-sm text-slate-400 font-medium">
+                          {learningPlan.length} 门课程
+                        </span>
+                      </div>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        {learningPlan
+                          .map(item => (
+                          <div key={item.id} className="border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition group">
+                            <div className="h-32 bg-slate-100 relative overflow-hidden">
+                              {item.course?.cover_image_url ? (
+                                <img src={item.course.cover_image_url} alt={item.course?.title || ''} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-4xl bg-gradient-to-br from-emerald-50 to-teal-50">📚</div>
+                              )}
                             </div>
-                            <span className="text-xs font-bold text-slate-500 capitalize">
-                              {enrollment.completionStatus?.replace('_', ' ')}
-                            </span>
+                            <div className="p-4">
+                              <h3 className="font-bold text-slate-900 line-clamp-2 text-sm mb-2">
+                                {item.course?.title || '未知课程'}
+                              </h3>
+                              <p className="text-xs text-slate-400 mb-3">
+                                加入于 {item.last_study_at ? new Date(item.last_study_at).toLocaleDateString('zh-CN') : '未知'}
+                              </p>
+                              <Link
+                                href={`/${locale}/courses/${item.course?.slug || item.course_id}`}
+                                className="inline-flex items-center gap-1 text-sm font-bold text-vs hover:underline"
+                              >
+                                开始学习 →
+                              </Link>
+                            </div>
                           </div>
-                          {enrollment.certificateIssued && (
-                            <button className="mt-3 text-sm text-vs font-bold hover:underline">
-                              {t.userCenter.downloadCertificate} →
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
+
+                  {/* 已报名课程区域 */}
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 mb-4">{t.userCenter.enrolledCourses}</h2>
+                    {enrollments.length === 0 && learningPlan.length === 0 ? (
+                      <div className="text-center py-16">
+                        <div className="text-6xl mb-4">📚</div>
+                        <p className="text-slate-500 mb-4">{t.userCenter.noCoursesYet}</p>
+                        <Link href={`/${locale}/courses`} className="text-vs font-bold hover:underline">
+                          {t.userCenter.browseCourses} →
+                        </Link>
+                      </div>
+                    ) : enrollments.length === 0 ? (
+                      <p className="text-sm text-slate-400">暂无已报名的课程</p>
+                    ) : (
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {enrollments.map(enrollment => {
+                          const progressItem = learningPlan.find(lp => lp.course_id === enrollment.courseId);
+                          const realProgress = progressItem ? progressItem.progress_percent : null;
+                          const displayProgress = realProgress !== null
+                            ? realProgress
+                            : (enrollment.completionStatus === 'completed' ? 100 : enrollment.completionStatus === 'in_progress' ? 50 : 0);
+                          return (
+                          <div key={enrollment.id} className="border border-slate-200 rounded-xl p-4 hover:shadow-md transition">
+                            <div className="flex items-start justify-between mb-2">
+                              <h3 className="font-bold text-slate-900 line-clamp-1">
+                                {enrollment.course?.title || `Course ${enrollment.courseId}`}
+                              </h3>
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${getStatusColor(enrollment.paymentStatus)}`}>
+                                {enrollment.paymentStatus === 'paid' ? 'Confirmed' : enrollment.paymentStatus}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-500 mb-3">
+                              {t.dashboard.enrolled}: {enrollment.enrollmentDate?.split('T')[0] || ''}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-vs rounded-full transition-all"
+                                  style={{ width: `${displayProgress}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-bold text-slate-500">
+                                {displayProgress}%
+                              </span>
+                            </div>
+                            {enrollment.certificateIssued && (
+                              <button className="mt-3 text-sm text-vs font-bold hover:underline">
+                                {t.userCenter.downloadCertificate} →
+                              </button>
+                            )}
+                          </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

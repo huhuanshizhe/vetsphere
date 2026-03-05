@@ -86,7 +86,7 @@ export default function CourseEditModal({
       await api.manageCourse('update', {
         ...formData,
         id: course.id,
-        status: 'Pending',
+        status: 'pending',
       });
       onSuccess();
       onClose();
@@ -112,9 +112,9 @@ export default function CourseEditModal({
   if (!course) return null;
 
   // 判断是否可编辑（只有 Draft 和 Rejected 状态可以编辑）
-  const isEditable = course.status === 'Draft' || course.status === 'Rejected';
+  const isEditable = course.status === 'draft' || course.status === 'rejected';
   // 判断是否可以提交审核
-  const canSubmit = course.status === 'Draft' || course.status === 'Rejected';
+  const canSubmit = course.status === 'draft' || course.status === 'rejected';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -159,7 +159,7 @@ export default function CourseEditModal({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {/* 被拒绝提示 */}
-          {course.status === 'Rejected' && course.rejectionReason && (
+          {course.status === 'rejected' && course.rejectionReason && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
               <p className="text-sm font-medium text-red-400 mb-1">审核未通过</p>
               <p className="text-sm text-red-300">{course.rejectionReason}</p>

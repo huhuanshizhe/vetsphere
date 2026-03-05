@@ -93,9 +93,9 @@ export default function CoursePreview({ formData }: CoursePreviewProps) {
         )}
         {formData.status && (
           <span className="absolute top-4 right-4 px-3 py-1 bg-gray-500/80 text-white text-sm rounded-full">
-            {formData.status === 'Draft' ? '草稿' : 
-             formData.status === 'Pending' ? '待审核' :
-             formData.status === 'Published' ? '已发布' : '已拒绝'}
+            {formData.status === 'draft' ? '草稿' : 
+             formData.status === 'pending' ? '待审核' :
+             formData.status === 'published' ? '已发布' : '已拒绝'}
           </span>
         )}
       </div>

@@ -368,6 +368,7 @@ const InstructorToolsSection: React.FC<{
   course: ExtendedCourse;
 }> = ({ relations, locale, instructorName, course }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
   const [addedId, setAddedId] = useState<string | null>(null);
@@ -381,7 +382,7 @@ const InstructorToolsSection: React.FC<{
   const handleAddToCart = (relation: CourseProductRelation) => {
     const product = relation.product;
     if (!product || !isAuthenticated) {
-      if (!isAuthenticated) router.push(`/${locale}/auth`);
+      if (!isAuthenticated) router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     addToCart({
@@ -496,6 +497,7 @@ const CoreEquipmentSidebar: React.FC<{
   course: ExtendedCourse;
 }> = ({ relations, locale, course }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
   const [addedId, setAddedId] = useState<string | null>(null);
@@ -512,7 +514,7 @@ const CoreEquipmentSidebar: React.FC<{
   const handleAddToCart = (relation: CourseProductRelation) => {
     const product = relation.product;
     if (!product || !isAuthenticated) {
-      if (!isAuthenticated) router.push(`/${locale}/auth`);
+      if (!isAuthenticated) router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     addToCart({
@@ -711,6 +713,7 @@ const EnrollmentCard: React.FC<{
   isAuthenticated: boolean;
   onRegister: () => void;
 }> = ({ course, locale, isAuthenticated, onRegister }) => {
+  const pathname = usePathname();
   // 判断是否满员
   const isFull = course.maxCapacity ? (course.enrolledCount || 0) >= course.maxCapacity : false;
   // 判断是否名额紧张（超过80%）
@@ -739,7 +742,7 @@ const EnrollmentCard: React.FC<{
           </span>
         ) : (
           <button 
-            onClick={() => window.location.href = `/${locale}/auth`}
+            onClick={() => window.location.href = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`}
             className="text-sm font-bold text-emerald-600 hover:underline flex items-center gap-1"
           >
             🔒 登录查看

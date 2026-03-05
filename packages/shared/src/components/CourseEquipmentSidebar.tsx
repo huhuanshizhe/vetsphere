@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -84,6 +84,7 @@ interface CourseEquipmentSidebarProps {
 
 export default function CourseEquipmentSidebar({ relations, locale }: CourseEquipmentSidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
@@ -106,7 +107,7 @@ export default function CourseEquipmentSidebar({ relations, locale }: CourseEqui
   const handleAddToCart = (relation: CourseProductRelation) => {
     const product = relation.product;
     if (!product || !isAuthenticated) {
-      if (!isAuthenticated) router.push(`/${locale}/auth`);
+      if (!isAuthenticated) router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     addToCart({

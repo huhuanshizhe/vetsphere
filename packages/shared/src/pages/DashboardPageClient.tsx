@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Order, Product, Course, Specialty, ProductGroup, CourseStatus, UserRole, CourseEnrollment } from '../types';
@@ -84,7 +84,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, sidebarItem
 
 const Dashboard: React.FC = () => {
   const { user, logout, login } = useAuth();
-  const { t, locale } = useLanguage();  const router = useRouter();
+  const { t, locale } = useLanguage();  const router = useRouter();  const pathname = usePathname();
   const { addNotification } = useNotification();
   const { isCN } = useSiteConfig();
   
@@ -148,7 +148,7 @@ const Dashboard: React.FC = () => {
   // Load active tab from session storage whenever user changes
   useEffect(() => {
     if (!user) {
-        router.push(`/${locale}/auth`);
+        router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
         return;
     }
 

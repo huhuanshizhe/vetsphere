@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   User, Building2, Briefcase, Calendar, Tag, FileText,
   ArrowRight, ArrowLeft, Check, Sparkles, Camera, X
@@ -44,6 +44,7 @@ interface IdentityInfo {
 const CnProfileCompletePage: React.FC = () => {
   const { locale } = useLanguage();
   const router = useRouter();
+  const pathname = usePathname();
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,7 +68,7 @@ const CnProfileCompletePage: React.FC = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          router.push(`/${locale}/auth`);
+          router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
           return;
         }
         const token = session.access_token;

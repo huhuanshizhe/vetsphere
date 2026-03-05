@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   Users, FileText, MessageSquare, CalendarCheck, ArrowRight, ChevronRight,
   Clipboard, HeartHandshake, TrendingUp, ShoppingBag, Stethoscope,
@@ -118,9 +119,11 @@ const TOOL_COLORS = {
 };
 
 export function ClinicalWorkflowPage({ locale }: ClinicalWorkflowPageProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, canAccessDoctorWorkspace } = useAuth();
+  const pathname = usePathname();
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
 
-  const doctorHref = isAuthenticated ? `/${locale}/doctor` : `/${locale}/auth`;
+  const doctorHref = isAuthenticated ? `/${locale}/doctor` : authHref;
   const shopHref = `/${locale}/shop`;
   const coursesHref = `/${locale}/courses`;
   const growthHref = `/${locale}/growth-system`;
@@ -242,7 +245,7 @@ export function ClinicalWorkflowPage({ locale }: ClinicalWorkflowPageProps) {
                         ))}
                       </div>
                       <Link
-                        href={isAuthenticated ? `/${locale}${tool.href}` : `/${locale}/auth`}
+                        href={isAuthenticated ? `/${locale}${tool.href}` : authHref}
                         className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-900"
                       >
                         {isAuthenticated ? '进入使用' : '登录体验'}
@@ -354,7 +357,7 @@ export function ClinicalWorkflowPage({ locale }: ClinicalWorkflowPageProps) {
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <Link
-                    href={isAuthenticated ? `/${locale}/doctor/courses` : coursesHref}
+                    href={isAuthenticated ? (canAccessDoctorWorkspace ? `/${locale}/doctor/courses` : `/${locale}/user?tab=courses`) : coursesHref}
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition-colors"
                   >
                     <GraduationCap className="w-4 h-4" />
@@ -472,14 +475,14 @@ export function ClinicalWorkflowPage({ locale }: ClinicalWorkflowPageProps) {
             ) : (
               <>
                 <Link
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 transition-colors"
                 >
                   <LogIn className="w-5 h-5" />
                   登录体验工作台
                 </Link>
                 <Link
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3.5 border border-teal-200 text-teal-700 rounded-xl font-semibold hover:bg-teal-50 transition-colors"
                 >
                   <UserPlus className="w-5 h-5" />

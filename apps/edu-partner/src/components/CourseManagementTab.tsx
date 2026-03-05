@@ -11,10 +11,10 @@ interface CourseManagementTabProps {
 }
 
 const STATUS_BADGES: Record<string, { bg: string; text: string; label: string }> = {
-  Published: { bg: 'bg-green-500/20', text: 'text-green-400', label: '已发布' },
-  Pending: { bg: 'bg-amber-500/20', text: 'text-amber-400', label: '待审核' },
-  Rejected: { bg: 'bg-red-500/20', text: 'text-red-400', label: '已拒绝' },
-  Draft: { bg: 'bg-gray-500/20', text: 'text-gray-400', label: '草稿' },
+  published: { bg: 'bg-green-500/20', text: 'text-green-400', label: '已发布' },
+  pending: { bg: 'bg-amber-500/20', text: 'text-amber-400', label: '待审核' },
+  rejected: { bg: 'bg-red-500/20', text: 'text-red-400', label: '已拒绝' },
+  draft: { bg: 'bg-gray-500/20', text: 'text-gray-400', label: '草稿' },
 };
 
 export default function CourseManagementTab({
@@ -32,10 +32,10 @@ export default function CourseManagementTab({
   // 统计各状态数量
   const counts = {
     all: courses.length,
-    Draft: courses.filter(c => c.status === 'Draft').length,
-    Pending: courses.filter(c => c.status === 'Pending').length,
-    Published: courses.filter(c => c.status === 'Published').length,
-    Rejected: courses.filter(c => c.status === 'Rejected').length,
+    draft: courses.filter(c => c.status === 'draft').length,
+    pending: courses.filter(c => c.status === 'pending').length,
+    published: courses.filter(c => c.status === 'published').length,
+    rejected: courses.filter(c => c.status === 'rejected').length,
   };
 
   return (
@@ -56,10 +56,10 @@ export default function CourseManagementTab({
       <div className="flex flex-wrap gap-2">
         {[
           { key: 'all', label: '全部' },
-          { key: 'Draft', label: '草稿' },
-          { key: 'Pending', label: '待审核' },
-          { key: 'Published', label: '已发布' },
-          { key: 'Rejected', label: '已拒绝' },
+          { key: 'draft', label: '草稿' },
+          { key: 'pending', label: '待审核' },
+          { key: 'published', label: '已发布' },
+          { key: 'rejected', label: '已拒绝' },
         ].map(({ key, label }) => (
           <button
             key={key}
@@ -94,7 +94,7 @@ export default function CourseManagementTab({
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCourses.map((course) => {
-            const status = STATUS_BADGES[course.status] || STATUS_BADGES.Draft;
+            const status = STATUS_BADGES[course.status] || STATUS_BADGES.draft;
             return (
               <div key={course.id} className="edu-card overflow-hidden group">
                 {/* Course Image */}
@@ -135,7 +135,7 @@ export default function CourseManagementTab({
                   </div>
 
                   {/* Rejection Reason */}
-                  {course.status === 'Rejected' && course.rejectionReason && (
+                  {course.status === 'rejected' && course.rejectionReason && (
                     <div className="mb-3 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
                       拒绝原因: {course.rejectionReason}
                     </div>
@@ -147,9 +147,9 @@ export default function CourseManagementTab({
                       onClick={() => onEditCourse(course)}
                       className="flex-1 py-2 px-3 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm transition-colors"
                     >
-                      {course.status === 'Draft' || course.status === 'Rejected' ? '编辑' : '查看'}
+                      {course.status === 'draft' || course.status === 'rejected' ? '编辑' : '查看'}
                     </button>
-                    {(course.status === 'Draft' || course.status === 'Rejected') && (
+                    {(course.status === 'draft' || course.status === 'rejected') && (
                       <button
                         onClick={() => onDeleteCourse(course.id)}
                         className="py-2 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors"

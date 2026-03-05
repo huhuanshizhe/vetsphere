@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import {
   Menu,
@@ -25,7 +26,12 @@ export function CnNavbar({ locale }: CnNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, user, logout, canAccessDoctorWorkspace, doctorPrivilegeStatus } = useAuth();
+
+  // 构建带 redirect 参数的登录 URL，登录后返回当前页面
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
 
   // 避免 SSR 水合不匹配：等待客户端挂载后再渲染认证状态相关的 UI
   useEffect(() => {
@@ -45,7 +51,7 @@ export function CnNavbar({ locale }: CnNavbarProps) {
     { name: '课程中心', href: `/${locale}/courses`, icon: BookOpen },
     { name: '临床工具', href: `/${locale}/clinical-tools`, icon: Stethoscope },
     { name: '事业发展', href: `/${locale}/career-development`, icon: Briefcase },
-    { name: '医生社区', href: `/${locale}/community-intro`, icon: Users },
+    { name: '医生社区', href: canAccessDoctorWorkspace ? `/${locale}/doctor/community` : `/${locale}/community-intro`, icon: Users },
   ];
 
   return (
@@ -140,10 +146,10 @@ export function CnNavbar({ locale }: CnNavbarProps) {
                           <User className="w-4 h-4 inline mr-2" />个人中心
                         </Link>
                         {showVerificationEntry && (
-                          <Link href={`/${locale}/verification/apply`} onClick={() => setIsUserMenuOpen(false)} className="block px-4 py-3 text-sm font-bold text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors">
+                          <Link href={['pending_review', 'rejected'].includes(doctorPrivilegeStatus || '') ? `/${locale}/verification/status` : `/${locale}/verification/apply`} onClick={() => setIsUserMenuOpen(false)} className="block px-4 py-3 text-sm font-bold text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors">
                             <ShieldCheck className="w-4 h-4 inline mr-2" />
                             {doctorPrivilegeStatus === 'pending_review' ? '认证审核中' : 
-                             doctorPrivilegeStatus === 'rejected' ? '重新认证' : '医生身份认证'}
+                             doctorPrivilegeStatus === 'rejected' ? '认证未通过' : '医生身份认证'}
                           </Link>
                         )}
                       </>
@@ -165,7 +171,7 @@ export function CnNavbar({ locale }: CnNavbarProps) {
                     )}
                     <div className="border-t border-slate-100 mt-1 pt-1">
                       <button
-                        onClick={() => { logout(); setIsUserMenuOpen(false); }}
+                        onClick={async () => { await logout(); setIsUserMenuOpen(false); router.push(`/${locale}`); }}
                         className="w-full text-left px-4 py-3 text-sm font-bold text-red-500 rounded-lg hover:bg-red-50 transition-colors"
                       >
                         <LogOut className="w-4 h-4 inline mr-2" />退出登录
@@ -178,13 +184,13 @@ export function CnNavbar({ locale }: CnNavbarProps) {
           ) : (
             <div className="flex items-center gap-2">
               <Link
-                href={`/${locale}/auth`}
+                href={authHref}
                 className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
               >
                 登录
               </Link>
               <Link
-                href={`/${locale}/auth`}
+                href={authHref}
                 className="px-5 py-2 rounded-xl text-sm font-bold bg-[#00A884] text-white hover:bg-[#009474] transition-colors shadow-sm"
               >
                 立即加入
@@ -255,10 +261,10 @@ export function CnNavbar({ locale }: CnNavbarProps) {
                       <User className="w-5 h-5 text-slate-400" />个人中心
                     </Link>
                     {showVerificationEntry && (
-                      <Link href={`/${locale}/verification/apply`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-emerald-600 hover:bg-emerald-50">
+                      <Link href={['pending_review', 'rejected'].includes(doctorPrivilegeStatus || '') ? `/${locale}/verification/status` : `/${locale}/verification/apply`} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-emerald-600 hover:bg-emerald-50">
                         <ShieldCheck className="w-5 h-5 text-emerald-500" />
                         {doctorPrivilegeStatus === 'pending_review' ? '认证审核中' : 
-                         doctorPrivilegeStatus === 'rejected' ? '重新认证' : '医生身份认证'}
+                         doctorPrivilegeStatus === 'rejected' ? '认证未通过' : '医生身份认证'}
                       </Link>
                     )}
                   </>
@@ -269,7 +275,7 @@ export function CnNavbar({ locale }: CnNavbarProps) {
                   </Link>
                 )}
                 <button
-                  onClick={() => { logout(); setMobileMenuOpen(false); }}
+                  onClick={async () => { await logout(); setMobileMenuOpen(false); router.push(`/${locale}`); }}
                   className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-red-500 hover:bg-red-50"
                 >
                   <LogOut className="w-5 h-5" />退出登录
@@ -278,14 +284,14 @@ export function CnNavbar({ locale }: CnNavbarProps) {
             ) : (
               <div className="flex gap-2 px-4 pt-2">
                 <Link
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex-1 py-3 text-center rounded-xl text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
                 >
                   登录
                 </Link>
                 <Link
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex-1 py-3 text-center rounded-xl text-sm font-bold bg-[#00A884] text-white"
                 >

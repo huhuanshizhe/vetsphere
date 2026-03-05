@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   BookOpen, Filter, Search, Star, Clock, Users, Award, ArrowRight,
   ChevronRight, Stethoscope, Eye, Target, Heart, Sparkles, CheckCircle2,
@@ -137,7 +138,8 @@ const CourseCard: React.FC<{ course: Course; locale: string; language: string; f
 
 const CnCoursesPage: React.FC = () => {
   const { locale, language } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, canAccessDoctorWorkspace } = useAuth();  const pathname = usePathname();
+  const authHref = `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`;
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [courses, setCourses] = useState<Course[]>([]);
@@ -344,7 +346,7 @@ const CnCoursesPage: React.FC = () => {
               
               {!isAuthenticated && (
                 <Link
-                  href={`/${locale}/auth`}
+                  href={authHref}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 rounded-2xl font-bold border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all"
                 >
                   <span>免费注册</span>
@@ -375,7 +377,7 @@ const CnCoursesPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 {isAuthenticated ? (
                   <Link
-                    href={`/${locale}/doctor/courses`}
+                    href={canAccessDoctorWorkspace ? `/${locale}/doctor/courses` : `/${locale}/user?tab=courses`}
                     className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl font-bold hover:bg-slate-100 transition-all"
                   >
                     <GraduationCap className="w-5 h-5" />
@@ -383,7 +385,7 @@ const CnCoursesPage: React.FC = () => {
                   </Link>
                 ) : (
                   <Link
-                    href={`/${locale}/auth`}
+                    href={authHref}
                     className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl font-bold hover:bg-slate-100 transition-all"
                   >
                     <span>立即注册</span>

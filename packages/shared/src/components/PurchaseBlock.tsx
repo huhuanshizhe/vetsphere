@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -74,6 +74,7 @@ const translations = {
 
 export default function PurchaseBlock({ product, locale, onAddToCart }: PurchaseBlockProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
@@ -89,7 +90,7 @@ export default function PurchaseBlock({ product, locale, onAddToCart }: Purchase
 
   const handleAddToCart = () => {
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
 
@@ -110,7 +111,7 @@ export default function PurchaseBlock({ product, locale, onAddToCart }: Purchase
 
   const handleBuyNow = () => {
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
 
@@ -163,7 +164,7 @@ export default function PurchaseBlock({ product, locale, onAddToCart }: Purchase
                 <p className="text-3xl font-black text-slate-900">${product.price.toLocaleString()}</p>
               ) : (
                 <button 
-                  onClick={() => router.push(`/${locale}/auth`)}
+                  onClick={() => router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`)}
                   className="text-lg font-black text-vs hover:underline flex items-center gap-2"
                 >
                   🔒 {t.loginToView}

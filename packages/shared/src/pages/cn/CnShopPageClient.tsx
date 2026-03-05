@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search, RefreshCcw, Stethoscope, Target, TrendingUp, GraduationCap,
@@ -913,6 +913,7 @@ const ProductCard: React.FC<{
   onConsultation: (product: ExtendedProduct) => void;
 }> = ({ product, locale, isAuthenticated, onAddToCart, onInquiry, onConsultation }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const ctaConfig = getCTAConfig(product, isAuthenticated);
   
   const handlePrimaryClick = (e: React.MouseEvent) => {
@@ -926,7 +927,7 @@ const ProductCard: React.FC<{
         router.push(`/${locale}/checkout`);
         break;
       case 'login':
-        router.push(`/${locale}/auth`);
+        router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
         break;
       case 'inquiry':
         onInquiry(product);
@@ -1165,6 +1166,8 @@ const BottomCTA: React.FC<{
   onConsultClick: () => void;
 }> = ({ locale, isAuthenticated, onCourseGearClick, onConsultClick }) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const { canAccessDoctorWorkspace } = useAuth();
   
   return (
     <section className="py-16 bg-gradient-to-r from-slate-900 to-slate-800">
@@ -1192,7 +1195,7 @@ const BottomCTA: React.FC<{
             咨询配置方案
           </button>
           <button
-            onClick={() => router.push(isAuthenticated ? `/${locale}/doctor/courses` : `/${locale}/auth`)}
+            onClick={() => router.push(isAuthenticated ? (canAccessDoctorWorkspace ? `/${locale}/doctor/courses` : `/${locale}/user?tab=courses`) : `/${locale}/auth?redirect=${encodeURIComponent(pathname)}`)}
             className="px-6 py-3 border border-white/30 text-white rounded-xl font-bold hover:bg-white/10 transition-all flex items-center gap-2"
           >
             <Users className="w-4 h-4" />
@@ -1211,6 +1214,7 @@ const BottomCTA: React.FC<{
 const CnShopPageClient: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { addToCart } = useCart();
   const { locale } = useLanguage();
   const { isAuthenticated } = useAuth();
@@ -1405,7 +1409,7 @@ const CnShopPageClient: React.FC = () => {
   // 添加购物车
   const handleAddToCart = (product: ExtendedProduct) => {
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     

@@ -97,39 +97,28 @@ const CnAuthPage: React.FC = () => {
     const { redirectHint } = userState;
     const redirectParam = searchParams.get('redirect');
     
-    switch (redirectHint) {
-      case 'go_identity_select':
-        router.push(`/${locale}/onboarding/identity`);
-        break;
-      case 'go_profile_complete':
-        router.push(`/${locale}/onboarding/profile`);
-        break;
-      case 'show_verification_prompt':
-        // Show prompt banner, but allow user to proceed to home
-        if (redirectParam && redirectParam.startsWith('/')) {
-          router.push(redirectParam);
-        } else {
-          router.push(`/${locale}`);
-        }
-        break;
-      case 'show_rejection_prompt':
-        router.push(`/${locale}/verification/status`);
-        break;
-      case 'show_verification_pending':
-        router.push(`/${locale}/verification/status`);
-        break;
-      case 'go_account_status':
-        router.push(`/${locale}/auth/account-status`);
-        break;
-      case 'go_home':
-      default:
-        if (redirectParam && redirectParam.startsWith('/')) {
-          router.push(redirectParam);
-        } else {
-          router.push(`/${locale}`);
-        }
-        break;
+    // 最高优先级：必须完成的引导步骤（身份选择）
+    if (redirectHint === 'go_identity_select') {
+      router.push(`/${locale}/onboarding/identity`);
+      return;
     }
+    
+    // 账号异常
+    if (redirectHint === 'go_account_status') {
+      router.push(`/${locale}/auth/account-status`);
+      return;
+    }
+    
+    // 其他所有情况：如果有 redirect 参数，优先回到用户之前的页面
+    if (redirectParam && redirectParam.startsWith('/')) {
+      router.push(redirectParam);
+      return;
+    }
+    
+    // 没有 redirect 参数时，一律回首页
+    // show_verification_pending / show_rejection_prompt 不是阻塞性跳转
+    // 用户可在首页通过入口主动查看认证状态
+    router.push(`/${locale}`);
   }, [locale, router, searchParams]);
 
   // Fetch user state after successful login

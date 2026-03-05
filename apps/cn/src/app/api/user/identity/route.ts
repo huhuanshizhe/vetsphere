@@ -183,9 +183,8 @@ export async function POST(request: NextRequest) {
     const onboardingStatus = (currentSnapshot?.onboarding_status === 'completed') 
       ? 'completed' 
       : 'profile_pending';
-    const redirectHint = (currentSnapshot?.onboarding_status === 'completed')
-      ? 'go_home'
-      : 'go_profile_complete';
+    // 完善资料不再作为阻塞式跳转，选完身份后直接回首页
+    const redirectHint = 'go_home';
     
     // doctor_privilege_status: doctor -> not_started, 其他 -> not_applicable
     const doctorPrivilegeStatus = identityGroupV2 === 'doctor' ? 'not_started' : 'not_applicable';
