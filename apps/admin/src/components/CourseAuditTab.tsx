@@ -66,13 +66,13 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
   };
 
   const handleApprove = async (courseId: string) => {
-    await api.manageCourse('update', { id: courseId, status: 'Published' });
+    await api.manageCourse('update', { id: courseId, status: 'published' });
     onRefresh();
   };
 
   const handleReject = async () => {
     if (!rejectModal || !rejectReason.trim()) return;
-    await api.manageCourse('update', { id: rejectModal, status: 'Rejected', rejectionReason: rejectReason });
+    await api.manageCourse('update', { id: rejectModal, status: 'rejected', rejectionReason: rejectReason });
     setRejectModal(null);
     setRejectReason('');
     onRefresh();
@@ -179,9 +179,9 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
 
   const statusBadge = (status: CourseStatus) => {
     switch (status) {
-      case 'Published': return <span className="text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded text-xs font-bold">已上架</span>;
-      case 'Pending': return <span className="text-amber-400 bg-amber-900/30 px-2 py-1 rounded text-xs font-bold animate-pulse">待审核</span>;
-      case 'Rejected': return <span className="text-red-400 bg-red-900/30 px-2 py-1 rounded text-xs font-bold">已拒绝</span>;
+      case 'published': return <span className="text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded text-xs font-bold">已上架</span>;
+      case 'pending': return <span className="text-amber-400 bg-amber-900/30 px-2 py-1 rounded text-xs font-bold animate-pulse">待审核</span>;
+      case 'rejected': return <span className="text-red-400 bg-red-900/30 px-2 py-1 rounded text-xs font-bold">已拒绝</span>;
       default: return <span className="text-slate-400 bg-slate-800 px-2 py-1 rounded text-xs font-bold">草稿</span>;
     }
   };
@@ -243,7 +243,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
           <button onClick={(e) => { e.stopPropagation(); handleEdit(row); }} className="text-slate-400 hover:text-white text-xs font-bold border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all min-h-[32px]">
             编辑
           </button>
-          {row.status === 'Pending' && (
+          {row.status === 'pending' && (
             <>
               <button onClick={(e) => { e.stopPropagation(); handleApprove(row.id); }} className="bg-emerald-500 text-black px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-400 transition-all min-h-[32px]">
                 通过
@@ -281,7 +281,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
             {translatingId === course.id ? '翻译中...' : 'AI翻译'}
           </button>
           <button onClick={() => handleEdit(course)} className="text-xs font-bold border border-white/10 px-3 py-1.5 rounded-lg text-slate-400 min-h-[32px]">编辑</button>
-          {course.status === 'Pending' && (
+          {course.status === 'pending' && (
             <>
               <button onClick={() => handleApprove(course.id)} className="bg-emerald-500 text-black px-3 py-1.5 rounded-lg text-xs font-bold min-h-[32px]">通过</button>
               <button onClick={() => setRejectModal(course.id)} className="bg-red-500/80 text-white px-3 py-1.5 rounded-lg text-xs font-bold min-h-[32px]">拒绝</button>

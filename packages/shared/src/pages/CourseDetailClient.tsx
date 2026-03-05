@@ -79,7 +79,7 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
         const related = courses.filter(c => 
           c.id !== found.id && 
           c.specialty === found.specialty && 
-          c.status === 'Published'
+          c.status === 'published'
         ).slice(0, 2);
         setRelatedCourses(related);
       }

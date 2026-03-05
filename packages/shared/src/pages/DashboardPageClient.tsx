@@ -249,14 +249,14 @@ const Dashboard: React.FC = () => {
 
   // --- Admin Audit Actions ---
   const handleApproveCourse = async (courseId: string) => {
-      await api.manageCourse('update', { id: courseId, status: 'Published' });
-      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, status: 'Published' } : c));
+      await api.manageCourse('update', { id: courseId, status: 'published' });
+      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, status: 'published' } : c));
       addNotification({ id: `audit-ok-${Date.now()}`, type: 'system', title: '审核通过', message: '课程已正式上架。', read: false, timestamp: new Date() });
   };
 
   const handleRejectCourse = async (courseId: string) => {
-      await api.manageCourse('update', { id: courseId, status: 'Rejected' });
-      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, status: 'Rejected' } : c));
+      await api.manageCourse('update', { id: courseId, status: 'rejected' });
+      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, status: 'rejected' } : c));
       addNotification({ id: `audit-rej-${Date.now()}`, type: 'system', title: '已拒绝/下架', message: '课程已下架或退回。', read: false, timestamp: new Date() });
   };
 
@@ -940,7 +940,7 @@ const Dashboard: React.FC = () => {
                                  </p>
 
                                  {/* Rejection Reason Banner */}
-                                 {c.status === 'Rejected' && c.rejectionReason && (
+                                 {c.status === 'rejected' && c.rejectionReason && (
                                      <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
                                          <p className="text-xs font-bold text-red-600 mb-1">Rejection Reason:</p>
                                          <p className="text-xs text-red-500">{c.rejectionReason}</p>
@@ -950,12 +950,12 @@ const Dashboard: React.FC = () => {
                                  <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
                                      <span className="font-bold text-slate-900">{c.currency === 'CNY' ? '¥' : '$'}{(c.price || 0).toLocaleString()}</span>
                                      <div className="flex gap-2">
-                                         {c.status === 'Rejected' && (
+                                         {c.status === 'rejected' && (
                                              <button onClick={() => handleEditCourse(c)} className="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg text-xs font-bold hover:bg-purple-100 transition-colors">
                                                  Revise & Resubmit
                                              </button>
                                          )}
-                                         {c.status !== 'Rejected' && <button onClick={() => handleEditCourse(c)} className="p-2 text-slate-400 hover:text-purple-600 transition-colors">✎</button>}
+                                         {c.status !== 'rejected' && <button onClick={() => handleEditCourse(c)} className="p-2 text-slate-400 hover:text-purple-600 transition-colors">✎</button>}
                                          <button onClick={() => handleDeleteCourse(c.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">🗑</button>
                                      </div>
                                  </div>
@@ -1268,15 +1268,15 @@ const Dashboard: React.FC = () => {
                                             <span className="text-xs">{c.enrolledCount || 0}/{c.maxCapacity || 30}</span>
                                         </td>
                                         <td className="p-6">
-                                            {c.status === 'Pending' ? <span className="text-amber-400 bg-amber-900/30 px-2 py-1 rounded text-xs animate-pulse">Waiting Review</span> : 
-                                             c.status === 'Published' ? <span className="text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded text-xs">Live</span> :
+                                            {c.status === 'pending' ? <span className="text-amber-400 bg-amber-900/30 px-2 py-1 rounded text-xs animate-pulse">Waiting Review</span> : 
+                                             c.status === 'published' ? <span className="text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded text-xs">Live</span> :
                                              <span className="text-red-400 bg-red-900/30 px-2 py-1 rounded text-xs">{c.status}</span>}
                                         </td>
                                         <td className="p-6 text-right flex justify-end gap-2">
                                             <button onClick={() => handleEditCourse(c)} className="text-blue-400 hover:text-blue-300 border border-blue-500/30 px-3 py-2 rounded text-xs font-bold hover:bg-blue-500/10 transition-all">
                                                 Preview / Edit
                                             </button>
-                                            {c.status === 'Pending' && (
+                                            {c.status === 'pending' && (
                                                 <>
                                                     <button onClick={() => handleApproveCourse(c.id)} className="bg-emerald-500 text-black px-4 py-2 rounded text-xs font-bold hover:bg-emerald-400 transition-all">
                                                         ✓ Approve
@@ -1286,7 +1286,7 @@ const Dashboard: React.FC = () => {
                                                     </button>
                                                 </>
                                             )}
-                                            {c.status !== 'Pending' && (
+                                            {c.status !== 'pending' && (
                                                 <button onClick={() => handleDeleteCourse(c.id)} className="text-slate-500 hover:text-white text-xs font-bold uppercase tracking-widest border border-slate-700 px-4 py-2 rounded hover:bg-white/10 transition-all">
                                                     Delete
                                                 </button>
@@ -1320,8 +1320,8 @@ const Dashboard: React.FC = () => {
                                      <button
                                          onClick={async () => {
                                              if (rejectingCourseId) {
-                                                 await api.manageCourse('update', { id: rejectingCourseId, status: 'Rejected', rejectionReason: rejectReason || 'No reason provided' });
-                                                 setCourses(prev => prev.map(c => c.id === rejectingCourseId ? { ...c, status: 'Rejected', rejectionReason: rejectReason || 'No reason provided' } : c));
+                                                 await api.manageCourse('update', { id: rejectingCourseId, status: 'rejected', rejectionReason: rejectReason || 'No reason provided' });
+                                                 setCourses(prev => prev.map(c => c.id === rejectingCourseId ? { ...c, status: 'rejected', rejectionReason: rejectReason || 'No reason provided' } : c));
                                                  addNotification({ id: `audit-rej-${Date.now()}`, type: 'system', title: '已拒绝', message: '课程已退回并附带原因。', read: false, timestamp: new Date() });
                                              }
                                              setShowRejectModal(false);

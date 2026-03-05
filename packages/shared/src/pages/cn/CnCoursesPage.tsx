@@ -150,7 +150,7 @@ const CnCoursesPage: React.FC = () => {
   useEffect(() => {
     api.getCourses().then(data => {
       // Filter only published courses
-      const publishedCourses = data.filter(c => c.status === 'Published');
+      const publishedCourses = data.filter(c => c.status === 'published');
       setCourses(publishedCourses);
       setLoading(false);
     }).catch(() => {
