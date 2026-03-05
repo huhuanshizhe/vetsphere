@@ -49,7 +49,7 @@ export default function CourseProductLinkingTab() {
 
   // Filter published courses
   const publishedCourses = useMemo(() => 
-    courses.filter(c => c.status === 'Published'),
+    courses.filter(c => c.status === 'published'),
     [courses]
   );
 

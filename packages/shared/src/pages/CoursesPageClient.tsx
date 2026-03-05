@@ -207,7 +207,7 @@ const CoursesPageClient: React.FC = () => {
   // Fetch equipment counts for INTL site
   useEffect(() => {
     if (!isINTL || courses.length === 0) return;
-    const published = courses.filter(c => c.status === 'Published');
+    const published = courses.filter(c => c.status === 'published');
     Promise.all(
       published.map(c =>
         fetch(`/api/courses/${c.id}/products`)
@@ -273,7 +273,7 @@ const CoursesPageClient: React.FC = () => {
   };
 
   // Only show published courses on public page
-  const visibleCourses = courses.filter(c => c.status === 'Published');
+  const visibleCourses = courses.filter(c => c.status === 'published');
 
   // Apply all filters
   const filteredCourses = visibleCourses
