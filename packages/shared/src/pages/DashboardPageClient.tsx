@@ -263,7 +263,7 @@ const Dashboard: React.FC = () => {
   // --- Provider Submit Action ---
   const handleSaveCourse = async () => {
       const action = isEditingCourse ? 'update' : 'create';
-      const newStatus: CourseStatus = user?.role === 'Admin' ? 'Published' : 'Pending';
+      const newStatus: CourseStatus = user?.role === 'Admin' ? 'published' : 'pending';
       
       const successMessage = isEditingCourse 
         ? (user?.role === 'Admin' ? '课程信息已更新。' : '修改已提交，等待管理员再次审核。')
@@ -444,9 +444,9 @@ const Dashboard: React.FC = () => {
 
   const getStatusBadge = (status: CourseStatus) => {
       switch(status) {
-          case 'Published': return <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded">上架中 (Published)</span>;
-          case 'Pending': return <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded animate-pulse">审核中 (Pending)</span>;
-          case 'Rejected': return <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded">已拒绝 (Rejected)</span>;
+          case 'published': return <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded">上架中 (Published)</span>;
+          case 'pending': return <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded animate-pulse">审核中 (Pending)</span>;
+          case 'rejected': return <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded">已拒绝 (Rejected)</span>;
           default: return <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">草稿 (Draft)</span>;
       }
   };
