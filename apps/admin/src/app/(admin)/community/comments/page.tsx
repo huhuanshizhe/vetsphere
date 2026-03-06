@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -147,8 +147,8 @@ export default function CommentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">评论管理</h1>
-        <p className="text-slate-400 mt-1">管理社区帖子评论与审核</p>
+        <h1 className="text-2xl font-bold text-slate-900">评论管理</h1>
+        <p className="text-slate-500 mt-1">管理社区帖子评论与审核</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -190,28 +190,28 @@ export default function CommentsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">内容</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">作者</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">所属帖子</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">点赞</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时间</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">内容</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">作者</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">所属帖子</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">点赞</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时间</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {comments.map((comment) => (
-                    <tr key={comment.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={comment.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 max-w-[300px]">
-                        <span className="text-white text-sm line-clamp-2">{comment.content}</span>
+                        <span className="text-slate-900 text-sm line-clamp-2">{comment.content}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">{comment.author?.full_name || '匿名'}</td>
-                      <td className="px-6 py-4 text-slate-400 text-sm max-w-[200px]">
+                      <td className="px-6 py-4 text-slate-600 text-sm">{comment.author?.full_name || '匿名'}</td>
+                      <td className="px-6 py-4 text-slate-500 text-sm max-w-[200px]">
                         <span className="line-clamp-1">{comment.post?.title || '-'}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">{comment.like_count}</td>
+                      <td className="px-6 py-4 text-slate-500 text-sm">{comment.like_count}</td>
                       <td className="px-6 py-4"><StatusBadge status={comment.status} /></td>
                       <td className="px-6 py-4 text-slate-500 text-xs">{new Date(comment.created_at).toLocaleString('zh-CN')}</td>
                       <td className="px-6 py-4 text-right">
@@ -231,7 +231,7 @@ export default function CommentsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
 import KPICard from './KPICard';
@@ -149,7 +149,7 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
       case 'in_progress': return 'text-blue-400';
       case 'completed': return 'text-emerald-400';
       case 'dropped': return 'text-red-400';
-      default: return 'text-slate-400';
+      default: return 'text-slate-500';
     }
   };
 
@@ -241,7 +241,7 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
       key: 'id',
       header: '订单号',
       render: (v: string) => (
-        <span className="font-mono text-white text-xs">#{v.slice(0, 12)}</span>
+        <span className="font-mono text-slate-900 text-xs">#{v.slice(0, 12)}</span>
       ),
     },
     {
@@ -249,7 +249,7 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
       header: '学员',
       render: (_: any, row: CourseOrder) => (
         <div>
-          <p className="text-white font-medium text-sm">{row.customerName || '-'}</p>
+          <p className="text-slate-900 font-medium text-sm">{row.customerName || '-'}</p>
           <p className="text-slate-500 text-xs truncate max-w-[160px]">{row.customerEmail}</p>
         </div>
       ),
@@ -258,7 +258,7 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
       key: 'items',
       header: '课程',
       render: (_: any, row: CourseOrder) => (
-        <span className="text-slate-300 text-sm truncate max-w-[200px] block">{getCourseName(row)}</span>
+        <span className="text-slate-600 text-sm truncate max-w-[200px] block">{getCourseName(row)}</span>
       ),
       hideOnMobile: true,
     },
@@ -312,13 +312,13 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-black text-white">课程订单管理</h2>
+          <h2 className="text-xl font-black text-slate-900">课程订单管理</h2>
           <p className="text-sm text-slate-500 mt-1">管理所有课程报名订单与入学状态</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleExport}
-            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold text-slate-400 hover:bg-white/10 hover:text-white transition-all min-h-[40px]"
+            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold text-slate-500 hover:bg-white/10 hover:text-slate-900 transition-all min-h-[40px]"
           >
             导出CSV
           </button>
@@ -369,7 +369,7 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="搜索学员/订单号/课程..."
-            className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/20"
+            className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-900 placeholder:text-slate-600 focus:outline-none focus:border-white/20"
           />
         </div>
       </div>
@@ -386,14 +386,14 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
             <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <p className="text-white font-bold text-sm">{order.customerName || order.customerEmail}</p>
+                  <p className="text-slate-900 font-bold text-sm">{order.customerName || order.customerEmail}</p>
                   <p className="text-slate-500 text-xs font-mono">#{order.id.slice(0, 12)}</p>
                 </div>
                 <span className="text-emerald-400 font-black">
                   ¥{(order.totalAmount || 0).toLocaleString()}
                 </span>
               </div>
-              <p className="text-slate-400 text-xs mb-2 truncate">{getCourseName(order)}</p>
+              <p className="text-slate-500 text-xs mb-2 truncate">{getCourseName(order)}</p>
               <div className="flex justify-between items-center">
                 <span className={`text-xs font-bold ${getEnrollmentStyle(order)}`}>
                   {getEnrollmentLabel(order)}
@@ -408,16 +408,16 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
       {/* Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-200/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="p-6 border-b border-white/5 flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-black text-white">课程订单详情</h3>
+                <h3 className="text-lg font-black text-slate-900">课程订单详情</h3>
                 <p className="text-xs text-slate-500 font-mono mt-1">#{selectedOrder.id}</p>
               </div>
               <button
                 onClick={() => { setSelectedOrder(null); setDetailData(null); }}
-                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 hover:bg-white/10 hover:text-white"
+                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 hover:bg-white/10 hover:text-slate-900"
               >
                 x
               </button>
@@ -434,8 +434,8 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/5 rounded-xl p-4">
                       <p className="text-xs text-slate-500 mb-1">学员</p>
-                      <p className="text-white font-bold">{detailData.customerName || '-'}</p>
-                      <p className="text-slate-400 text-xs">{detailData.customerEmail}</p>
+                      <p className="text-slate-900 font-bold">{detailData.customerName || '-'}</p>
+                      <p className="text-slate-500 text-xs">{detailData.customerEmail}</p>
                     </div>
                     <div className="bg-white/5 rounded-xl p-4">
                       <p className="text-xs text-slate-500 mb-1">金额</p>
@@ -450,13 +450,13 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
 
                   {/* Course Enrollments */}
                   <div>
-                    <h4 className="text-sm font-bold text-white mb-3">课程报名信息</h4>
+                    <h4 className="text-sm font-bold text-slate-900 mb-3">课程报名信息</h4>
                     <div className="space-y-3">
                       {(detailData.enrollments || []).map((enrollment: any) => (
                         <div key={enrollment.id} className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
                           <div className="flex justify-between items-start mb-3">
                             <div>
-                              <p className="text-white font-bold">
+                              <p className="text-slate-900 font-bold">
                                 {enrollment.course?.title_zh || enrollment.course?.title || `课程 ${enrollment.courseId}`}
                               </p>
                               {enrollment.course && (
@@ -493,11 +493,11 @@ const CourseOrderTab: React.FC<CourseOrderTabProps> = ({ orders, onRefresh }) =>
                             </div>
                             <div>
                               <span className="text-slate-500">报名日期</span>
-                              <p className="text-white font-medium">{enrollment.enrollmentDate?.split('T')[0] || '-'}</p>
+                              <p className="text-slate-900 font-medium">{enrollment.enrollmentDate?.split('T')[0] || '-'}</p>
                             </div>
                             <div>
                               <span className="text-slate-500">容量</span>
-                              <p className="text-white font-medium">
+                              <p className="text-slate-900 font-medium">
                                 {enrollment.course ? `${enrollment.course.current_enrollment || 0}/${enrollment.course.max_enrollment || 30}` : '-'}
                               </p>
                             </div>

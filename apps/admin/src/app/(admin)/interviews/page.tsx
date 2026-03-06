@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -176,8 +176,8 @@ export default function InterviewsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">访谈管理</h1>
-          <p className="text-slate-400 mt-1">管理专家访谈与行业洞察内容</p>
+          <h1 className="text-2xl font-bold text-slate-900">访谈管理</h1>
+          <p className="text-slate-500 mt-1">管理专家访谈与行业洞察内容</p>
         </div>
         <Button onClick={() => window.location.href = '/interviews/new'}>
           新建访谈
@@ -234,46 +234,46 @@ export default function InterviewsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">访谈</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">受访者</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">浏览量</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">访谈</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">受访者</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">浏览量</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {interviews.map((interview) => (
-                    <tr key={interview.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={interview.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {interview.is_featured && <span className="text-amber-400 text-xs">精选</span>}
-                          <span className="font-medium text-white line-clamp-1">{interview.title}</span>
+                          <span className="font-medium text-slate-900 line-clamp-1">{interview.title}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
                             {interview.interviewee_avatar ? (
                               <img src={interview.interviewee_avatar} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <span className="text-sm text-slate-400">{interview.interviewee_name?.[0]}</span>
+                              <span className="text-sm text-slate-500">{interview.interviewee_name?.[0]}</span>
                             )}
                           </div>
                           <div>
-                            <div className="text-slate-300 text-sm">{interview.interviewee_name}</div>
+                            <div className="text-slate-600 text-sm">{interview.interviewee_name}</div>
                             {interview.interviewee_title && (
                               <div className="text-slate-500 text-xs">{interview.interviewee_title}</div>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {categoryLabels[interview.category || ''] || interview.category || '-'}
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {interview.view_count.toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
@@ -305,7 +305,7 @@ export default function InterviewsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

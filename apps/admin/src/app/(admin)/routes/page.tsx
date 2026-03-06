@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -277,8 +277,8 @@ export default function RoutesPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">路由注册表</h1>
-          <p className="text-slate-400 mt-1">管理网站页面路由状态与跳转配置</p>
+          <h1 className="text-2xl font-bold text-slate-900">路由注册表</h1>
+          <p className="text-slate-500 mt-1">管理网站页面路由状态与跳转配置</p>
         </div>
         <Button onClick={() => setShowCreateDialog(true)}>
           新建路由
@@ -356,28 +356,28 @@ export default function RoutesPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">路径</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">名称</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">模块</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">权限</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">路径</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">名称</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">模块</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">权限</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {routes.map((route) => (
-                    <tr key={route.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={route.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
-                        <code className="text-sm text-emerald-400 bg-slate-800 px-2 py-1 rounded">
+                        <code className="text-sm text-emerald-400 bg-white px-2 py-1 rounded">
                           {route.path}
                         </code>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-medium text-white">{route.name}</span>
+                        <span className="font-medium text-slate-900">{route.name}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-300">
+                      <td className="px-6 py-4 text-slate-600">
                         {moduleNames[route.module] || route.module}
                       </td>
                       <td className="px-6 py-4">
@@ -416,7 +416,7 @@ export default function RoutesPage() {
             </TableContainer>
 
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination
                   page={page}
                   totalPages={totalPages}
@@ -431,8 +431,8 @@ export default function RoutesPage() {
       {/* 编辑弹窗 */}
       {showEditDialog && editingRoute && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl max-w-lg w-full p-6 my-8">
-            <h3 className="text-lg font-semibold text-white mb-2">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 my-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
               编辑路由
             </h3>
             <p className="text-emerald-400 text-sm mb-4">{editingRoute.path}</p>
@@ -488,23 +488,23 @@ export default function RoutesPage() {
                     type="checkbox"
                     checked={editForm.requires_auth}
                     onChange={(e) => setEditForm(prev => ({ ...prev, requires_auth: e.target.checked }))}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500"
+                    className="w-4 h-4 rounded border-slate-200 bg-slate-100 text-emerald-500"
                   />
-                  <span className="text-sm text-slate-300">需要登录</span>
+                  <span className="text-sm text-slate-600">需要登录</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={editForm.requires_doctor}
                     onChange={(e) => setEditForm(prev => ({ ...prev, requires_doctor: e.target.checked }))}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500"
+                    className="w-4 h-4 rounded border-slate-200 bg-slate-100 text-emerald-500"
                   />
-                  <span className="text-sm text-slate-300">需要医生身份</span>
+                  <span className="text-sm text-slate-600">需要医生身份</span>
                 </label>
               </div>
             </div>
             
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200">
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -529,8 +529,8 @@ export default function RoutesPage() {
       {/* 新建路由弹窗 */}
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">新建路由</h3>
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">新建路由</h3>
             
             <div className="space-y-4">
               <Input

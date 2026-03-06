@@ -1,15 +1,17 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { Course, Specialty } from '@vetsphere/shared/types';
-import { Card, Button, StatusBadge, LoadingState, ConfirmDialog } from '@/components/ui';
+import { Card, Button, LoadingState, ConfirmDialog } from '@/components/ui';
 
 type Lang = 'en' | 'zh' | 'th' | 'ja';
 
 export default function CourseEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const supabase = createClient();
   
   // 数据状态
   const [course, setCourse] = useState<Course | null>(null);
@@ -31,6 +33,11 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
   
   // 离开确认
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  
+  // 上架弹窗状态
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [selectedSites, setSelectedSites] = useState<string[]>(['cn']);
+  const [publishing, setPublishing] = useState(false);
 
   // 加载课程数据
   useEffect(() => {
@@ -108,6 +115,69 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  // 保存并上架
+  async function handleSaveAndPublish() {
+    if (!course || selectedSites.length === 0) return;
+    setPublishing(true);
+    setSaveError(null);
+    try {
+      // 1. 先保存编辑内容
+      const saveRes = await fetch(`/api/v1/admin/courses/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      if (!saveRes.ok) throw new Error('保存失败');
+      
+      // 2. 更新课程状态为 published
+      const { error: updateError } = await supabase
+        .from('courses')
+        .update({
+          status: 'published',
+          published_at: new Date().toISOString(),
+          offline_reason: null,
+          offline_at: null,
+        })
+        .eq('id', id);
+      if (updateError) throw updateError;
+      
+      // 3. 为每个选中站点创建 course_site_views
+      for (const site of selectedSites) {
+        const { error: viewError } = await supabase
+          .from('course_site_views')
+          .upsert({
+            course_id: id,
+            site_code: site,
+            is_enabled: true,
+            publish_status: 'published',
+            published_at: new Date().toISOString(),
+          }, { onConflict: 'course_id,site_code' });
+        if (viewError) console.error(`创建 ${site} 站点视图失败:`, viewError);
+      }
+      
+      // 4. 记录审计日志
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('admin_audit_logs').insert({
+        admin_user_id: user?.id,
+        module: 'course',
+        action: 'publish',
+        target_type: 'course',
+        target_id: id,
+        target_name: course.title,
+        changes_summary: `上架课程: ${course.title}，站点: ${selectedSites.join(', ').toUpperCase()}`,
+      });
+      
+      setShowPublishDialog(false);
+      setIsDirty(false);
+      // 重新加载以刷新状态
+      await loadCourse();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : '上架失败');
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   // AI翻译
   async function handleTranslate() {
     if (!course) return;
@@ -158,8 +228,8 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
         <Card>
           <div className="text-center py-12">
             <div className="text-4xl mb-4">😕</div>
-            <h2 className="text-xl font-bold text-white mb-2">{error || '课程不存在'}</h2>
-            <p className="text-slate-400 mb-6">无法加载课程数据</p>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">{error || '课程不存在'}</h2>
+            <p className="text-slate-500 mb-6">无法加载课程数据</p>
             <Button onClick={() => router.push('/courses')}>返回课程列表</Button>
           </div>
         </Card>
@@ -176,7 +246,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-center gap-4">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -184,15 +254,24 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
             返回
           </button>
           <div>
-            <h1 className="text-xl font-bold text-white truncate max-w-md">
+            <h1 className="text-xl font-bold text-slate-900 truncate max-w-md">
               {editForm.title_zh || editForm.title || '编辑课程'}
             </h1>
             <div className="flex items-center gap-2 mt-1">
-              <StatusBadge status={course.status as any} />
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                course.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                course.status === 'published' ? 'bg-emerald-100 text-emerald-700' :
+                course.status === 'offline' ? 'bg-slate-100 text-slate-600' :
+                'bg-slate-100 text-slate-500'
+              }`}>
+                {course.status === 'pending' ? '待审核' :
+                 course.status === 'published' ? '已上架' :
+                 course.status === 'offline' ? '已下架' : course.status}
+              </span>
               {course.translationsComplete ? (
-                <span className="text-sky-400 bg-sky-900/30 px-2 py-0.5 rounded text-xs font-bold">已翻译</span>
+                <span className="text-sky-700 bg-sky-100 px-2 py-0.5 rounded text-xs font-bold">已翻译</span>
               ) : (
-                <span className="text-orange-400 bg-orange-900/30 px-2 py-0.5 rounded text-xs font-bold">待翻译</span>
+                <span className="text-orange-700 bg-orange-100 px-2 py-0.5 rounded text-xs font-bold">待翻译</span>
               )}
             </div>
           </div>
@@ -215,6 +294,15 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
           >
             {saving ? '保存中...' : saveSuccess ? '已保存 ✓' : '保存修改'}
           </Button>
+          {/* 保存并上架按钮 - 仅在待审核或已下架时显示 */}
+          {(course.status === 'pending' || course.status === 'offline') && (
+            <Button
+              onClick={() => setShowPublishDialog(true)}
+              className="!bg-emerald-600 hover:!bg-emerald-500 !text-white"
+            >
+              保存并上架
+            </Button>
+          )}
         </div>
       </div>
 
@@ -236,7 +324,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                 editLang === lang
                   ? 'bg-emerald-500 text-black'
-                  : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700'
+                  : 'bg-slate-100/50 text-slate-500 hover:bg-slate-100'
               }`}
             >
               {lang === 'en' ? 'English' : lang === 'zh' ? '中文' : lang === 'th' ? 'ไทย' : '日本語'}
@@ -253,9 +341,9 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
         </h4>
         <div className="space-y-4">
           {/* 发布语言 - 只读 */}
-          <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
             <span className="text-xs text-slate-500">发布语言:</span>
-            <span className="text-sm text-white font-medium">
+            <span className="text-sm text-slate-900 font-medium">
               {publishLang === 'zh' ? '中文' : publishLang === 'en' ? 'English' : publishLang === 'ja' ? '日本語' : 'ภาษาไทย'}
             </span>
             <span className="text-xs text-slate-600">(AI翻译将从此语言翻译到其他语言)</span>
@@ -270,7 +358,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               type="text"
               value={getLocalizedValue('title')}
               onChange={(e) => setLocalizedValue('title', e.target.value)}
-              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
             />
           </div>
 
@@ -282,7 +370,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 type="text"
                 value={editForm.specialty || ''}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, specialty: e.target.value as Specialty })); setIsDirty(true); }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -290,7 +378,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               <select
                 value={editForm.level || ''}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, level: e.target.value as Course['level'] })); setIsDirty(true); }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               >
                 <option value="Basic">基础 Basic</option>
                 <option value="Intermediate">进阶 Intermediate</option>
@@ -308,7 +396,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 type="number"
                 value={editForm.price || 0}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, price: Number(e.target.value) })); setIsDirty(true); }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -316,7 +404,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               <select
                 value={editForm.currency || 'CNY'}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, currency: e.target.value })); setIsDirty(true); }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               >
                 <option value="CNY">¥ 人民币</option>
                 <option value="USD">$ 美元</option>
@@ -330,7 +418,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 type="number"
                 value={editForm.maxCapacity || 30}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, maxCapacity: Number(e.target.value) })); setIsDirty(true); }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
@@ -362,7 +450,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                       setIsDirty(true);
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                      isSelected ? 'bg-sky-500 border-sky-400 text-white' : 'bg-slate-700/50 border-slate-600/50 text-slate-400 hover:border-slate-500'
+                      isSelected ? 'bg-sky-500 border-sky-400 text-slate-900' : 'bg-slate-100/50 border-slate-200/50 text-slate-500 hover:border-slate-500'
                     }`}
                   >
                     {isSelected && '✓ '}{lang.l}
@@ -380,7 +468,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
             <textarea
               value={getLocalizedValue('description')}
               onChange={(e) => setLocalizedValue('description', e.target.value)}
-              className="w-full min-h-[100px] px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none resize-none"
+              className="w-full min-h-[100px] px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none"
             />
           </div>
 
@@ -391,7 +479,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               type="number"
               value={editForm.totalHours || ''}
               onChange={(e) => { setEditForm(prev => ({ ...prev, totalHours: Number(e.target.value) || undefined })); setIsDirty(true); }}
-              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
             />
           </div>
 
@@ -400,14 +488,14 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">课程封面图</label>
               {editForm.imageUrl && (
-                <img src={editForm.imageUrl} alt="封面" className="w-full h-32 object-cover rounded-lg mb-2 border border-slate-600/50" />
+                <img src={editForm.imageUrl} alt="封面" className="w-full h-32 object-cover rounded-lg mb-2 border border-slate-200/50" />
               )}
               <input
                 type="text"
                 value={editForm.imageUrl || ''}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, imageUrl: e.target.value })); setIsDirty(true); }}
                 placeholder="图片 URL"
-                className="w-full px-4 py-2 bg-slate-800/50 border border-slate-600/50 rounded-xl text-xs text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200/50 rounded-xl text-xs text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -417,7 +505,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 value={(editForm as any).previewVideoUrl || ''}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, previewVideoUrl: e.target.value })); setIsDirty(true); }}
                 placeholder="视频 URL"
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
@@ -435,14 +523,14 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">讲师头像</label>
             <div className="flex items-center gap-4">
               {editForm.instructor?.imageUrl && (
-                <img src={editForm.instructor.imageUrl} alt="讲师" className="w-16 h-16 object-cover rounded-full border border-slate-600/50" />
+                <img src={editForm.instructor.imageUrl} alt="讲师" className="w-16 h-16 object-cover rounded-full border border-slate-200/50" />
               )}
               <input
                 type="text"
                 value={editForm.instructor?.imageUrl || ''}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, instructor: { ...prev.instructor, imageUrl: e.target.value } as Course['instructor'] })); setIsDirty(true); }}
                 placeholder="头像 URL"
-                className="flex-1 px-4 py-2 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
@@ -460,7 +548,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                   setEditForm(prev => ({ ...prev, instructor: { ...prev.instructor, [field]: e.target.value } as Course['instructor'] }));
                   setIsDirty(true);
                 }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -475,7 +563,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                   setEditForm(prev => ({ ...prev, instructor: { ...prev.instructor, [field]: e.target.value } as Course['instructor'] }));
                   setIsDirty(true);
                 }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
@@ -491,7 +579,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 setEditForm(prev => ({ ...prev, instructor: { ...prev.instructor, [field]: e.target.value } as Course['instructor'] }));
                 setIsDirty(true);
               }}
-              className="w-full min-h-[80px] px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none resize-none"
+              className="w-full min-h-[80px] px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none"
             />
           </div>
 
@@ -510,7 +598,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                       setEditForm(prev => ({ ...prev, instructor: { ...prev.instructor, credentials: newCreds } as Course['instructor'] }));
                       setIsDirty(true);
                     }}
-                    className="flex-1 px-4 py-2 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                    className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                   />
                   <button
                     type="button"
@@ -553,7 +641,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               type="date"
               value={editForm.startDate || ''}
               onChange={(e) => { setEditForm(prev => ({ ...prev, startDate: e.target.value })); setIsDirty(true); }}
-              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
             />
           </div>
           <div>
@@ -562,7 +650,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               type="date"
               value={editForm.endDate || ''}
               onChange={(e) => { setEditForm(prev => ({ ...prev, endDate: e.target.value })); setIsDirty(true); }}
-              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
             />
           </div>
           <div>
@@ -571,7 +659,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               type="date"
               value={editForm.enrollmentDeadline || ''}
               onChange={(e) => { setEditForm(prev => ({ ...prev, enrollmentDeadline: e.target.value })); setIsDirty(true); }}
-              className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
             />
           </div>
         </div>
@@ -583,7 +671,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               课程日程 ({editLang === publishLang ? `${editLang} - 源` : editLang})
             </label>
             {editForm.agenda.map((day: any, dayIdx: number) => (
-              <div key={dayIdx} className="bg-slate-800/30 rounded-lg p-3 border border-slate-600/30">
+              <div key={dayIdx} className="bg-white/30 rounded-lg p-3 border border-slate-200/30">
                 <div className="text-xs text-amber-400 font-bold mb-2">Day {dayIdx + 1}: {day.date || ''}</div>
                 <div className="space-y-2">
                   {day.items?.map((item: any, itemIdx: number) => {
@@ -604,7 +692,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                             setEditForm(prev => ({ ...prev, agenda: newAgenda }));
                             setIsDirty(true);
                           }}
-                          className="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-600/50 rounded-lg text-xs text-white focus:border-emerald-500 outline-none"
+                          className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200/50 rounded-lg text-xs text-slate-900 focus:border-emerald-500 outline-none"
                           placeholder={`活动内容 (${editLang})`}
                         />
                       </div>
@@ -630,7 +718,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 type="text"
                 value={(editForm.location as any)?.country || ''}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, location: { ...prev.location, country: e.target.value } as Course['location'] })); setIsDirty(true); }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -639,7 +727,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 type="text"
                 value={(editForm.location as any)?.region || ''}
                 onChange={(e) => { setEditForm(prev => ({ ...prev, location: { ...prev.location, region: e.target.value } as Course['location'] })); setIsDirty(true); }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -654,7 +742,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                   setEditForm(prev => ({ ...prev, location: { ...prev.location, [field]: e.target.value } as Course['location'] }));
                   setIsDirty(true);
                 }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
@@ -671,7 +759,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                   setEditForm(prev => ({ ...prev, location: { ...prev.location, [field]: e.target.value } as Course['location'] }));
                   setIsDirty(true);
                 }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -686,7 +774,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                   setEditForm(prev => ({ ...prev, location: { ...prev.location, [field]: e.target.value } as Course['location'] }));
                   setIsDirty(true);
                 }}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
@@ -723,7 +811,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                         type="button"
                         onClick={() => { setEditForm(prev => ({ ...prev, services: { ...(prev as any).services, [service.key]: opt.v } })); setIsDirty(true); }}
                         className={`px-2 py-1 rounded text-xs border transition-all ${
-                          value === opt.v ? opt.c : 'bg-slate-700/50 border-slate-600/50 text-slate-500 hover:border-slate-500'
+                          value === opt.v ? opt.c : 'bg-slate-100/50 border-slate-200/50 text-slate-500 hover:border-slate-500'
                         }`}
                       >
                         {opt.l}
@@ -748,7 +836,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 setIsDirty(true);
               }}
               placeholder="如何到达培训地点..."
-              className="w-full min-h-[60px] px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none resize-none"
+              className="w-full min-h-[60px] px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none"
             />
           </div>
 
@@ -765,7 +853,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
                 setIsDirty(true);
               }}
               placeholder="其他需要学员了解的信息..."
-              className="w-full min-h-[60px] px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-sm text-white focus:border-emerald-500 outline-none resize-none"
+              className="w-full min-h-[60px] px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none"
             />
           </div>
         </div>
@@ -781,6 +869,74 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
         onCancel={() => setShowLeaveDialog(false)}
         danger
       />
+
+      {/* 上架站点选择弹窗 */}
+      {showPublishDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">保存并上架课程</h3>
+            <p className="text-sm text-slate-500 mb-5">
+              请选择要上架的站点，课程内容将保存并发布到所选站点。
+            </p>
+            
+            <div className="space-y-3 mb-6">
+              {[
+                { code: 'cn', label: '中国站 (CN)', desc: '面向中国大陆用户' },
+                { code: 'intl', label: '国际站 (INTL)', desc: '面向海外用户' },
+              ].map(site => (
+                <label
+                  key={site.code}
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedSites.includes(site.code)
+                      ? 'border-emerald-500 bg-emerald-50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSites.includes(site.code)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedSites(prev => [...prev, site.code]);
+                      } else {
+                        setSelectedSites(prev => prev.filter(s => s !== site.code));
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{site.label}</div>
+                    <div className="text-xs text-slate-500">{site.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {saveError && (
+              <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+                {saveError}
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setShowPublishDialog(false); setSaveError(null); }}
+                disabled={publishing}
+                className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveAndPublish}
+                disabled={publishing || selectedSites.length === 0}
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {publishing ? '上架中...' : `确认上架 (${selectedSites.length} 个站点)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

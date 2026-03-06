@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -153,8 +153,8 @@ export default function CourseReviewsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">课程评价</h1>
-        <p className="text-slate-400 mt-1">管理课程评价与评分</p>
+        <h1 className="text-2xl font-bold text-slate-900">课程评价</h1>
+        <p className="text-slate-500 mt-1">管理课程评价与评分</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -208,28 +208,28 @@ export default function CourseReviewsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">课程</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">用户</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">评分</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">内容</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时间</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">课程</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">用户</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">评分</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">内容</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时间</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {reviews.map((review) => (
-                    <tr key={review.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-white text-sm max-w-[180px]">
+                    <tr key={review.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-900 text-sm max-w-[180px]">
                         <span className="line-clamp-1">{review.course?.title || '-'}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">
+                      <td className="px-6 py-4 text-slate-600 text-sm">
                         {review.is_anonymous ? '匿名用户' : (review.user?.full_name || '-')}
                       </td>
                       <td className="px-6 py-4 text-sm">{renderStars(review.rating)}</td>
-                      <td className="px-6 py-4 text-slate-400 text-sm max-w-[250px]">
+                      <td className="px-6 py-4 text-slate-500 text-sm max-w-[250px]">
                         <span className="line-clamp-2">{review.content || '-'}</span>
                       </td>
                       <td className="px-6 py-4"><StatusBadge status={review.status} /></td>
@@ -251,7 +251,7 @@ export default function CourseReviewsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

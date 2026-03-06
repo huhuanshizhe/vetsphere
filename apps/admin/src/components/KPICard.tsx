@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 
@@ -19,7 +19,7 @@ const colorMap = {
 };
 
 const accentMap = {
-  default: 'text-white',
+  default: 'text-slate-900',
   emerald: 'text-emerald-400',
   amber: 'text-amber-400',
   red: 'text-red-400',

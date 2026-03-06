@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -118,8 +118,8 @@ export default function DoctorConsultationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">问诊数据</h1>
-        <p className="text-slate-400 mt-1">查看医生端的问诊咨询记录</p>
+        <h1 className="text-2xl font-bold text-slate-900">问诊数据</h1>
+        <p className="text-slate-500 mt-1">查看医生端的问诊咨询记录</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -173,28 +173,28 @@ export default function DoctorConsultationsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">主诉</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">医生</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">客户/宠物</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时长</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">费用</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时间</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">主诉</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">医生</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">客户/宠物</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时长</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">费用</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时间</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {consultations.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-white text-sm max-w-[200px]">
+                    <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-900 text-sm max-w-[200px]">
                         <span className="line-clamp-2">{c.chief_complaint}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">{c.doctor?.full_name || '-'}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{c.doctor?.full_name || '-'}</td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="text-slate-300">{c.client?.owner_name || '-'}</div>
+                          <div className="text-slate-600">{c.client?.owner_name || '-'}</div>
                           {c.client?.pet_name && <div className="text-xs text-slate-500">{c.client.pet_name}</div>}
                         </div>
                       </td>
@@ -203,10 +203,10 @@ export default function DoctorConsultationsPage() {
                           {typeLabels[c.consultation_type] || c.consultation_type}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {c.duration_minutes ? `${c.duration_minutes}分钟` : '-'}
                       </td>
-                      <td className="px-6 py-4 text-white text-sm">
+                      <td className="px-6 py-4 text-slate-900 text-sm">
                         {c.fee_amount ? `¥${c.fee_amount}` : '-'}
                       </td>
                       <td className="px-6 py-4"><StatusBadge status={c.status} /></td>
@@ -219,7 +219,7 @@ export default function DoctorConsultationsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

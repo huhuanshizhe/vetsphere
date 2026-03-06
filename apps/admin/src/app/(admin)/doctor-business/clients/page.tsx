@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -91,8 +91,8 @@ export default function DoctorClientsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">客户数据</h1>
-        <p className="text-slate-400 mt-1">查看医生端的客户（宠物主人）记录</p>
+        <h1 className="text-2xl font-bold text-slate-900">客户数据</h1>
+        <p className="text-slate-500 mt-1">查看医生端的客户（宠物主人）记录</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -117,34 +117,34 @@ export default function DoctorClientsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">宠物主人</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">宠物</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">联系方式</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">就诊医生</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">就诊次数</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">最近就诊</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">注册时间</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">宠物主人</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">宠物</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">联系方式</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">就诊医生</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">就诊次数</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">最近就诊</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">注册时间</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {clients.map((client) => (
-                    <tr key={client.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-white font-medium">{client.owner_name}</td>
+                    <tr key={client.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-900 font-medium">{client.owner_name}</td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="text-slate-300">{client.pet_name || '-'}</div>
+                          <div className="text-slate-600">{client.pet_name || '-'}</div>
                           <div className="text-xs text-slate-500">
                             {speciesLabels[client.pet_species || ''] || client.pet_species || '-'}
                             {client.pet_breed && ` / ${client.pet_breed}`}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">{client.phone || '-'}</td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">{client.doctor?.full_name || '-'}</td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">{client.visit_count || 0}</td>
-                      <td className="px-6 py-4 text-slate-400 text-xs">
+                      <td className="px-6 py-4 text-slate-500 text-sm">{client.phone || '-'}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{client.doctor?.full_name || '-'}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{client.visit_count || 0}</td>
+                      <td className="px-6 py-4 text-slate-500 text-xs">
                         {client.last_visit_at ? new Date(client.last_visit_at).toLocaleDateString('zh-CN') : '-'}
                       </td>
                       <td className="px-6 py-4 text-slate-500 text-xs">
@@ -156,7 +156,7 @@ export default function DoctorClientsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

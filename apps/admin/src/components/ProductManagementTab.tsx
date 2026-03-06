@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { api } from '@vetsphere/shared/services/api';
@@ -29,7 +29,7 @@ interface ProductManagementTabProps {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
-  Draft: { bg: 'bg-slate-500/20', text: 'text-slate-400', label: '草稿' },
+  Draft: { bg: 'bg-slate-500/20', text: 'text-slate-500', label: '草稿' },
   Pending: { bg: 'bg-amber-500/20', text: 'text-amber-400', label: '待审核' },
   Published: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: '已上架' },
   Rejected: { bg: 'bg-red-500/20', text: 'text-red-400', label: '已拒绝' },
@@ -100,17 +100,17 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-white tracking-tight">商品管理</h1>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">商品管理</h1>
         <p className="text-sm text-slate-500 mt-1">审核供应商提交的商品，管理上架状态</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { key: 'all', label: '全部', count: statusCounts.all, color: 'text-white' },
+          { key: 'all', label: '全部', count: statusCounts.all, color: 'text-slate-900' },
           { key: 'Pending', label: '待审核', count: statusCounts.Pending, color: 'text-amber-400' },
           { key: 'Published', label: '已上架', count: statusCounts.Published, color: 'text-emerald-400' },
-          { key: 'Draft', label: '草稿', count: statusCounts.Draft, color: 'text-slate-400' },
+          { key: 'Draft', label: '草稿', count: statusCounts.Draft, color: 'text-slate-500' },
           { key: 'Rejected', label: '已拒绝', count: statusCounts.Rejected, color: 'text-red-400' },
         ].map(({ key, label, count, color }) => (
           <button
@@ -158,7 +158,7 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="font-bold text-white text-sm truncate">{product.name}</h3>
+                      <h3 className="font-bold text-slate-900 text-sm truncate">{product.name}</h3>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${status.bg} ${status.text}`}>
                         {status.label}
                       </span>
@@ -183,7 +183,7 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
                   <div className="flex sm:flex-col gap-2 flex-shrink-0">
                     <button
                       onClick={() => setDetailProduct(product)}
-                      className="px-3 py-1.5 text-xs font-bold text-slate-400 bg-white/5 hover:bg-white/10 rounded-lg transition"
+                      className="px-3 py-1.5 text-xs font-bold text-slate-500 bg-white/5 hover:bg-white/10 rounded-lg transition"
                     >
                       详情
                     </button>
@@ -234,12 +234,12 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
       {/* Detail Modal */}
       {detailProduct && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+          <div className="bg-slate-900 border border-slate-200/50 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             <div className="p-5 border-b border-white/5 flex justify-between items-center">
-              <h2 className="text-lg font-black text-white">商品详情</h2>
+              <h2 className="text-lg font-black text-slate-900">商品详情</h2>
               <button
                 onClick={() => setDetailProduct(null)}
-                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white"
+                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 hover:bg-white/10 hover:text-slate-900"
               >
                 x
               </button>
@@ -261,14 +261,14 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-white/[0.03] border border-white/5 rounded-xl p-3">
                     <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">{label}</p>
-                    <p className="text-sm font-bold text-white mt-0.5">{value}</p>
+                    <p className="text-sm font-bold text-slate-900 mt-0.5">{value}</p>
                   </div>
                 ))}
               </div>
               {detailProduct.description && (
                 <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
                   <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-1">商品描述</p>
-                  <p className="text-sm text-slate-300">{detailProduct.description}</p>
+                  <p className="text-sm text-slate-600">{detailProduct.description}</p>
                 </div>
               )}
               {detailProduct.rejectionReason && (
@@ -297,7 +297,7 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
               )}
               <button
                 onClick={() => setDetailProduct(null)}
-                className="px-5 py-2 text-sm font-bold text-slate-400 bg-white/5 hover:bg-white/10 rounded-xl transition"
+                className="px-5 py-2 text-sm font-bold text-slate-500 bg-white/5 hover:bg-white/10 rounded-xl transition"
               >
                 关闭
               </button>
@@ -309,9 +309,9 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
       {/* Reject Modal */}
       {rejectModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-md w-full">
+          <div className="bg-slate-900 border border-slate-200/50 rounded-2xl max-w-md w-full">
             <div className="p-5 border-b border-white/5">
-              <h3 className="text-lg font-black text-white">拒绝商品 / 下架</h3>
+              <h3 className="text-lg font-black text-slate-900">拒绝商品 / 下架</h3>
               <p className="text-xs text-slate-500 mt-1">请输入拒绝或下架原因</p>
             </div>
             <div className="p-5">
@@ -320,21 +320,21 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
                 onChange={e => setRejectReason(e.target.value)}
                 rows={4}
                 placeholder="请说明原因..."
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/30 resize-none"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-900 text-sm placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/30 resize-none"
                 autoFocus
               />
             </div>
             <div className="p-5 border-t border-white/5 flex justify-end gap-2">
               <button
                 onClick={() => { setRejectModal(null); setRejectReason(''); }}
-                className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition"
+                className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition"
               >
                 取消
               </button>
               <button
                 onClick={handleReject}
                 disabled={!rejectReason.trim() || processing === rejectModal}
-                className="px-5 py-2 text-sm font-bold text-white bg-red-500 hover:bg-red-400 rounded-xl transition disabled:opacity-50"
+                className="px-5 py-2 text-sm font-bold text-slate-900 bg-red-500 hover:bg-red-400 rounded-xl transition disabled:opacity-50"
               >
                 {processing === rejectModal ? '处理中...' : '确认拒绝'}
               </button>

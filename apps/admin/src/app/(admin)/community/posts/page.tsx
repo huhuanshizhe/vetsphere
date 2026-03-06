@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -192,8 +192,8 @@ export default function PostsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">社区帖子</h1>
-          <p className="text-slate-400 mt-1">管理社区内容与帖子审核</p>
+          <h1 className="text-2xl font-bold text-slate-900">社区帖子</h1>
+          <p className="text-slate-500 mt-1">管理社区内容与帖子审核</p>
         </div>
       </div>
 
@@ -248,30 +248,30 @@ export default function PostsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">帖子</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">作者</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">数据</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">帖子</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">作者</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">数据</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {posts.map((post) => (
-                    <tr key={post.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={post.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {post.is_pinned && <span className="text-amber-400 text-xs">置顶</span>}
                           {post.is_featured && <span className="text-emerald-400 text-xs">精选</span>}
-                          <span className="font-medium text-white line-clamp-1">{post.title}</span>
+                          <span className="font-medium text-slate-900 line-clamp-1">{post.title}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">
+                      <td className="px-6 py-4 text-slate-600 text-sm">
                         {post.author?.full_name || '匿名'}
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {typeLabels[post.post_type] || post.post_type}
                       </td>
                       <td className="px-6 py-4">
@@ -307,7 +307,7 @@ export default function PostsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

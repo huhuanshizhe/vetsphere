@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -141,11 +141,11 @@ export default function AuditLogsPage() {
     update: 'bg-amber-500/20 text-amber-400',
     delete: 'bg-red-500/20 text-red-400',
     publish: 'bg-emerald-500/20 text-emerald-400',
-    offline: 'bg-slate-500/20 text-slate-400',
+    offline: 'bg-slate-500/20 text-slate-500',
     approve: 'bg-emerald-500/20 text-emerald-400',
     reject: 'bg-red-500/20 text-red-400',
     feature: 'bg-amber-500/20 text-amber-400',
-    unfeature: 'bg-slate-500/20 text-slate-400',
+    unfeature: 'bg-slate-500/20 text-slate-500',
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -154,8 +154,8 @@ export default function AuditLogsPage() {
     <div className="space-y-6">
       {/* 页面标题 */}
       <div>
-        <h1 className="text-2xl font-bold text-white">操作日志</h1>
-        <p className="text-slate-400 mt-1">查看管理员操作记录</p>
+        <h1 className="text-2xl font-bold text-slate-900">操作日志</h1>
+        <p className="text-slate-500 mt-1">查看管理员操作记录</p>
       </div>
 
       {/* 统计卡片 */}
@@ -231,21 +231,21 @@ export default function AuditLogsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时间</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">操作人</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">模块</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">操作</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">目标</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">描述</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">详情</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时间</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">操作人</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">模块</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">目标</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">描述</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">详情</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-slate-400 text-sm whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-500 text-sm whitespace-nowrap">
                         {new Date(log.created_at).toLocaleString('zh-CN', {
                           month: '2-digit',
                           day: '2-digit',
@@ -254,27 +254,27 @@ export default function AuditLogsPage() {
                         })}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-white text-sm">{log.admin_name || '系统'}</span>
+                        <span className="text-slate-900 text-sm">{log.admin_name || '系统'}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-slate-300 text-sm">
+                        <span className="text-slate-600 text-sm">
                           {moduleLabels[log.module] || log.module}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${actionColors[log.action] || 'bg-slate-500/20 text-slate-400'}`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${actionColors[log.action] || 'bg-slate-500/20 text-slate-500'}`}>
                           {actionLabels[log.action] || log.action}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="text-white">{log.target_name || '-'}</div>
+                          <div className="text-slate-900">{log.target_name || '-'}</div>
                           {log.target_type && (
                             <div className="text-slate-500 text-xs">{log.target_type}</div>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm max-w-xs truncate">
+                      <td className="px-6 py-4 text-slate-500 text-sm max-w-xs truncate">
                         {log.changes_summary || '-'}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -298,7 +298,7 @@ export default function AuditLogsPage() {
             </TableContainer>
 
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination
                   page={page}
                   totalPages={totalPages}
@@ -313,40 +313,40 @@ export default function AuditLogsPage() {
       {/* 详情弹窗 */}
       {showDetailDialog && selectedLog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl max-w-3xl w-full p-6 my-8">
-            <h3 className="text-lg font-semibold text-white mb-4">操作详情</h3>
+          <div className="bg-white rounded-xl max-w-3xl w-full p-6 my-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">操作详情</h3>
             
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="text-sm text-slate-500">操作时间</label>
-                <p className="text-white mt-1">
+                <p className="text-slate-900 mt-1">
                   {new Date(selectedLog.created_at).toLocaleString('zh-CN')}
                 </p>
               </div>
               <div>
                 <label className="text-sm text-slate-500">操作人</label>
-                <p className="text-white mt-1">{selectedLog.admin_name || '系统'}</p>
+                <p className="text-slate-900 mt-1">{selectedLog.admin_name || '系统'}</p>
               </div>
               <div>
                 <label className="text-sm text-slate-500">模块</label>
-                <p className="text-white mt-1">{moduleLabels[selectedLog.module] || selectedLog.module}</p>
+                <p className="text-slate-900 mt-1">{moduleLabels[selectedLog.module] || selectedLog.module}</p>
               </div>
               <div>
                 <label className="text-sm text-slate-500">操作</label>
-                <p className="text-white mt-1">{actionLabels[selectedLog.action] || selectedLog.action}</p>
+                <p className="text-slate-900 mt-1">{actionLabels[selectedLog.action] || selectedLog.action}</p>
               </div>
               <div>
                 <label className="text-sm text-slate-500">目标类型</label>
-                <p className="text-white mt-1">{selectedLog.target_type || '-'}</p>
+                <p className="text-slate-900 mt-1">{selectedLog.target_type || '-'}</p>
               </div>
               <div>
                 <label className="text-sm text-slate-500">目标名称</label>
-                <p className="text-white mt-1">{selectedLog.target_name || '-'}</p>
+                <p className="text-slate-900 mt-1">{selectedLog.target_name || '-'}</p>
               </div>
               {selectedLog.ip_address && (
                 <div className="col-span-2">
                   <label className="text-sm text-slate-500">IP地址</label>
-                  <p className="text-white mt-1">{selectedLog.ip_address}</p>
+                  <p className="text-slate-900 mt-1">{selectedLog.ip_address}</p>
                 </div>
               )}
             </div>
@@ -354,7 +354,7 @@ export default function AuditLogsPage() {
             {selectedLog.changes_summary && (
               <div className="mb-6">
                 <label className="text-sm text-slate-500">变更摘要</label>
-                <p className="text-white mt-1">{selectedLog.changes_summary}</p>
+                <p className="text-slate-900 mt-1">{selectedLog.changes_summary}</p>
               </div>
             )}
             
@@ -362,7 +362,7 @@ export default function AuditLogsPage() {
               {selectedLog.old_value && (
                 <div>
                   <label className="text-sm text-slate-500 mb-2 block">变更前</label>
-                  <pre className="bg-slate-900 rounded-lg p-4 text-sm text-slate-300 overflow-auto max-h-60">
+                  <pre className="bg-slate-900 rounded-lg p-4 text-sm text-slate-600 overflow-auto max-h-60">
                     {JSON.stringify(selectedLog.old_value, null, 2)}
                   </pre>
                 </div>
@@ -370,14 +370,14 @@ export default function AuditLogsPage() {
               {selectedLog.new_value && (
                 <div>
                   <label className="text-sm text-slate-500 mb-2 block">变更后</label>
-                  <pre className="bg-slate-900 rounded-lg p-4 text-sm text-slate-300 overflow-auto max-h-60">
+                  <pre className="bg-slate-900 rounded-lg p-4 text-sm text-slate-600 overflow-auto max-h-60">
                     {JSON.stringify(selectedLog.new_value, null, 2)}
                   </pre>
                 </div>
               )}
             </div>
             
-            <div className="flex justify-end mt-6 pt-4 border-t border-slate-700">
+            <div className="flex justify-end mt-6 pt-4 border-t border-slate-200">
               <Button
                 variant="secondary"
                 onClick={() => {

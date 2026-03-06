@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 
@@ -217,7 +217,7 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-white">询盘管理</h2>
+          <h2 className="text-xl font-bold text-slate-900">询盘管理</h2>
           <p className="text-sm text-gray-400 mt-1">管理临床咨询和设备询盘</p>
         </div>
         <button
@@ -255,12 +255,12 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="搜索客户名、邮箱、诊所..."
-          className="flex-1 min-w-[200px] px-4 py-2 bg-[#0F172A] border border-blue-500/20 rounded-xl text-white text-sm placeholder:text-gray-600"
+          className="flex-1 min-w-[200px] px-4 py-2 bg-[#0F172A] border border-blue-500/20 rounded-xl text-slate-900 text-sm placeholder:text-gray-600"
         />
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="px-4 py-2 bg-[#0F172A] border border-blue-500/20 rounded-xl text-white text-sm"
+          className="px-4 py-2 bg-[#0F172A] border border-blue-500/20 rounded-xl text-slate-900 text-sm"
         >
           <option value="all">全部状态</option>
           {STATUS_OPTIONS.map(opt => (
@@ -270,7 +270,7 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
         <select
           value={filterPriority}
           onChange={e => setFilterPriority(e.target.value)}
-          className="px-4 py-2 bg-[#0F172A] border border-blue-500/20 rounded-xl text-white text-sm"
+          className="px-4 py-2 bg-[#0F172A] border border-blue-500/20 rounded-xl text-slate-900 text-sm"
         >
           <option value="all">全部优先级</option>
           {PRIORITY_OPTIONS.map(opt => (
@@ -334,7 +334,7 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
                       </div>
 
                       {/* Customer info */}
-                      <h4 className="font-bold text-white truncate">
+                      <h4 className="font-bold text-slate-900 truncate">
                         {inquiry.clinicName || inquiry.companyName || inquiry.customerName}
                       </h4>
                       <p className="text-sm text-gray-400 truncate">
@@ -370,13 +370,13 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
         <div className="lg:col-span-1">
           {selectedInquiry ? (
             <div className="bg-[#0F172A] border border-blue-500/20 rounded-xl p-5 space-y-5 sticky top-4">
-              <h3 className="font-bold text-white text-lg">询盘详情</h3>
+              <h3 className="font-bold text-slate-900 text-lg">询盘详情</h3>
 
               {/* Customer Info */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">客户信息</h4>
                 <div className="space-y-2 text-sm">
-                  <p className="text-white font-bold">{selectedInquiry.customerName}</p>
+                  <p className="text-slate-900 font-bold">{selectedInquiry.customerName}</p>
                   <p className="text-gray-400">{selectedInquiry.customerEmail}</p>
                   {selectedInquiry.customerPhone && (
                     <p className="text-gray-400">{selectedInquiry.customerPhone}</p>
@@ -407,7 +407,7 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
                   <select
                     value={editForm.status}
                     onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-slate-900 text-sm"
                   >
                     {STATUS_OPTIONS.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -420,7 +420,7 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
                   <select
                     value={editForm.priority}
                     onChange={e => setEditForm(prev => ({ ...prev, priority: e.target.value }))}
-                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-slate-900 text-sm"
                   >
                     {PRIORITY_OPTIONS.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.emoji} {opt.label}</option>
@@ -433,7 +433,7 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
                   <select
                     value={editForm.assignedTo}
                     onChange={e => setEditForm(prev => ({ ...prev, assignedTo: e.target.value }))}
-                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-slate-900 text-sm"
                   >
                     <option value="">未分配</option>
                     {adminUsers.map(user => (
@@ -448,7 +448,7 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
                     type="date"
                     value={editForm.followUpDate}
                     onChange={e => setEditForm(prev => ({ ...prev, followUpDate: e.target.value }))}
-                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-slate-900 text-sm"
                   />
                 </div>
 
@@ -458,7 +458,7 @@ export default function InquiryManagementTab({ onRefresh }: InquiryManagementTab
                     value={editForm.internalNotes}
                     onChange={e => setEditForm(prev => ({ ...prev, internalNotes: e.target.value }))}
                     rows={3}
-                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-white text-sm resize-none"
+                    className="w-full px-3 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg text-slate-900 text-sm resize-none"
                     placeholder="添加内部备注..."
                   />
                 </div>

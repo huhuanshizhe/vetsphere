@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -398,7 +398,7 @@ export default function CnVerificationsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-slate-500">
                           {v.submittedAt
                             ? new Date(v.submittedAt).toLocaleDateString('zh-CN')
                             : '-'}
@@ -511,7 +511,7 @@ export default function CnVerificationsPage() {
               placeholder="或输入其他拒绝原因..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 resize-none h-20"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-red-500 resize-none h-20"
             />
             
             <div className="flex items-center justify-end gap-3 mt-6">

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -259,8 +259,8 @@ export default function LearningPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">学习管理</h1>
-        <p className="text-slate-400 mt-1">追踪学员学习进度与管理课程评论</p>
+        <h1 className="text-2xl font-bold text-slate-900">学习管理</h1>
+        <p className="text-slate-500 mt-1">追踪学员学习进度与管理课程评论</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -272,13 +272,13 @@ export default function LearningPage() {
         <StatCard label="待审核" value={stats.pendingReviews} />
       </div>
 
-      <div className="border-b border-slate-700">
+      <div className="border-b border-slate-200">
         <nav className="flex gap-4">
           <button
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'progress'
                 ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
             onClick={() => { setActiveTab('progress'); setPage(1); setFilterStatus(''); }}
           >
@@ -288,7 +288,7 @@ export default function LearningPage() {
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'reviews'
                 ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
             onClick={() => { setActiveTab('reviews'); setPage(1); setFilterStatus(''); }}
           >
@@ -345,52 +345,52 @@ export default function LearningPage() {
             <>
               <TableContainer>
                 <table className="w-full">
-                  <thead className="bg-slate-800/50">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">学员</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">课程</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">进度</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">章节</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">最近学习</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">学员</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">课程</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">进度</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">章节</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">最近学习</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {progressList.map((progress) => (
-                      <tr key={progress.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={progress.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
                               {progress.user?.avatar_url ? (
                                 <img src={progress.user.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-lg text-slate-400">{progress.user?.full_name?.[0] || '?'}</span>
+                                <span className="text-lg text-slate-500">{progress.user?.full_name?.[0] || '?'}</span>
                               )}
                             </div>
                             <div>
-                              <div className="font-medium text-white">{progress.user?.full_name || '未知'}</div>
+                              <div className="font-medium text-slate-900">{progress.user?.full_name || '未知'}</div>
                               <div className="text-slate-500 text-xs">{progress.user?.email}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-slate-300 text-sm line-clamp-1">{progress.course?.title || '未知课程'}</span>
+                          <span className="text-slate-600 text-sm line-clamp-1">{progress.course?.title || '未知课程'}</span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-blue-500 rounded-full"
                                 style={{ width: `${progress.progress_percent}%` }}
                               />
                             </div>
-                            <span className="text-sm text-slate-400">{progress.progress_percent}%</span>
+                            <span className="text-sm text-slate-500">{progress.progress_percent}%</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-slate-500 text-sm">
                           {progress.completed_chapters}/{progress.total_chapters}
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-slate-500 text-sm">
                           {progress.last_study_at
                             ? new Date(progress.last_study_at).toLocaleDateString('zh-CN')
                             : '-'}
@@ -401,7 +401,7 @@ export default function LearningPage() {
                               ? 'bg-emerald-500/20 text-emerald-400'
                               : progress.progress_percent > 0
                               ? 'bg-blue-500/20 text-blue-400'
-                              : 'bg-slate-500/20 text-slate-400'
+                              : 'bg-slate-500/20 text-slate-500'
                           }`}>
                             {progress.completed_at ? '已完成' : progress.progress_percent > 0 ? '学习中' : '未开始'}
                           </span>
@@ -412,7 +412,7 @@ export default function LearningPage() {
                 </table>
               </TableContainer>
               {totalPages > 1 && (
-                <div className="px-6 py-4 border-t border-slate-700/50">
+                <div className="px-6 py-4 border-t border-slate-200/50">
                   <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
                 </div>
               )}
@@ -424,33 +424,33 @@ export default function LearningPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">用户</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">课程</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">评分</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">评论内容</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">用户</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">课程</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">评分</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">评论内容</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {reviews.map((review) => (
-                    <tr key={review.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={review.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
                             {review.user?.avatar_url ? (
                               <img src={review.user.avatar_url} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <span className="text-sm text-slate-400">{review.user?.full_name?.[0] || '?'}</span>
+                              <span className="text-sm text-slate-500">{review.user?.full_name?.[0] || '?'}</span>
                             )}
                           </div>
-                          <span className="text-slate-300 text-sm">{review.user?.full_name || '匿名'}</span>
+                          <span className="text-slate-600 text-sm">{review.user?.full_name || '匿名'}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-slate-300 text-sm line-clamp-1">{review.course?.title || '未知课程'}</span>
+                        <span className="text-slate-600 text-sm line-clamp-1">{review.course?.title || '未知课程'}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1">
@@ -469,7 +469,7 @@ export default function LearningPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {review.is_featured && <span className="text-amber-400 text-xs">精选</span>}
-                          <span className="text-slate-300 text-sm line-clamp-2 max-w-xs">{review.content}</span>
+                          <span className="text-slate-600 text-sm line-clamp-2 max-w-xs">{review.content}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -508,7 +508,7 @@ export default function LearningPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

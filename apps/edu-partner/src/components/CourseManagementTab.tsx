@@ -11,9 +11,9 @@ interface CourseManagementTabProps {
 }
 
 const STATUS_BADGES: Record<string, { bg: string; text: string; label: string }> = {
-  published: { bg: 'bg-green-500/20', text: 'text-green-400', label: '已发布' },
+  published: { bg: 'bg-green-500/20', text: 'text-green-400', label: '已上架' },
   pending: { bg: 'bg-amber-500/20', text: 'text-amber-400', label: '待审核' },
-  rejected: { bg: 'bg-red-500/20', text: 'text-red-400', label: '已拒绝' },
+  offline: { bg: 'bg-slate-500/20', text: 'text-slate-400', label: '已下架' },
   draft: { bg: 'bg-gray-500/20', text: 'text-gray-400', label: '草稿' },
 };
 
@@ -35,7 +35,7 @@ export default function CourseManagementTab({
     draft: courses.filter(c => c.status === 'draft').length,
     pending: courses.filter(c => c.status === 'pending').length,
     published: courses.filter(c => c.status === 'published').length,
-    rejected: courses.filter(c => c.status === 'rejected').length,
+    offline: courses.filter(c => c.status === 'offline').length,
   };
 
   return (
@@ -58,8 +58,8 @@ export default function CourseManagementTab({
           { key: 'all', label: '全部' },
           { key: 'draft', label: '草稿' },
           { key: 'pending', label: '待审核' },
-          { key: 'published', label: '已发布' },
-          { key: 'rejected', label: '已拒绝' },
+          { key: 'published', label: '已上架' },
+          { key: 'offline', label: '已下架' },
         ].map(({ key, label }) => (
           <button
             key={key}
@@ -134,22 +134,15 @@ export default function CourseManagementTab({
                     </span>
                   </div>
 
-                  {/* Rejection Reason */}
-                  {course.status === 'rejected' && course.rejectionReason && (
-                    <div className="mb-3 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
-                      拒绝原因: {course.rejectionReason}
-                    </div>
-                  )}
-
                   {/* Actions */}
                   <div className="flex gap-2">
                     <button
                       onClick={() => onEditCourse(course)}
                       className="flex-1 py-2 px-3 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm transition-colors"
                     >
-                      {course.status === 'draft' || course.status === 'rejected' ? '编辑' : '查看'}
+                      {course.status === 'draft' ? '编辑' : '查看'}
                     </button>
-                    {(course.status === 'draft' || course.status === 'rejected') && (
+                    {course.status === 'draft' && (
                       <button
                         onClick={() => onDeleteCourse(course.id)}
                         className="py-2 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors"

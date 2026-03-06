@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -166,8 +166,8 @@ export default function CourseProductLinkingPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">课程-商品关联</h1>
-          <p className="text-slate-400 mt-1">管理课程与商品之间的推荐关联关系</p>
+          <h1 className="text-2xl font-bold text-slate-900">课程-商品关联</h1>
+          <p className="text-slate-500 mt-1">管理课程与商品之间的推荐关联关系</p>
         </div>
         <Button onClick={openAddDialog}>新建关联</Button>
       </div>
@@ -211,22 +211,22 @@ export default function CourseProductLinkingPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">课程</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">关系</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">商品</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">推荐理由</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">排序</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">课程</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-slate-600">关系</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">商品</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">推荐理由</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">排序</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {relations.map((rel) => (
-                    <tr key={rel.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={rel.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div>
-                          <span className="text-white font-medium text-sm line-clamp-1">{rel.course?.title || rel.course_id.slice(0, 8)}</span>
+                          <span className="text-slate-900 font-medium text-sm line-clamp-1">{rel.course?.title || rel.course_id.slice(0, 8)}</span>
                           <div className="text-xs text-slate-500">{rel.course?.slug}</div>
                         </div>
                       </td>
@@ -237,14 +237,14 @@ export default function CourseProductLinkingPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div>
-                          <span className="text-white font-medium text-sm line-clamp-1">{rel.product?.name || rel.product_id.slice(0, 8)}</span>
+                          <span className="text-slate-900 font-medium text-sm line-clamp-1">{rel.product?.name || rel.product_id.slice(0, 8)}</span>
                           <div className="text-xs text-slate-500">{rel.product?.brand}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm max-w-[200px]">
+                      <td className="px-6 py-4 text-slate-500 text-sm max-w-[200px]">
                         <span className="line-clamp-2">{rel.recommendation_reason || '-'}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">{rel.display_order}</td>
+                      <td className="px-6 py-4 text-slate-500 text-sm">{rel.display_order}</td>
                       <td className="px-6 py-4 text-right">
                         <Button variant="ghost" size="sm" onClick={() => { setRelationToDelete(rel); setShowDeleteDialog(true); }}>
                           删除
@@ -256,7 +256,7 @@ export default function CourseProductLinkingPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
@@ -268,8 +268,8 @@ export default function CourseProductLinkingPage() {
       {showAddDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowAddDialog(false)} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-lg w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-4">新建课程-商品关联</h3>
+          <div className="relative bg-slate-950 border border-slate-200/50 rounded-xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">新建课程-商品关联</h3>
             <div className="space-y-4">
               <Select
                 label="选择课程 *"

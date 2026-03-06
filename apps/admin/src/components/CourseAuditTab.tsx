@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { Course, CourseStatus, Specialty } from '@vetsphere/shared/types';
@@ -13,8 +13,6 @@ interface CourseAuditTabProps {
 const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) => {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editForm, setEditForm] = useState<Partial<Course>>({});
-  const [rejectModal, setRejectModal] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [editLang, setEditLang] = useState<'en' | 'zh' | 'th' | 'ja'>('zh');
   
@@ -67,14 +65,6 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
 
   const handleApprove = async (courseId: string) => {
     await api.manageCourse('update', { id: courseId, status: 'published' });
-    onRefresh();
-  };
-
-  const handleReject = async () => {
-    if (!rejectModal || !rejectReason.trim()) return;
-    await api.manageCourse('update', { id: rejectModal, status: 'rejected', rejectionReason: rejectReason });
-    setRejectModal(null);
-    setRejectReason('');
     onRefresh();
   };
 
@@ -181,8 +171,8 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
     switch (status) {
       case 'published': return <span className="text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded text-xs font-bold">已上架</span>;
       case 'pending': return <span className="text-amber-400 bg-amber-900/30 px-2 py-1 rounded text-xs font-bold animate-pulse">待审核</span>;
-      case 'rejected': return <span className="text-red-400 bg-red-900/30 px-2 py-1 rounded text-xs font-bold">已拒绝</span>;
-      default: return <span className="text-slate-400 bg-slate-800 px-2 py-1 rounded text-xs font-bold">草稿</span>;
+      case 'offline': return <span className="text-slate-500 bg-slate-900/30 px-2 py-1 rounded text-xs font-bold">已下架</span>;
+      default: return <span className="text-slate-500 bg-white px-2 py-1 rounded text-xs font-bold">草稿</span>;
     }
   };
 
@@ -201,7 +191,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
       render: (_, row) => (
         <div>
           <div className="flex items-center">
-            <p className="font-bold text-white text-sm">{row.title_zh || row.title}</p>
+            <p className="font-bold text-slate-900 text-sm">{row.title_zh || row.title}</p>
             {translationBadge(row)}
           </div>
           {row.title_zh && row.title && <p className="text-xs text-slate-500 mt-0.5">{row.title}</p>}
@@ -209,8 +199,8 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
         </div>
       ),
     },
-    { key: 'instructor.name', header: '讲师', render: (_, row) => <span className="text-slate-400">{row.instructor?.name || 'TBD'}</span>, hideOnMobile: true },
-    { key: 'price', header: '价格', render: (v, row) => <span className="text-white font-bold">{row.currency === 'CNY' ? '¥' : '$'}{(v || 0).toLocaleString()}</span>, hideOnMobile: true },
+    { key: 'instructor.name', header: '讲师', render: (_, row) => <span className="text-slate-500">{row.instructor?.name || 'TBD'}</span>, hideOnMobile: true },
+    { key: 'price', header: '价格', render: (v, row) => <span className="text-slate-900 font-bold">{row.currency === 'CNY' ? '¥' : '$'}{(v || 0).toLocaleString()}</span>, hideOnMobile: true },
     { key: 'status', header: '状态', render: (v) => statusBadge(v as CourseStatus) },
     {
       key: 'action',
@@ -240,16 +230,13 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
               </span>
             ) : translateSuccess === row.id ? '完成' : 'AI翻译'}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); handleEdit(row); }} className="text-slate-400 hover:text-white text-xs font-bold border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all min-h-[32px]">
+          <button onClick={(e) => { e.stopPropagation(); handleEdit(row); }} className="text-slate-500 hover:text-slate-900 text-xs font-bold border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all min-h-[32px]">
             编辑
           </button>
           {row.status === 'pending' && (
             <>
               <button onClick={(e) => { e.stopPropagation(); handleApprove(row.id); }} className="bg-emerald-500 text-black px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-400 transition-all min-h-[32px]">
                 通过
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setRejectModal(row.id); }} className="bg-red-500/80 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-500 transition-all min-h-[32px]">
-                拒绝
               </button>
             </>
           )}
@@ -263,7 +250,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center flex-wrap gap-1">
-            <p className="font-bold text-white text-sm truncate">{course.title_zh || course.title}</p>
+            <p className="font-bold text-slate-900 text-sm truncate">{course.title_zh || course.title}</p>
             {translationBadge(course)}
           </div>
           <p className="text-xs text-slate-500">{course.instructor?.name || 'TBD'}</p>
@@ -271,7 +258,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
         {statusBadge(course.status as CourseStatus)}
       </div>
       <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5">
-        <span className="text-sm text-slate-400 font-bold">{course.currency === 'CNY' ? '¥' : '$'}{(course.price || 0).toLocaleString()}</span>
+        <span className="text-sm text-slate-500 font-bold">{course.currency === 'CNY' ? '¥' : '$'}{(course.price || 0).toLocaleString()}</span>
         <div className="flex gap-2 flex-wrap">
           <button 
             onClick={() => handleTranslate(course.id)} 
@@ -280,11 +267,10 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
           >
             {translatingId === course.id ? '翻译中...' : 'AI翻译'}
           </button>
-          <button onClick={() => handleEdit(course)} className="text-xs font-bold border border-white/10 px-3 py-1.5 rounded-lg text-slate-400 min-h-[32px]">编辑</button>
+          <button onClick={() => handleEdit(course)} className="text-xs font-bold border border-white/10 px-3 py-1.5 rounded-lg text-slate-500 min-h-[32px]">编辑</button>
           {course.status === 'pending' && (
             <>
               <button onClick={() => handleApprove(course.id)} className="bg-emerald-500 text-black px-3 py-1.5 rounded-lg text-xs font-bold min-h-[32px]">通过</button>
-              <button onClick={() => setRejectModal(course.id)} className="bg-red-500/80 text-white px-3 py-1.5 rounded-lg text-xs font-bold min-h-[32px]">拒绝</button>
             </>
           )}
         </div>
@@ -295,7 +281,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-        <h3 className="font-bold text-lg text-white">平台课程全库</h3>
+        <h3 className="font-bold text-lg text-slate-900">平台课程全库</h3>
         <div className="text-slate-500 text-xs">共 {courses.length} 门课程</div>
       </div>
 
@@ -310,32 +296,13 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
         <DataTable columns={columns} data={courses} keyField="id" mobileCardRenderer={mobileCard} />
       </div>
 
-      {/* Reject modal */}
-      {rejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-white font-black text-lg mb-4">拒绝原因</h3>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="请说明拒绝原因，供课程提供者参考..."
-              className="w-full min-h-[120px] bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-slate-300 focus:border-red-500 focus:outline-none resize-none"
-            />
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => { setRejectModal(null); setRejectReason(''); }} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:bg-white/5 transition-all">取消</button>
-              <button onClick={handleReject} disabled={!rejectReason.trim()} className="flex-1 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-400 disabled:opacity-50 transition-all">确认拒绝</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Edit modal - 完整课程内容编辑 (与发布者表单完全匹配) */}
       {editingCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
           <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6 sticky top-0 bg-[#0F172A] pb-4 border-b border-white/10 z-20">
-              <h3 className="text-white font-black text-lg">编辑课程 - 完整内容预览</h3>
-              <button onClick={() => setEditingCourse(null)} className="text-slate-500 hover:text-white text-xl">&times;</button>
+              <h3 className="text-slate-900 font-black text-lg">编辑课程 - 完整内容预览</h3>
+              <button onClick={() => setEditingCourse(null)} className="text-slate-500 hover:text-slate-900 text-xl">&times;</button>
             </div>
 
             {/* Language tabs - 4种语言 */}
@@ -348,7 +315,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                     key={lang}
                     onClick={() => setEditLang(lang)}
                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                      editLang === lang ? 'bg-emerald-500 text-black' : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                      editLang === lang ? 'bg-emerald-500 text-black' : 'bg-white/5 text-slate-500 hover:bg-white/10'
                     }`}
                   >
                     {lang === 'en' ? 'English' : lang === 'zh' ? '中文' : lang === 'th' ? 'ไทย' : '日本語'}
@@ -368,7 +335,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                   {/* 发布语言 - 只读显示 */}
                   <div className="flex items-center gap-3 p-3 bg-black/30 rounded-lg border border-white/5">
                     <span className="text-xs text-slate-500">发布语言:</span>
-                    <span className="text-sm text-white font-medium">
+                    <span className="text-sm text-slate-900 font-medium">
                       {(editForm as any).publishLanguage === 'zh' ? '中文' : 
                        (editForm as any).publishLanguage === 'en' ? 'English' :
                        (editForm as any).publishLanguage === 'ja' ? '日本語' : 
@@ -386,7 +353,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                       type="text"
                       value={getLocalizedValue('title')}
                       onChange={(e) => setLocalizedValue('title', e.target.value)}
-                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                     />
                   </div>
 
@@ -398,7 +365,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                         type="text"
                         value={editForm.specialty || ''}
                         onChange={(e) => setEditForm(prev => ({ ...prev, specialty: e.target.value as Specialty }))}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                     <div>
@@ -406,7 +373,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                       <select
                         value={editForm.level || ''}
                         onChange={(e) => setEditForm(prev => ({ ...prev, level: e.target.value as Course['level'] }))}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       >
                         <option value="Basic">基础 Basic</option>
                         <option value="Intermediate">进阶 Intermediate</option>
@@ -424,7 +391,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                         type="number"
                         value={editForm.price || 0}
                         onChange={(e) => setEditForm(prev => ({ ...prev, price: Number(e.target.value) }))}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                     <div>
@@ -432,7 +399,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                       <select
                         value={editForm.currency || 'CNY'}
                         onChange={(e) => setEditForm(prev => ({ ...prev, currency: e.target.value }))}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       >
                         <option value="CNY">¥ 人民币</option>
                         <option value="USD">$ 美元</option>
@@ -446,7 +413,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                         type="number"
                         value={editForm.maxCapacity || 30}
                         onChange={(e) => setEditForm(prev => ({ ...prev, maxCapacity: Number(e.target.value) }))}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                   </div>
@@ -477,7 +444,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                               setEditForm(prev => ({ ...prev, teachingLanguages: newLangs }));
                             }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                              isSelected ? 'bg-sky-500 border-sky-400 text-white' : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
+                              isSelected ? 'bg-sky-500 border-sky-400 text-slate-900' : 'bg-white/5 border-white/10 text-slate-500 hover:border-white/20'
                             }`}
                           >
                             {isSelected && '✓ '}{lang.l}
@@ -495,7 +462,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                     <textarea
                       value={getLocalizedValue('description')}
                       onChange={(e) => setLocalizedValue('description', e.target.value)}
-                      className="w-full min-h-[100px] px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none resize-none"
+                      className="w-full min-h-[100px] px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none"
                     />
                   </div>
 
@@ -506,7 +473,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                       type="number"
                       value={editForm.totalHours || ''}
                       onChange={(e) => setEditForm(prev => ({ ...prev, totalHours: Number(e.target.value) || undefined }))}
-                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                     />
                   </div>
 
@@ -522,7 +489,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                         value={editForm.imageUrl || ''}
                         onChange={(e) => setEditForm(prev => ({ ...prev, imageUrl: e.target.value }))}
                         placeholder="图片 URL"
-                        className="w-full px-4 py-2 bg-black/50 border border-white/10 rounded-xl text-xs text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-2 bg-black/50 border border-white/10 rounded-xl text-xs text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                     <div>
@@ -532,7 +499,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                         value={(editForm as any).previewVideoUrl || ''}
                         onChange={(e) => setEditForm(prev => ({ ...prev, previewVideoUrl: e.target.value }))}
                         placeholder="视频 URL"
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                   </div>
@@ -560,7 +527,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                           instructor: { ...prev.instructor, imageUrl: e.target.value } as Course['instructor']
                         }))}
                         placeholder="头像 URL"
-                        className="flex-1 px-4 py-2 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="flex-1 px-4 py-2 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                   </div>
@@ -581,7 +548,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                             instructor: { ...prev.instructor, [field]: e.target.value } as Course['instructor']
                           }));
                         }}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                     <div>
@@ -599,7 +566,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                             instructor: { ...prev.instructor, [field]: e.target.value } as Course['instructor']
                           }));
                         }}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                   </div>
@@ -618,7 +585,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                           instructor: { ...prev.instructor, [field]: e.target.value } as Course['instructor']
                         }));
                       }}
-                      className="w-full min-h-[80px] px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none resize-none"
+                      className="w-full min-h-[80px] px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none"
                     />
                   </div>
 
@@ -639,7 +606,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                                 instructor: { ...prev.instructor, credentials: newCreds } as Course['instructor']
                               }));
                             }}
-                            className="flex-1 px-4 py-2 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                            className="flex-1 px-4 py-2 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                           />
                           <button
                             type="button"
@@ -686,7 +653,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                       type="date"
                       value={editForm.startDate || ''}
                       onChange={(e) => setEditForm(prev => ({ ...prev, startDate: e.target.value }))}
-                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                     />
                   </div>
                   <div>
@@ -695,7 +662,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                       type="date"
                       value={editForm.endDate || ''}
                       onChange={(e) => setEditForm(prev => ({ ...prev, endDate: e.target.value }))}
-                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                     />
                   </div>
                   <div>
@@ -704,7 +671,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                       type="date"
                       value={editForm.enrollmentDeadline || ''}
                       onChange={(e) => setEditForm(prev => ({ ...prev, enrollmentDeadline: e.target.value }))}
-                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                      className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                     />
                   </div>
                 </div>
@@ -738,7 +705,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                                     }
                                     setEditForm(prev => ({ ...prev, agenda: newAgenda }));
                                   }}
-                                  className="flex-1 px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-xs text-white focus:border-emerald-500 outline-none"
+                                  className="flex-1 px-3 py-2 bg-black/50 border border-white/10 rounded-lg text-xs text-slate-900 focus:border-emerald-500 outline-none"
                                   placeholder={`活动内容 (${editLang})`}
                                 />
                               </div>
@@ -767,7 +734,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                           ...prev,
                           location: { ...prev.location, country: e.target.value } as Course['location']
                         }))}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                     <div>
@@ -779,7 +746,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                           ...prev,
                           location: { ...prev.location, region: e.target.value } as Course['location']
                         }))}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                     <div>
@@ -797,7 +764,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                             location: { ...prev.location, [field]: e.target.value } as Course['location']
                           }));
                         }}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                   </div>
@@ -817,7 +784,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                             location: { ...prev.location, [field]: e.target.value } as Course['location']
                           }));
                         }}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                     <div>
@@ -835,7 +802,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                             location: { ...prev.location, [field]: e.target.value } as Course['location']
                           }));
                         }}
-                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
+                        className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
                       />
                     </div>
                   </div>
@@ -903,7 +870,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                         }));
                       }}
                       placeholder="如何到达培训地点..."
-                      className="w-full min-h-[60px] px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none resize-none"
+                      className="w-full min-h-[60px] px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none"
                     />
                   </div>
 
@@ -923,7 +890,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
                         }));
                       }}
                       placeholder="其他需要学员了解的信息..."
-                      className="w-full min-h-[60px] px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-white focus:border-emerald-500 outline-none resize-none"
+                      className="w-full min-h-[60px] px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none"
                     />
                   </div>
                 </div>
@@ -931,7 +898,7 @@ const CourseAuditTab: React.FC<CourseAuditTabProps> = ({ courses, onRefresh }) =
             </div>
 
             <div className="flex gap-3 mt-6 sticky bottom-0 bg-[#0F172A] pt-4 border-t border-white/10">
-              <button onClick={() => setEditingCourse(null)} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-bold text-slate-400 hover:bg-white/5 transition-all">关闭</button>
+              <button onClick={() => setEditingCourse(null)} className="flex-1 py-3 border border-white/10 rounded-xl text-sm font-bold text-slate-500 hover:bg-white/5 transition-all">关闭</button>
               <button 
                 onClick={() => handleTranslate(editingCourse.id)} 
                 disabled={translatingId === editingCourse.id}

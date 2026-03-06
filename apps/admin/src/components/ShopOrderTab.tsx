@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo } from 'react';
 import { api } from '@vetsphere/shared/services/api';
@@ -164,7 +164,7 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
       key: 'id',
       header: '订单号',
       render: (v: string) => (
-        <span className="font-mono text-white text-xs">#{v.slice(0, 12)}</span>
+        <span className="font-mono text-slate-900 text-xs">#{v.slice(0, 12)}</span>
       ),
     },
     {
@@ -172,7 +172,7 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
       header: '客户',
       render: (_: any, row: ShopOrder) => (
         <div>
-          <p className="text-white font-medium text-sm">{row.customerName || '-'}</p>
+          <p className="text-slate-900 font-medium text-sm">{row.customerName || '-'}</p>
           <p className="text-slate-500 text-xs truncate max-w-[160px]">{row.customerEmail}</p>
         </div>
       ),
@@ -181,7 +181,7 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
       key: 'items',
       header: '商品',
       render: (_: any, row: ShopOrder) => (
-        <span className="text-slate-300 text-sm truncate max-w-[200px] block">{getProductSummary(row)}</span>
+        <span className="text-slate-600 text-sm truncate max-w-[200px] block">{getProductSummary(row)}</span>
       ),
       hideOnMobile: true,
     },
@@ -197,7 +197,7 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
       key: 'status',
       header: '状态',
       render: (v: string) => (
-        <span className={`px-2 py-0.5 rounded text-xs font-bold ${STATUS_COLORS[v] || 'bg-slate-500/10 text-slate-400'}`}>
+        <span className={`px-2 py-0.5 rounded text-xs font-bold ${STATUS_COLORS[v] || 'bg-slate-500/10 text-slate-500'}`}>
           {STATUS_MAP[v] || v}
         </span>
       ),
@@ -218,13 +218,13 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-black text-white">商城订单管理</h2>
+          <h2 className="text-xl font-black text-slate-900">商城订单管理</h2>
           <p className="text-sm text-slate-500 mt-1">管理所有商品购买订单、发货与物流</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleExport}
-            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold text-slate-400 hover:bg-white/10 hover:text-white transition-all min-h-[40px]"
+            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold text-slate-500 hover:bg-white/10 hover:text-slate-900 transition-all min-h-[40px]"
           >
             导出CSV
           </button>
@@ -274,7 +274,7 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="搜索客户/订单号/商品..."
-            className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/20"
+            className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-slate-900 placeholder:text-slate-600 focus:outline-none focus:border-white/20"
           />
         </div>
       </div>
@@ -291,16 +291,16 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
             <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <p className="text-white font-bold text-sm">{order.customerName || order.customerEmail}</p>
+                  <p className="text-slate-900 font-bold text-sm">{order.customerName || order.customerEmail}</p>
                   <p className="text-slate-500 text-xs font-mono">#{order.id.slice(0, 12)}</p>
                 </div>
                 <span className="text-emerald-400 font-black">
                   ¥{(order.productTotal || 0).toLocaleString()}
                 </span>
               </div>
-              <p className="text-slate-400 text-xs mb-2 truncate">{getProductSummary(order)}</p>
+              <p className="text-slate-500 text-xs mb-2 truncate">{getProductSummary(order)}</p>
               <div className="flex justify-between items-center">
-                <span className={`px-2 py-0.5 rounded text-xs font-bold ${STATUS_COLORS[order.status] || 'bg-slate-500/10 text-slate-400'}`}>
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${STATUS_COLORS[order.status] || 'bg-slate-500/10 text-slate-500'}`}>
                   {STATUS_MAP[order.status] || order.status}
                 </span>
                 <span className="text-slate-600 text-xs">{order.date?.split('T')[0]}</span>
@@ -313,16 +313,16 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
       {/* Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-200/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="p-6 border-b border-white/5 flex justify-between items-start">
               <div>
-                <h3 className="text-lg font-black text-white">商品订单详情</h3>
+                <h3 className="text-lg font-black text-slate-900">商品订单详情</h3>
                 <p className="text-xs text-slate-500 font-mono mt-1">#{selectedOrder.id}</p>
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 hover:bg-white/10 hover:text-white"
+                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 hover:bg-white/10 hover:text-slate-900"
               >
                 x
               </button>
@@ -333,8 +333,8 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white/5 rounded-xl p-4">
                   <p className="text-xs text-slate-500 mb-1">客户</p>
-                  <p className="text-white font-bold">{selectedOrder.customerName || '-'}</p>
-                  <p className="text-slate-400 text-xs">{selectedOrder.customerEmail}</p>
+                  <p className="text-slate-900 font-bold">{selectedOrder.customerName || '-'}</p>
+                  <p className="text-slate-500 text-xs">{selectedOrder.customerEmail}</p>
                 </div>
                 <div className="bg-white/5 rounded-xl p-4">
                   <p className="text-xs text-slate-500 mb-1">订单金额</p>
@@ -350,15 +350,15 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
               {/* Shipping Address */}
               <div className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-slate-500 mb-1">收货地址</p>
-                <p className="text-white text-sm">{formatAddress(selectedOrder.shippingAddress)}</p>
+                <p className="text-slate-900 text-sm">{formatAddress(selectedOrder.shippingAddress)}</p>
                 {selectedOrder.shippingAddress?.phone && (
-                  <p className="text-slate-400 text-xs mt-1">电话: {selectedOrder.shippingAddress.phone}</p>
+                  <p className="text-slate-500 text-xs mt-1">电话: {selectedOrder.shippingAddress.phone}</p>
                 )}
               </div>
 
               {/* Order Items */}
               <div>
-                <h4 className="text-sm font-bold text-white mb-3">商品明细</h4>
+                <h4 className="text-sm font-bold text-slate-900 mb-3">商品明细</h4>
                 <div className="space-y-2">
                   {selectedOrder.items.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-4 bg-white/[0.03] border border-white/5 rounded-xl p-3">
@@ -370,7 +370,7 @@ const ShopOrderTab: React.FC<ShopOrderTabProps> = ({ orders, onRefresh }) => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                        <p className="text-slate-900 text-sm font-medium truncate">{item.name}</p>
                         <p className="text-slate-500 text-xs">x{item.quantity}</p>
                       </div>
                       <p className="text-emerald-400 font-bold text-sm flex-shrink-0">

@@ -126,15 +126,15 @@ export default function OverviewTab({ courses, orders, onAddCourse }: OverviewTa
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">已拒绝</span>
+              <span className="text-gray-400">已下架</span>
               <div className="flex items-center gap-2">
-                <div className="w-32 h-2 bg-red-500/20 rounded-full overflow-hidden">
+                <div className="w-32 h-2 bg-slate-500/20 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-red-500 rounded-full"
-                    style={{ width: `${courses.length ? (courses.filter(c => c.status === 'rejected').length / courses.length) * 100 : 0}%` }}
+                    className="h-full bg-slate-500 rounded-full"
+                    style={{ width: `${courses.length ? (courses.filter(c => c.status === 'offline').length / courses.length) * 100 : 0}%` }}
                   />
                 </div>
-                <span className="text-white text-sm w-8">{courses.filter(c => c.status === 'rejected').length}</span>
+                <span className="text-white text-sm w-8">{courses.filter(c => c.status === 'offline').length}</span>
               </div>
             </div>
           </div>

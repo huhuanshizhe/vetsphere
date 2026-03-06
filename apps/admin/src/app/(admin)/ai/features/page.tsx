@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -168,8 +168,8 @@ export default function AiFeaturesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">AI 功能开关</h1>
-          <p className="text-slate-400 mt-1">管理平台 AI 功能的启用和配置</p>
+          <h1 className="text-2xl font-bold text-slate-900">AI 功能开关</h1>
+          <p className="text-slate-500 mt-1">管理平台 AI 功能的启用和配置</p>
         </div>
         <Button onClick={openCreate}>新增功能</Button>
       </div>
@@ -188,26 +188,26 @@ export default function AiFeaturesPage() {
         ) : (
           <TableContainer>
             <table className="w-full">
-              <thead className="bg-slate-800/50">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">功能</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Key</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">模型</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">功能</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Key</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">模型</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {features.map((feature) => (
-                  <tr key={feature.id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={feature.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div>
-                        <span className="text-white font-medium">{feature.name}</span>
+                        <span className="text-slate-900 font-medium">{feature.name}</span>
                         {feature.description && <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{feature.description}</div>}
                       </div>
                     </td>
                     <td className="px-6 py-4"><code className="text-sm text-emerald-400">{feature.feature_key}</code></td>
-                    <td className="px-6 py-4 text-slate-300 text-sm">
+                    <td className="px-6 py-4 text-slate-600 text-sm">
                       {feature.model_provider ? `${feature.model_provider}/${feature.model_name || ''}` : '-'}
                     </td>
                     <td className="px-6 py-4">
@@ -236,8 +236,8 @@ export default function AiFeaturesPage() {
       {showEditDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowEditDialog(false)} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-lg w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-4">{editingFeature ? '编辑AI功能' : '新增AI功能'}</h3>
+          <div className="relative bg-slate-950 border border-slate-200/50 rounded-xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">{editingFeature ? '编辑AI功能' : '新增AI功能'}</h3>
             <div className="space-y-4">
               <Input label="Feature Key *" value={editForm.feature_key} onChange={(e) => setEditForm(f => ({ ...f, feature_key: e.target.value }))} placeholder="如：ai_course_summary" disabled={!!editingFeature} />
               <Input label="名称 *" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="如：AI课程摘要生成" />

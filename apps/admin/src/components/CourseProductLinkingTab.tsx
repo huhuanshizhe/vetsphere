@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '@vetsphere/shared/services/api';
@@ -207,7 +207,7 @@ export default function CourseProductLinkingTab() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-white">课程-设备关联管理</h2>
+          <h2 className="text-xl font-bold text-slate-900">课程-设备关联管理</h2>
           <p className="text-sm text-gray-400 mt-1">
             将设备与培训课程关联，用于讲师推荐
           </p>
@@ -227,7 +227,7 @@ export default function CourseProductLinkingTab() {
             <select
               value={selectedCourseId}
               onChange={e => setSelectedCourseId(e.target.value)}
-              className="w-full px-4 py-3 bg-[#0F172A] border border-blue-500/20 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500/40"
+              className="w-full px-4 py-3 bg-[#0F172A] border border-blue-500/20 rounded-xl text-slate-900 text-sm focus:outline-none focus:border-blue-500/40"
             >
               <option value="">-- 请选择一个课程 --</option>
               {publishedCourses.map(course => (
@@ -248,7 +248,7 @@ export default function CourseProductLinkingTab() {
                 className="w-20 h-20 rounded-lg object-cover"
               />
               <div className="flex-1">
-                <h3 className="font-bold text-white">{selectedCourse.title}</h3>
+                <h3 className="font-bold text-slate-900">{selectedCourse.title}</h3>
                 <p className="text-sm text-gray-400">
                   {selectedCourse.specialty} • {selectedCourse.level} • {selectedCourse.startDate}
                 </p>
@@ -267,7 +267,7 @@ export default function CourseProductLinkingTab() {
           {selectedCourseId && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-white">已关联设备</h3>
+                <h3 className="text-lg font-bold text-slate-900">已关联设备</h3>
                 <button
                   onClick={() => setShowAddModal(true)}
                   className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-sm font-bold transition-colors"
@@ -313,7 +313,7 @@ export default function CourseProductLinkingTab() {
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-500 uppercase tracking-wider">{product.brand}</p>
-                          <h4 className="font-bold text-white truncate">{product.name}</h4>
+                          <h4 className="font-bold text-slate-900 truncate">{product.name}</h4>
                           <div className="flex items-center gap-1.5 mt-1">
                             {relation.relationType && relation.relationType !== 'course' && (
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
@@ -366,7 +366,7 @@ export default function CourseProductLinkingTab() {
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
               <div className="bg-[#0F172A] border border-blue-500/20 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
                 <div className="p-5 border-b border-blue-500/10 flex justify-between items-center">
-                  <h3 className="text-lg font-bold text-white">添加设备到课程</h3>
+                  <h3 className="text-lg font-bold text-slate-900">添加设备到课程</h3>
                   <button 
                     onClick={() => {
                       setShowAddModal(false);
@@ -396,7 +396,7 @@ export default function CourseProductLinkingTab() {
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                       placeholder="按名称或品牌搜索..."
-                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-blue-500/40"
+                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-slate-900 text-sm placeholder:text-gray-600 focus:outline-none focus:border-blue-500/40"
                     />
                   </div>
 
@@ -416,7 +416,7 @@ export default function CourseProductLinkingTab() {
                         <img src={product.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover bg-white" />
                         <div className="flex-1 text-left">
                           <p className="text-xs text-gray-500">{product.brand}</p>
-                          <p className="text-sm font-bold text-white truncate">{product.name}</p>
+                          <p className="text-sm font-bold text-slate-900 truncate">{product.name}</p>
                         </div>
                         {newRelation.productId === product.id && (
                           <span className="text-blue-400">&#10003;</span>
@@ -434,7 +434,7 @@ export default function CourseProductLinkingTab() {
                     <select
                       value={newRelation.relationshipType}
                       onChange={e => setNewRelation(prev => ({ ...prev, relationshipType: e.target.value as RelationshipType }))}
-                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500/40"
+                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-slate-900 text-sm focus:outline-none focus:border-blue-500/40"
                     >
                       <option value="required">必备 - 课程必需设备</option>
                       <option value="recommended">推荐 - 讲师推荐使用</option>
@@ -461,7 +461,7 @@ export default function CourseProductLinkingTab() {
                           }))}
                           className={`flex-1 p-3 rounded-xl border text-left transition-colors ${
                             newRelation.relationType === opt.value
-                              ? 'bg-blue-500/20 border-blue-500 text-white'
+                              ? 'bg-blue-500/20 border-blue-500 text-slate-900'
                               : 'bg-blue-500/5 border-blue-500/10 text-gray-400 hover:border-blue-500/30'
                           }`}
                         >
@@ -484,7 +484,7 @@ export default function CourseProductLinkingTab() {
                           ...prev, 
                           dayIndex: e.target.value ? parseInt(e.target.value) : null 
                         }))}
-                        className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500/40"
+                        className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-slate-900 text-sm focus:outline-none focus:border-blue-500/40"
                       >
                         <option value="">-- 请选择培训日 --</option>
                         {selectedCourse.agenda.map((day, idx) => (
@@ -504,7 +504,7 @@ export default function CourseProductLinkingTab() {
                       onChange={e => setNewRelation(prev => ({ ...prev, instructorNoteEn: e.target.value }))}
                       placeholder="可选: 讲师关于为什么推荐这个设备的备注..."
                       rows={2}
-                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-blue-500/40 resize-none"
+                      className="w-full px-4 py-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-slate-900 text-sm placeholder:text-gray-600 focus:outline-none focus:border-blue-500/40 resize-none"
                     />
                   </div>
                 </div>
@@ -512,7 +512,7 @@ export default function CourseProductLinkingTab() {
                 <div className="p-5 border-t border-blue-500/10 flex justify-end gap-3">
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                    className="px-4 py-2 text-gray-400 hover:text-slate-900 transition-colors"
                   >
                     取消
                   </button>

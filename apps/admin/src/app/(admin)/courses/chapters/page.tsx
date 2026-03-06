@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -293,8 +293,8 @@ export default function ChaptersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">章节管理</h1>
-          <p className="text-slate-400 mt-1">管理课程章节内容与排序</p>
+          <h1 className="text-2xl font-bold text-slate-900">章节管理</h1>
+          <p className="text-slate-500 mt-1">管理课程章节内容与排序</p>
         </div>
         {selectedCourse && (
           <Button onClick={() => {
@@ -358,27 +358,27 @@ export default function ChaptersPage() {
               <>
                 <TableContainer>
                   <table className="w-full">
-                    <thead className="bg-slate-800/50">
+                    <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300 w-16">序号</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">章节</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时长</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">属性</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                        <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600 w-16">序号</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">章节</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时长</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">属性</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700/50">
                       {chapters.map((chapter, index) => (
-                        <tr key={chapter.id} className="hover:bg-slate-800/30 transition-colors">
-                          <td className="px-6 py-4 text-slate-400">
+                        <tr key={chapter.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 text-slate-500">
                             <div className="flex items-center gap-1">
                               <span>{chapter.sort_order}</span>
                               <div className="flex flex-col">
                                 <button
                                   onClick={() => handleMoveChapter(chapter, 'up')}
                                   disabled={index === 0}
-                                  className="text-slate-500 hover:text-white disabled:opacity-30"
+                                  className="text-slate-500 hover:text-slate-900 disabled:opacity-30"
                                 >
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -387,7 +387,7 @@ export default function ChaptersPage() {
                                 <button
                                   onClick={() => handleMoveChapter(chapter, 'down')}
                                   disabled={index === chapters.length - 1}
-                                  className="text-slate-500 hover:text-white disabled:opacity-30"
+                                  className="text-slate-500 hover:text-slate-900 disabled:opacity-30"
                                 >
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -398,13 +398,13 @@ export default function ChaptersPage() {
                           </td>
                           <td className="px-6 py-4">
                             <div>
-                              <div className="font-medium text-white">{chapter.title}</div>
+                              <div className="font-medium text-slate-900">{chapter.title}</div>
                               {chapter.description && (
                                 <div className="text-slate-500 text-xs mt-1 line-clamp-1">{chapter.description}</div>
                               )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-slate-400 text-sm">
+                          <td className="px-6 py-4 text-slate-500 text-sm">
                             {chapter.duration_minutes ? formatDuration(chapter.duration_minutes) : '-'}
                           </td>
                           <td className="px-6 py-4">
@@ -425,7 +425,7 @@ export default function ChaptersPage() {
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                               chapter.status === 'published'
                                 ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-slate-500/20 text-slate-400'
+                                : 'bg-slate-500/20 text-slate-500'
                             }`}>
                               {statusLabels[chapter.status] || chapter.status}
                             </span>
@@ -446,7 +446,7 @@ export default function ChaptersPage() {
                   </table>
                 </TableContainer>
                 {totalPages > 1 && (
-                  <div className="px-6 py-4 border-t border-slate-700/50">
+                  <div className="px-6 py-4 border-t border-slate-200/50">
                     <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
                   </div>
                 )}
@@ -462,7 +462,7 @@ export default function ChaptersPage() {
             <svg className="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            <h3 className="text-lg font-medium text-slate-300 mb-2">请先选择课程</h3>
+            <h3 className="text-lg font-medium text-slate-600 mb-2">请先选择课程</h3>
             <p className="text-slate-500">选择一个课程后，可以管理该课程的章节内容</p>
           </div>
         </Card>
@@ -481,15 +481,15 @@ export default function ChaptersPage() {
 
       {showEditDialog && chapterToEdit && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-700">
-              <h3 className="text-lg font-semibold text-white">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900">
                 {chapterToEdit.id ? '编辑章节' : '添加章节'}
               </h3>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">章节标题 *</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">章节标题 *</label>
                 <Input
                   value={chapterToEdit.title || ''}
                   onChange={(e) => setChapterToEdit({ ...chapterToEdit, title: e.target.value })}
@@ -497,16 +497,16 @@ export default function ChaptersPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">章节描述</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">章节描述</label>
                 <textarea
                   value={chapterToEdit.description || ''}
                   onChange={(e) => setChapterToEdit({ ...chapterToEdit, description: e.target.value })}
-                  className="w-full h-24 bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full h-24 bg-slate-900 border border-slate-200 rounded-lg px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-blue-500"
                   placeholder="输入章节描述"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">视频链接</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">视频链接</label>
                 <Input
                   value={chapterToEdit.video_url || ''}
                   onChange={(e) => setChapterToEdit({ ...chapterToEdit, video_url: e.target.value })}
@@ -515,7 +515,7 @@ export default function ChaptersPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">时长(分钟)</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">时长(分钟)</label>
                   <Input
                     type="number"
                     value={chapterToEdit.duration_minutes || ''}
@@ -524,7 +524,7 @@ export default function ChaptersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">状态</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">状态</label>
                   <Select
                     value={chapterToEdit.status || 'draft'}
                     onChange={(e) => setChapterToEdit({ ...chapterToEdit, status: e.target.value })}
@@ -541,22 +541,22 @@ export default function ChaptersPage() {
                     type="checkbox"
                     checked={chapterToEdit.is_free || false}
                     onChange={(e) => setChapterToEdit({ ...chapterToEdit, is_free: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-slate-200 bg-slate-900 text-blue-500 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-slate-300">免费章节</span>
+                  <span className="text-sm text-slate-600">免费章节</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={chapterToEdit.is_preview || false}
                     onChange={(e) => setChapterToEdit({ ...chapterToEdit, is_preview: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-slate-200 bg-slate-900 text-blue-500 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-slate-300">允许试看</span>
+                  <span className="text-sm text-slate-600">允许试看</span>
                 </label>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
               <Button variant="secondary" onClick={() => { setShowEditDialog(false); setChapterToEdit(null); }}>
                 取消
               </Button>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 
@@ -56,7 +56,7 @@ const STATUS_STYLES: Record<string, string> = {
   rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
   processing: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  failed: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+  failed: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
 };
 
 const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) => {
@@ -143,7 +143,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-black text-white">退款管理</h2>
+          <h2 className="text-xl font-black text-slate-900">退款管理</h2>
           <p className="text-sm text-slate-500 mt-1">
             审核和处理用户退款申请
             {pendingCount > 0 && (
@@ -155,7 +155,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
         </div>
         <button
           onClick={loadRefunds}
-          className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold text-slate-400 hover:bg-white/10 hover:text-white transition-all min-h-[40px]"
+          className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold text-slate-500 hover:bg-white/10 hover:text-slate-900 transition-all min-h-[40px]"
         >
           刷新
         </button>
@@ -198,7 +198,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-white font-bold text-sm">
+                    <span className="text-slate-900 font-bold text-sm">
                       #{refund.id.slice(0, 8)}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-xs font-bold border ${STATUS_STYLES[refund.status]}`}>
@@ -210,7 +210,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
                     用户: {refund.order?.user_email || refund.user_id.slice(0, 8)}
                   </p>
                   {refund.reason && (
-                    <p className="text-xs text-slate-400 mt-1 truncate">
+                    <p className="text-xs text-slate-500 mt-1 truncate">
                       原因: {refund.reason}
                     </p>
                   )}
@@ -232,11 +232,11 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
       {/* Detail Modal */}
       {selectedRefund && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-700/50 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-200/50 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-white/5">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-black text-white">退款详情</h3>
+                  <h3 className="text-lg font-black text-slate-900">退款详情</h3>
                   <p className="text-xs text-slate-500 mt-1">#{selectedRefund.id}</p>
                 </div>
                 <button
@@ -244,7 +244,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
                     setSelectedRefund(null);
                     setRejectionReason('');
                   }}
-                  className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 hover:bg-white/10 hover:text-white"
+                  className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 hover:bg-white/10 hover:text-slate-900"
                 >
                   x
                 </button>
@@ -277,21 +277,21 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-slate-500 text-xs">订单ID</p>
-                  <p className="text-white font-medium">#{selectedRefund.order_id.slice(0, 8)}</p>
+                  <p className="text-slate-900 font-medium">#{selectedRefund.order_id.slice(0, 8)}</p>
                 </div>
                 <div>
                   <p className="text-slate-500 text-xs">用户</p>
-                  <p className="text-white font-medium truncate">
+                  <p className="text-slate-900 font-medium truncate">
                     {selectedRefund.order?.user_email || selectedRefund.user_id.slice(0, 8)}
                   </p>
                 </div>
                 <div>
                   <p className="text-slate-500 text-xs">支付方式</p>
-                  <p className="text-white font-medium">{selectedRefund.original_payment_method || '-'}</p>
+                  <p className="text-slate-900 font-medium">{selectedRefund.original_payment_method || '-'}</p>
                 </div>
                 <div>
                   <p className="text-slate-500 text-xs">申请时间</p>
-                  <p className="text-white font-medium">{formatDate(selectedRefund.created_at)}</p>
+                  <p className="text-slate-900 font-medium">{formatDate(selectedRefund.created_at)}</p>
                 </div>
               </div>
 
@@ -299,7 +299,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
               {selectedRefund.reason && (
                 <div>
                   <p className="text-slate-500 text-xs mb-1">退款原因</p>
-                  <p className="text-white text-sm bg-white/5 rounded-lg p-3">
+                  <p className="text-slate-900 text-sm bg-white/5 rounded-lg p-3">
                     {selectedRefund.reason}
                   </p>
                 </div>
@@ -313,7 +313,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
                     {selectedRefund.refund_items.map((item, idx) => (
                       <div key={idx} className="flex justify-between items-center bg-white/5 rounded-lg p-3">
                         <div>
-                          <p className="text-white text-sm">{item.name}</p>
+                          <p className="text-slate-900 text-sm">{item.name}</p>
                           <p className="text-slate-500 text-xs">
                             {item.type === 'course' ? '课程' : '商品'} x {item.quantity}
                           </p>
@@ -331,7 +331,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
               {selectedRefund.rejection_reason && (
                 <div>
                   <p className="text-red-400 text-xs mb-1">拒绝原因</p>
-                  <p className="text-slate-300 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-slate-600 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                     {selectedRefund.rejection_reason}
                   </p>
                 </div>
@@ -347,7 +347,7 @@ const RefundManagementTab: React.FC<RefundManagementTabProps> = ({ onRefresh }) 
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
                       placeholder="请输入拒绝原因..."
-                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-white/20"
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-900 text-sm placeholder:text-slate-600 focus:outline-none focus:border-white/20"
                     />
                   </div>
                   <div className="flex gap-2">

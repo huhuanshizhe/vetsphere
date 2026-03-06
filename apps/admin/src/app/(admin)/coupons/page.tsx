@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -227,7 +227,7 @@ export default function CouponsPage() {
   function getCouponStatus(coupon: Coupon) {
     const now = new Date();
     if (!coupon.is_active) {
-      return { label: '已禁用', color: 'bg-slate-500/20 text-slate-400' };
+      return { label: '已禁用', color: 'bg-slate-500/20 text-slate-500' };
     }
     if (coupon.end_at && new Date(coupon.end_at) < now) {
       return { label: '已过期', color: 'bg-red-500/20 text-red-400' };
@@ -252,8 +252,8 @@ export default function CouponsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">优惠券管理</h1>
-          <p className="text-slate-400 mt-1">创建和管理平台优惠券</p>
+          <h1 className="text-2xl font-bold text-slate-900">优惠券管理</h1>
+          <p className="text-slate-500 mt-1">创建和管理平台优惠券</p>
         </div>
         <Button onClick={() => {
           setCouponToEdit({
@@ -315,32 +315,32 @@ export default function CouponsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">优惠券</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">优惠码</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">优惠</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">使用情况</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">有效期</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">优惠券</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">优惠码</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">优惠</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">使用情况</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">有效期</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {coupons.map((coupon) => {
                     const status = getCouponStatus(coupon);
                     return (
-                      <tr key={coupon.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={coupon.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div>
-                            <div className="font-medium text-white">{coupon.name}</div>
+                            <div className="font-medium text-slate-900">{coupon.name}</div>
                             <div className="text-slate-500 text-xs mt-1">
                               {coupon.min_amount ? `满¥${coupon.min_amount}可用` : '无门槛'}
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <code className="text-sm text-blue-400 bg-slate-700/50 px-2 py-1 rounded">
+                          <code className="text-sm text-blue-400 bg-slate-100/50 px-2 py-1 rounded">
                             {coupon.code}
                           </code>
                         </td>
@@ -350,10 +350,10 @@ export default function CouponsPage() {
                             <div className="text-slate-500 text-xs">最高减¥{coupon.max_discount}</div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-slate-500 text-sm">
                           {coupon.used_count} / {coupon.usage_limit || '∞'}
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-slate-500 text-sm">
                           {coupon.start_at || coupon.end_at ? (
                             <div className="text-xs">
                               {coupon.start_at && <div>{new Date(coupon.start_at).toLocaleDateString('zh-CN')}</div>}
@@ -389,7 +389,7 @@ export default function CouponsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
@@ -410,16 +410,16 @@ export default function CouponsPage() {
 
       {showEditDialog && couponToEdit && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-700">
-              <h3 className="text-lg font-semibold text-white">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900">
                 {couponToEdit.id ? '编辑优惠券' : '新建优惠券'}
               </h3>
             </div>
             <div className="p-6 space-y-4">
               {!couponToEdit.id && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">优惠码</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">优惠码</label>
                   <Input
                     value={couponToEdit.code || ''}
                     onChange={(e) => setCouponToEdit({ ...couponToEdit, code: e.target.value.toUpperCase() })}
@@ -428,7 +428,7 @@ export default function CouponsPage() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">名称</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">名称</label>
                 <Input
                   value={couponToEdit.name || ''}
                   onChange={(e) => setCouponToEdit({ ...couponToEdit, name: e.target.value })}
@@ -437,7 +437,7 @@ export default function CouponsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">类型</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">类型</label>
                   <Select
                     value={couponToEdit.type || 'fixed'}
                     onChange={(e) => setCouponToEdit({ ...couponToEdit, type: e.target.value })}
@@ -448,7 +448,7 @@ export default function CouponsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 mb-2">
                     {couponToEdit.type === 'percentage' ? '折扣百分比 (%)' : '优惠金额 (¥)'}
                   </label>
                   <Input
@@ -461,7 +461,7 @@ export default function CouponsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">最低消费 (¥)</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">最低消费 (¥)</label>
                   <Input
                     type="number"
                     value={couponToEdit.min_amount || ''}
@@ -471,7 +471,7 @@ export default function CouponsPage() {
                 </div>
                 {couponToEdit.type === 'percentage' && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">最高减免 (¥)</label>
+                    <label className="block text-sm font-medium text-slate-600 mb-2">最高减免 (¥)</label>
                     <Input
                       type="number"
                       value={couponToEdit.max_discount || ''}
@@ -483,7 +483,7 @@ export default function CouponsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">总使用次数</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">总使用次数</label>
                   <Input
                     type="number"
                     value={couponToEdit.usage_limit || ''}
@@ -492,7 +492,7 @@ export default function CouponsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">每人限用</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">每人限用</label>
                   <Input
                     type="number"
                     value={couponToEdit.per_user_limit || ''}
@@ -503,7 +503,7 @@ export default function CouponsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">开始时间</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">开始时间</label>
                   <Input
                     type="datetime-local"
                     value={couponToEdit.start_at?.slice(0, 16) || ''}
@@ -511,7 +511,7 @@ export default function CouponsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">结束时间</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">结束时间</label>
                   <Input
                     type="datetime-local"
                     value={couponToEdit.end_at?.slice(0, 16) || ''}
@@ -520,7 +520,7 @@ export default function CouponsPage() {
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
               <Button variant="secondary" onClick={() => { setShowEditDialog(false); setCouponToEdit(null); }}>
                 取消
               </Button>

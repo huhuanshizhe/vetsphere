@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -211,8 +211,8 @@ export default function GrowthTracksPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">成长方向管理</h1>
-          <p className="text-slate-400 mt-1">配置医生成长路径与学习方向</p>
+          <h1 className="text-2xl font-bold text-slate-900">成长方向管理</h1>
+          <p className="text-slate-500 mt-1">配置医生成长路径与学习方向</p>
         </div>
       </div>
 
@@ -263,33 +263,33 @@ export default function GrowthTracksPage() {
         ) : (
           <TableContainer>
             <table className="w-full">
-              <thead className="bg-slate-800/50">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">方向名称</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">分组</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">标语</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">内容状态</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">缺省动作</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">方向名称</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">分组</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">标语</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">内容状态</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">缺省动作</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {tracks.map((track) => (
-                  <tr key={track.id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={track.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {track.icon && (
                           <span className="text-2xl">{track.icon}</span>
                         )}
                         <div>
-                          <span className="font-medium text-white">{track.name}</span>
+                          <span className="font-medium text-slate-900">{track.name}</span>
                           <div className="text-xs text-slate-500">{track.slug}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-300">{track.group_name}</td>
-                    <td className="px-6 py-4 text-slate-400 text-sm max-w-xs truncate">
+                    <td className="px-6 py-4 text-slate-600">{track.group_name}</td>
+                    <td className="px-6 py-4 text-slate-500 text-sm max-w-xs truncate">
                       {track.tagline || '-'}
                     </td>
                     <td className="px-6 py-4">
@@ -298,7 +298,7 @@ export default function GrowthTracksPage() {
                           已启用
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-500">
                           已禁用
                         </span>
                       )}
@@ -314,7 +314,7 @@ export default function GrowthTracksPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-slate-400 text-sm">
+                    <td className="px-6 py-4 text-slate-500 text-sm">
                       {track.fallback_action === 'hide' && '隐藏'}
                       {track.fallback_action === 'coming_soon' && '占位页'}
                       {track.fallback_action === 'browse_all' && '浏览全部'}
@@ -351,8 +351,8 @@ export default function GrowthTracksPage() {
       {/* 编辑弹窗 */}
       {showEditDialog && editingTrack && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl max-w-2xl w-full p-6 my-8">
-            <h3 className="text-lg font-semibold text-white mb-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6 my-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               编辑成长方向 - {editingTrack.slug}
             </h3>
             
@@ -369,11 +369,11 @@ export default function GrowthTracksPage() {
                 onChange={(e) => setEditForm(prev => ({ ...prev, tagline: e.target.value }))}
               />
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">
                   详细描述
                 </label>
                 <textarea
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[100px]"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[100px]"
                   placeholder="描述此成长方向的内容和目标"
                   value={editForm.description}
                   onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
@@ -402,24 +402,24 @@ export default function GrowthTracksPage() {
                       type="checkbox"
                       checked={editForm.is_active}
                       onChange={(e) => setEditForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500"
+                      className="w-4 h-4 rounded border-slate-200 bg-slate-100 text-emerald-500"
                     />
-                    <span className="text-sm text-slate-300">启用此方向</span>
+                    <span className="text-sm text-slate-600">启用此方向</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={editForm.is_ready}
                       onChange={(e) => setEditForm(prev => ({ ...prev, is_ready: e.target.checked }))}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500"
+                      className="w-4 h-4 rounded border-slate-200 bg-slate-100 text-emerald-500"
                     />
-                    <span className="text-sm text-slate-300">内容已就绪</span>
+                    <span className="text-sm text-slate-600">内容已就绪</span>
                   </label>
                 </div>
               </div>
             </div>
             
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200">
               <Button
                 variant="secondary"
                 onClick={() => {

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -178,8 +178,8 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">举报处理</h1>
-        <p className="text-slate-400 mt-1">处理用户举报的内容</p>
+        <h1 className="text-2xl font-bold text-slate-900">举报处理</h1>
+        <p className="text-slate-500 mt-1">处理用户举报的内容</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -224,24 +224,24 @@ export default function ReportsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">被举报内容</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">举报人</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">举报类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">举报原因</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时间</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">被举报内容</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">举报人</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">举报类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">举报原因</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时间</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {reports.map((report) => (
-                    <tr key={report.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={report.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
-                        <span className="text-white line-clamp-1">{report.post?.title || '评论'}</span>
+                        <span className="text-slate-900 line-clamp-1">{report.post?.title || '评论'}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">
+                      <td className="px-6 py-4 text-slate-600 text-sm">
                         {report.reporter?.full_name || '匿名'}
                       </td>
                       <td className="px-6 py-4">
@@ -249,13 +249,13 @@ export default function ReportsPage() {
                           {typeLabels[report.report_type] || report.report_type}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm max-w-xs truncate">
+                      <td className="px-6 py-4 text-slate-500 text-sm max-w-xs truncate">
                         {report.reason || '-'}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={report.status} />
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {new Date(report.created_at).toLocaleDateString('zh-CN')}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -279,7 +279,7 @@ export default function ReportsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
@@ -289,20 +289,20 @@ export default function ReportsPage() {
 
       {showActionDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               {actionType === 'resolve' ? '处理举报' : '驳回举报'}
             </h3>
-            <p className="text-slate-400 mb-4">
+            <p className="text-slate-500 mb-4">
               {actionType === 'resolve' 
                 ? '处理该举报将同时隐藏被举报的内容' 
                 : '驳回该举报表示内容没有问题'}
             </p>
             
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">处理说明</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1.5">处理说明</label>
               <textarea
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[80px]"
+                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[80px]"
                 placeholder="输入处理说明..."
                 value={actionNote}
                 onChange={(e) => setActionNote(e.target.value)}

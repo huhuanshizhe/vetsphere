@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -317,23 +317,23 @@ export default function DoctorVerificationsPage() {
                             </div>
                           )}
                           <div>
-                            <p className="text-sm font-medium text-white">{app.full_name || '-'}</p>
+                            <p className="text-sm font-medium text-slate-900">{app.full_name || '-'}</p>
                             <p className="text-xs text-slate-500">{app.city || '-'}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-slate-300">{app.phone || '-'}</p>
+                        <p className="text-sm text-slate-600">{app.phone || '-'}</p>
                         <p className="text-xs text-slate-500">{app.email || '-'}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-slate-300">{app.hospital_name || '-'}</p>
+                        <p className="text-sm text-slate-600">{app.hospital_name || '-'}</p>
                         <p className="text-xs text-slate-500">{app.position || '-'}</p>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {(app.specialties || []).slice(0, 2).map((s, i) => (
-                            <span key={i} className="px-1.5 py-0.5 text-[10px] bg-white/5 text-slate-400 rounded">
+                            <span key={i} className="px-1.5 py-0.5 text-[10px] bg-white/5 text-slate-500 rounded">
                               {s}
                             </span>
                           ))}
@@ -343,7 +343,7 @@ export default function DoctorVerificationsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-slate-500">
                           {app.submitted_at
                             ? new Date(app.submitted_at).toLocaleDateString('zh-CN')
                             : '-'}
@@ -356,7 +356,7 @@ export default function DoctorVerificationsPage() {
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             href={`/doctor-verifications/${app.id}`}
-                            className="text-xs text-slate-400 hover:text-white transition-colors"
+                            className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
                           >
                             详情
                           </Link>
@@ -415,12 +415,12 @@ export default function DoctorVerificationsPage() {
       {confirmDialog.open && confirmDialog.type === 'reject' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setConfirmDialog({ open: false, type: 'reject', application: null })} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
+          <div className="relative bg-slate-950 border border-slate-200/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-start gap-4 mb-4">
               <span className="text-2xl">⚠️</span>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-1">审核拒绝</h3>
-                <p className="text-sm text-slate-400">
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">审核拒绝</h3>
+                <p className="text-sm text-slate-500">
                   请选择或填写拒绝 {confirmDialog.application?.full_name || ''} 的原因
                 </p>
               </div>
@@ -441,7 +441,7 @@ export default function DoctorVerificationsPage() {
                     w-full text-left px-3 py-2 rounded-lg text-sm transition-colors
                     ${rejectReason === reason
                       ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                      : 'bg-white/5 text-slate-500 hover:bg-white/10'
                     }
                   `}
                 >
@@ -455,7 +455,7 @@ export default function DoctorVerificationsPage() {
               placeholder="或输入其他拒绝原因..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500/50 resize-none h-20"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-red-500/50 resize-none h-20"
             />
             
             <div className="flex items-center justify-end gap-3 mt-6">
