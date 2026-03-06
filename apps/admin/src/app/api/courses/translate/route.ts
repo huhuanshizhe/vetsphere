@@ -11,7 +11,6 @@ import {
   translateCourse,
   extractTranslatableContent,
   PUBLISH_LANG_TO_CODE,
-  generateAllPrices,
   type SupportedLanguage,
 } from '@vetsphere/shared/services/translation';
 import type { Course } from '@vetsphere/shared/types';
@@ -74,42 +73,39 @@ export async function POST(request: NextRequest) {
     // 执行翻译
     const updates = await translateCourse(course as Course, apiKey);
 
-    // 生成多币种价格（仅保存已存在的列: price_cny）
-    const prices = generateAllPrices(course.price, course.currency || 'CNY');
-
-    // 构建完整更新负载（包含所有语言后缀列）
+    // 构建更新负载（仅包含确定存在的列）
     const fullUpdatePayload: Record<string, unknown> = {
-      // 翻译后的标题 (源内容保留在 title 不变)
+      // 翻译后的标题
       title_en: (updates as Record<string, unknown>).title_en,
       title_zh: (updates as Record<string, unknown>).title_zh,
       title_th: (updates as Record<string, unknown>).title_th,
       title_ja: (updates as Record<string, unknown>).title_ja,
-      // 翻译后的描述 (源内容保留在 description 不变)
+      // 翻译后的描述
       description_en: (updates as Record<string, unknown>).description_en,
       description_zh: (updates as Record<string, unknown>).description_zh,
       description_th: (updates as Record<string, unknown>).description_th,
       description_ja: (updates as Record<string, unknown>).description_ja,
-      // 多币种价格（仅 price_cny 有对应 DB 列）
-      price_cny: prices.price_cny,
-      // 讲师信息 (JSONB 包含所有语言版本)
+      // 讲师信息 (JSONB)
       instructor: updates.instructor,
-      // 地点信息 (JSONB 包含所有语言版本)
+      // 地点信息 (JSONB)
       location: updates.location,
-      // 日程 (JSONB 包含所有语言版本)
+      // 日程 (JSONB)
       agenda: updates.agenda,
-      // 行程服务 (JSONB 包含所有语言版本)
+      // 行程服务 (JSONB)
       services: (updates as any).services,
       // 翻译状态
       translations_complete: updates.translationsComplete,
       translated_at: updates.translatedAt,
     };
 
-    // 清理 undefined 值（跳过源语言的翻译列）
+    // 清理 undefined 值
     for (const key of Object.keys(fullUpdatePayload)) {
       if (fullUpdatePayload[key] === undefined) {
         delete fullUpdatePayload[key];
       }
     }
+
+    console.log('Translation payload keys:', Object.keys(fullUpdatePayload));
 
     // 尝试完整更新
     const { error: updateError } = await supabaseAdmin
@@ -117,11 +113,11 @@ export async function POST(request: NextRequest) {
       .update(fullUpdatePayload)
       .eq('id', courseId);
 
-    // 如果失败（可能是列不存在），分步更新
     if (updateError) {
-      console.warn('Full translation update failed, trying step-by-step:', updateError.message);
+      console.error('Full translation update failed:', updateError.message);
       
-      // Step 1: 更新 JSONB 字段（这些列肯定存在）
+      // 分步更新：先 JSONB，再文本列
+      // Step 1: 更新 JSONB 字段
       const jsonbPayload: Record<string, unknown> = {};
       if (updates.instructor) jsonbPayload.instructor = updates.instructor;
       if (updates.location) jsonbPayload.location = updates.location;
@@ -133,29 +129,42 @@ export async function POST(request: NextRequest) {
           .from('courses')
           .update(jsonbPayload)
           .eq('id', courseId);
-        if (jsonbError) console.error('JSONB update failed:', jsonbError.message);
+        if (jsonbError) {
+          console.error('JSONB update failed:', jsonbError.message);
+        } else {
+          console.log('JSONB fields updated successfully');
+        }
       }
 
-      // Step 2: 尝试更新多语言文本列
+      // Step 2: 更新多语言文本列
       const textPayload: Record<string, unknown> = {};
       const textFields = [
         'title_en', 'title_zh', 'title_th', 'title_ja',
         'description_en', 'description_zh', 'description_th', 'description_ja',
+        'translations_complete', 'translated_at',
       ];
       for (const f of textFields) {
         if (fullUpdatePayload[f] !== undefined) textPayload[f] = fullUpdatePayload[f];
       }
-      if (fullUpdatePayload.translations_complete !== undefined) textPayload.translations_complete = fullUpdatePayload.translations_complete;
-      if (fullUpdatePayload.translated_at !== undefined) textPayload.translated_at = fullUpdatePayload.translated_at;
-      if (fullUpdatePayload.price_cny !== undefined) textPayload.price_cny = fullUpdatePayload.price_cny;
 
       if (Object.keys(textPayload).length > 0) {
+        console.log('Text payload keys:', Object.keys(textPayload));
         const { error: textError } = await supabaseAdmin
           .from('courses')
           .update(textPayload)
           .eq('id', courseId);
-        if (textError) console.error('Text columns update failed:', textError.message);
+        if (textError) {
+          console.error('Text columns update failed:', textError.message);
+          return NextResponse.json(
+            { error: '保存翻译失败: ' + textError.message },
+            { status: 500 }
+          );
+        } else {
+          console.log('Text columns updated successfully');
+        }
       }
+    } else {
+      console.log('Full translation update successful');
     }
 
     return NextResponse.json({
