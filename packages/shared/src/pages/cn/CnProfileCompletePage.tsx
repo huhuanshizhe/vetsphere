@@ -7,7 +7,7 @@ import {
   ArrowRight, ArrowLeft, Check, Sparkles, Camera, X
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { supabase } from '../../services/supabase';
+import { supabase, getSessionSafe } from '../../services/supabase';
 
 // Interest tags options
 const INTEREST_TAGS = [
@@ -66,7 +66,7 @@ const CnProfileCompletePage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await getSessionSafe();
         if (!session) {
           router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
           return;
@@ -183,7 +183,7 @@ const CnProfileCompletePage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSessionSafe();
       if (!session) {
         setError('请先登录');
         setIsSubmitting(false);

@@ -7,7 +7,7 @@ import {
   Lock, Eye, EyeOff, ArrowRight, ArrowLeft, Phone, MessageSquare, Check
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { supabase } from '../../services/supabase';
+import { supabase, getSessionSafe } from '../../services/supabase';
 
 type PageMode = 'reset' | 'set';
 type Step = 'verify' | 'password' | 'success';
@@ -147,7 +147,7 @@ const CnSetPasswordPage: React.FC = () => {
 
       // 首次设置密码模式需要Bearer Token
       if (mode === 'set') {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await getSessionSafe();
         if (!session) {
           setError('请先登录');
           setIsSubmitting(false);

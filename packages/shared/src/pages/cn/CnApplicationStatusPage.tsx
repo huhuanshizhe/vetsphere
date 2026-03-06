@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../services/supabase';
+import { supabase, getSessionSafe } from '../../services/supabase';
 import { DoctorApplication } from '../../types';
 
 const CnApplicationStatusPage: React.FC = () => {
@@ -23,7 +23,7 @@ const CnApplicationStatusPage: React.FC = () => {
 
   // 获取 access token
   const getAccessToken = async (): Promise<string | null> => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await getSessionSafe();
     return session?.access_token || null;
   };
 

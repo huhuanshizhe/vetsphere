@@ -7,7 +7,7 @@ import {
   ArrowRight, Check, Sparkles, ChevronDown
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { supabase } from '../../services/supabase';
+import { supabase, getSessionSafe } from '../../services/supabase';
 
 // V2 四大粗分类
 const IDENTITY_GROUPS_V2 = [
@@ -73,7 +73,7 @@ const CnIdentitySelectPage: React.FC = () => {
   useEffect(() => {
     const fetchCurrentIdentity = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await getSessionSafe();
         if (!session) return;
 
         const res = await fetch('/api/user/identity', {
@@ -135,7 +135,7 @@ const CnIdentitySelectPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSessionSafe();
       if (!session) {
         setError('请先登录');
         setIsSubmitting(false);

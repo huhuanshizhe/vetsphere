@@ -10,7 +10,7 @@ import {
   LoadingState, 
   ConfirmDialog,
 } from '@/components/ui';
-import { supabase } from '@vetsphere/shared/services/supabase';
+import { getAccessTokenSafe } from '@vetsphere/shared/services/supabase';
 
 interface Document {
   id: string;
@@ -124,8 +124,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
   const [rejectReason, setRejectReason] = useState('');
 
   const getAccessToken = async (): Promise<string | null> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    return getAccessTokenSafe();
   };
 
   const loadData = async () => {

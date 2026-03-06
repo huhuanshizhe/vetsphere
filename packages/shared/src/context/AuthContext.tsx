@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, DoctorApplicationStatus, DualTrackPermissions } from '../types';
-import { supabase } from '../services/supabase';
+import { supabase, getSessionSafe } from '../services/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -142,7 +142,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setApplicationLoading(true);
     try {
       // 优先使用 /api/auth/me
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSessionSafe();
       if (session?.access_token) {
         const fullState = await fetchFullUserState(session.access_token);
         if (fullState) {
@@ -192,7 +192,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         // Then verify with Supabase
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await getSessionSafe();
         if (session?.user) {
           const mappedUser = mapSupabaseUser(session.user);
           
@@ -300,7 +300,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await getSessionSafe();
     if (session?.user) {
       const mappedUser = mapSupabaseUser(session.user);
       

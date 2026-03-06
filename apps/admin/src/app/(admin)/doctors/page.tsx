@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { supabase } from '@vetsphere/shared/services/supabase';
+import { getAccessTokenSafe } from '@vetsphere/shared/services/supabase';
 import {
   Card,
   Button,
@@ -51,15 +51,10 @@ export default function DoctorsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  const getAccessToken = async (): Promise<string | null> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
-  };
-
   const loadDoctors = useCallback(async () => {
     setLoading(true);
     try {
-      const token = await getAccessToken();
+      const token = await getAccessTokenSafe();
       if (!token) return;
 
       const params = new URLSearchParams();

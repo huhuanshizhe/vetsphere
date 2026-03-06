@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '../services/api';
-import { supabase } from '../services/supabase';
+import { supabase, getSessionSafe } from '../services/supabase';
 import { LOCATIONS } from '../lib/locations';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -209,7 +209,7 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
       setCurrentOrderId(orderId);
 
       // Get auth token for payment API calls
-      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const { data: { session: authSession } } = await getSessionSafe();
       const authHeaders: HeadersInit = { 'Content-Type': 'application/json' };
       if (authSession?.access_token) {
         authHeaders['Authorization'] = `Bearer ${authSession.access_token}`;

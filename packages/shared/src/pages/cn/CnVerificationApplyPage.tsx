@@ -7,7 +7,7 @@ import {
   Sparkles, User, Building2, Briefcase, X, Image, File
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { supabase } from '../../services/supabase';
+import { supabase, getSessionSafe } from '../../services/supabase';
 
 interface VerificationDocument {
   id?: string;
@@ -73,7 +73,7 @@ const CnVerificationApplyPage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await getSessionSafe();
         if (!session) {
           router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
           return;
@@ -216,7 +216,7 @@ const CnVerificationApplyPage: React.FC = () => {
     setUploadingType(docType);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSessionSafe();
       if (!session) {
         setError('请先登录');
         setUploadingType(null);
@@ -281,7 +281,7 @@ const CnVerificationApplyPage: React.FC = () => {
     setIsSaving(true);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSessionSafe();
       if (!session) {
         setError('请先登录');
         setIsSaving(false);
@@ -351,7 +351,7 @@ const CnVerificationApplyPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSessionSafe();
       if (!session) {
         setError('请先登录');
         setIsSubmitting(false);

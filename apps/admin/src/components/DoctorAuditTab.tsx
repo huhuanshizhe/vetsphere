@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { DoctorApplication } from '@vetsphere/shared/types';
-import { supabase } from '@vetsphere/shared/services/supabase';
+import { getAccessTokenSafe } from '@vetsphere/shared/services/supabase';
 
 interface DoctorAuditTabProps {
   onRefresh?: () => void;
@@ -39,8 +39,7 @@ export default function DoctorAuditTab({ onRefresh }: DoctorAuditTabProps) {
 
   // 获取 access token
   const getAccessToken = async (): Promise<string | null> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    return getAccessTokenSafe();
   };
 
   const loadApplications = useCallback(async () => {

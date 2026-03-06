@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, getAccessTokenLocal } from '@/lib/supabase/client';
 import { useSite } from '@/context/SiteContext';
 import { 
   Card, 
@@ -26,8 +26,7 @@ export default function DoctorVerificationsPage() {
   
   // 获取 access token
   const getAccessToken = async (): Promise<string | null> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    return getAccessTokenLocal();
   };
   
   // 状态
