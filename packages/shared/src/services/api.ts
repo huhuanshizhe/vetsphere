@@ -453,6 +453,7 @@ export const api = {
         level: course.level,
         price: course.price,
         currency: course.currency || 'CNY',
+        format: course.format || 'offline',
         start_date: toDateOrNull(course.startDate),
         end_date: toDateOrNull(course.endDate),
         location: course.location || {},

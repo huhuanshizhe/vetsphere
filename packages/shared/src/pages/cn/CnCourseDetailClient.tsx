@@ -11,7 +11,7 @@ import {
   Sparkles, TrendingUp, Star, ShoppingCart, MessageCircle
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { Course, CourseProductRelation } from '../../types';
+import { Course, CourseFormat, CourseProductRelation } from '../../types';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -36,7 +36,6 @@ interface ExtendedCourse extends Course {
   stage?: CourseStage;
   stageLabel?: string;
   subcategory?: string;
-  format?: string;
   formatLabel?: string;
   levelCode?: string;
   levelLabel?: string;
@@ -152,7 +151,7 @@ function inferCourseMetadata(course: Course): ExtendedCourse {
   // 推断阶段
   let stage: CourseStage = 'specialty-advanced';
   let levelCode = 'L3';
-  let format = 'offline';
+  let format: CourseFormat = 'offline';
   let audiences: string[] = ['1-3-years', '3-plus-years'];
   let learningGoals: string[] = [];
   let skillOutcomes: string[] = [];

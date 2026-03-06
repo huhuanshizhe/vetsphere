@@ -19,6 +19,7 @@ export interface CourseFormData extends Partial<Course> {
 }
 
 const initialFormData: CourseFormData = {
+  format: 'offline' as any,  // 默认线下课程
   title: '',
   title_zh: '',
   title_th: '',

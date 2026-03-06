@@ -340,6 +340,7 @@ export default function CoursesPage() {
     live: '直播课程',
     article: '图文课程',
     series: '系列课程',
+    offline: '线下课程',
   };
 
   const levelLabels: Record<string, string> = {
@@ -439,6 +440,7 @@ export default function CoursesPage() {
               }}
               options={[
                 { value: '', label: '全部类型' },
+                { value: 'offline', label: '线下课程' },
                 { value: 'video', label: '视频课程' },
                 { value: 'live', label: '直播课程' },
                 { value: 'article', label: '图文课程' },

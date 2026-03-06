@@ -14,7 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCnAuthGuard } from '../../hooks/useCnAuthGuard';
 import CnVerificationBanner from '../../components/cn/CnVerificationBanner';
 import { api } from '../../services/api';
-import { Course } from '../../types';
+import { Course, CourseFormat } from '../../types';
 import PublicCourseSection, { PublicCourse } from './components/PublicCourseSection';
 import { AICourseAdvisor } from '../../components/cn/AICourseAdvisor';
 import {
@@ -61,7 +61,6 @@ interface ExtendedCourse extends Course {
   stage?: CourseStage;
   stageLabel?: string;
   subcategory?: string;
-  format?: string;
   levelCode?: string;
   audiences?: string[];
   learningGoals?: string[];
@@ -219,7 +218,7 @@ function inferCourseMetadata(course: Course): ExtendedCourse {
   let stage: CourseStage = 'specialty-advanced';
   let stageLabel = '专科进阶';
   let levelCode = 'L3';
-  let format = 'offline';
+  let format: CourseFormat = 'offline';
   let enrollmentMode: 'direct' | 'plan' | 'inquiry' = 'direct';
   let learningGoals: string[] = [];
   let audiences: string[] = ['1-3-years', '3-plus-years'];
