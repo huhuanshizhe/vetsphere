@@ -14,7 +14,7 @@ import {
   StatCard,
   ConfirmDialog,
 } from '@/components/ui';
-import { supabase } from '@vetsphere/shared/services/supabase';
+import { getAccessTokenSafe } from '@vetsphere/shared/services/supabase';
 
 type FilterStatus = 'all' | 'submitted' | 'approved' | 'rejected';
 
@@ -64,17 +64,11 @@ export default function CnVerificationsPage() {
   }>({ open: false, type: 'approve', verification: null });
   const [rejectReason, setRejectReason] = useState('');
 
-  // 获取 access token
-  const getAccessToken = async (): Promise<string | null> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
-  };
-
   // Load data
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = await getAccessToken();
+      const token = await getAccessTokenSafe();
       if (!token) {
         console.error('No access token');
         return;
@@ -131,7 +125,7 @@ export default function CnVerificationsPage() {
     setActionLoading(true);
     setActionMessage(null);
     try {
-      const token = await getAccessToken();
+      const token = await getAccessTokenSafe();
       if (!token) {
         setActionMessage({ type: 'error', text: '登录已过期，请重新登录' });
         return;
@@ -169,7 +163,7 @@ export default function CnVerificationsPage() {
     setActionLoading(true);
     setActionMessage(null);
     try {
-      const token = await getAccessToken();
+      const token = await getAccessTokenSafe();
       if (!token) {
         setActionMessage({ type: 'error', text: '登录已过期，请重新登录' });
         return;
