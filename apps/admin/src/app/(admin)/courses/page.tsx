@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -90,6 +90,7 @@ export default function CoursesPage() {
   useEffect(() => {
     if (viewTab === 'base') {
       loadCourses();
+      loadStats();
     } else {
       loadSiteViews();
     }
@@ -210,8 +211,6 @@ export default function CoursesPage() {
           setCourses(prev => prev.map(c => ({ ...c, site_views: viewMap[c.id] || [] })));
         }
       }
-      
-      await loadStats();
     } catch (error) {
       console.error('加载课程列表失败:', error);
     } finally {
@@ -220,36 +219,28 @@ export default function CoursesPage() {
   }
 
   async function loadStats() {
-    const { count: totalCount } = await supabase
-      .from('courses')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .in('status', ['pending', 'published', 'offline']);
-    
-    const { count: pendingCount } = await supabase
-      .from('courses')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .eq('status', 'pending');
-    
-    const { count: publishedCount } = await supabase
-      .from('courses')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .eq('status', 'published');
-    
-    const { count: offlineCount } = await supabase
-      .from('courses')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .eq('status', 'offline');
-    
-    setStats({
-      total: totalCount || 0,
-      pending: pendingCount || 0,
-      published: publishedCount || 0,
-      offline: offlineCount || 0,
-    });
+    try {
+      const [
+        { count: totalCount },
+        { count: pendingCount },
+        { count: publishedCount },
+        { count: offlineCount },
+      ] = await Promise.all([
+        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['pending', 'published', 'offline']),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'pending'),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'published'),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'offline'),
+      ]);
+
+      setStats({
+        total: totalCount || 0,
+        pending: pendingCount || 0,
+        published: publishedCount || 0,
+        offline: offlineCount || 0,
+      });
+    } catch (error) {
+      console.error('加载统计失败:', error);
+    }
   }
 
   // 下架课程

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { Course, CourseStatus, Specialty } from '@vetsphere/shared/types';
