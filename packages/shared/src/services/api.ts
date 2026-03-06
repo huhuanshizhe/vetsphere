@@ -320,7 +320,7 @@ export const api = {
     sortOrder?: 'asc' | 'desc';
   }): Promise<Course[]> {
     try {
-      let query = supabase.from('courses').select('*').eq('status', 'published');
+      let query = supabase.from('courses').select('*').in('status', ['published', 'Published']);
       
       // 过滤已过期课程（end_date 为空或未过期的课程才显示）
       const today = new Date().toISOString().split('T')[0];

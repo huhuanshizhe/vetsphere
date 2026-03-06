@@ -55,6 +55,8 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
       }
       const json = await res.json();
       const data = json.data;
+      // 标准化状态值为小写
+      if (data.status) data.status = data.status.toLowerCase();
       setCourse(data);
       setEditForm({ ...data });
       // 默认显示源语言

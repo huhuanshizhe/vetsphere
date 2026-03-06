@@ -18,9 +18,13 @@ COMMENT ON COLUMN public.courses.offline_reason IS '下架原因: expired(过期
 COMMENT ON COLUMN public.courses.offline_at IS '下架时间';
 
 -- ============================================
--- 2. 清理旧的 rejected 状态 → 改为 pending
+-- 2. 标准化所有状态值为小写 + 清理旧的 rejected 状态
 -- ============================================
 
+-- 先统一所有 PascalCase 为 lowercase
+UPDATE public.courses SET status = LOWER(status) WHERE status != LOWER(status);
+
+-- 将 rejected → pending
 UPDATE public.courses
 SET status = 'pending', rejection_reason = NULL
 WHERE status = 'rejected';
