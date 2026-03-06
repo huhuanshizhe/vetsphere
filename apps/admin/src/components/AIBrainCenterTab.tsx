@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { getSystemInstruction, saveSystemInstruction, getAIConfig, saveAIConfig } from '@vetsphere/shared/services/gemini';
