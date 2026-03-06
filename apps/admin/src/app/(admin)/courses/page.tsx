@@ -87,6 +87,11 @@ export default function CoursesPage() {
   const [initLoading, setInitLoading] = useState<string | null>(null);
   const [publishLoading, setPublishLoading] = useState<string | null>(null);
 
+  // 标准化状态值（兼容数据库 PascalCase）
+  function normalizeStatus(status: string): string {
+    return status?.toLowerCase() || '';
+  }
+
   useEffect(() => {
     if (viewTab === 'base') {
       loadCourses();
@@ -170,10 +175,10 @@ export default function CoursesPage() {
         .is('deleted_at', null);
       
       if (filterStatus) {
-        query = query.eq('status', filterStatus);
+        query = query.in('status', [filterStatus, filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)]);
       } else {
-        // 默认不显示草稿（draft 仅 edu-partner 内部使用）
-        query = query.in('status', ['pending', 'published', 'offline']);
+        // 默认不显示草稿（draft 仅 edu-partner 内部使用）— 兼容数据库 PascalCase
+        query = query.in('status', ['pending', 'Pending', 'published', 'Published', 'offline', 'Offline']);
       }
       
       if (filterFormat) {
@@ -191,7 +196,9 @@ export default function CoursesPage() {
       
       if (error) throw error;
       
-      setCourses(data || []);
+      // 标准化状态值为小写
+      const normalized = (data || []).map(c => ({ ...c, status: c.status?.toLowerCase() || c.status }));
+      setCourses(normalized);
       setTotal(count || 0);
       
       // Attach site view status for each course
@@ -220,16 +227,17 @@ export default function CoursesPage() {
 
   async function loadStats() {
     try {
+      const allVisible = ['pending', 'Pending', 'published', 'Published', 'offline', 'Offline'];
       const [
         { count: totalCount },
         { count: pendingCount },
         { count: publishedCount },
         { count: offlineCount },
       ] = await Promise.all([
-        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['pending', 'published', 'offline']),
-        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'pending'),
-        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'published'),
-        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'offline'),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).in('status', allVisible),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['pending', 'Pending']),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['published', 'Published']),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['offline', 'Offline']),
       ]);
 
       setStats({
