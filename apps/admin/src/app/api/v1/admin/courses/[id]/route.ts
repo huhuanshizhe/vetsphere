@@ -8,31 +8,43 @@ const supabase = createClient(
 );
 
 // DB snake_case -> frontend camelCase mapping
+// Only map fields that actually exist in the DB row to avoid phantom defaults
 function mapCourseFromDB(c: Record<string, any>): Record<string, any> {
-  return {
-    ...c,
-    // Map snake_case columns to camelCase
-    startDate: c.start_date ?? null,
-    endDate: c.end_date ?? null,
-    imageUrl: c.image_url ?? null,
-    maxCapacity: c.max_enrollment ?? 30,
-    enrolledCount: c.current_enrollment ?? 0,
-    enrollmentDeadline: c.enrollment_deadline ?? null,
-    totalHours: c.total_hours ?? null,
-    publishLanguage: c.publish_language ?? 'zh',
-    teachingLanguages: c.teaching_languages ?? [],
-    previewVideoUrl: c.preview_video_url ?? null,
-    translationsComplete: c.translations_complete ?? false,
-    translatedAt: c.translated_at ?? null,
-    rejectionReason: c.rejection_reason ?? null,
-    targetAudience: c.target_audience ?? null,
-    targetAudience_zh: c.target_audience_zh ?? null,
-  };
+  const mapped: Record<string, any> = { ...c };
+
+  const snakeToCamel: [string, string][] = [
+    ['start_date', 'startDate'],
+    ['end_date', 'endDate'],
+    ['image_url', 'imageUrl'],
+    ['max_enrollment', 'maxCapacity'],
+    ['current_enrollment', 'enrolledCount'],
+    ['enrollment_deadline', 'enrollmentDeadline'],
+    ['total_hours', 'totalHours'],
+    ['publish_language', 'publishLanguage'],
+    ['teaching_languages', 'teachingLanguages'],
+    ['preview_video_url', 'previewVideoUrl'],
+    ['translations_complete', 'translationsComplete'],
+    ['translated_at', 'translatedAt'],
+    ['rejection_reason', 'rejectionReason'],
+    ['target_audience', 'targetAudience'],
+    ['target_audience_zh', 'targetAudience_zh'],
+  ];
+
+  for (const [snake, camel] of snakeToCamel) {
+    if (snake in c) {
+      mapped[camel] = c[snake];
+    }
+  }
+
+  return mapped;
 }
 
 // Frontend camelCase -> DB snake_case mapping
 function mapCourseForDB(body: Record<string, any>): Record<string, any> {
   const payload: Record<string, any> = {};
+
+  // Convert empty strings to null for date/numeric fields
+  const toNullIfEmpty = (v: any) => (v === '' || v === undefined) ? null : v;
 
   // Direct pass-through fields (same name in DB and frontend)
   const directFields = [
@@ -40,7 +52,7 @@ function mapCourseForDB(body: Record<string, any>): Record<string, any> {
     'description', 'status', 'instructor', 'location', 'agenda', 'services',
     'title_en', 'title_zh', 'title_th', 'title_ja',
     'description_en', 'description_zh', 'description_th', 'description_ja',
-    'price_cny', 'price_usd', 'price_jpy', 'price_thb',
+    'price_cny',
     'target_audience', 'target_audience_zh',
     'translations_complete', 'translated_at',
   ];
@@ -68,6 +80,18 @@ function mapCourseForDB(body: Record<string, any>): Record<string, any> {
   };
   for (const [camel, snake] of Object.entries(camelToSnake)) {
     if (body[camel] !== undefined) payload[snake] = body[camel];
+  }
+
+  // Sanitize date fields: empty strings -> null (PostgreSQL rejects '' for date columns)
+  const dateFields = ['start_date', 'end_date', 'enrollment_deadline', 'translated_at'];
+  for (const f of dateFields) {
+    if (f in payload) payload[f] = toNullIfEmpty(payload[f]);
+  }
+
+  // Sanitize numeric fields: empty strings -> null
+  const numericFields = ['total_hours', 'price', 'max_enrollment', 'current_enrollment', 'price_cny'];
+  for (const f of numericFields) {
+    if (f in payload && payload[f] === '') payload[f] = null;
   }
 
   return payload;
@@ -136,7 +160,7 @@ export async function PATCH(
     
     const { data, error } = await supabase
       .from('courses')
-      .update({ ...dbPayload, updated_at: new Date().toISOString() })
+      .update(dbPayload)
       .eq('id', id)
       .select()
       .single();

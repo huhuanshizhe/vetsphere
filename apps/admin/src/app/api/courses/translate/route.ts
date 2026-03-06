@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     // 执行翻译
     const updates = await translateCourse(course as Course, apiKey);
 
-    // 生成多币种价格
+    // 生成多币种价格（仅保存已存在的列: price_cny）
     const prices = generateAllPrices(course.price, course.currency || 'CNY');
 
     // 构建完整更新负载（包含所有语言后缀列）
@@ -89,11 +89,8 @@ export async function POST(request: NextRequest) {
       description_zh: (updates as Record<string, unknown>).description_zh,
       description_th: (updates as Record<string, unknown>).description_th,
       description_ja: (updates as Record<string, unknown>).description_ja,
-      // 多币种价格
+      // 多币种价格（仅 price_cny 有对应 DB 列）
       price_cny: prices.price_cny,
-      price_usd: prices.price_usd,
-      price_jpy: prices.price_jpy,
-      price_thb: prices.price_thb,
       // 讲师信息 (JSONB 包含所有语言版本)
       instructor: updates.instructor,
       // 地点信息 (JSONB 包含所有语言版本)
@@ -115,48 +112,50 @@ export async function POST(request: NextRequest) {
     }
 
     // 尝试完整更新
-    let { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from('courses')
       .update(fullUpdatePayload)
       .eq('id', courseId);
 
-    // 如果失败（可能是列不存在），回退到只更新 JSONB 字段
-    if (updateError && updateError.code === 'PGRST204') {
-      console.log('Full update failed, falling back to JSONB-only update');
-      
-      // 将翻译内容嵌入到 JSONB 字段中
-      const instructorWithTranslations = {
-        ...updates.instructor,
-        _translations: {
-          title_en: (updates as Record<string, unknown>).title_en,
-          title_zh: (updates as Record<string, unknown>).title_zh,
-          title_th: (updates as Record<string, unknown>).title_th,
-          title_ja: (updates as Record<string, unknown>).title_ja,
-          description_en: (updates as Record<string, unknown>).description_en,
-          description_zh: (updates as Record<string, unknown>).description_zh,
-          description_th: (updates as Record<string, unknown>).description_th,
-          description_ja: (updates as Record<string, unknown>).description_ja,
-        },
-      };
-
-      const fallbackResult = await supabaseAdmin
-        .from('courses')
-        .update({
-          instructor: instructorWithTranslations,
-          location: updates.location,
-          agenda: updates.agenda,
-        })
-        .eq('id', courseId);
-      
-      updateError = fallbackResult.error;
-    }
-
+    // 如果失败（可能是列不存在），分步更新
     if (updateError) {
-      console.error('Update error:', updateError);
-      return NextResponse.json(
-        { error: '保存翻译失败: ' + updateError.message },
-        { status: 500 }
-      );
+      console.warn('Full translation update failed, trying step-by-step:', updateError.message);
+      
+      // Step 1: 更新 JSONB 字段（这些列肯定存在）
+      const jsonbPayload: Record<string, unknown> = {};
+      if (updates.instructor) jsonbPayload.instructor = updates.instructor;
+      if (updates.location) jsonbPayload.location = updates.location;
+      if (updates.agenda) jsonbPayload.agenda = updates.agenda;
+      if ((updates as any).services) jsonbPayload.services = (updates as any).services;
+
+      if (Object.keys(jsonbPayload).length > 0) {
+        const { error: jsonbError } = await supabaseAdmin
+          .from('courses')
+          .update(jsonbPayload)
+          .eq('id', courseId);
+        if (jsonbError) console.error('JSONB update failed:', jsonbError.message);
+      }
+
+      // Step 2: 尝试更新多语言文本列
+      const textPayload: Record<string, unknown> = {};
+      const textFields = [
+        'title_en', 'title_zh', 'title_th', 'title_ja',
+        'description_en', 'description_zh', 'description_th', 'description_ja',
+      ];
+      for (const f of textFields) {
+        if (fullUpdatePayload[f] !== undefined) textPayload[f] = fullUpdatePayload[f];
+      }
+      if (fullUpdatePayload.translations_complete !== undefined) textPayload.translations_complete = fullUpdatePayload.translations_complete;
+      if (fullUpdatePayload.translated_at !== undefined) textPayload.translated_at = fullUpdatePayload.translated_at;
+      if (fullUpdatePayload.price_cny !== undefined) textPayload.price_cny = fullUpdatePayload.price_cny;
+
+      if (Object.keys(textPayload).length > 0) {
+        const { error: textError } = await supabaseAdmin
+          .from('courses')
+          .update(textPayload)
+          .eq('id', courseId);
+        if (textError) console.error('Text columns update failed:', textError.message);
+      }
     }
 
     return NextResponse.json({
