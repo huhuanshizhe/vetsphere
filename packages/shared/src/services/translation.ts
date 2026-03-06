@@ -134,6 +134,8 @@ interface FlatTranslationContent {
   instructorName: string;
   instructorTitle: string;
   instructorBio: string;
+  // 讲师资质（字符串数组）
+  instructorCredentials: string[];
   locationCity: string;
   locationVenue: string;
   locationAddress: string;
@@ -172,6 +174,7 @@ function extractFlatContent(course: Course): FlatTranslationContent {
     instructorName: course.instructor?.name || '',
     instructorTitle: course.instructor?.title || '',
     instructorBio: course.instructor?.bio || '',
+    instructorCredentials: course.instructor?.credentials || [],
     locationCity: course.location?.city || '',
     locationVenue: course.location?.venue || '',
     locationAddress: course.location?.address || '',
@@ -199,14 +202,15 @@ RULES:
 1. Return ONLY valid JSON
 2. Each language key contains the same structure with translated values
 3. The "activities" array MUST remain an array of strings
-4. Keep proper names unchanged or transliterate appropriately
+4. The "instructorCredentials" array MUST remain an array of strings
+5. Keep proper names unchanged or transliterate appropriately
 
 SOURCE:
 ${JSON.stringify(content, null, 2)}
 
 Return format (EXACT structure required):
 {
-  "${targetLangs[0]}": { "title": "...", "description": "...", "instructorName": "...", "instructorTitle": "...", "instructorBio": "...", "locationCity": "...", "locationVenue": "...", "locationAddress": "...", "locationCountry": "...", "locationRegion": "...", "activities": ["...", "..."], "servicesDirections": "...", "servicesNotes": "..." },
+  "${targetLangs[0]}": { "title": "...", "description": "...", "instructorName": "...", "instructorTitle": "...", "instructorBio": "...", "instructorCredentials": ["...", "..."], "locationCity": "...", "locationVenue": "...", "locationAddress": "...", "locationCountry": "...", "locationRegion": "...", "activities": ["...", "..."], "servicesDirections": "...", "servicesNotes": "..." },
   "${targetLangs[1]}": { ... },
   "${targetLangs[2]}": { ... },
   "${targetLangs[3]}": { ... }
@@ -274,6 +278,9 @@ function mergeTranslations(
     if (content.instructorName) (updates.instructor as Record<string, unknown>)[`name_${lang}`] = content.instructorName;
     if (content.instructorTitle) (updates.instructor as Record<string, unknown>)[`title_${lang}`] = content.instructorTitle;
     if (content.instructorBio) (updates.instructor as Record<string, unknown>)[`bio_${lang}`] = content.instructorBio;
+    if (content.instructorCredentials && Array.isArray(content.instructorCredentials) && content.instructorCredentials.length > 0) {
+      (updates.instructor as Record<string, unknown>)[`credentials_${lang}`] = content.instructorCredentials;
+    }
 
     // 地点信息
     if (!updates.location) {
