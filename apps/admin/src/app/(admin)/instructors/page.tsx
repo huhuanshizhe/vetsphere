@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -272,21 +272,21 @@ export default function InstructorsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">讲师管理</h1>
-          <p className="text-slate-400 mt-1">管理平台讲师与授课人员</p>
+          <h1 className="text-2xl font-bold text-slate-900">讲师管理</h1>
+          <p className="text-slate-500 mt-1">管理平台讲师与授课人员</p>
         </div>
         <Button onClick={openCreateDialog}>新建讲师</Button>
       </div>
 
       {/* 视图切换 */}
-      <div className="flex items-center gap-1 bg-slate-800/60 rounded-lg p-1 w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
         <button
           onClick={() => { setViewTab('base'); setPage(1); }}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewTab === 'base' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewTab === 'base' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
         >Base 资源库</button>
         <button
           onClick={() => { setViewTab('site'); setPage(1); }}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewTab === 'site' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewTab === 'site' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
         >{currentSite === 'cn' ? '🇨🇳 CN' : '🌐 INTL'} 站点视图</button>
       </div>
 
@@ -331,44 +331,44 @@ export default function InstructorsPage() {
               <>
                 <TableContainer>
                   <table className="w-full">
-                    <thead className="bg-slate-800/50">
+                    <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">讲师</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">职称</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">专业</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">站点视图</th>
-                        <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">讲师</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">职称</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">专业</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">站点视图</th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700/50">
                       {instructors.map((instructor) => (
-                        <tr key={instructor.id} className="hover:bg-slate-800/30 transition-colors">
+                        <tr key={instructor.id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-slate-700 flex-shrink-0 overflow-hidden">
+                              <div className="w-10 h-10 rounded-full bg-slate-100 flex-shrink-0 overflow-hidden">
                                 {instructor.avatar_url ? (
                                   <img src={instructor.avatar_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-slate-400 text-lg font-bold">
+                                  <div className="w-full h-full flex items-center justify-center text-slate-500 text-lg font-bold">
                                     {instructor.name[0]}
                                   </div>
                                 )}
                               </div>
-                              <span className="font-medium text-white">{instructor.name}</span>
+                              <span className="font-medium text-slate-900">{instructor.name}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-slate-300 text-sm">{instructor.title || '-'}</td>
-                          <td className="px-6 py-4 text-slate-400 text-sm">{instructor.specialty || '-'}</td>
+                          <td className="px-6 py-4 text-slate-600 text-sm">{instructor.title || '-'}</td>
+                          <td className="px-6 py-4 text-slate-500 text-sm">{instructor.specialty || '-'}</td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${instructor.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${instructor.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-500'}`}>
                               {instructor.is_active ? '已启用' : '已禁用'}
                             </span>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex gap-1.5">
                               {(instructor.site_views || []).map(sv => (
-                                <span key={sv.site_code} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${sv.is_enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                                <span key={sv.site_code} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${sv.is_enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-500'}`}>
                                   {sv.site_code.toUpperCase()}
                                 </span>
                               ))}
@@ -400,7 +400,7 @@ export default function InstructorsPage() {
                   </table>
                 </TableContainer>
                 {totalPages > 1 && (
-                  <div className="px-6 py-4 border-t border-slate-700/50">
+                  <div className="px-6 py-4 border-t border-slate-200/50">
                     <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
                   </div>
                 )}
@@ -418,19 +418,19 @@ export default function InstructorsPage() {
             ) : (
               <TableContainer>
                 <table className="w-full">
-                  <thead className="bg-slate-800/50">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">讲师</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">显示名称</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">启用</th>
-                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">讲师</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">显示名称</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">启用</th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {siteViews.map((sv) => (
-                      <tr key={sv.id} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="px-6 py-4 text-white font-medium">{(sv as any).instructor?.name || sv.instructor_id}</td>
-                        <td className="px-6 py-4 text-slate-300 text-sm">{sv.display_name || <span className="text-slate-600">继承 Base</span>}</td>
+                      <tr key={sv.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 text-slate-900 font-medium">{(sv as any).instructor?.name || sv.instructor_id}</td>
+                        <td className="px-6 py-4 text-slate-600 text-sm">{sv.display_name || <span className="text-slate-600">继承 Base</span>}</td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${sv.is_enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                             {sv.is_enabled ? '已启用' : '已禁用'}
@@ -458,16 +458,16 @@ export default function InstructorsPage() {
       {showEditDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowEditDialog(false)} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-lg w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-4">{editingInstructor ? '编辑讲师' : '新建讲师'}</h3>
+          <div className="relative bg-slate-950 border border-slate-200/50 rounded-xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">{editingInstructor ? '编辑讲师' : '新建讲师'}</h3>
             <div className="space-y-4">
               <Input label="姓名 *" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="讲师姓名" />
               <Input label="职称" value={editForm.title} onChange={(e) => setEditForm(f => ({ ...f, title: e.target.value }))} placeholder="如：副教授、主任医师" />
               <Input label="专业方向" value={editForm.specialty} onChange={(e) => setEditForm(f => ({ ...f, specialty: e.target.value }))} placeholder="如：小动物外科" />
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-slate-400">简介</label>
+                <label className="block text-xs font-medium text-slate-500">简介</label>
                 <textarea
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 min-h-[80px]"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 min-h-[80px]"
                   value={editForm.bio}
                   onChange={(e) => setEditForm(f => ({ ...f, bio: e.target.value }))}
                   placeholder="讲师简介..."

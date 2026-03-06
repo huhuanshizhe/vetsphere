@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -188,8 +188,8 @@ export default function CmsPagesPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">CMS 页面管理</h1>
-          <p className="text-slate-400 mt-1">管理网站落地页、内容页配置</p>
+          <h1 className="text-2xl font-bold text-slate-900">CMS 页面管理</h1>
+          <p className="text-slate-500 mt-1">管理网站落地页、内容页配置</p>
         </div>
         <Button onClick={() => setShowCreateDialog(true)}>
           新建页面
@@ -252,38 +252,38 @@ export default function CmsPagesPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">页面名称</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">页面标识</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">标题</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">版本</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">更新时间</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">页面名称</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">页面标识</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">标题</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">版本</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">更新时间</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {pages.map((cmsPage) => (
-                    <tr key={cmsPage.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={cmsPage.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
-                        <span className="font-medium text-white">{cmsPage.name}</span>
+                        <span className="font-medium text-slate-900">{cmsPage.name}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <code className="text-sm text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                        <code className="text-sm text-slate-500 bg-white px-2 py-1 rounded">
                           {cmsPage.page_key}
                         </code>
                       </td>
-                      <td className="px-6 py-4 text-slate-300">
+                      <td className="px-6 py-4 text-slate-600">
                         {cmsPage.title || '-'}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={cmsPage.status} />
                       </td>
-                      <td className="px-6 py-4 text-slate-400">
+                      <td className="px-6 py-4 text-slate-500">
                         v{cmsPage.version}
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {new Date(cmsPage.updated_at).toLocaleDateString('zh-CN')}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -329,7 +329,7 @@ export default function CmsPagesPage() {
             </TableContainer>
 
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination
                   page={page}
                   totalPages={totalPages}
@@ -344,8 +344,8 @@ export default function CmsPagesPage() {
       {/* 新建页面弹窗 */}
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">新建CMS页面</h3>
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">新建CMS页面</h3>
             
             <div className="space-y-4">
               <Input

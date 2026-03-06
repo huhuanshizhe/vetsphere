@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -283,8 +283,8 @@ export default function RolesPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">角色权限管理</h1>
-          <p className="text-slate-400 mt-1">管理系统角色与权限配置</p>
+          <h1 className="text-2xl font-bold text-slate-900">角色权限管理</h1>
+          <p className="text-slate-500 mt-1">管理系统角色与权限配置</p>
         </div>
         <Button onClick={() => setShowCreateDialog(true)}>
           新建角色
@@ -310,32 +310,32 @@ export default function RolesPage() {
         ) : (
           <TableContainer>
             <table className="w-full">
-              <thead className="bg-slate-800/50">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">角色名称</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">角色代码</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">描述</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">权限数</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">角色名称</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">角色代码</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">描述</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">权限数</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {roles.map((role) => (
-                  <tr key={role.id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={role.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
-                      <span className="font-medium text-white">{role.name}</span>
+                      <span className="font-medium text-slate-900">{role.name}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <code className="text-sm text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                      <code className="text-sm text-slate-500 bg-white px-2 py-1 rounded">
                         {role.code}
                       </code>
                     </td>
-                    <td className="px-6 py-4 text-slate-400 text-sm">
+                    <td className="px-6 py-4 text-slate-500 text-sm">
                       {role.description || '-'}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-white">{role.permission_count || 0}</span>
+                      <span className="text-slate-900">{role.permission_count || 0}</span>
                     </td>
                     <td className="px-6 py-4">
                       {role.is_system ? (
@@ -343,7 +343,7 @@ export default function RolesPage() {
                           系统
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-500">
                           自定义
                         </span>
                       )}
@@ -382,19 +382,19 @@ export default function RolesPage() {
       {/* 编辑权限弹窗 */}
       {showEditDialog && editingRole && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl max-w-4xl w-full p-6 my-8">
-            <h3 className="text-lg font-semibold text-white mb-2">
+          <div className="bg-white rounded-xl max-w-4xl w-full p-6 my-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
               配置权限 - {editingRole.name}
             </h3>
-            <p className="text-slate-400 text-sm mb-6">
+            <p className="text-slate-500 text-sm mb-6">
               已选择 {selectedPermissions.length} 个权限
             </p>
             
             <div className="space-y-6 max-h-[60vh] overflow-y-auto">
               {Object.entries(getPermissionsByModule()).map(([module, permissions]) => (
-                <div key={module} className="border border-slate-700 rounded-lg p-4">
+                <div key={module} className="border border-slate-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-white">
+                    <h4 className="font-medium text-slate-900">
                       {moduleNames[module] || module}
                     </h4>
                     <button
@@ -408,15 +408,15 @@ export default function RolesPage() {
                     {permissions.map(perm => (
                       <label
                         key={perm.id}
-                        className="flex items-center gap-2 p-2 rounded hover:bg-slate-700/50 cursor-pointer"
+                        className="flex items-center gap-2 p-2 rounded hover:bg-slate-100/50 cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           checked={selectedPermissions.includes(perm.id)}
                           onChange={() => togglePermission(perm.id)}
-                          className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                          className="w-4 h-4 rounded border-slate-200 bg-slate-100 text-emerald-500 focus:ring-emerald-500"
                         />
-                        <span className="text-sm text-slate-300">{perm.name}</span>
+                        <span className="text-sm text-slate-600">{perm.name}</span>
                       </label>
                     ))}
                   </div>
@@ -424,7 +424,7 @@ export default function RolesPage() {
               ))}
             </div>
             
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200">
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -448,8 +448,8 @@ export default function RolesPage() {
       {/* 新建角色弹窗 */}
       {showCreateDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">新建角色</h3>
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">新建角色</h3>
             
             <div className="space-y-4">
               <Input

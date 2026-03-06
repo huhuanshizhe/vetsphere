@@ -178,12 +178,16 @@ export async function getIntlCourses(options?: {
         cover_image_url, image_url, target_audience,
         is_free, price_cny, price_usd,
         enrollment_count, avg_rating, growth_tracks,
-        status
+        status, end_date
       )
     `, { count: 'exact' })
     .eq('site_code', SITE_CODE)
     .eq('publish_status', 'published')
     .eq('is_enabled', true);
+
+  // 过滤已过期课程（end_date 为空或未过期的课程才显示）
+  const today = new Date().toISOString().split('T')[0];
+  query = query.or(`end_date.is.null,end_date.gte.${today}`, { foreignTable: 'courses' });
 
   if (options?.featured) {
     query = query.eq('is_featured', true);

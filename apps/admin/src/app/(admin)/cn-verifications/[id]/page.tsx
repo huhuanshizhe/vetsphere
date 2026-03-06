@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -202,7 +202,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
           </Link>
           <div>
             <h1 className="text-xl font-bold text-slate-900">认证审核详情</h1>
-            <p className="text-xs text-slate-400 mt-0.5">ID: {v.id}</p>
+            <p className="text-xs text-slate-500 mt-0.5">ID: {v.id}</p>
           </div>
         </div>
         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
@@ -231,7 +231,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
             </div>
             {v.specialtyTags && v.specialtyTags.length > 0 && (
               <div className="mt-5 pt-5 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">专业方向</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">专业方向</p>
                 <div className="flex flex-wrap gap-2">
                   {v.specialtyTags.map((tag, i) => (
                     <span key={i} className="px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 rounded-full">{tag}</span>
@@ -241,7 +241,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
             )}
             {v.verificationNote && (
               <div className="mt-5 pt-5 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">补充说明</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">补充说明</p>
                 <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{v.verificationNote}</p>
               </div>
             )}
@@ -253,7 +253,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
               <div className="flex items-center gap-2">
                 <div className="w-1 h-5 bg-emerald-500 rounded-full" />
                 <h2 className="text-base font-bold text-slate-900">证明材料</h2>
-                <span className="text-xs text-slate-400 ml-1">({v.documents?.length || 0} 份)</span>
+                <span className="text-xs text-slate-500 ml-1">({v.documents?.length || 0} 份)</span>
               </div>
             </div>
             {v.documents && v.documents.length > 0 ? (
@@ -282,17 +282,17 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
                           className="w-full h-56 object-contain p-2 group-hover:scale-[1.02] transition-transform"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-3 py-1.5 rounded-full">
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-slate-900 text-xs px-3 py-1.5 rounded-full">
                             点击放大查看
                           </span>
                         </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center h-40 bg-slate-50">
-                        <svg className="w-10 h-10 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-10 h-10 text-slate-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
-                        <p className="text-xs text-slate-400">{doc.fileName || 'PDF 文件'}</p>
+                        <p className="text-xs text-slate-500">{doc.fileName || 'PDF 文件'}</p>
                         <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-2 text-xs text-blue-600 hover:underline">
                           下载查看
                         </a>
@@ -301,7 +301,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
                     {/* 文件名 */}
                     {doc.fileName && (
                       <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/50">
-                        <p className="text-xs text-slate-400 truncate" title={doc.fileName}>{doc.fileName}</p>
+                        <p className="text-xs text-slate-500 truncate" title={doc.fileName}>{doc.fileName}</p>
                       </div>
                     )}
                   </div>
@@ -309,7 +309,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
               </div>
             ) : (
               <div className="text-center py-8 bg-slate-50 rounded-xl">
-                <p className="text-slate-400 text-sm">申请人未上传任何证明材料</p>
+                <p className="text-slate-500 text-sm">申请人未上传任何证明材料</p>
               </div>
             )}
           </Card>
@@ -341,11 +341,11 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-slate-900">{cfg.label}</span>
-                            {log.adminName && <span className="text-xs text-slate-400">by {log.adminName}</span>}
+                            {log.adminName && <span className="text-xs text-slate-500">by {log.adminName}</span>}
                           </div>
                           {log.rejectReason && <p className="text-sm text-red-600 mt-1 bg-red-50 rounded-lg px-3 py-1.5">{log.rejectReason}</p>}
                           {log.reviewNote && <p className="text-sm text-slate-600 mt-1">{log.reviewNote}</p>}
-                          <p className="text-xs text-slate-400 mt-1">{new Date(log.createdAt).toLocaleString('zh-CN')}</p>
+                          <p className="text-xs text-slate-500 mt-1">{new Date(log.createdAt).toLocaleString('zh-CN')}</p>
                         </div>
                       </div>
                     );
@@ -354,7 +354,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
               </div>
             ) : (
               <div className="text-center py-6 bg-slate-50 rounded-xl">
-                <p className="text-sm text-slate-400">暂无审核记录</p>
+                <p className="text-sm text-slate-500">暂无审核记录</p>
               </div>
             )}
           </Card>
@@ -404,13 +404,13 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
               {data.profile?.avatarUrl ? (
                 <img src={data.profile.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-slate-100" />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-white font-bold text-lg">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-slate-900 font-bold text-lg">
                   {v.realName?.[0] || '?'}
                 </div>
               )}
               <div>
                 <p className="text-sm font-semibold text-slate-900">{data.profile?.displayName || v.realName || '未设置'}</p>
-                <p className="text-xs text-slate-400">{data.user?.mobile || '-'}</p>
+                <p className="text-xs text-slate-500">{data.user?.mobile || '-'}</p>
               </div>
             </div>
             <div className="space-y-3 text-sm">
@@ -455,7 +455,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
           <div className="relative max-w-5xl max-h-[90vh] w-full">
             <button
               onClick={() => setPreviewImage(null)}
-              className="absolute -top-10 right-0 text-white/80 hover:text-white text-sm flex items-center gap-1"
+              className="absolute -top-10 right-0 text-slate-900/80 hover:text-slate-900 text-sm flex items-center gap-1"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               关闭
@@ -467,7 +467,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
               onClick={(e) => e.stopPropagation()}
             />
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3">
-              <a href={previewImage} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white/20 backdrop-blur text-white text-sm rounded-full hover:bg-white/30 transition">
+              <a href={previewImage} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-white/20 backdrop-blur text-slate-900 text-sm rounded-full hover:bg-white/30 transition">
                 在新标签打开原图
               </a>
             </div>
@@ -530,7 +530,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
               placeholder="或输入自定义驳回原因..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 resize-none h-20"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 resize-none h-20"
             />
             
             <div className="flex items-center justify-end gap-3 mt-6">
@@ -556,7 +556,7 @@ function InfoField({ label, value, highlight, badge }: { label: string; value?: 
   };
   return (
     <div>
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{label}</p>
       {badge && value ? (
         <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${badgeColors[badge]}`}>{value}</span>
       ) : (
@@ -569,7 +569,7 @@ function InfoField({ label, value, highlight, badge }: { label: string; value?: 
 function SidebarRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-slate-400">{label}</span>
+      <span className="text-slate-500">{label}</span>
       <span className="text-slate-700 font-medium text-right">{value}</span>
     </div>
   );

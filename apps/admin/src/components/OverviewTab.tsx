@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import KPICard from './KPICard';
@@ -72,19 +72,19 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ stats }) => {
 
       {/* Quick status */}
       <div className="bg-black/20 border border-white/5 rounded-2xl p-5 sm:p-6">
-        <h3 className="text-sm font-bold text-white mb-4">系统状态</h3>
+        <h3 className="text-sm font-bold text-slate-900 mb-4">系统状态</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-sm text-slate-400">数据库连接正常</span>
+            <span className="text-sm text-slate-500">数据库连接正常</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-sm text-slate-400">AI 服务运行中</span>
+            <span className="text-sm text-slate-500">AI 服务运行中</span>
           </div>
           <div className="flex items-center gap-3">
             <div className={`w-2 h-2 rounded-full ${stats.community.pendingModeration > 0 ? 'bg-amber-400' : 'bg-emerald-400'} animate-pulse`} />
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-slate-500">
               待审内容 {stats.community.pendingModeration} 条
             </span>
           </div>

@@ -12,7 +12,7 @@ export type UserRole = 'Doctor' | 'CourseProvider' | 'ShopSupplier' | 'Admin';
 
 export type ProductGroup = 'PowerTools' | 'Implants' | 'HandInstruments' | 'Consumables' | 'Equipment';
 
-export type CourseStatus = 'pending' | 'published' | 'rejected' | 'draft';
+export type CourseStatus = 'draft' | 'pending' | 'published' | 'offline';
 
 // ============================================
 // Doctor Application Types (医生入驻申请)

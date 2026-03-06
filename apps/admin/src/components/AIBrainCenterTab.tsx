@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { getSystemInstruction, saveSystemInstruction, getAIConfig, saveAIConfig } from '@vetsphere/shared/services/gemini';
@@ -26,14 +26,14 @@ const AIBrainCenterTab: React.FC = () => {
       <div className="bg-black/20 border border-white/5 rounded-2xl p-5 sm:p-6 backdrop-blur-sm">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
           <div>
-            <h3 className="text-white font-black text-base sm:text-lg">系统指令 (System Prompt)</h3>
+            <h3 className="text-slate-900 font-black text-base sm:text-lg">系统指令 (System Prompt)</h3>
             <p className="text-slate-600 text-xs mt-1">定义 AI 助手的人设、知识范围和行为边界</p>
           </div>
         </div>
         <textarea
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
-          className="w-full min-h-[350px] sm:min-h-[400px] bg-black/50 border border-white/10 rounded-xl p-4 text-sm font-mono text-slate-300 focus:border-emerald-500 focus:outline-none resize-none leading-relaxed"
+          className="w-full min-h-[350px] sm:min-h-[400px] bg-black/50 border border-white/10 rounded-xl p-4 text-sm font-mono text-slate-600 focus:border-emerald-500 focus:outline-none resize-none leading-relaxed"
           spellCheck={false}
           placeholder="在此输入 AI 系统提示词..."
         />

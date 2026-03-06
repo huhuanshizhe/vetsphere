@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -170,8 +170,8 @@ export default function CourseDictionariesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">课程筛选字典</h1>
-        <p className="text-slate-400 mt-1">管理课程和商品的分类、标签等筛选维度</p>
+        <h1 className="text-2xl font-bold text-slate-900">课程筛选字典</h1>
+        <p className="text-slate-500 mt-1">管理课程和商品的分类、标签等筛选维度</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -191,7 +191,7 @@ export default function CourseDictionariesPage() {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   selectedGroup === g.key
                     ? 'bg-emerald-500 text-black'
-                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    : 'bg-white/5 text-slate-500 hover:text-slate-900 hover:bg-white/10'
                 }`}
               >
                 {g.name}
@@ -214,25 +214,25 @@ export default function CourseDictionariesPage() {
         ) : (
           <TableContainer>
             <table className="w-full">
-              <thead className="bg-slate-800/50">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">排序</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Key</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">中文标签</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">英文标签</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">排序</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Key</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">中文标签</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">英文标签</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4 text-slate-400 text-sm">{item.display_order}</td>
+                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 text-slate-500 text-sm">{item.display_order}</td>
                     <td className="px-6 py-4"><code className="text-sm text-emerald-400">{item.item_key}</code></td>
-                    <td className="px-6 py-4 text-white text-sm font-medium">{item.label_zh}</td>
-                    <td className="px-6 py-4 text-slate-400 text-sm">{item.label_en || '-'}</td>
+                    <td className="px-6 py-4 text-slate-900 text-sm font-medium">{item.label_zh}</td>
+                    <td className="px-6 py-4 text-slate-500 text-sm">{item.label_en || '-'}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-500'}`}>
                         {item.is_active ? '启用' : '禁用'}
                       </span>
                     </td>
@@ -257,8 +257,8 @@ export default function CourseDictionariesPage() {
       {showAddDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowAddDialog(false)} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-4">{editingItem ? '编辑字典项' : '新增字典项'}</h3>
+          <div className="relative bg-slate-950 border border-slate-200/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">{editingItem ? '编辑字典项' : '新增字典项'}</h3>
             <div className="space-y-4">
               <Input
                 label="Key *"

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -208,8 +208,8 @@ export default function SystemConfigsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">系统配置</h1>
-          <p className="text-slate-400 mt-1">管理平台系统配置参数</p>
+          <h1 className="text-2xl font-bold text-slate-900">系统配置</h1>
+          <p className="text-slate-500 mt-1">管理平台系统配置参数</p>
         </div>
         <Button onClick={() => {
           setConfigToEdit({
@@ -266,19 +266,19 @@ export default function SystemConfigsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">配置项</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">值</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">分类</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">可见性</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">配置项</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">值</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">分类</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">可见性</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {configs.map((config) => (
-                    <tr key={config.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={config.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div>
                           <code className="text-sm text-blue-400">{config.key}</code>
@@ -288,14 +288,14 @@ export default function SystemConfigsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <code className="text-sm text-slate-300 bg-slate-700/50 px-2 py-1 rounded">
+                        <code className="text-sm text-slate-600 bg-slate-100/50 px-2 py-1 rounded">
                           {formatValue(config)}
                         </code>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {typeLabels[config.value_type] || config.value_type}
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {categoryLabels[config.category] || config.category}
                       </td>
                       <td className="px-6 py-4">
@@ -303,7 +303,7 @@ export default function SystemConfigsPage() {
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             config.is_public
                               ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-slate-500/20 text-slate-400'
+                              : 'bg-slate-500/20 text-slate-500'
                           }`}>
                             {config.is_public ? '公开' : '私有'}
                           </span>
@@ -325,7 +325,7 @@ export default function SystemConfigsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
@@ -335,9 +335,9 @@ export default function SystemConfigsPage() {
 
       {showEditDialog && configToEdit && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-lg w-full">
-            <div className="px-6 py-4 border-b border-slate-700">
-              <h3 className="text-lg font-semibold text-white">
+          <div className="bg-white rounded-xl max-w-lg w-full">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900">
                 {configToEdit.id ? '编辑配置' : '新建配置'}
               </h3>
             </div>
@@ -345,7 +345,7 @@ export default function SystemConfigsPage() {
               {!configToEdit.id && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">配置键名</label>
+                    <label className="block text-sm font-medium text-slate-600 mb-2">配置键名</label>
                     <Input
                       value={configToEdit.key}
                       onChange={(e) => setConfigToEdit({ ...configToEdit, key: e.target.value })}
@@ -353,7 +353,7 @@ export default function SystemConfigsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">值类型</label>
+                    <label className="block text-sm font-medium text-slate-600 mb-2">值类型</label>
                     <Select
                       value={configToEdit.value_type}
                       onChange={(e) => setConfigToEdit({ ...configToEdit, value_type: e.target.value })}
@@ -368,7 +368,7 @@ export default function SystemConfigsPage() {
                 </>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-slate-600 mb-2">
                   配置值 ({typeLabels[configToEdit.value_type]})
                 </label>
                 {configToEdit.value_type === 'boolean' ? (
@@ -384,7 +384,7 @@ export default function SystemConfigsPage() {
                   <textarea
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
-                    className="w-full h-40 bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                    className="w-full h-40 bg-slate-900 border border-slate-200 rounded-lg px-4 py-3 text-slate-900 font-mono text-sm focus:outline-none focus:border-blue-500"
                     placeholder='{"key": "value"}'
                   />
                 ) : (
@@ -397,7 +397,7 @@ export default function SystemConfigsPage() {
                 )}
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
               <Button variant="secondary" onClick={() => { setShowEditDialog(false); setConfigToEdit(null); setEditValue(''); }}>
                 取消
               </Button>

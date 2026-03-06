@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -130,8 +130,8 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">订单管理</h1>
-        <p className="text-slate-400 mt-1">查看和管理平台订单</p>
+        <h1 className="text-2xl font-bold text-slate-900">订单管理</h1>
+        <p className="text-slate-500 mt-1">查看和管理平台订单</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -186,39 +186,39 @@ export default function OrdersPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">订单号</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">用户</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">金额</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">创建时间</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">订单号</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">用户</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">金额</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">创建时间</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <code className="text-sm text-emerald-400">{order.order_no || order.id.slice(0, 8)}</code>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="text-white">{order.user?.full_name || '未知'}</div>
+                          <div className="text-slate-900">{order.user?.full_name || '未知'}</div>
                           <div className="text-slate-500 text-xs">{order.user?.email}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">
+                      <td className="px-6 py-4 text-slate-600 text-sm">
                         {typeLabels[order.order_type] || order.order_type}
                       </td>
-                      <td className="px-6 py-4 text-white font-medium">
+                      <td className="px-6 py-4 text-slate-900 font-medium">
                         ¥{order.total_amount?.toLocaleString() || 0}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={order.status} />
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {new Date(order.created_at).toLocaleString('zh-CN')}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -232,7 +232,7 @@ export default function OrdersPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

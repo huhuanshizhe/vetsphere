@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -105,8 +105,8 @@ export default function OperationLogsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">操作日志</h1>
-        <p className="text-slate-400 mt-1">查看管理员操作记录与审计日志</p>
+        <h1 className="text-2xl font-bold text-slate-900">操作日志</h1>
+        <p className="text-slate-500 mt-1">查看管理员操作记录与审计日志</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -126,7 +126,7 @@ export default function OperationLogsPage() {
           </div>
           <div className="w-full md:w-40">
             <select
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none cursor-pointer"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none cursor-pointer"
               value={filterModule}
               onChange={(e) => { setFilterModule(e.target.value); setPage(1); }}
             >
@@ -165,23 +165,23 @@ export default function OperationLogsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时间</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">操作人</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">模块</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">操作</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">操作目标</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">摘要</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时间</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">操作人</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">模块</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">操作目标</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">摘要</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-slate-400 text-xs whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-500 text-xs whitespace-nowrap">
                         {new Date(log.created_at).toLocaleString('zh-CN')}
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">
+                      <td className="px-6 py-4 text-slate-600 text-sm">
                         {log.admin_user?.display_name || log.admin_user?.email || '-'}
                       </td>
                       <td className="px-6 py-4">
@@ -190,14 +190,14 @@ export default function OperationLogsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-500/20 text-slate-300">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-500/20 text-slate-600">
                           {log.action}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-white text-sm max-w-[200px]">
+                      <td className="px-6 py-4 text-slate-900 text-sm max-w-[200px]">
                         <span className="line-clamp-1">{log.target_name || '-'}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm max-w-[250px]">
+                      <td className="px-6 py-4 text-slate-500 text-sm max-w-[250px]">
                         <span className="line-clamp-1">{log.changes_summary || '-'}</span>
                       </td>
                     </tr>
@@ -206,7 +206,7 @@ export default function OperationLogsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

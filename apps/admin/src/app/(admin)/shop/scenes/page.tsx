@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -159,8 +159,8 @@ export default function ShopScenesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">采购场景</h1>
-          <p className="text-slate-400 mt-1">管理商品的采购场景分类</p>
+          <h1 className="text-2xl font-bold text-slate-900">采购场景</h1>
+          <p className="text-slate-500 mt-1">管理商品的采购场景分类</p>
         </div>
         <Button onClick={openCreateDialog}>新增场景</Button>
       </div>
@@ -178,29 +178,29 @@ export default function ShopScenesPage() {
         ) : (
           <TableContainer>
             <table className="w-full">
-              <thead className="bg-slate-800/50">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">排序</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">图标</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Code</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">名称</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">英文名</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">商品数</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">排序</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">图标</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Code</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">名称</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">英文名</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">商品数</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {scenes.map((scene) => (
-                  <tr key={scene.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4 text-slate-400 text-sm">{scene.display_order}</td>
+                  <tr key={scene.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 text-slate-500 text-sm">{scene.display_order}</td>
                     <td className="px-6 py-4 text-xl">{scene.icon || '-'}</td>
                     <td className="px-6 py-4"><code className="text-sm text-emerald-400">{scene.code}</code></td>
-                    <td className="px-6 py-4 text-white font-medium">{scene.name}</td>
-                    <td className="px-6 py-4 text-slate-400 text-sm">{scene.name_en || '-'}</td>
-                    <td className="px-6 py-4 text-slate-300 text-sm">{scene.product_count}</td>
+                    <td className="px-6 py-4 text-slate-900 font-medium">{scene.name}</td>
+                    <td className="px-6 py-4 text-slate-500 text-sm">{scene.name_en || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600 text-sm">{scene.product_count}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${scene.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${scene.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-500'}`}>
                         {scene.is_active ? '启用' : '禁用'}
                       </span>
                     </td>
@@ -227,8 +227,8 @@ export default function ShopScenesPage() {
       {showEditDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowEditDialog(false)} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-4">{editingScene ? '编辑采购场景' : '新增采购场景'}</h3>
+          <div className="relative bg-slate-950 border border-slate-200/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">{editingScene ? '编辑采购场景' : '新增采购场景'}</h3>
             <div className="space-y-4">
               <Input label="Code *" value={editForm.code} onChange={(e) => setEditForm(f => ({ ...f, code: e.target.value }))} placeholder="如：surgery_room" disabled={!!editingScene} />
               <Input label="名称 *" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="如：手术室设备" />

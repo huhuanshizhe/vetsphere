@@ -130,13 +130,6 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         permission: 'course.view',
       },
       {
-        key: 'courses-pending',
-        label: '待审核课程',
-        icon: 'ClipboardCheck',
-        href: '/courses?status=pending',
-        permission: 'course.view',
-      },
-      {
         key: 'course-chapters',
         label: '章节管理',
         icon: 'ListTree',

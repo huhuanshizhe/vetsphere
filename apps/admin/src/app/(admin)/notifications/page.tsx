@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -225,8 +225,8 @@ export default function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">通知管理</h1>
-          <p className="text-slate-400 mt-1">管理通知模板与查看发送记录</p>
+          <h1 className="text-2xl font-bold text-slate-900">通知管理</h1>
+          <p className="text-slate-500 mt-1">管理通知模板与查看发送记录</p>
         </div>
         <Button onClick={() => { setTemplateToEdit(null); setShowEditDialog(true); }}>
           新建模板
@@ -240,13 +240,13 @@ export default function NotificationsPage() {
         <StatCard label="阅读率" value={`${stats.readRate}%`} />
       </div>
 
-      <div className="border-b border-slate-700">
+      <div className="border-b border-slate-200">
         <nav className="flex gap-4">
           <button
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'templates'
                 ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
             onClick={() => { setActiveTab('templates'); setPage(1); }}
           >
@@ -256,7 +256,7 @@ export default function NotificationsPage() {
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'history'
                 ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
             onClick={() => { setActiveTab('history'); setPage(1); }}
           >
@@ -300,39 +300,39 @@ export default function NotificationsPage() {
             <>
               <TableContainer>
                 <table className="w-full">
-                  <thead className="bg-slate-800/50">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">模板</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">代码</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">渠道</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">模板</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">代码</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">渠道</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {templates.map((template) => (
-                      <tr key={template.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={template.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
-                          <div className="font-medium text-white">{template.name}</div>
+                          <div className="font-medium text-slate-900">{template.name}</div>
                           <div className="text-slate-500 text-xs mt-1 line-clamp-1">{template.title_template}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <code className="text-xs bg-slate-700/50 px-2 py-1 rounded text-slate-300">
+                          <code className="text-xs bg-slate-100/50 px-2 py-1 rounded text-slate-600">
                             {template.code}
                           </code>
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-slate-500 text-sm">
                           {typeLabels[template.type] || template.type}
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-slate-500 text-sm">
                           {channelLabels[template.channel] || template.channel}
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                             template.is_active
                               ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-slate-500/20 text-slate-400'
+                              : 'bg-slate-500/20 text-slate-500'
                           }`}>
                             {template.is_active ? '启用' : '禁用'}
                           </span>
@@ -357,7 +357,7 @@ export default function NotificationsPage() {
                 </table>
               </TableContainer>
               {totalPages > 1 && (
-                <div className="px-6 py-4 border-t border-slate-700/50">
+                <div className="px-6 py-4 border-t border-slate-200/50">
                   <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
                 </div>
               )}
@@ -369,38 +369,38 @@ export default function NotificationsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时间</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">用户</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">标题</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时间</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">用户</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">标题</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {notifications.map((notification) => (
-                    <tr key={notification.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-slate-400 text-sm whitespace-nowrap">
+                    <tr key={notification.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-500 text-sm whitespace-nowrap">
                         {new Date(notification.sent_at).toLocaleString('zh-CN')}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="text-slate-300">{notification.user?.full_name || '未知'}</div>
+                          <div className="text-slate-600">{notification.user?.full_name || '未知'}</div>
                           {notification.user?.email && <div className="text-slate-500 text-xs">{notification.user.email}</div>}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-white line-clamp-1">{notification.title}</div>
+                        <div className="font-medium text-slate-900 line-clamp-1">{notification.title}</div>
                         <div className="text-slate-500 text-xs mt-1 line-clamp-1">{notification.content}</div>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {typeLabels[notification.type] || notification.type}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                           notification.is_read
-                            ? 'bg-slate-500/20 text-slate-400'
+                            ? 'bg-slate-500/20 text-slate-500'
                             : 'bg-blue-500/20 text-blue-400'
                         }`}>
                           {notification.is_read ? '已读' : '未读'}
@@ -412,7 +412,7 @@ export default function NotificationsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

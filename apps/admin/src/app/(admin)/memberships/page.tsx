@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -201,8 +201,8 @@ export default function MembershipsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">会员管理</h1>
-        <p className="text-slate-400 mt-1">管理平台会员订阅与权益</p>
+        <h1 className="text-2xl font-bold text-slate-900">会员管理</h1>
+        <p className="text-slate-500 mt-1">管理平台会员订阅与权益</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -255,33 +255,33 @@ export default function MembershipsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">会员</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">套餐</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">有效期</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">剩余天数</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">自动续费</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">会员</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">套餐</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">有效期</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">剩余天数</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">自动续费</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {memberships.map((membership) => {
                     const daysRemaining = getDaysRemaining(membership.end_date);
                     return (
-                      <tr key={membership.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={membership.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
                               {membership.user?.avatar_url ? (
                                 <img src={membership.user.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-lg text-slate-400">{membership.user?.full_name?.[0] || '?'}</span>
+                                <span className="text-lg text-slate-500">{membership.user?.full_name?.[0] || '?'}</span>
                               )}
                             </div>
                             <div>
-                              <div className="font-medium text-white">{membership.user?.full_name || '未知'}</div>
+                              <div className="font-medium text-slate-900">{membership.user?.full_name || '未知'}</div>
                               <div className="text-slate-500 text-xs">{membership.user?.email}</div>
                             </div>
                           </div>
@@ -291,7 +291,7 @@ export default function MembershipsPage() {
                             {planLabels[membership.plan_type] || membership.plan_type}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-slate-500 text-sm">
                           <div>{new Date(membership.start_date).toLocaleDateString('zh-CN')}</div>
                           {membership.end_date && (
                             <div className="text-xs">至 {new Date(membership.end_date).toLocaleDateString('zh-CN')}</div>
@@ -302,7 +302,7 @@ export default function MembershipsPage() {
                             <span className={`text-sm font-medium ${
                               daysRemaining <= 0 ? 'text-red-400' :
                               daysRemaining <= 7 ? 'text-amber-400' :
-                              'text-slate-300'
+                              'text-slate-600'
                             }`}>
                               {daysRemaining <= 0 ? '已过期' : `${daysRemaining} 天`}
                             </span>
@@ -314,7 +314,7 @@ export default function MembershipsPage() {
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             membership.auto_renew
                               ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-slate-500/20 text-slate-400'
+                              : 'bg-slate-500/20 text-slate-500'
                           }`}>
                             {membership.auto_renew ? '是' : '否'}
                           </span>
@@ -325,7 +325,7 @@ export default function MembershipsPage() {
                               ? 'bg-emerald-500/20 text-emerald-400'
                               : membership.status === 'expired'
                               ? 'bg-red-500/20 text-red-400'
-                              : 'bg-slate-500/20 text-slate-400'
+                              : 'bg-slate-500/20 text-slate-500'
                           }`}>
                             {statusLabels[membership.status] || membership.status}
                           </span>
@@ -351,7 +351,7 @@ export default function MembershipsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -236,8 +236,8 @@ export default function AdminUsersPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">管理员管理</h1>
-          <p className="text-slate-400 mt-1">管理系统管理员账号与角色分配</p>
+          <h1 className="text-2xl font-bold text-slate-900">管理员管理</h1>
+          <p className="text-slate-500 mt-1">管理系统管理员账号与角色分配</p>
         </div>
       </div>
 
@@ -295,35 +295,35 @@ export default function AdminUsersPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">管理员</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">邮箱</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">角色</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">添加时间</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">管理员</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">邮箱</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">角色</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">添加时间</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {admins.map((admin) => (
-                    <tr key={admin.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={admin.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
                             {admin.avatar_url ? (
                               <img src={admin.avatar_url} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <span className="text-lg text-slate-400">
+                              <span className="text-lg text-slate-500">
                                 {admin.full_name?.[0] || admin.email?.[0] || '?'}
                               </span>
                             )}
                           </div>
-                          <span className="font-medium text-white">
+                          <span className="font-medium text-slate-900">
                             {admin.full_name || '未设置姓名'}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-300">{admin.email}</td>
+                      <td className="px-6 py-4 text-slate-600">{admin.email}</td>
                       <td className="px-6 py-4">
                         {admin.admin_role ? (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400">
@@ -333,7 +333,7 @@ export default function AdminUsersPage() {
                           <span className="text-slate-500">未分配</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {new Date(admin.created_at).toLocaleDateString('zh-CN')}
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -368,7 +368,7 @@ export default function AdminUsersPage() {
             </TableContainer>
 
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination
                   page={page}
                   totalPages={totalPages}
@@ -383,10 +383,10 @@ export default function AdminUsersPage() {
       {/* 分配角色弹窗 */}
       {showRoleDialog && selectedAdmin && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">分配角色</h3>
-            <p className="text-slate-400 mb-4">
-              为管理员 <span className="text-white">{selectedAdmin.full_name}</span> 分配角色
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">分配角色</h3>
+            <p className="text-slate-500 mb-4">
+              为管理员 <span className="text-slate-900">{selectedAdmin.full_name}</span> 分配角色
             </p>
             
             <Select

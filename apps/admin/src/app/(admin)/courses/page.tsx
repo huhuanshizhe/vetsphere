@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -24,7 +24,8 @@ interface Course {
   slug: string;
   title: string;
   subtitle?: string;
-  status: 'draft' | 'published' | 'offline' | 'pending' | 'rejected';
+  status: 'draft' | 'pending' | 'published' | 'offline';
+  end_date?: string;
   format: string;
   level?: string;
   duration_minutes?: number;
@@ -67,7 +68,7 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [siteViews, setSiteViews] = useState<SiteView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, published: 0, draft: 0, pending: 0, featured: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, published: 0, offline: 0 });
   const [filterStatus, setFilterStatus] = useState<string>(searchParams.get('status') || '');
   const [filterFormat, setFilterFormat] = useState<string>('');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -77,7 +78,6 @@ export default function CoursesPage() {
   // 弹窗状态
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [courseToChange, setCourseToChange] = useState<Course | null>(null);
-  const [newStatus, setNewStatus] = useState<string>('');
   const [dialogLoading, setDialogLoading] = useState(false);
   
   const [showFeatureDialog, setShowFeatureDialog] = useState(false);
@@ -86,14 +86,6 @@ export default function CoursesPage() {
   // Site view 操作
   const [initLoading, setInitLoading] = useState<string | null>(null);
   const [publishLoading, setPublishLoading] = useState<string | null>(null);
-  
-  // 审核弹窗状态
-  const [showApproveDialog, setShowApproveDialog] = useState(false);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const [courseToReview, setCourseToReview] = useState<Course | null>(null);
-  const [selectedSites, setSelectedSites] = useState<string[]>(['cn']);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
     if (viewTab === 'base') {
@@ -178,6 +170,9 @@ export default function CoursesPage() {
       
       if (filterStatus) {
         query = query.eq('status', filterStatus);
+      } else {
+        // 默认不显示草稿（draft 仅 edu-partner 内部使用）
+        query = query.in('status', ['pending', 'published', 'offline']);
       }
       
       if (filterFormat) {
@@ -228,19 +223,8 @@ export default function CoursesPage() {
     const { count: totalCount } = await supabase
       .from('courses')
       .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null);
-    
-    const { count: publishedCount } = await supabase
-      .from('courses')
-      .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
-      .eq('status', 'published');
-    
-    const { count: draftCount } = await supabase
-      .from('courses')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .eq('status', 'draft');
+      .in('status', ['pending', 'published', 'offline']);
     
     const { count: pendingCount } = await supabase
       .from('courses')
@@ -248,58 +232,67 @@ export default function CoursesPage() {
       .is('deleted_at', null)
       .eq('status', 'pending');
     
-    const { count: featuredCount } = await supabase
+    const { count: publishedCount } = await supabase
       .from('courses')
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
-      .eq('is_featured', true);
+      .eq('status', 'published');
+    
+    const { count: offlineCount } = await supabase
+      .from('courses')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .eq('status', 'offline');
     
     setStats({
       total: totalCount || 0,
-      published: publishedCount || 0,
-      draft: draftCount || 0,
       pending: pendingCount || 0,
-      featured: featuredCount || 0,
+      published: publishedCount || 0,
+      offline: offlineCount || 0,
     });
   }
 
-  // 变更状态
-  async function handleChangeStatus() {
-    if (!courseToChange || !newStatus) return;
+  // 下架课程
+  async function handleOffline() {
+    if (!courseToChange) return;
     
     setDialogLoading(true);
     try {
-      const updateData: any = { status: newStatus };
+      // 1. 删除该课程所有站点视图
+      await supabase
+        .from('course_site_views')
+        .delete()
+        .eq('course_id', courseToChange.id);
       
-      if (newStatus === 'published') {
-        const { data: { user } } = await supabase.auth.getUser();
-        updateData.published_at = new Date().toISOString();
-      }
-      
+      // 2. 更新课程状态为 offline
       const { error } = await supabase
         .from('courses')
-        .update(updateData)
+        .update({ 
+          status: 'offline',
+          offline_reason: 'manual',
+          offline_at: new Date().toISOString(),
+        })
         .eq('id', courseToChange.id);
       
       if (error) throw error;
       
+      // 3. 记录审计日志
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('admin_audit_logs').insert({
         admin_user_id: user?.id,
         module: 'course',
-        action: newStatus === 'published' ? 'publish' : 'offline',
+        action: 'offline',
         target_type: 'course',
         target_id: courseToChange.id,
         target_name: courseToChange.title,
-        changes_summary: `${newStatus === 'published' ? '发布' : '下线'}课程: ${courseToChange.title}`,
+        changes_summary: `手动下架课程: ${courseToChange.title}`,
       });
       
       setShowStatusDialog(false);
       setCourseToChange(null);
-      setNewStatus('');
       loadCourses();
     } catch (error) {
-      console.error('操作失败:', error);
+      console.error('下架失败:', error);
       alert('操作失败，请重试');
     } finally {
       setDialogLoading(false);
@@ -343,104 +336,6 @@ export default function CoursesPage() {
     }
   }
 
-  // 审核通过 - 发布课程并创建站点视图
-  async function handleApprove() {
-    if (!courseToReview || selectedSites.length === 0) return;
-    
-    setReviewLoading(true);
-    try {
-      // 1. 更新课程状态为 published
-      const { error: updateError } = await supabase
-        .from('courses')
-        .update({ 
-          status: 'published', 
-          published_at: new Date().toISOString(),
-          rejection_reason: null,
-        })
-        .eq('id', courseToReview.id);
-      
-      if (updateError) throw updateError;
-      
-      // 2. 为每个选中的站点创建 course_site_views
-      for (const site of selectedSites) {
-        const { error: viewError } = await supabase
-          .from('course_site_views')
-          .upsert({
-            course_id: courseToReview.id,
-            site_code: site,
-            is_enabled: true,
-            publish_status: 'published',
-            published_at: new Date().toISOString(),
-          }, { onConflict: 'course_id,site_code' });
-        
-        if (viewError) {
-          console.error(`创建 ${site} 站点视图失败:`, viewError);
-        }
-      }
-      
-      // 3. 记录审计日志
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('admin_audit_logs').insert({
-        admin_user_id: user?.id,
-        module: 'course',
-        action: 'approve',
-        target_type: 'course',
-        target_id: courseToReview.id,
-        target_name: courseToReview.title,
-        changes_summary: `审核通过课程: ${courseToReview.title}，发布至: ${selectedSites.join(', ').toUpperCase()}`,
-      });
-      
-      setShowApproveDialog(false);
-      setCourseToReview(null);
-      setSelectedSites(['cn']);
-      loadCourses();
-    } catch (error) {
-      console.error('审核通过操作失败:', error);
-      alert('操作失败，请重试');
-    } finally {
-      setReviewLoading(false);
-    }
-  }
-
-  // 审核拒绝
-  async function handleReject() {
-    if (!courseToReview || !rejectionReason.trim()) return;
-    
-    setReviewLoading(true);
-    try {
-      const { error } = await supabase
-        .from('courses')
-        .update({ 
-          status: 'rejected', 
-          rejection_reason: rejectionReason.trim(),
-        })
-        .eq('id', courseToReview.id);
-      
-      if (error) throw error;
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('admin_audit_logs').insert({
-        admin_user_id: user?.id,
-        module: 'course',
-        action: 'reject',
-        target_type: 'course',
-        target_id: courseToReview.id,
-        target_name: courseToReview.title,
-        changes_summary: `拒绝课程: ${courseToReview.title}，原因: ${rejectionReason.trim()}`,
-      });
-      
-      setShowRejectDialog(false);
-      setCourseToReview(null);
-      setRejectionReason('');
-      loadCourses();
-    } catch (error) {
-      console.error('拒绝操作失败:', error);
-      alert('操作失败，请重试');
-    } finally {
-      setReviewLoading(false);
-    }
-  }
-
   const formatLabels: Record<string, string> = {
     video: '视频课程',
     live: '直播课程',
@@ -461,8 +356,8 @@ export default function CoursesPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">课程管理</h1>
-          <p className="text-slate-400 mt-1">管理平台课程内容</p>
+          <h1 className="text-2xl font-bold text-slate-900">课程管理</h1>
+          <p className="text-slate-500 mt-1">管理平台课程内容</p>
         </div>
         <Button onClick={() => window.location.href = '/courses/new'}>
           新建课程
@@ -470,13 +365,13 @@ export default function CoursesPage() {
       </div>
 
       {/* 视图切换 Tab */}
-      <div className="flex items-center gap-1 bg-slate-800/60 rounded-lg p-1 w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
         <button
           onClick={() => { setViewTab('base'); setPage(1); }}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
             viewTab === 'base'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           Base 资源库
@@ -485,8 +380,8 @@ export default function CoursesPage() {
           onClick={() => { setViewTab('site'); setPage(1); }}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
             viewTab === 'site'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           {currentSite === 'cn' ? '🇨🇳 CN' : '🌐 INTL'} 站点视图
@@ -496,12 +391,11 @@ export default function CoursesPage() {
       {viewTab === 'base' ? (
         <>
           {/* 统计卡片 */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="总课程数" value={stats.total} />
             <StatCard label="待审核" value={stats.pending} />
-            <StatCard label="已发布" value={stats.published} />
-            <StatCard label="草稿" value={stats.draft} />
-            <StatCard label="推荐课程" value={stats.featured} />
+            <StatCard label="已上架" value={stats.published} />
+            <StatCard label="已下架" value={stats.offline} />
           </div>
 
       {/* 筛选栏 */}
@@ -532,10 +426,8 @@ export default function CoursesPage() {
               options={[
                 { value: '', label: '全部状态' },
                 { value: 'pending', label: '待审核' },
-                { value: 'draft', label: '草稿' },
-                { value: 'published', label: '已发布' },
-                { value: 'rejected', label: '已拒绝' },
-                { value: 'offline', label: '已下线' },
+                { value: 'published', label: '已上架' },
+                { value: 'offline', label: '已下架' },
               ]}
             />
           </div>
@@ -571,23 +463,23 @@ export default function CoursesPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">课程</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">难度</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">价格</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">站点视图</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">课程</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">难度</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">价格</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">站点视图</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {courses.map((course) => (
-                    <tr key={course.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={course.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-16 h-10 rounded bg-slate-700 flex-shrink-0 overflow-hidden">
+                          <div className="w-16 h-10 rounded bg-slate-100 flex-shrink-0 overflow-hidden">
                             {course.cover_image_url ? (
                               <img src={course.cover_image_url} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -599,21 +491,21 @@ export default function CoursesPage() {
                             )}
                           </div>
                           <div>
-                            <span className="font-medium text-white line-clamp-1">{course.title}</span>
+                            <span className="font-medium text-slate-900 line-clamp-1">{course.title}</span>
                             <div className="text-xs text-slate-500">{course.slug}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">
+                      <td className="px-6 py-4 text-slate-600 text-sm">
                         {formatLabels[course.format] || course.format}
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {course.level ? levelLabels[course.level] || course.level : '-'}
                       </td>
                       <td className="px-6 py-4">
                         {course.price_cny !== null && course.price_cny !== undefined ? (
                           <div>
-                            <span className="text-white font-medium">¥{course.price_cny}</span>
+                            <span className="text-slate-900 font-medium">¥{course.price_cny}</span>
                             {course.original_price_cny && course.original_price_cny > course.price_cny && (
                               <span className="text-slate-500 text-xs line-through ml-2">
                                 ¥{course.original_price_cny}
@@ -625,7 +517,22 @@ export default function CoursesPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={course.status} />
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            course.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                            course.status === 'published' ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-slate-100 text-slate-600'
+                          }`}>
+                            {course.status === 'pending' ? '待审核' :
+                             course.status === 'published' ? '已上架' : '已下架'}
+                          </span>
+                          {course.status === 'published' && course.end_date && (() => {
+                            const daysLeft = Math.ceil((new Date(course.end_date).getTime() - Date.now()) / 86400000);
+                            if (daysLeft < 0) return <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600">已过期</span>;
+                            if (daysLeft <= 7) return <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600">即将到期</span>;
+                            return null;
+                          })()}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-1.5">
@@ -633,7 +540,7 @@ export default function CoursesPage() {
                             <span key={sv.site_code} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                               sv.publish_status === 'published' ? 'bg-emerald-500/20 text-emerald-400' :
                               sv.publish_status === 'offline' ? 'bg-red-500/20 text-red-400' :
-                              'bg-slate-500/20 text-slate-400'
+                              'bg-slate-500/20 text-slate-500'
                             }`}>
                               {sv.site_code.toUpperCase()}
                             </span>
@@ -645,74 +552,34 @@ export default function CoursesPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => window.location.href = `/courses/${course.id}`}
-                          >
-                            编辑
-                          </Button>
                           {course.status === 'pending' && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setCourseToReview(course);
-                                  setSelectedSites(['cn']);
-                                  setShowApproveDialog(true);
-                                }}
-                              >
-                                通过
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setCourseToReview(course);
-                                  setRejectionReason('');
-                                  setShowRejectDialog(true);
-                                }}
-                              >
-                                拒绝
-                              </Button>
-                            </>
-                          )}
-                          {course.status === 'draft' && (
                             <Button
                               size="sm"
-                              onClick={() => {
-                                setCourseToChange(course);
-                                setNewStatus('published');
-                                setShowStatusDialog(true);
-                              }}
+                              onClick={() => window.location.href = `/courses/${course.id}`}
                             >
-                              发布
+                              审核
                             </Button>
                           )}
                           {course.status === 'published' && (
-                            <>
-                              {!(course.site_views || []).find(v => v.site_code === currentSite) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  loading={initLoading === course.id}
-                                  onClick={() => handleInitSiteView(course.id)}
-                                >
-                                  初始化{currentSite.toUpperCase()}
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setCourseToChange(course);
-                                  setNewStatus('offline');
-                                  setShowStatusDialog(true);
-                                }}
-                              >
-                                下线
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setCourseToChange(course);
+                                setShowStatusDialog(true);
+                              }}
+                            >
+                              下架
+                            </Button>
+                          )}
+                          {course.status === 'offline' && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => window.location.href = `/courses/${course.id}`}
+                            >
+                              编辑
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -723,7 +590,7 @@ export default function CoursesPage() {
             </TableContainer>
 
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination
                   page={page}
                   totalPages={totalPages}
@@ -779,29 +646,29 @@ export default function CoursesPage() {
             ) : (
               <TableContainer>
                 <table className="w-full">
-                  <thead className="bg-slate-800/50">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">课程</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">覆盖标题</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">排序</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">推荐</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">课程</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">覆盖标题</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">排序</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">推荐</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {siteViews.map((sv) => (
-                      <tr key={sv.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={sv.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div>
-                            <span className="font-medium text-white line-clamp-1">{sv.course?.title || sv.course_id}</span>
+                            <span className="font-medium text-slate-900 line-clamp-1">{sv.course?.title || sv.course_id}</span>
                             <div className="text-xs text-slate-500">{sv.course?.slug}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-300 text-sm">
+                        <td className="px-6 py-4 text-slate-600 text-sm">
                           {sv.title_override || <span className="text-slate-600">继承 Base</span>}
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">{sv.display_order}</td>
+                        <td className="px-6 py-4 text-slate-500 text-sm">{sv.display_order}</td>
                         <td className="px-6 py-4">
                           {sv.is_featured ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-400">推荐</span>
@@ -813,7 +680,7 @@ export default function CoursesPage() {
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             sv.publish_status === 'published' ? 'bg-emerald-500/20 text-emerald-400' :
                             sv.publish_status === 'offline' ? 'bg-red-500/20 text-red-400' :
-                            'bg-slate-500/20 text-slate-400'
+                            'bg-slate-500/20 text-slate-500'
                           }`}>
                             {sv.publish_status === 'published' ? '已发布' : sv.publish_status === 'offline' ? '已下线' : '草稿'}
                           </span>
@@ -851,24 +718,19 @@ export default function CoursesPage() {
         </>
       )}
 
-      {/* 状态变更确认弹窗 */}
+      {/* 下架确认弹窗 */}
       <ConfirmDialog
         open={showStatusDialog}
-        title={newStatus === 'published' ? '发布课程' : '下线课程'}
-        message={
-          newStatus === 'published'
-            ? `确定要发布课程 "${courseToChange?.title}" 吗？发布后用户即可访问。`
-            : `确定要下线课程 "${courseToChange?.title}" 吗？下线后用户将无法访问。`
-        }
-        confirmText={newStatus === 'published' ? '确认发布' : '确认下线'}
-        onConfirm={handleChangeStatus}
+        title="下架课程"
+        message={`确定要下架课程「${courseToChange?.title}」吗？下架后该课程将从所有站点移除，用户无法访问。`}
+        confirmText="确认下架"
+        onConfirm={handleOffline}
         onCancel={() => {
           setShowStatusDialog(false);
           setCourseToChange(null);
-          setNewStatus('');
         }}
         loading={dialogLoading}
-        danger={newStatus === 'offline'}
+        danger
       />
 
       {/* 推荐确认弹窗 */}
@@ -888,128 +750,6 @@ export default function CoursesPage() {
         }}
         loading={dialogLoading}
       />
-
-      {/* 审核通过 - 选择目标站点弹窗 */}
-      {showApproveDialog && courseToReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-2">审核通过 - 选择目标站点</h3>
-            <p className="text-sm text-slate-400 mb-6">
-              课程「{courseToReview.title}」将被发布，请选择上架的目标站点：
-            </p>
-            
-            <div className="space-y-3 mb-6">
-              <label className="flex items-center gap-3 p-3 rounded-lg bg-slate-700/50 border border-slate-600/50 cursor-pointer hover:bg-slate-700 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={selectedSites.includes('cn')}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedSites(prev => [...prev, 'cn']);
-                    } else {
-                      setSelectedSites(prev => prev.filter(s => s !== 'cn'));
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-slate-500 text-emerald-500 focus:ring-emerald-500 bg-slate-600"
-                />
-                <div>
-                  <span className="text-white font-medium">CN 中国站</span>
-                  <p className="text-xs text-slate-400">发布至宠医界中国站 (cn.vetsphere.com)</p>
-                </div>
-              </label>
-              
-              <label className="flex items-center gap-3 p-3 rounded-lg bg-slate-700/50 border border-slate-600/50 cursor-pointer hover:bg-slate-700 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={selectedSites.includes('intl')}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedSites(prev => [...prev, 'intl']);
-                    } else {
-                      setSelectedSites(prev => prev.filter(s => s !== 'intl'));
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-slate-500 text-emerald-500 focus:ring-emerald-500 bg-slate-600"
-                />
-                <div>
-                  <span className="text-white font-medium">INTL 国际站</span>
-                  <p className="text-xs text-slate-400">发布至 VetSphere 国际站 (vetsphere.com)</p>
-                </div>
-              </label>
-            </div>
-            
-            {selectedSites.length === 0 && (
-              <p className="text-xs text-amber-400 mb-4">请至少选择一个目标站点</p>
-            )}
-            
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowApproveDialog(false);
-                  setCourseToReview(null);
-                }}
-                disabled={reviewLoading}
-              >
-                取消
-              </Button>
-              <Button
-                onClick={handleApprove}
-                loading={reviewLoading}
-                disabled={selectedSites.length === 0}
-              >
-                确认通过并发布
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 审核拒绝弹窗 */}
-      {showRejectDialog && courseToReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-2">拒绝课程</h3>
-            <p className="text-sm text-slate-400 mb-4">
-              请填写拒绝课程「{courseToReview.title}」的原因，该原因将反馈给课程机构：
-            </p>
-            
-            <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="请输入拒绝原因..."
-              rows={4}
-              className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 resize-none mb-4"
-            />
-            
-            {rejectionReason.trim().length === 0 && (
-              <p className="text-xs text-amber-400 mb-4">请填写拒绝原因</p>
-            )}
-            
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowRejectDialog(false);
-                  setCourseToReview(null);
-                  setRejectionReason('');
-                }}
-                disabled={reviewLoading}
-              >
-                取消
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={handleReject}
-                loading={reviewLoading}
-                disabled={rejectionReason.trim().length === 0}
-              >
-                确认拒绝
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

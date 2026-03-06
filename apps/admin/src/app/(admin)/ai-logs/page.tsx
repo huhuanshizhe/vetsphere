@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -140,8 +140,8 @@ export default function AILogsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">AI对话日志</h1>
-        <p className="text-slate-400 mt-1">监控AI助手使用情况与对话质量</p>
+        <h1 className="text-2xl font-bold text-slate-900">AI对话日志</h1>
+        <p className="text-slate-500 mt-1">监控AI助手使用情况与对话质量</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -190,26 +190,26 @@ export default function AILogsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">时间</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">用户</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">类型</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">用户提问</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">性能</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">评分</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">时间</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">用户</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">类型</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">用户提问</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">性能</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">评分</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-slate-400 text-sm whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-500 text-sm whitespace-nowrap">
                         {new Date(log.created_at).toLocaleString('zh-CN')}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="text-slate-300">{log.user?.full_name || '匿名'}</div>
+                          <div className="text-slate-600">{log.user?.full_name || '匿名'}</div>
                           {log.user?.email && <div className="text-slate-500 text-xs">{log.user.email}</div>}
                         </div>
                       </td>
@@ -219,7 +219,7 @@ export default function AILogsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-slate-300 text-sm line-clamp-2 max-w-xs">
+                        <div className="text-slate-600 text-sm line-clamp-2 max-w-xs">
                           {log.user_input}
                         </div>
                       </td>
@@ -258,7 +258,7 @@ export default function AILogsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
@@ -268,10 +268,10 @@ export default function AILogsPage() {
 
       {showDetailDialog && selectedLog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">对话详情</h3>
-              <button onClick={() => setShowDetailDialog(false)} className="text-slate-400 hover:text-white">
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">对话详情</h3>
+              <button onClick={() => setShowDetailDialog(false)} className="text-slate-500 hover:text-slate-900">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -281,32 +281,32 @@ export default function AILogsPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-slate-500">时间:</span>
-                  <span className="text-slate-300 ml-2">{new Date(selectedLog.created_at).toLocaleString('zh-CN')}</span>
+                  <span className="text-slate-600 ml-2">{new Date(selectedLog.created_at).toLocaleString('zh-CN')}</span>
                 </div>
                 <div>
                   <span className="text-slate-500">类型:</span>
-                  <span className="text-slate-300 ml-2">{typeLabels[selectedLog.prompt_type] || selectedLog.prompt_type}</span>
+                  <span className="text-slate-600 ml-2">{typeLabels[selectedLog.prompt_type] || selectedLog.prompt_type}</span>
                 </div>
                 <div>
                   <span className="text-slate-500">Token消耗:</span>
-                  <span className="text-slate-300 ml-2">{selectedLog.tokens_used}</span>
+                  <span className="text-slate-600 ml-2">{selectedLog.tokens_used}</span>
                 </div>
                 <div>
                   <span className="text-slate-500">响应时间:</span>
-                  <span className="text-slate-300 ml-2">{selectedLog.response_time_ms}ms</span>
+                  <span className="text-slate-600 ml-2">{selectedLog.response_time_ms}ms</span>
                 </div>
               </div>
               
               <div className="space-y-3">
                 <div>
-                  <h4 className="text-sm font-medium text-slate-400 mb-2">用户提问</h4>
-                  <div className="bg-slate-900/50 rounded-lg p-4 text-slate-300 text-sm whitespace-pre-wrap">
+                  <h4 className="text-sm font-medium text-slate-500 mb-2">用户提问</h4>
+                  <div className="bg-slate-900/50 rounded-lg p-4 text-slate-600 text-sm whitespace-pre-wrap">
                     {selectedLog.user_input}
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-slate-400 mb-2">AI回复</h4>
-                  <div className="bg-slate-900/50 rounded-lg p-4 text-slate-300 text-sm whitespace-pre-wrap">
+                  <h4 className="text-sm font-medium text-slate-500 mb-2">AI回复</h4>
+                  <div className="bg-slate-900/50 rounded-lg p-4 text-slate-600 text-sm whitespace-pre-wrap">
                     {selectedLog.ai_response}
                   </div>
                 </div>

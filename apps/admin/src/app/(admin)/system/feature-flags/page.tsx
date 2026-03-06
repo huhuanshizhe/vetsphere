@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -205,7 +205,7 @@ export default function FeatureFlagsPage() {
 
   function getStatusBadge(flag: FeatureFlag) {
     if (!flag.is_enabled) {
-      return { label: '已禁用', color: 'bg-slate-500/20 text-slate-400' };
+      return { label: '已禁用', color: 'bg-slate-500/20 text-slate-500' };
     }
     if (flag.rollout_percentage < 100) {
       return { label: `灰度 ${flag.rollout_percentage}%`, color: 'bg-amber-500/20 text-amber-400' };
@@ -219,8 +219,8 @@ export default function FeatureFlagsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">功能开关</h1>
-          <p className="text-slate-400 mt-1">管理功能灰度发布与开关控制</p>
+          <h1 className="text-2xl font-bold text-slate-900">功能开关</h1>
+          <p className="text-slate-500 mt-1">管理功能灰度发布与开关控制</p>
         </div>
         <Button onClick={() => {
           setFlagToEdit({
@@ -278,24 +278,24 @@ export default function FeatureFlagsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">功能开关</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">键名</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">发布比例</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">有效期</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">功能开关</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">键名</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">发布比例</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">有效期</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {flags.map((flag) => {
                     const status = getStatusBadge(flag);
                     return (
-                      <tr key={flag.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={flag.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div>
-                            <div className="font-medium text-white">{flag.name}</div>
+                            <div className="font-medium text-slate-900">{flag.name}</div>
                             {flag.description && (
                               <div className="text-slate-500 text-xs mt-1 line-clamp-1">{flag.description}</div>
                             )}
@@ -306,7 +306,7 @@ export default function FeatureFlagsPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${
                                   flag.is_enabled ? 'bg-emerald-500' : 'bg-slate-600'
@@ -314,10 +314,10 @@ export default function FeatureFlagsPage() {
                                 style={{ width: `${flag.rollout_percentage}%` }}
                               />
                             </div>
-                            <span className="text-sm text-slate-400">{flag.rollout_percentage}%</span>
+                            <span className="text-sm text-slate-500">{flag.rollout_percentage}%</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">
+                        <td className="px-6 py-4 text-slate-500 text-sm">
                           {flag.start_at || flag.end_at ? (
                             <div className="text-xs">
                               {flag.start_at && <div>开始: {new Date(flag.start_at).toLocaleDateString('zh-CN')}</div>}
@@ -353,7 +353,7 @@ export default function FeatureFlagsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
@@ -374,16 +374,16 @@ export default function FeatureFlagsPage() {
 
       {showEditDialog && flagToEdit && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-lg w-full">
-            <div className="px-6 py-4 border-b border-slate-700">
-              <h3 className="text-lg font-semibold text-white">
+          <div className="bg-white rounded-xl max-w-lg w-full">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900">
                 {flagToEdit.id ? '编辑功能开关' : '新建功能开关'}
               </h3>
             </div>
             <div className="p-6 space-y-4">
               {!flagToEdit.id && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">键名</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">键名</label>
                   <Input
                     value={flagToEdit.key}
                     onChange={(e) => setFlagToEdit({ ...flagToEdit, key: e.target.value })}
@@ -392,7 +392,7 @@ export default function FeatureFlagsPage() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">名称</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">名称</label>
                 <Input
                   value={flagToEdit.name}
                   onChange={(e) => setFlagToEdit({ ...flagToEdit, name: e.target.value })}
@@ -400,7 +400,7 @@ export default function FeatureFlagsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">描述</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">描述</label>
                 <Input
                   value={flagToEdit.description || ''}
                   onChange={(e) => setFlagToEdit({ ...flagToEdit, description: e.target.value })}
@@ -409,7 +409,7 @@ export default function FeatureFlagsPage() {
               </div>
               {flagToEdit.id && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-600 mb-2">
                     发布比例: {flagToEdit.rollout_percentage}%
                   </label>
                   <input
@@ -423,7 +423,7 @@ export default function FeatureFlagsPage() {
                 </div>
               )}
             </div>
-            <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
               <Button variant="secondary" onClick={() => { setShowEditDialog(false); setFlagToEdit(null); }}>
                 取消
               </Button>

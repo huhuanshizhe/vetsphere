@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -294,8 +294,8 @@ export default function DictionariesPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">字典管理</h1>
-          <p className="text-slate-400 mt-1">管理系统枚举值与配置项</p>
+          <h1 className="text-2xl font-bold text-slate-900">字典管理</h1>
+          <p className="text-slate-500 mt-1">管理系统枚举值与配置项</p>
         </div>
         <Button onClick={() => openDictDialog()}>
           新建字典
@@ -338,12 +338,12 @@ export default function DictionariesPage() {
               <div key={dict.id}>
                 {/* 字典行 */}
                 <div
-                  className="px-6 py-4 flex items-center justify-between hover:bg-slate-800/30 cursor-pointer transition-colors"
+                  className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors"
                   onClick={() => toggleExpand(dict.id)}
                 >
                   <div className="flex items-center gap-4">
                     <svg
-                      className={`w-5 h-5 text-slate-400 transition-transform ${expandedDict === dict.id ? 'rotate-90' : ''}`}
+                      className={`w-5 h-5 text-slate-500 transition-transform ${expandedDict === dict.id ? 'rotate-90' : ''}`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -352,8 +352,8 @@ export default function DictionariesPage() {
                     </svg>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-white">{dict.name}</span>
-                        <code className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded">
+                        <span className="font-medium text-slate-900">{dict.name}</span>
+                        <code className="text-xs text-slate-500 bg-white px-2 py-0.5 rounded">
                           {dict.code}
                         </code>
                         {dict.is_system && (
@@ -382,9 +382,9 @@ export default function DictionariesPage() {
                 
                 {/* 字典项列表 */}
                 {expandedDict === dict.id && (
-                  <div className="bg-slate-800/20 border-t border-slate-700/50">
-                    <div className="px-6 py-3 flex items-center justify-between border-b border-slate-700/30">
-                      <span className="text-sm text-slate-400">字典项</span>
+                  <div className="bg-white/20 border-t border-slate-200/50">
+                    <div className="px-6 py-3 flex items-center justify-between border-b border-slate-200/30">
+                      <span className="text-sm text-slate-500">字典项</span>
                       <Button
                         variant="secondary"
                         size="sm"
@@ -405,26 +405,26 @@ export default function DictionariesPage() {
                     ) : (
                       <TableContainer>
                         <table className="w-full">
-                          <thead className="bg-slate-800/30">
+                          <thead className="bg-white/30">
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400">代码</th>
-                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400">标签</th>
-                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400">英文标签</th>
-                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400">值</th>
-                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400">排序</th>
-                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400">状态</th>
-                              <th className="px-6 py-3 text-right text-xs font-semibold text-slate-400">操作</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">代码</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">标签</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">英文标签</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">值</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">排序</th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">状态</th>
+                              <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500">操作</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-700/30">
                             {dictItems.map((item) => (
-                              <tr key={item.id} className="hover:bg-slate-800/20">
+                              <tr key={item.id} className="hover:bg-white/20">
                                 <td className="px-6 py-3">
-                                  <code className="text-xs text-slate-400">{item.code}</code>
+                                  <code className="text-xs text-slate-500">{item.code}</code>
                                 </td>
-                                <td className="px-6 py-3 text-sm text-white">{item.label}</td>
-                                <td className="px-6 py-3 text-sm text-slate-400">{item.label_en || '-'}</td>
-                                <td className="px-6 py-3 text-sm text-slate-400">{item.value || '-'}</td>
+                                <td className="px-6 py-3 text-sm text-slate-900">{item.label}</td>
+                                <td className="px-6 py-3 text-sm text-slate-500">{item.label_en || '-'}</td>
+                                <td className="px-6 py-3 text-sm text-slate-500">{item.value || '-'}</td>
                                 <td className="px-6 py-3 text-sm text-slate-500">{item.display_order}</td>
                                 <td className="px-6 py-3">
                                   {item.is_active ? (
@@ -432,7 +432,7 @@ export default function DictionariesPage() {
                                       启用
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-slate-500/20 text-slate-400">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-slate-500/20 text-slate-500">
                                       禁用
                                     </span>
                                   )}
@@ -475,8 +475,8 @@ export default function DictionariesPage() {
       {/* 编辑字典弹窗 */}
       {showDictDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               {editingDict ? '编辑字典' : '新建字典'}
             </h3>
             
@@ -527,8 +527,8 @@ export default function DictionariesPage() {
       {/* 编辑字典项弹窗 */}
       {showItemDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               {editingItem ? '编辑字典项' : '新建字典项'}
             </h3>
             
@@ -569,9 +569,9 @@ export default function DictionariesPage() {
                   type="checkbox"
                   checked={itemForm.is_active}
                   onChange={(e) => setItemForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                  className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500"
+                  className="w-4 h-4 rounded border-slate-200 bg-slate-100 text-emerald-500"
                 />
-                <span className="text-sm text-slate-300">启用此项</span>
+                <span className="text-sm text-slate-600">启用此项</span>
               </label>
             </div>
             

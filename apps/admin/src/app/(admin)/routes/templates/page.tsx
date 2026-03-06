@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -201,8 +201,8 @@ export default function ComingSoonTemplatesPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">占位页模板</h1>
-          <p className="text-slate-400 mt-1">管理"即将上线"页面的展示模板</p>
+          <h1 className="text-2xl font-bold text-slate-900">占位页模板</h1>
+          <p className="text-slate-500 mt-1">管理"即将上线"页面的展示模板</p>
         </div>
         <Button onClick={() => openEditDialog()}>
           新建模板
@@ -227,27 +227,27 @@ export default function ComingSoonTemplatesPage() {
         ) : (
           <TableContainer>
             <table className="w-full">
-              <thead className="bg-slate-800/50">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">模板名称</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">代码</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">标题</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">模板名称</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">代码</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">标题</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {templates.map((template) => (
-                  <tr key={template.id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={template.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
-                      <span className="font-medium text-white">{template.name}</span>
+                      <span className="font-medium text-slate-900">{template.name}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <code className="text-sm text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                      <code className="text-sm text-slate-500 bg-white px-2 py-1 rounded">
                         {template.code}
                       </code>
                     </td>
-                    <td className="px-6 py-4 text-slate-300">
+                    <td className="px-6 py-4 text-slate-600">
                       {template.title}
                     </td>
                     <td className="px-6 py-4">
@@ -256,7 +256,7 @@ export default function ComingSoonTemplatesPage() {
                           已启用
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-500">
                           已禁用
                         </span>
                       )}
@@ -293,8 +293,8 @@ export default function ComingSoonTemplatesPage() {
       {/* 编辑弹窗 */}
       {showEditDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl max-w-2xl w-full p-6 my-8">
-            <h3 className="text-lg font-semibold text-white mb-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6 my-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               {editingTemplate ? '编辑模板' : '新建模板'}
             </h3>
             
@@ -329,11 +329,11 @@ export default function ComingSoonTemplatesPage() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-slate-600 mb-1.5">
                   描述
                 </label>
                 <textarea
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[80px]"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-h-[80px]"
                   placeholder="详细描述..."
                   value={editForm.description}
                   onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
@@ -369,14 +369,14 @@ export default function ComingSoonTemplatesPage() {
                     type="checkbox"
                     checked={editForm.is_active}
                     onChange={(e) => setEditForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500"
+                    className="w-4 h-4 rounded border-slate-200 bg-slate-100 text-emerald-500"
                   />
-                  <span className="text-sm text-slate-300">启用此模板</span>
+                  <span className="text-sm text-slate-600">启用此模板</span>
                 </label>
               </div>
             </div>
             
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-700">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200">
               <Button
                 variant="secondary"
                 onClick={() => {

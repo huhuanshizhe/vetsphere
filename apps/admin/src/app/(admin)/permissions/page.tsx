@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -148,8 +148,8 @@ export default function PermissionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">权限点管理</h1>
-          <p className="text-slate-400 mt-1">管理系统权限点定义，供角色分配使用</p>
+          <h1 className="text-2xl font-bold text-slate-900">权限点管理</h1>
+          <p className="text-slate-500 mt-1">管理系统权限点定义，供角色分配使用</p>
         </div>
         <Button onClick={openCreate}>新增权限</Button>
       </div>
@@ -171,7 +171,7 @@ export default function PermissionsPage() {
           </div>
           <div className="w-full md:w-48">
             <select
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none cursor-pointer"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none cursor-pointer"
               value={filterModule}
               onChange={(e) => { setFilterModule(e.target.value); setPage(1); }}
             >
@@ -193,26 +193,26 @@ export default function PermissionsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">模块</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Key</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">名称</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">描述</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">模块</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Key</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">名称</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">描述</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {permissions.map((perm) => (
-                    <tr key={perm.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={perm.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400">
                           {MODULE_LABELS[perm.module] || perm.module}
                         </span>
                       </td>
                       <td className="px-6 py-4"><code className="text-sm text-emerald-400">{perm.key}</code></td>
-                      <td className="px-6 py-4 text-white font-medium text-sm">{perm.name}</td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">{perm.description || '-'}</td>
+                      <td className="px-6 py-4 text-slate-900 font-medium text-sm">{perm.name}</td>
+                      <td className="px-6 py-4 text-slate-500 text-sm">{perm.description || '-'}</td>
                       <td className="px-6 py-4 text-right">
                         <Button variant="secondary" size="sm" onClick={() => openEdit(perm)}>编辑</Button>
                       </td>
@@ -222,7 +222,7 @@ export default function PermissionsPage() {
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
@@ -234,8 +234,8 @@ export default function PermissionsPage() {
       {showEditDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowEditDialog(false)} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-4">{editingPerm ? '编辑权限' : '新增权限'}</h3>
+          <div className="relative bg-slate-950 border border-slate-200/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">{editingPerm ? '编辑权限' : '新增权限'}</h3>
             <div className="space-y-4">
               <Input label="Key *" value={editForm.key} onChange={(e) => setEditForm(f => ({ ...f, key: e.target.value }))} placeholder="如：course.edit" disabled={!!editingPerm} />
               <Input label="名称 *" value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="如：编辑课程" />

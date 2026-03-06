@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -145,8 +145,8 @@ export default function CmsNavigationPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">导航配置</h1>
-          <p className="text-slate-400 mt-1">管理 {currentSite.toUpperCase()} 站点的导航菜单</p>
+          <h1 className="text-2xl font-bold text-slate-900">导航配置</h1>
+          <p className="text-slate-500 mt-1">管理 {currentSite.toUpperCase()} 站点的导航菜单</p>
         </div>
         <Button onClick={openCreate}>新增导航项</Button>
       </div>
@@ -169,7 +169,7 @@ export default function CmsNavigationPage() {
               key={t.key}
               onClick={() => setNavType(t.key)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                navType === t.key ? 'bg-emerald-500 text-black' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                navType === t.key ? 'bg-emerald-500 text-black' : 'bg-white/5 text-slate-500 hover:text-slate-900 hover:bg-white/10'
               }`}
             >
               {t.label}
@@ -186,32 +186,32 @@ export default function CmsNavigationPage() {
         ) : (
           <TableContainer>
             <table className="w-full">
-              <thead className="bg-slate-800/50">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">排序</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">图标</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">标签</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">链接</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">新窗口</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">排序</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">图标</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">标签</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">链接</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">新窗口</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/50">
                 {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4 text-slate-400 text-sm">{item.display_order}</td>
+                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 text-slate-500 text-sm">{item.display_order}</td>
                     <td className="px-6 py-4 text-xl">{item.icon || '-'}</td>
                     <td className="px-6 py-4">
                       <div>
-                        <span className="text-white font-medium">{item.label}</span>
+                        <span className="text-slate-900 font-medium">{item.label}</span>
                         {item.label_en && <div className="text-xs text-slate-500">{item.label_en}</div>}
                       </div>
                     </td>
                     <td className="px-6 py-4"><code className="text-sm text-emerald-400">{item.href}</code></td>
-                    <td className="px-6 py-4 text-slate-400 text-sm">{item.open_in_new_tab ? '是' : '否'}</td>
+                    <td className="px-6 py-4 text-slate-500 text-sm">{item.open_in_new_tab ? '是' : '否'}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-500'}`}>
                         {item.is_active ? '启用' : '禁用'}
                       </span>
                     </td>
@@ -233,8 +233,8 @@ export default function CmsNavigationPage() {
       {showEditDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowEditDialog(false)} />
-          <div className="relative bg-slate-950 border border-slate-700/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-semibold text-white mb-4">{editingItem ? '编辑导航项' : '新增导航项'}</h3>
+          <div className="relative bg-slate-950 border border-slate-200/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">{editingItem ? '编辑导航项' : '新增导航项'}</h3>
             <div className="space-y-4">
               <Input label="标签 *" value={editForm.label} onChange={(e) => setEditForm(f => ({ ...f, label: e.target.value }))} placeholder="导航显示文字" />
               <Input label="英文标签" value={editForm.label_en} onChange={(e) => setEditForm(f => ({ ...f, label_en: e.target.value }))} placeholder="English label" />
@@ -242,11 +242,11 @@ export default function CmsNavigationPage() {
               <Input label="图标" value={editForm.icon} onChange={(e) => setEditForm(f => ({ ...f, icon: e.target.value }))} placeholder="Emoji 或图标" />
               <Input label="排序" type="number" value={String(editForm.display_order)} onChange={(e) => setEditForm(f => ({ ...f, display_order: parseInt(e.target.value) || 0 }))} />
               <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                   <input type="checkbox" checked={editForm.is_active} onChange={(e) => setEditForm(f => ({ ...f, is_active: e.target.checked }))} className="rounded" />
                   启用
                 </label>
-                <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                   <input type="checkbox" checked={editForm.open_in_new_tab} onChange={(e) => setEditForm(f => ({ ...f, open_in_new_tab: e.target.checked }))} className="rounded" />
                   新窗口打开
                 </label>

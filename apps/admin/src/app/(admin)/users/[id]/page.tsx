@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -123,7 +123,7 @@ export default function UserDetailPage() {
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-3xl font-bold text-slate-300">
+              <span className="text-3xl font-bold text-slate-600">
                 {user.full_name?.[0] || user.email?.[0] || '?'}
               </span>
             )}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -371,8 +371,8 @@ export default function ProductsPage() {
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">商品管理</h1>
-          <p className="text-slate-400 mt-1">管理平台商品与设备</p>
+          <h1 className="text-2xl font-bold text-slate-900">商品管理</h1>
+          <p className="text-slate-500 mt-1">管理平台商品与设备</p>
         </div>
         <Button onClick={() => window.location.href = '/products/new'}>
           新建商品
@@ -380,13 +380,13 @@ export default function ProductsPage() {
       </div>
 
       {/* 视图切换 Tab */}
-      <div className="flex items-center gap-1 bg-slate-800/60 rounded-lg p-1 w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
         <button
           onClick={() => { setViewTab('base'); setPage(1); }}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
             viewTab === 'base'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           Base 资源库
@@ -395,8 +395,8 @@ export default function ProductsPage() {
           onClick={() => { setViewTab('site'); setPage(1); }}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
             viewTab === 'site'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           {currentSite === 'cn' ? '🇨🇳 CN' : '🌐 INTL'} 站点视图
@@ -475,23 +475,23 @@ export default function ProductsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">商品</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">品牌/型号</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">价格</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">浏览</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">站点视图</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">商品</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">品牌/型号</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">价格</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">浏览</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">站点视图</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {products.map((product) => (
-                    <tr key={product.id} className="hover:bg-slate-800/30 transition-colors">
+                    <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-14 h-14 rounded bg-slate-700 flex-shrink-0 overflow-hidden">
+                          <div className="w-14 h-14 rounded bg-slate-100 flex-shrink-0 overflow-hidden">
                             {product.cover_image_url ? (
                               <img src={product.cover_image_url} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -503,7 +503,7 @@ export default function ProductsPage() {
                             )}
                           </div>
                           <div>
-                            <span className="font-medium text-white line-clamp-1">{product.name}</span>
+                            <span className="font-medium text-slate-900 line-clamp-1">{product.name}</span>
                             <div className="text-xs text-slate-500 mt-0.5">
                               {productTypeLabels[product.product_type] || product.product_type}
                             </div>
@@ -512,14 +512,14 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="text-slate-300">{product.brand || '-'}</div>
+                          <div className="text-slate-600">{product.brand || '-'}</div>
                           <div className="text-slate-500 text-xs">{product.model || '-'}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-white text-sm">
+                      <td className="px-6 py-4 text-slate-900 text-sm">
                         {formatPrice(product)}
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm">
+                      <td className="px-6 py-4 text-slate-500 text-sm">
                         {product.view_count.toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
@@ -531,7 +531,7 @@ export default function ProductsPage() {
                             <span key={sv.site_code} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                               sv.publish_status === 'published' ? 'bg-emerald-500/20 text-emerald-400' :
                               sv.publish_status === 'offline' ? 'bg-red-500/20 text-red-400' :
-                              'bg-slate-500/20 text-slate-400'
+                              'bg-slate-500/20 text-slate-500'
                             }`}>
                               {sv.site_code.toUpperCase()}
                             </span>
@@ -596,7 +596,7 @@ export default function ProductsPage() {
             </TableContainer>
 
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination
                   page={page}
                   totalPages={totalPages}
@@ -652,29 +652,29 @@ export default function ProductsPage() {
             ) : (
               <TableContainer>
                 <table className="w-full">
-                  <thead className="bg-slate-800/50">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">商品</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">显示名称</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">排序</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">推荐</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">状态</th>
-                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">操作</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">商品</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">显示名称</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">排序</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">推荐</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">状态</th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-slate-600">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {productSiteViews.map((sv) => (
-                      <tr key={sv.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={sv.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <div>
-                            <span className="font-medium text-white line-clamp-1">{sv.product?.name || sv.product_id}</span>
+                            <span className="font-medium text-slate-900 line-clamp-1">{sv.product?.name || sv.product_id}</span>
                             <div className="text-xs text-slate-500">{sv.product?.slug}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-300 text-sm">
+                        <td className="px-6 py-4 text-slate-600 text-sm">
                           {sv.display_name || <span className="text-slate-600">继承 Base</span>}
                         </td>
-                        <td className="px-6 py-4 text-slate-400 text-sm">{sv.display_order}</td>
+                        <td className="px-6 py-4 text-slate-500 text-sm">{sv.display_order}</td>
                         <td className="px-6 py-4">
                           {sv.is_featured ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-400">推荐</span>
@@ -686,7 +686,7 @@ export default function ProductsPage() {
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             sv.publish_status === 'published' ? 'bg-emerald-500/20 text-emerald-400' :
                             sv.publish_status === 'offline' ? 'bg-red-500/20 text-red-400' :
-                            'bg-slate-500/20 text-slate-400'
+                            'bg-slate-500/20 text-slate-500'
                           }`}>
                             {sv.publish_status === 'published' ? '已发布' : sv.publish_status === 'offline' ? '已下线' : '草稿'}
                           </span>

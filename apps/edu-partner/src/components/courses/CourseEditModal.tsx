@@ -111,10 +111,10 @@ export default function CourseEditModal({
 
   if (!course) return null;
 
-  // 判断是否可编辑（只有 Draft 和 Rejected 状态可以编辑）
-  const isEditable = course.status === 'draft' || course.status === 'rejected';
+  // 判断是否可编辑（只有 Draft 状态可以编辑）
+  const isEditable = course.status === 'draft';
   // 判断是否可以提交审核
-  const canSubmit = course.status === 'draft' || course.status === 'rejected';
+  const canSubmit = course.status === 'draft';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -158,14 +158,6 @@ export default function CourseEditModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* 被拒绝提示 */}
-          {course.status === 'rejected' && course.rejectionReason && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-              <p className="text-sm font-medium text-red-400 mb-1">审核未通过</p>
-              <p className="text-sm text-red-300">{course.rejectionReason}</p>
-            </div>
-          )}
-
           {/* Tab: 基本信息 */}
           {activeTab === 'basic' && (
             <CourseFormFields

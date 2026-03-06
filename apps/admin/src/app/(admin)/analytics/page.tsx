@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -196,8 +196,8 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">数据分析</h1>
-          <p className="text-slate-400 mt-1">查看平台运营数据与用户行为分析</p>
+          <h1 className="text-2xl font-bold text-slate-900">数据分析</h1>
+          <p className="text-slate-500 mt-1">查看平台运营数据与用户行为分析</p>
         </div>
         <Select
           value={dateRange}
@@ -224,50 +224,50 @@ export default function AnalyticsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-              <h3 className="text-lg font-semibold text-white mb-4">周期数据概览</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">周期数据概览</h3>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-800/50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">{totalPeriodViews.toLocaleString()}</div>
-                  <div className="text-sm text-slate-400 mt-1">周期浏览量</div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-slate-900">{totalPeriodViews.toLocaleString()}</div>
+                  <div className="text-sm text-slate-500 mt-1">周期浏览量</div>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">{totalPeriodUsers}</div>
-                  <div className="text-sm text-slate-400 mt-1">新增用户</div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-slate-900">{totalPeriodUsers}</div>
+                  <div className="text-sm text-slate-500 mt-1">新增用户</div>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">{totalPeriodOrders}</div>
-                  <div className="text-sm text-slate-400 mt-1">订单数</div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-slate-900">{totalPeriodOrders}</div>
+                  <div className="text-sm text-slate-500 mt-1">订单数</div>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">¥{totalPeriodRevenue.toLocaleString()}</div>
-                  <div className="text-sm text-slate-400 mt-1">周期收入</div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <div className="text-2xl font-bold text-slate-900">¥{totalPeriodRevenue.toLocaleString()}</div>
+                  <div className="text-sm text-slate-500 mt-1">周期收入</div>
                 </div>
               </div>
             </Card>
 
             <Card>
-              <h3 className="text-lg font-semibold text-white mb-4">用户增长</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">用户增长</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">今日新增</span>
-                  <span className="text-white font-medium">{userGrowth.today}</span>
+                  <span className="text-slate-500">今日新增</span>
+                  <span className="text-slate-900 font-medium">{userGrowth.today}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">本周新增</span>
-                  <span className="text-white font-medium">{userGrowth.week}</span>
+                  <span className="text-slate-500">本周新增</span>
+                  <span className="text-slate-900 font-medium">{userGrowth.week}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">本月新增</span>
-                  <span className="text-white font-medium">{userGrowth.month}</span>
+                  <span className="text-slate-500">本月新增</span>
+                  <span className="text-slate-900 font-medium">{userGrowth.month}</span>
                 </div>
-                <div className="pt-4 border-t border-slate-700">
+                <div className="pt-4 border-t border-slate-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">平均会话时长</span>
-                    <span className="text-white font-medium">{Math.floor(overviewStats.avgSessionDuration / 60)}分{overviewStats.avgSessionDuration % 60}秒</span>
+                    <span className="text-slate-500">平均会话时长</span>
+                    <span className="text-slate-900 font-medium">{Math.floor(overviewStats.avgSessionDuration / 60)}分{overviewStats.avgSessionDuration % 60}秒</span>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-slate-400">跳出率</span>
-                    <span className="text-white font-medium">{overviewStats.bounceRate}%</span>
+                    <span className="text-slate-500">跳出率</span>
+                    <span className="text-slate-900 font-medium">{overviewStats.bounceRate}%</span>
                   </div>
                 </div>
               </div>
@@ -275,7 +275,7 @@ export default function AnalyticsPage() {
           </div>
 
           <Card>
-            <h3 className="text-lg font-semibold text-white mb-4">每日趋势</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">每日趋势</h3>
             <div className="overflow-x-auto">
               <div className="min-w-[600px]">
                 <div className="flex items-end gap-1 h-40 mb-4">
@@ -305,7 +305,7 @@ export default function AnalyticsPage() {
           </Card>
 
           <Card>
-            <h3 className="text-lg font-semibold text-white mb-4">热门页面</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">热门页面</h3>
             <div className="space-y-3">
               {topPages.map((page, idx) => {
                 const maxViews = topPages[0]?.view_count || 1;
@@ -313,13 +313,13 @@ export default function AnalyticsPage() {
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-300 truncate max-w-md">{page.page_path}</span>
-                      <div className="flex items-center gap-4 text-slate-400">
+                      <span className="text-slate-600 truncate max-w-md">{page.page_path}</span>
+                      <div className="flex items-center gap-4 text-slate-500">
                         <span>{page.view_count.toLocaleString()} 浏览</span>
                         <span className="text-xs">{page.unique_count.toLocaleString()} UV</span>
                       </div>
                     </div>
-                    <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-emerald-500 rounded-full"
                         style={{ width: `${percent}%` }}

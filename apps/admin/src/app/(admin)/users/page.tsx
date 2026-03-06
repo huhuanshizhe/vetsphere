@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -175,7 +175,7 @@ export default function UsersPage() {
                               {user.avatar_url ? (
                                 <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-sm font-bold text-slate-400">{user.full_name?.[0] || user.email?.[0] || '?'}</span>
+                                <span className="text-sm font-bold text-slate-500">{user.full_name?.[0] || user.email?.[0] || '?'}</span>
                               )}
                             </div>
                             <span className="text-sm font-medium text-slate-900">{user.full_name || '未设置'}</span>
@@ -184,7 +184,7 @@ export default function UsersPage() {
                         <td className="px-6 py-4">
                           <div className="text-sm">
                             <div className="text-slate-700">{user.email}</div>
-                            {user.phone && <div className="text-slate-400 text-xs mt-0.5">{user.phone}</div>}
+                            {user.phone && <div className="text-slate-500 text-xs mt-0.5">{user.phone}</div>}
                           </div>
                         </td>
                         <td className="px-6 py-4">

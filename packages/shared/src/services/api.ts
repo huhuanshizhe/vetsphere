@@ -322,6 +322,10 @@ export const api = {
     try {
       let query = supabase.from('courses').select('*').eq('status', 'published');
       
+      // 过滤已过期课程（end_date 为空或未过期的课程才显示）
+      const today = new Date().toISOString().split('T')[0];
+      query = query.or(`end_date.is.null,end_date.gte.${today}`);
+      
       if (params.query) {
         query = query.or(`title.ilike.%${params.query}%,description.ilike.%${params.query}%`);
       }

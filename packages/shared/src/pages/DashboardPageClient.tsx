@@ -103,11 +103,6 @@ const Dashboard: React.FC = () => {
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [adminUserFilter, setAdminUserFilter] = useState<string>('All');
 
-  // Admin Rejection State
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectingCourseId, setRejectingCourseId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-
   // Admin AI State
   const [systemPrompt, setSystemPrompt] = useState('');
   const [aiConfig, setAiConfig] = useState({ temperature: 0.7, topP: 0.95 });
@@ -255,9 +250,9 @@ const Dashboard: React.FC = () => {
   };
 
   const handleRejectCourse = async (courseId: string) => {
-      await api.manageCourse('update', { id: courseId, status: 'rejected' });
-      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, status: 'rejected' } : c));
-      addNotification({ id: `audit-rej-${Date.now()}`, type: 'system', title: '已拒绝/下架', message: '课程已下架或退回。', read: false, timestamp: new Date() });
+      await api.manageCourse('update', { id: courseId, status: 'offline' });
+      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, status: 'offline' } : c));
+      addNotification({ id: `audit-rej-${Date.now()}`, type: 'system', title: '已下架', message: '课程已下架。', read: false, timestamp: new Date() });
   };
 
   // --- Provider Submit Action ---
@@ -444,9 +439,9 @@ const Dashboard: React.FC = () => {
 
   const getStatusBadge = (status: CourseStatus) => {
       switch(status) {
-          case 'published': return <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded">上架中 (Published)</span>;
+          case 'published': return <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded">已上架 (Published)</span>;
           case 'pending': return <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded animate-pulse">审核中 (Pending)</span>;
-          case 'rejected': return <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded">已拒绝 (Rejected)</span>;
+          case 'offline': return <span className="text-xs font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded">已下架 (Offline)</span>;
           default: return <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">草稿 (Draft)</span>;
       }
   };
@@ -939,23 +934,10 @@ const Dashboard: React.FC = () => {
                                      {(c.location && c.location.city) || 'TBD'} • {c.startDate || 'Date Pending'}
                                  </p>
 
-                                 {/* Rejection Reason Banner */}
-                                 {c.status === 'rejected' && c.rejectionReason && (
-                                     <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
-                                         <p className="text-xs font-bold text-red-600 mb-1">Rejection Reason:</p>
-                                         <p className="text-xs text-red-500">{c.rejectionReason}</p>
-                                     </div>
-                                 )}
-                                 
                                  <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
                                      <span className="font-bold text-slate-900">{c.currency === 'CNY' ? '¥' : '$'}{(c.price || 0).toLocaleString()}</span>
                                      <div className="flex gap-2">
-                                         {c.status === 'rejected' && (
-                                             <button onClick={() => handleEditCourse(c)} className="px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg text-xs font-bold hover:bg-purple-100 transition-colors">
-                                                 Revise & Resubmit
-                                             </button>
-                                         )}
-                                         {c.status !== 'rejected' && <button onClick={() => handleEditCourse(c)} className="p-2 text-slate-400 hover:text-purple-600 transition-colors">✎</button>}
+                                         <button onClick={() => handleEditCourse(c)} className="p-2 text-slate-400 hover:text-purple-600 transition-colors">✎</button>
                                          <button onClick={() => handleDeleteCourse(c.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">🗑</button>
                                      </div>
                                  </div>
@@ -1281,9 +1263,6 @@ const Dashboard: React.FC = () => {
                                                     <button onClick={() => handleApproveCourse(c.id)} className="bg-emerald-500 text-black px-4 py-2 rounded text-xs font-bold hover:bg-emerald-400 transition-all">
                                                         ✓ Approve
                                                     </button>
-                                                    <button onClick={() => { setRejectingCourseId(c.id); setRejectReason(''); setShowRejectModal(true); }} className="bg-red-500 text-white px-4 py-2 rounded text-xs font-bold hover:bg-red-400 transition-all">
-                                                        ✗ Reject
-                                                    </button>
                                                 </>
                                             )}
                                             {c.status !== 'pending' && (
@@ -1298,43 +1277,6 @@ const Dashboard: React.FC = () => {
                         </table>
                      </div>
 
-                     {/* Rejection Reason Modal */}
-                     {showRejectModal && (
-                         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-                             <div className="bg-slate-900 border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl">
-                                 <h4 className="text-white font-black text-lg mb-4">Rejection Reason</h4>
-                                 <p className="text-slate-400 text-sm mb-4">Please provide a reason for rejecting this course. The provider will see this feedback.</p>
-                                 <textarea
-                                     value={rejectReason}
-                                     onChange={e => setRejectReason(e.target.value)}
-                                     placeholder="e.g. Description needs more detail, pricing is too high for this level..."
-                                     className="w-full h-32 p-4 bg-black/50 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:border-red-400 outline-none resize-none"
-                                 />
-                                 <div className="flex gap-3 mt-6">
-                                     <button
-                                         onClick={() => setShowRejectModal(false)}
-                                         className="flex-1 py-3 border border-white/10 text-slate-400 rounded-xl text-xs font-bold uppercase hover:bg-white/5 transition-all"
-                                     >
-                                         Cancel
-                                     </button>
-                                     <button
-                                         onClick={async () => {
-                                             if (rejectingCourseId) {
-                                                 await api.manageCourse('update', { id: rejectingCourseId, status: 'rejected', rejectionReason: rejectReason || 'No reason provided' });
-                                                 setCourses(prev => prev.map(c => c.id === rejectingCourseId ? { ...c, status: 'rejected', rejectionReason: rejectReason || 'No reason provided' } : c));
-                                                 addNotification({ id: `audit-rej-${Date.now()}`, type: 'system', title: '已拒绝', message: '课程已退回并附带原因。', read: false, timestamp: new Date() });
-                                             }
-                                             setShowRejectModal(false);
-                                             setRejectingCourseId(null);
-                                         }}
-                                         className="flex-1 py-3 bg-red-500 text-white rounded-xl text-xs font-bold uppercase hover:bg-red-400 transition-all"
-                                     >
-                                         Confirm Reject
-                                     </button>
-                                 </div>
-                             </div>
-                         </div>
-                     )}
                  </div>
              )}
 

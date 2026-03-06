@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -105,8 +105,8 @@ export default function DoctorRecordsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">病历数据</h1>
-        <p className="text-slate-400 mt-1">查看医生端的诊疗病历记录</p>
+        <h1 className="text-2xl font-bold text-slate-900">病历数据</h1>
+        <p className="text-slate-500 mt-1">查看医生端的诊疗病历记录</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -132,47 +132,47 @@ export default function DoctorRecordsPage() {
           <>
             <TableContainer>
               <table className="w-full">
-                <thead className="bg-slate-800/50">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">就诊日期</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">宠物</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">主人</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">诊断</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">症状</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">治疗方案</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">主治医生</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">就诊日期</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">宠物</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">主人</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">诊断</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">症状</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">治疗方案</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">主治医生</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {records.map((record) => (
-                    <tr key={record.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-slate-300 text-sm whitespace-nowrap">
+                    <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-600 text-sm whitespace-nowrap">
                         {new Date(record.record_date).toLocaleDateString('zh-CN')}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="text-white">{record.pet_name || '-'}</div>
+                          <div className="text-slate-900">{record.pet_name || '-'}</div>
                           <div className="text-xs text-slate-500">{speciesLabels[record.pet_species || ''] || record.pet_species}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">{record.client?.owner_name || '-'}</td>
-                      <td className="px-6 py-4 text-white text-sm max-w-[200px]">
+                      <td className="px-6 py-4 text-slate-600 text-sm">{record.client?.owner_name || '-'}</td>
+                      <td className="px-6 py-4 text-slate-900 text-sm max-w-[200px]">
                         <span className="line-clamp-2">{record.diagnosis}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm max-w-[200px]">
+                      <td className="px-6 py-4 text-slate-500 text-sm max-w-[200px]">
                         <span className="line-clamp-1">{record.symptoms || '-'}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-400 text-sm max-w-[200px]">
+                      <td className="px-6 py-4 text-slate-500 text-sm max-w-[200px]">
                         <span className="line-clamp-1">{record.treatment || '-'}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-sm">{record.doctor?.full_name || '-'}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{record.doctor?.full_name || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </TableContainer>
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-slate-700/50">
+              <div className="px-6 py-4 border-t border-slate-200/50">
                 <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
