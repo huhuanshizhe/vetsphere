@@ -66,6 +66,14 @@ const CURRENCIES = [
   { value: 'THB', label: '฿ 泰铢' },
 ];
 
+const COURSE_FORMATS = [
+  { value: 'offline', label: '线下课程', icon: '🏫' },
+  { value: 'video', label: '视频课程', icon: '🎬' },
+  { value: 'live', label: '直播课程', icon: '📡' },
+  { value: 'article', label: '图文课程', icon: '📝' },
+  { value: 'series', label: '系列课程', icon: '📚' },
+];
+
 const COUNTRIES = [
   { value: 'CN', label: '中国 China', flag: '🇨🇳' },
   { value: 'US', label: '美国 United States', flag: '🇺🇸' },
@@ -444,6 +452,31 @@ export default function CourseFormFields({
 
     return (
       <div className="space-y-6">
+        {/* 课程类型选择 */}
+        <div>
+          <label className={labelClass}>
+            课程类型 <span className="text-red-400">*</span>
+          </label>
+          <div className="flex flex-wrap gap-3">
+            {COURSE_FORMATS.map(fmt => (
+              <button
+                key={fmt.value}
+                type="button"
+                onClick={() => onUpdate('format', fmt.value)}
+                disabled={disabled}
+                className={`px-5 py-2.5 rounded-xl border transition-all ${
+                  (formData.format || 'offline') === fmt.value
+                    ? 'bg-purple-600 border-purple-500 text-white'
+                    : 'bg-purple-500/10 border-purple-500/20 text-gray-300 hover:border-purple-500/40'
+                } disabled:opacity-50`}
+              >
+                {fmt.icon} {fmt.label}
+              </button>
+            ))}
+          </div>
+          {errors.format && <p className={errorClass}>{errors.format}</p>}
+        </div>
+
         {/* 发布语言选择 */}
         <div>
           <label className={labelClass}>

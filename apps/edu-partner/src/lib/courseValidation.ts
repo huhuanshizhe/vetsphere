@@ -10,6 +10,10 @@ export interface ValidationResult {
 export function validateBasicInfo(data: Partial<CourseFormData>): ValidationResult {
   const errors: Record<string, string> = {};
 
+  if (!data.format) {
+    errors.format = '请选择课程类型';
+  }
+
   if (!data.publishLanguage) {
     errors.publishLanguage = '请选择发布语言';
   }

@@ -14,6 +14,8 @@ export type ProductGroup = 'PowerTools' | 'Implants' | 'HandInstruments' | 'Cons
 
 export type CourseStatus = 'draft' | 'pending' | 'published' | 'offline';
 
+export type CourseFormat = 'video' | 'live' | 'article' | 'series' | 'offline';
+
 // ============================================
 // Doctor Application Types (医生入驻申请)
 // ============================================
@@ -339,6 +341,9 @@ export interface Course {
   };
   
   status: CourseStatus;
+
+  // === 课程类型 ===
+  format?: CourseFormat;
   
   // === 日程安排 (多语言活动内容) ===
   agenda: {
