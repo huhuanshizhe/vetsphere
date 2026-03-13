@@ -644,7 +644,7 @@ const CourseCard: React.FC<{
         {/* 底部操作区 */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-100">
           <div className="text-xl font-black text-slate-900">
-            ¥{course.price.toLocaleString()}
+            ¥{(course.price_cny || course.price).toLocaleString()}
           </div>
           <div className="flex items-center gap-2">
             <button
