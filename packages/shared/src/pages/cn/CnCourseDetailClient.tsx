@@ -737,7 +737,7 @@ const EnrollmentCard: React.FC<{
         <span className="text-sm text-slate-500">课程费用</span>
         {isAuthenticated ? (
           <span className="text-2xl font-black text-emerald-600">
-            ¥{course.price.toLocaleString()}
+            ¥{(course.price_cny || course.price).toLocaleString()}
           </span>
         ) : (
           <button 
@@ -901,8 +901,8 @@ const CnCourseDetailClient: React.FC<CnCourseDetailClientProps> = ({ courseId })
     addToCart({
       id: course.id,
       name: course.title_zh || course.title,
-      price: course.price,
-      currency: course.currency,
+      price: course.price_cny || course.price,
+      currency: 'CNY',
       imageUrl: course.imageUrl,
       type: 'course',
       quantity: 1

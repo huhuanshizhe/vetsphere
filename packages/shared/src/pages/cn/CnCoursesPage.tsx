@@ -124,7 +124,7 @@ const CourseCard: React.FC<{ course: Course; locale: string; language: string; f
 
         <div className="flex items-center justify-between pt-4 border-t border-slate-100">
           <div className="text-xl font-black text-slate-900">
-            ¥{course.price.toLocaleString()}
+            ¥{(course.price_cny || course.price).toLocaleString()}
           </div>
           <span className="text-sm font-bold text-blue-600 group-hover:text-blue-700 flex items-center gap-1">
             查看详情

@@ -286,7 +286,7 @@ export const api = {
         id: c.id, title: c.title, 
         title_zh: c.title_zh || null, title_th: c.title_th || null,
         specialty: c.specialty, level: c.level,
-        price: c.price, currency: c.currency || 'CNY',
+        price: c.price_cny || c.price, currency: 'CNY',
         startDate: c.start_date, endDate: c.end_date,
         location: c.location || {}, instructor: c.instructor || {},
         imageUrl: c.image_url, description: c.description,
