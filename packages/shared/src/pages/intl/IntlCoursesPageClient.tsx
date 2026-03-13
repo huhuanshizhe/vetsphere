@@ -72,12 +72,13 @@ export default function IntlCoursesPageClient() {
       format: format !== 'All' ? format : undefined,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
+      locale: locale,
     }).then(result => {
       setCourses(result.items);
       setTotal(result.total);
       setLoading(false);
     });
-  }, [specialty, level, format, page]);
+  }, [specialty, level, format, page, locale]);
 
   // Load equipment counts for visible courses
   useEffect(() => {
@@ -387,8 +388,14 @@ export default function IntlCoursesPageClient() {
                   <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                     {course.is_free ? (
                       <span className="text-sm font-bold text-emerald-600">Free</span>
-                    ) : course.price_usd ? (
-                      <span className="text-lg font-bold text-slate-900">${course.price_usd.toLocaleString()}</span>
+                    ) : course.price ? (
+                      <span className="text-lg font-bold text-slate-900">
+                        {course.currency === 'USD' ? '$' :
+                         course.currency === 'CNY' ? '¥' :
+                         course.currency === 'JPY' ? '¥' :
+                         course.currency === 'THB' ? '฿' : '$'}
+                        {course.price.toLocaleString()}
+                      </span>
                     ) : (
                       <span className="text-sm text-slate-400">Contact for pricing</span>
                     )}

@@ -43,15 +43,37 @@ export interface IntlCourse {
   description: string | null;
   target_audience: string | null;
   is_free: boolean;
+  // Multi-currency prices
   price_cny: number | null;
   price_usd: number | null;
+  price_jpy: number | null;
+  price_thb: number | null;
+  // Localized price for current locale
+  price: number | null;
+  currency: string | null;
   enrollment_count: number;
   avg_rating: number | null;
   growth_tracks: string[];
+  // Date fields
+  start_date: string | null;
+  end_date: string | null;
+  enrollment_deadline: string | null;
+  // Location fields
+  location_city: string | null;
+  location_venue: string | null;
+  location_address: string | null;
+  location_country: string | null;
+  location_region: string | null;
+  // Teaching languages
+  teaching_languages: string[];
   // Instructors (loaded separately)
   instructors?: IntlInstructor[];
   // Equipment count
   equipment_count?: number;
+  // Localized instructor fields
+  instructor_name?: string;
+  instructor_title?: string;
+  instructor_bio?: string;
 }
 
 export interface IntlProduct {
@@ -120,15 +142,74 @@ export interface IntlClinicProgram {
 // Course Site Views
 // ============================================
 
-function mapCourseRow(sv: any): IntlCourse {
+// 语言到字段的映射
+const localeToTitleField: Record<string, string> = {
+  'en': 'title_en',
+  'zh': 'title_zh',
+  'th': 'title_th',
+  'ja': 'title_ja',
+};
+
+const localeToDescField: Record<string, string> = {
+  'en': 'description_en',
+  'zh': 'description_zh',
+  'th': 'description_th',
+  'ja': 'description_ja',
+};
+
+const localeToTargetAudienceField: Record<string, string> = {
+  'en': 'target_audience',
+  'zh': 'target_audience_zh',
+  'th': 'target_audience',
+  'ja': 'target_audience',
+};
+
+// 语言到价格和货币的映射
+const localeToPriceConfig: Record<string, { priceField: string; currency: string }> = {
+  'en': { priceField: 'price_usd', currency: 'USD' },
+  'zh': { priceField: 'price_cny', currency: 'CNY' },
+  'th': { priceField: 'price_thb', currency: 'THB' },
+  'ja': { priceField: 'price_jpy', currency: 'JPY' },
+};
+
+// 获取本地化的 JSONB 字段值
+function getLocalizedJsonbValue(obj: any, baseField: string, locale: string): string {
+  if (!obj) return '';
+  const localizedField = `${baseField}_${locale}`;
+  return obj[localizedField] || obj[baseField] || '';
+}
+
+function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
   const base = sv.courses || {};
+  // 解析 location JSONB 对象
+  const location = base.location || {};
+  const instructor = base.instructor || {};
+
+  // 根据语言选择对应的标题和描述
+  const titleField = localeToTitleField[locale] || 'title_en';
+  const descField = localeToDescField[locale] || 'description_en';
+  const targetAudienceField = localeToTargetAudienceField[locale] || 'target_audience';
+
+  const localizedTitle = base[titleField] || base.title_en || base.title || '';
+  const localizedDesc = base[descField] || base.description_en || base.description || '';
+  const localizedTargetAudience = base[targetAudienceField] || base.target_audience || '';
+
+  // 本地化的 location 字段
+  const localizedLocation = {
+    city: getLocalizedJsonbValue(location, 'city', locale),
+    venue: getLocalizedJsonbValue(location, 'venue', locale),
+    address: getLocalizedJsonbValue(location, 'address', locale),
+    country: getLocalizedJsonbValue(location, 'country', locale),
+    region: getLocalizedJsonbValue(location, 'region', locale),
+  };
+
   return {
     id: sv.id,
     course_id: sv.course_id,
     site_code: sv.site_code,
-    title: sv.title_override || base.title || '',
+    title: sv.title_override || localizedTitle,
     slug: sv.slug_override || base.slug || sv.course_id,
-    summary: sv.summary_override || base.subtitle || base.description || '',
+    summary: sv.summary_override || base.subtitle || localizedDesc,
     hero_title: sv.hero_title_override,
     hero_subtitle: sv.hero_subtitle_override,
     pricing_mode: sv.pricing_mode || 'inherit',
@@ -148,14 +229,36 @@ function mapCourseRow(sv: any): IntlCourse {
     format: base.format || 'workshop',
     duration_minutes: base.duration_minutes,
     cover_image_url: base.cover_image_url || base.image_url,
-    description: base.description,
-    target_audience: base.target_audience,
+    description: localizedDesc,
+    target_audience: localizedTargetAudience,
     is_free: base.is_free || false,
+    // Multi-currency prices
     price_cny: base.price_cny,
     price_usd: base.price_usd,
+    price_jpy: base.price_jpy,
+    price_thb: base.price_thb,
+    // Localized price for current locale
+    price: base[localeToPriceConfig[locale]?.priceField] || base.price_usd || base.price_cny || null,
+    currency: localeToPriceConfig[locale]?.currency || 'USD',
     enrollment_count: base.enrollment_count || 0,
     avg_rating: base.avg_rating,
     growth_tracks: base.growth_tracks || [],
+    // Date fields
+    start_date: base.start_date || null,
+    end_date: base.end_date || null,
+    enrollment_deadline: base.enrollment_deadline || null,
+    // Location fields (localized)
+    location_city: localizedLocation.city || null,
+    location_venue: localizedLocation.venue || null,
+    location_address: localizedLocation.address || null,
+    location_country: localizedLocation.country || null,
+    location_region: localizedLocation.region || null,
+    // Teaching languages
+    teaching_languages: base.teaching_languages || [],
+    // Instructor (localized)
+    instructor_name: getLocalizedJsonbValue(instructor, 'name', locale),
+    instructor_title: getLocalizedJsonbValue(instructor, 'title', locale),
+    instructor_bio: getLocalizedJsonbValue(instructor, 'bio', locale),
   };
 }
 
@@ -167,18 +270,24 @@ export async function getIntlCourses(options?: {
   format?: string;
   limit?: number;
   offset?: number;
+  locale?: string;
 }): Promise<{ items: IntlCourse[]; total: number }> {
+  const locale = options?.locale || 'en';
+
   let query = supabase
     .from('course_site_views')
     .select(`
       *,
       courses!inner (
         id, slug, title, subtitle, description,
+        title_en, title_zh, title_th, title_ja,
+        description_en, description_zh, description_th, description_ja,
+        target_audience, target_audience_zh,
         specialty, level, format, duration_minutes,
-        cover_image_url, image_url, target_audience,
-        is_free, price_cny, price_usd,
+        cover_image_url, image_url,
+        is_free, price_cny, price_usd, price_jpy, price_thb,
         enrollment_count, avg_rating, growth_tracks,
-        status, end_date
+        status, end_date, location, instructor
       )
     `, { count: 'exact' })
     .eq('site_code', SITE_CODE)
@@ -216,13 +325,13 @@ export async function getIntlCourses(options?: {
   }
 
   return {
-    items: (data || []).map(mapCourseRow),
+    items: (data || []).map(row => mapCourseRow(row, locale)),
     total: count || 0,
   };
 }
 
 /** Get single INTL course by slug or course_id */
-export async function getIntlCourseBySlug(slugOrId: string): Promise<IntlCourse | null> {
+export async function getIntlCourseBySlug(slugOrId: string, locale: string = 'en'): Promise<IntlCourse | null> {
   // Try slug_override first, then course_id
   const { data, error } = await supabase
     .from('course_site_views')
@@ -230,11 +339,16 @@ export async function getIntlCourseBySlug(slugOrId: string): Promise<IntlCourse 
       *,
       courses!inner (
         id, slug, title, subtitle, description,
+        title_en, title_zh, title_th, title_ja,
+        description_en, description_zh, description_th, description_ja,
+        target_audience, target_audience_zh,
         specialty, level, format, duration_minutes,
-        cover_image_url, image_url, target_audience,
-        is_free, price_cny, price_usd,
+        cover_image_url, image_url,
+        is_free, price_cny, price_usd, price_jpy, price_thb,
         enrollment_count, avg_rating, growth_tracks,
-        status, total_hours
+        status, total_hours,
+        start_date, end_date, enrollment_deadline,
+        location, instructor, teaching_languages
       )
     `)
     .eq('site_code', SITE_CODE)
@@ -244,7 +358,7 @@ export async function getIntlCourseBySlug(slugOrId: string): Promise<IntlCourse 
     .single();
 
   if (error || !data) return null;
-  return mapCourseRow(data);
+  return mapCourseRow(data, locale);
 }
 
 /** Get course chapters for a given course_id */
@@ -257,25 +371,95 @@ export async function getIntlCourseChapters(courseId: string) {
   return data || [];
 }
 
+/** Get course agenda/schedule for a given course_id (from courses.agenda JSONB) */
+export async function getIntlCourseAgenda(courseId: string, locale: string = 'en') {
+  const { data } = await supabase
+    .from('courses')
+    .select('agenda')
+    .eq('id', courseId)
+    .single();
+
+  if (!data?.agenda || !Array.isArray(data.agenda)) return [];
+
+  // Convert nested agenda format to flat array for display
+  const agendaItems: any[] = [];
+  data.agenda.forEach((day: any, dayIndex: number) => {
+    if (day.items && Array.isArray(day.items)) {
+      day.items.forEach((item: any, itemIndex: number) => {
+        // 获取本地化的活动内容
+        const localizedActivity = item[`activity_${locale}`] || item.activity || item.activity_en || item.activity_zh || '';
+        agendaItems.push({
+          id: `${dayIndex}-${itemIndex}`,
+          day_number: dayIndex + 1,
+          session_time: item.time || '',
+          title: localizedActivity,
+          description: '',
+          display_order: itemIndex,
+        });
+      });
+    }
+  });
+  return agendaItems;
+}
+
+/** Get course services (meals, accommodation, etc.) for a given course_id (from courses.services JSONB) */
+export async function getIntlCourseServices(courseId: string, locale: string = 'en') {
+  const { data } = await supabase
+    .from('courses')
+    .select('services')
+    .eq('id', courseId)
+    .single();
+
+  if (!data?.services) return [];
+
+  const services = data.services;
+  const localizedServices: any[] = [];
+
+  // 处理服务数组或对象格式
+  const servicesArray = Array.isArray(services) ? services : [];
+
+  // Map services to display format with localization
+  servicesArray.forEach((svc: any, index: number) => {
+    const localizedDesc = svc[`description_${locale}`] || svc.description || '';
+    localizedServices.push({
+      id: `svc-${index}`,
+      service_type: svc.type || 'other',
+      is_included: svc.included !== false,
+      description: localizedDesc,
+      display_order: index,
+    });
+  });
+
+  return localizedServices;
+}
+
 /** Get course instructors for a given course_id */
-export async function getIntlCourseInstructors(courseId: string): Promise<IntlInstructor[]> {
+export async function getIntlCourseInstructors(courseId: string, locale: string = 'en'): Promise<IntlInstructor[]> {
   const { data } = await supabase
     .from('course_instructors')
     .select(`
       role,
-      instructor:instructors (id, name, title, bio, avatar_url, credentials)
+      instructor:instructors (id, name, title, bio, avatar_url, credentials, name_en, name_zh, name_th, name_ja, title_en, title_zh, title_th, title_ja, bio_en, bio_zh, bio_th, bio_ja)
     `)
     .eq('course_id', courseId);
 
-  return (data || []).map((ci: any) => ({
-    id: ci.instructor?.id,
-    name: ci.instructor?.name || '',
-    title: ci.instructor?.title || '',
-    bio: ci.instructor?.bio,
-    avatar_url: ci.instructor?.avatar_url,
-    credentials: ci.instructor?.credentials,
-    role: ci.role,
-  }));
+  return (data || []).map((ci: any) => {
+    const instructor = ci.instructor || {};
+    // 获取本地化的讲师信息
+    const localizedName = instructor[`name_${locale}`] || instructor.name || '';
+    const localizedTitle = instructor[`title_${locale}`] || instructor.title || '';
+    const localizedBio = instructor[`bio_${locale}`] || instructor.bio || '';
+
+    return {
+      id: instructor.id,
+      name: localizedName,
+      title: localizedTitle,
+      bio: localizedBio,
+      avatar_url: instructor.avatar_url,
+      credentials: instructor.credentials,
+      role: ci.role,
+    };
+  });
 }
 
 // ============================================
@@ -457,7 +641,7 @@ export async function getIntlCourseProducts(courseId: string): Promise<IntlProdu
 }
 
 /** Get related courses for a product */
-export async function getIntlProductCourses(productId: string): Promise<IntlCourse[]> {
+export async function getIntlProductCourses(productId: string, locale: string = 'en'): Promise<IntlCourse[]> {
   const { data: relations } = await supabase
     .from('course_product_relations')
     .select('course_id, relation_type')
@@ -473,6 +657,8 @@ export async function getIntlProductCourses(productId: string): Promise<IntlCour
       *,
       courses!inner (
         id, slug, title, subtitle, description,
+        title_en, title_zh, title_th, title_ja,
+        description_en, description_zh, description_th, description_ja,
         specialty, level, format, duration_minutes,
         cover_image_url, image_url, target_audience,
         is_free, price_cny, price_usd,
@@ -485,7 +671,7 @@ export async function getIntlProductCourses(productId: string): Promise<IntlCour
     .in('course_id', courseIds);
 
   if (!siteViews) return [];
-  return siteViews.map(mapCourseRow);
+  return siteViews.map(row => mapCourseRow(row, locale));
 }
 
 /** Get related/similar products for a product (same scene_code) */

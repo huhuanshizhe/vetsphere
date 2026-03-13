@@ -254,25 +254,27 @@ export default function CoursesPage() {
   // 下架课程
   async function handleOffline() {
     if (!courseToChange) return;
-    
+
     setDialogLoading(true);
     try {
-      // 1. 删除该课程所有站点视图
-      await supabase
-        .from('course_site_views')
-        .delete()
-        .eq('course_id', courseToChange.id);
-      
+      // 1. 删除该课程所有站点视图（使用API绕过RLS）
+      const siteCodes = ['cn', 'intl'];
+      for (const siteCode of siteCodes) {
+        await fetch(`/api/v1/admin/courses/${courseToChange.id}/site-view?site_code=${siteCode}`, {
+          method: 'DELETE',
+        });
+      }
+
       // 2. 更新课程状态为 offline
       const { error } = await supabase
         .from('courses')
-        .update({ 
+        .update({
           status: 'offline',
           offline_reason: 'manual',
           offline_at: new Date().toISOString(),
         })
         .eq('id', courseToChange.id);
-      
+
       if (error) throw error;
       
       // 3. 记录审计日志
@@ -492,7 +494,12 @@ export default function CoursesPage() {
                             )}
                           </div>
                           <div>
-                            <span className="font-medium text-slate-900 line-clamp-1">{course.title}</span>
+                            <a
+                              href={`/courses/${course.id}`}
+                              className="font-medium text-slate-900 line-clamp-1 hover:text-emerald-600 transition-colors cursor-pointer"
+                            >
+                              {course.title}
+                            </a>
                             <div className="text-xs text-slate-500">{course.slug}</div>
                           </div>
                         </div>

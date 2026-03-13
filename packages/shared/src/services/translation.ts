@@ -4,6 +4,7 @@
  */
 
 import type { Course } from '../types';
+import axios from 'axios';
 
 // 支持的语言
 export type SupportedLanguage = 'en' | 'zh' | 'th' | 'ja';
@@ -216,39 +217,53 @@ Return format (EXACT structure required):
   "${targetLangs[3]}": { ... }
 }`;
 
-  const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'qwen-max',
-      messages: [
-        { role: 'system', content: 'You are a translator. Return only valid JSON.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.3,
-      response_format: { type: 'json_object' },
-    }),
+  const requestBody = {
+    model: 'qwen3.5-plus',
+    messages: [
+      { role: 'system', content: 'You are a translator. Return only valid JSON.' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.3,
+  };
+
+  console.log('DashScope request:', {
+    url: 'https://coding.dashscope.aliyuncs.com/v1/chat/completions',
+    model: requestBody.model,
+    promptLength: prompt.length,
+    apiKeyPrefix: apiKey.substring(0, 10) + '...',
   });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`DashScope API error: ${response.status} - ${error}`);
+  // 使用 axios 代替 fetch，避免 Node.js fetch 的 DNS/连接问题
+  try {
+    const response = await axios.post(
+      'https://coding.dashscope.aliyuncs.com/v1/chat/completions',
+      requestBody,
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 120000, // 增加到120秒
+      }
+    );
+
+    const resultText = response.data?.choices?.[0]?.message?.content;
+
+    if (!resultText) {
+      throw new Error('No translation result from DashScope');
+    }
+
+    const result = JSON.parse(resultText);
+    console.log('DashScope returned languages:', Object.keys(result));
+    
+    return result as Record<SupportedLanguage, FlatTranslationContent>;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error:', error.message, error.code);
+      throw new Error(`DashScope API call failed: ${error.message}`);
+    }
+    throw error;
   }
-
-  const data = await response.json();
-  const resultText = data.choices?.[0]?.message?.content;
-
-  if (!resultText) {
-    throw new Error('No translation result from DashScope');
-  }
-
-  const result = JSON.parse(resultText);
-  console.log('DashScope returned languages:', Object.keys(result));
-  
-  return result as Record<SupportedLanguage, FlatTranslationContent>;
 }
 
 /**

@@ -33,11 +33,14 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
   
   // 离开确认
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  
+
   // 上架弹窗状态
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [selectedSites, setSelectedSites] = useState<string[]>(['cn']);
   const [publishing, setPublishing] = useState(false);
+
+  // 只读模式：已上架课程只能查看不能编辑
+  const isReadOnly = course?.status === 'published';
 
   // 加载课程数据
   useEffect(() => {
@@ -143,18 +146,25 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
         .eq('id', id);
       if (updateError) throw updateError;
       
-      // 3. 为每个选中站点创建 course_site_views
+      // 3. 为每个选中站点创建 course_site_views（使用API绕过RLS）
+      const siteViewErrors: string[] = [];
       for (const site of selectedSites) {
-        const { error: viewError } = await supabase
-          .from('course_site_views')
-          .upsert({
-            course_id: id,
+        const res = await fetch(`/api/v1/admin/courses/${id}/site-view`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             site_code: site,
-            is_enabled: true,
             publish_status: 'published',
-            published_at: new Date().toISOString(),
-          }, { onConflict: 'course_id,site_code' });
-        if (viewError) console.error(`创建 ${site} 站点视图失败:`, viewError);
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+          console.error(`创建 ${site} 站点视图失败:`, err);
+          siteViewErrors.push(`${site}: ${err.error || res.statusText}`);
+        }
+      }
+      if (siteViewErrors.length > 0) {
+        throw new Error(`站点视图创建失败: ${siteViewErrors.join(', ')}`);
       }
       
       // 4. 记录审计日志
@@ -279,23 +289,26 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* AI翻译按钮 */}
+          {/* AI翻译按钮 - 只读模式下禁用 */}
           <Button
             variant="secondary"
             onClick={handleTranslate}
             loading={translating}
-            className={translateSuccess ? '!bg-emerald-500 !text-black' : '!bg-purple-600 hover:!bg-purple-500'}
+            disabled={isReadOnly}
+            className={translateSuccess ? '!bg-emerald-500 !text-white' : '!bg-purple-600 hover:!bg-purple-500 !text-white'}
           >
             {translating ? 'AI翻译中...' : translateSuccess ? '翻译完成 ✓' : 'AI补全翻译'}
           </Button>
-          {/* 保存按钮 */}
-          <Button
-            onClick={handleSave}
-            loading={saving}
-            className={saveSuccess ? '!bg-green-500' : ''}
-          >
-            {saving ? '保存中...' : saveSuccess ? '已保存 ✓' : '保存修改'}
-          </Button>
+          {/* 保存按钮 - 只读模式下隐藏 */}
+          {!isReadOnly && (
+            <Button
+              onClick={handleSave}
+              loading={saving}
+              className={saveSuccess ? '!bg-green-500' : ''}
+            >
+              {saving ? '保存中...' : saveSuccess ? '已保存 ✓' : '保存修改'}
+            </Button>
+          )}
           {/* 保存并上架按钮 - 仅在待审核或已下架时显示 */}
           {(course.status === 'pending' || course.status === 'offline') && (
             <Button
@@ -315,6 +328,16 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
+      {/* 只读模式提示 */}
+      {isReadOnly && (
+        <div className="bg-blue-500/10 border border-blue-500/30 text-blue-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>此课程已上架，当前为只读模式。如需修改，请先下架课程。</span>
+        </div>
+      )}
+
       {/* 语言切换标签 */}
       <div className="flex gap-2 flex-wrap sticky top-0 bg-[var(--admin-bg)] py-3 z-10">
         {(['en', 'zh', 'th', 'ja'] as const).map(lang => {
@@ -322,7 +345,18 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
           return (
             <button
               key={lang}
-              onClick={() => setEditLang(lang)}
+              onClick={() => {
+                setEditLang(lang);
+                // 切换语言时自动更新货币
+                const langToCurrency: Record<string, string> = {
+                  'zh': 'CNY',
+                  'en': 'USD',
+                  'th': 'THB',
+                  'ja': 'JPY',
+                };
+                setEditForm(prev => ({ ...prev, currency: langToCurrency[lang] }));
+                setIsDirty(true);
+              }}
               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                 editLang === lang
                   ? 'bg-emerald-500 text-black'
@@ -390,39 +424,59 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
 
-          {/* 价格、货币、容量 */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* 多货币价格 */}
+          <div className="grid grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">课程价格</label>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">人民币 (CNY)</label>
               <input
                 type="number"
-                value={editForm.price || 0}
-                onChange={(e) => { setEditForm(prev => ({ ...prev, price: Number(e.target.value) })); setIsDirty(true); }}
+                value={editForm.price_cny || ''}
+                onChange={(e) => { const n = Number(e.target.value); const val = !isNaN(n) && e.target.value !== '' ? n : undefined; setEditForm(prev => ({ ...prev, price_cny: val })); setIsDirty(true); }}
+                placeholder="¥"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">货币</label>
-              <select
-                value={editForm.currency || 'CNY'}
-                onChange={(e) => { setEditForm(prev => ({ ...prev, currency: e.target.value })); setIsDirty(true); }}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
-              >
-                <option value="CNY">¥ 人民币</option>
-                <option value="USD">$ 美元</option>
-                <option value="JPY">¥ 日元</option>
-                <option value="THB">฿ 泰铢</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">最大容量</label>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">美元 (USD)</label>
               <input
                 type="number"
-                value={editForm.maxCapacity || 30}
-                onChange={(e) => { setEditForm(prev => ({ ...prev, maxCapacity: Number(e.target.value) })); setIsDirty(true); }}
+                value={editForm.price_usd || ''}
+                onChange={(e) => { const n = Number(e.target.value); const val = !isNaN(n) && e.target.value !== '' ? n : undefined; setEditForm(prev => ({ ...prev, price_usd: val })); setIsDirty(true); }}
+                placeholder="$"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
               />
             </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">日元 (JPY)</label>
+              <input
+                type="number"
+                value={editForm.price_jpy || ''}
+                onChange={(e) => { const n = Number(e.target.value); const val = !isNaN(n) && e.target.value !== '' ? n : undefined; setEditForm(prev => ({ ...prev, price_jpy: val })); setIsDirty(true); }}
+                placeholder="¥"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">泰铢 (THB)</label>
+              <input
+                type="number"
+                value={editForm.price_thb || ''}
+                onChange={(e) => { const n = Number(e.target.value); const val = !isNaN(n) && e.target.value !== '' ? n : undefined; setEditForm(prev => ({ ...prev, price_thb: val })); setIsDirty(true); }}
+                placeholder="฿"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
+              />
+            </div>
+          </div>
+
+          {/* 最大容量 */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">最大容量</label>
+            <input
+              type="number"
+              value={editForm.maxCapacity || 30}
+              onChange={(e) => { setEditForm(prev => ({ ...prev, maxCapacity: Number(e.target.value) })); setIsDirty(true); }}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none"
+            />
           </div>
         </div>
       </Card>
