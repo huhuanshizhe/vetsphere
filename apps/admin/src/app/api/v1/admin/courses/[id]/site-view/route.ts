@@ -1,64 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireSiteCode, siteCodeErrorResponse } from '@/lib/site-resolver';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// POST /api/v1/admin/courses/[id]/site-view - initialize site view
+// POST /api/v1/admin/courses/[id]/site-view
+// 创建或更新课程的站点视图（绕过RLS，使用service role）
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const siteCode = requireSiteCode(req);
+    const body = await req.json();
+    const { site_code, publish_status = 'published' } = body;
+
+    if (!site_code) {
+      return NextResponse.json(
+        { error: 'site_code is required' },
+        { status: 400 }
+      );
+    }
 
     const { data, error } = await supabase
       .from('course_site_views')
       .upsert({
         course_id: id,
-        site_code: siteCode,
+        site_code,
         is_enabled: true,
-        publish_status: 'draft',
+        publish_status,
+        published_at: publish_status === 'published' ? new Date().toISOString() : null,
       }, { onConflict: 'course_id,site_code' })
       .select()
       .single();
 
-    if (error) throw error;
-    return NextResponse.json(data, { status: 201 });
+    if (error) {
+      console.error('Failed to upsert course site view:', error);
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
-    try { return siteCodeErrorResponse(error); } catch {}
-    console.error('Failed to init course site view:', error);
-    return NextResponse.json({ error: 'Failed to initialize site view' }, { status: 500 });
+    console.error('Failed to create/update course site view:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
-// PATCH /api/v1/admin/courses/[id]/site-view?site_code=cn - update site view
-export async function PATCH(
+// DELETE /api/v1/admin/courses/[id]/site-view?site_code=cn
+// 删除课程的站点视图
+export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const siteCode = requireSiteCode(req);
-    const body = await req.json();
+    const siteCode = req.nextUrl.searchParams.get('site_code');
 
-    const { data, error } = await supabase
+    if (!siteCode) {
+      return NextResponse.json(
+        { error: 'site_code is required' },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabase
       .from('course_site_views')
-      .update({ ...body, updated_at: new Date().toISOString() })
+      .delete()
       .eq('course_id', id)
-      .eq('site_code', siteCode)
-      .select()
-      .single();
+      .eq('site_code', siteCode);
 
-    if (error) throw error;
-    return NextResponse.json(data);
+    if (error) {
+      console.error('Failed to delete course site view:', error);
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    try { return siteCodeErrorResponse(error); } catch {}
-    console.error('Failed to update course site view:', error);
-    return NextResponse.json({ error: 'Failed to update site view' }, { status: 500 });
+    console.error('Failed to delete course site view:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

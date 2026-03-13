@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 import {
   translateCourse,
   extractTranslatableContent,

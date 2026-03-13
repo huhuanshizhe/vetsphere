@@ -52,7 +52,7 @@ function mapCourseForDB(body: Record<string, any>): Record<string, any> {
     'description', 'status', 'instructor', 'location', 'agenda', 'services',
     'title_en', 'title_zh', 'title_th', 'title_ja',
     'description_en', 'description_zh', 'description_th', 'description_ja',
-    'price_cny',
+    'price_cny', 'price_usd', 'price_jpy', 'price_thb',
     'target_audience', 'target_audience_zh',
     'translations_complete', 'translated_at',
   ];
@@ -89,7 +89,7 @@ function mapCourseForDB(body: Record<string, any>): Record<string, any> {
   }
 
   // Sanitize numeric fields: empty strings -> null
-  const numericFields = ['total_hours', 'price', 'max_enrollment', 'current_enrollment', 'price_cny'];
+  const numericFields = ['total_hours', 'price', 'max_enrollment', 'current_enrollment', 'price_cny', 'price_usd', 'price_jpy', 'price_thb'];
   for (const f of numericFields) {
     if (f in payload && payload[f] === '') payload[f] = null;
   }
