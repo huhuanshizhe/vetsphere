@@ -89,9 +89,69 @@ interface CheckoutProps {
   siteConfig?: SiteConfig;
 }
 
+// Translation helper
+const useTranslations = (isCN: boolean) => {
+  const t = {
+    // Payment methods
+    creditCardLink: isCN ? '信用卡 / Link' : 'Credit Card / Link',
+    securePayment: isCN ? '安全嵌入式支付' : 'Secure Embedded Payment',
+    creditCard: isCN ? '信用卡' : 'Credit Card',
+    airwallexForm: isCN ? 'Airwallex 安全表单' : 'Airwallex Secure Form',
+    alipay: isCN ? '支付宝' : 'Alipay',
+    cnyPayments: isCN ? '人民币支付' : 'CNY Payments',
+    wechatPay: isCN ? '微信支付' : 'WeChat Pay',
+    requestQuote: isCN ? '申请报价单' : 'Request Quote',
+    b2bInvoice: isCN ? 'B2B 形式发票' : 'B2B Proforma Invoice',
+    
+    // Page titles
+    checkout: isCN ? '结算' : 'Checkout',
+    orderSummary: isCN ? '订单摘要' : 'Order Summary',
+    paymentMethod: isCN ? '支付方式' : 'Payment Method',
+    contactInfo: isCN ? '联系信息' : 'Contact Information',
+    shippingAddress: isCN ? '收货地址' : 'Shipping Address',
+    
+    // Buttons
+    pay: isCN ? '支付' : 'Pay',
+    processing: isCN ? '处理中...' : 'Processing...',
+    placeOrder: isCN ? '下单' : 'Place Order',
+    continueShopping: isCN ? '继续购物' : 'Continue Shopping',
+    viewOrder: isCN ? '查看订单' : 'View Order Details',
+    viewInvoices: isCN ? '查看发票' : 'View My Invoices',
+    
+    // Messages
+    cartEmpty: isCN ? '购物车是空的' : 'Your Cart is Empty',
+    goToShop: isCN ? '去购物' : 'Go to Shop',
+    paymentSuccess: isCN ? '支付成功' : 'Payment Successful',
+    piGenerated: isCN ? '报价单已生成' : 'Proforma Invoice Generated',
+    orderConfirmed: isCN ? '订单已确认' : 'Order confirmed',
+    
+    // Form labels
+    email: isCN ? '邮箱' : 'Email',
+    phone: isCN ? '电话' : 'Phone',
+    name: isCN ? '姓名' : 'Name',
+    clinicName: isCN ? '医院名称' : 'Clinic Name',
+    doctorName: isCN ? '医生姓名' : 'Doctor Name',
+    
+    // Order summary
+    subtotal: isCN ? '小计' : 'Subtotal',
+    shipping: isCN ? '运费' : 'Shipping',
+    free: isCN ? '免费' : 'Free',
+    total: isCN ? '总计' : 'Total',
+    qty: isCN ? '数量' : 'Qty',
+    
+    // Auth
+    login: isCN ? '登录' : 'Login',
+    register: isCN ? '注册' : 'Register',
+    logout: isCN ? '退出' : 'Logout',
+    welcomeBack: isCN ? '欢迎回来' : 'Welcome Back',
+  };
+  return t;
+};
+
 const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
   const availableProviders = siteConfig?.paymentProviders;
   const isCN = siteConfig?.market === 'cn';
+  const t = useTranslations(isCN);
   const defaultCurrency = isCN ? 'CNY' : 'USD';
   const paymentMethods = availableProviders
     ? ALL_PAYMENT_METHODS.filter(m => (availableProviders as readonly string[]).includes(m.id))
@@ -351,18 +411,18 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
     return (
       <div className="max-w-2xl mx-auto mt-20 p-16 bg-white rounded-[40px] shadow-2xl text-center animate-in zoom-in duration-500 pt-40">
         <div className="w-24 h-24 bg-emerald-50 text-vs rounded-full flex items-center justify-center text-5xl mx-auto mb-10">✓</div>
-        <h2 className="text-3xl font-black text-slate-900 mb-4">{paymentMethod === 'Quote' ? 'Proforma Invoice Generated' : 'Payment Successful'}</h2>
+        <h2 className="text-3xl font-black text-slate-900 mb-4">{paymentMethod === 'Quote' ? (isCN ? '报价单已生成' : 'Proforma Invoice Generated') : (isCN ? '支付成功' : 'Payment Successful')}</h2>
         <p className="text-slate-500 mb-12 font-medium leading-relaxed">
           {paymentMethod === 'Quote' 
-            ? 'Your official Proforma Invoice (PI) has been created. You can download it for hospital procurement or complete the wire transfer from your Dashboard.'
-            : `Order confirmed via ${paymentMethod}. An invoice has been sent to ${contactEmail}.`
+            ? (isCN ? '您的官方形式发票（PI）已创建。您可以从仪表板下载用于医院采购或完成电汇。' : 'Your official Proforma Invoice (PI) has been created. You can download it for hospital procurement or complete the wire transfer from your Dashboard.')
+            : (isCN ? `订单已通过 ${paymentMethod} 确认。发票已发送至 ${contactEmail}。` : `Order confirmed via ${paymentMethod}. An invoice has been sent to ${contactEmail}.`)
           }
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/dashboard" className="flex-1 btn-vs py-5 rounded-2xl shadow-xl text-center">
-                {paymentMethod === 'Quote' ? 'View My Invoices' : 'View Order Details'}
+                {paymentMethod === 'Quote' ? (isCN ? '查看我的发票' : 'View My Invoices') : (isCN ? '查看订单详情' : 'View Order Details')}
             </Link>
-            <Link href="/shop" className="flex-1 px-8 py-5 border-2 border-slate-100 text-slate-900 rounded-2xl font-black uppercase text-xs hover:bg-slate-50 transition-all flex items-center justify-center">Continue Shopping</Link>
+            <Link href="/shop" className="flex-1 px-8 py-5 border-2 border-slate-100 text-slate-900 rounded-2xl font-black uppercase text-xs hover:bg-slate-50 transition-all flex items-center justify-center">{isCN ? '继续购物' : 'Continue Shopping'}</Link>
         </div>
       </div>
     );
@@ -372,8 +432,8 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
     return (
       <div className="max-w-xl mx-auto mt-20 text-center py-40">
         <div className="text-8xl mb-8 grayscale opacity-20">🛍️</div>
-        <h2 className="text-2xl font-black text-slate-900 mb-4">Your Cart is Empty</h2>
-        <Link href="/shop" className="btn-vs px-12 py-5 rounded-2xl shadow-xl">Go to Shop</Link>
+        <h2 className="text-2xl font-black text-slate-900 mb-4">{isCN ? '购物车是空的' : 'Your Cart is Empty'}</h2>
+        <Link href="/shop" className="btn-vs px-12 py-5 rounded-2xl shadow-xl">{isCN ? '去购物' : 'Go to Shop'}</Link>
       </div>
     );
   }
@@ -385,7 +445,7 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
       <div className="lg:col-span-5 order-2 lg:order-1">
         <div className="sticky top-24 space-y-8">
             <div className="clinical-card p-8 bg-slate-50/50 backdrop-blur-sm border-slate-200">
-                <h2 className="text-xs font-black mb-8 text-slate-400 uppercase tracking-[0.2em]">Order Summary ({cart.length})</h2>
+                <h2 className="text-xs font-black mb-8 text-slate-400 uppercase tracking-[0.2em]">{isCN ? '订单摘要' : 'Order Summary'} ({cart.length})</h2>
                 <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                     {cart.map(item => (
                     <div key={item.id} className="flex gap-4 group">
@@ -395,7 +455,7 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                         <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-slate-900 text-sm truncate">{item.name}</h3>
                             <p className="text-xs text-vs font-black uppercase tracking-widest mb-1">{item.type}</p>
-                            <p className="text-sm text-slate-500">Qty: {item.quantity}</p>
+                            <p className="text-sm text-slate-500">{isCN ? '数量' : 'Qty'}: {item.quantity}</p>
                         </div>
                         <div className="text-right">
                             <p className="font-bold text-slate-900 text-sm">¥{(item.price * item.quantity).toLocaleString()}</p>
@@ -406,15 +466,15 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                 
                 <div className="mt-8 pt-8 border-t border-slate-200 space-y-3">
                     <div className="flex justify-between text-sm font-bold text-slate-500">
-                        <span>Subtotal</span>
+                        <span>{isCN ? '小计' : 'Subtotal'}</span>
                         <span>¥{totalAmount.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm font-bold text-slate-500">
-                        <span>Shipping</span>
-                        <span>Free</span>
+                        <span>{isCN ? '运费' : 'Shipping'}</span>
+                        <span>{isCN ? '免费' : 'Free'}</span>
                     </div>
                     <div className="flex justify-between text-2xl font-black text-slate-900 pt-4">
-                        <span>Total</span>
+                        <span>{isCN ? '总计' : 'Total'}</span>
                         <span className="text-vs">¥{totalAmount.toLocaleString()}</span>
                     </div>
                 </div>
@@ -433,52 +493,52 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
       {/* Right Column: One-Page Form */}
       <div className="lg:col-span-7 order-1 lg:order-2">
         <form onSubmit={handlePlaceOrder} className="space-y-8">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-8">Checkout</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-8">{isCN ? '结算' : 'Checkout'}</h1>
 
             {/* Section 1: Contact */}
             <section className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-900"></div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">1</span>
-                    Contact Information
+                    {isCN ? '联系信息' : 'Contact Information'}
                 </h3>
                 
                 {isAuthenticated ? (
                     <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl">
                         <div>
-                            <p className="text-xs font-bold text-slate-500">Logged in as</p>
+                            <p className="text-xs font-bold text-slate-500">{isCN ? '已登录' : 'Logged in as'}</p>
                             <p className="text-sm font-black text-slate-900">{user?.name} ({user?.email})</p>
                         </div>
-                        <button type="button" onClick={logout} className="text-xs font-bold text-red-500 hover:underline">Change Account</button>
+                        <button type="button" onClick={logout} className="text-xs font-bold text-red-500 hover:underline">{isCN ? '切换账号' : 'Change Account'}</button>
                     </div>
                 ) : (
                     <div className="space-y-4">
                          {!showLogin ? (
                              <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Email Address</label>
+                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">{isCN ? '邮箱地址' : 'Email Address'}</label>
                                     <input type="email" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
-                                        placeholder="doctor@clinic.com"
+                                        placeholder={isCN ? 'doctor@clinic.com' : 'doctor@clinic.com'}
                                         value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
                                 </div>
                                 <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                                    <span>Already have an account?</span>
-                                    <button type="button" onClick={() => setShowLogin(true)} className="text-vs hover:underline">Sign In</button>
+                                    <span>{isCN ? '已有账号？' : 'Already have an account?'}</span>
+                                    <button type="button" onClick={() => setShowLogin(true)} className="text-vs hover:underline">{isCN ? '登录' : 'Sign In'}</button>
                                 </div>
                              </div>
                          ) : (
                              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 animate-in fade-in">
                                 <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-bold text-slate-900 text-sm">Sign In</h4>
-                                    <button type="button" onClick={() => setShowLogin(false)} className="text-xs font-bold text-slate-400">Cancel</button>
+                                    <h4 className="font-bold text-slate-900 text-sm">{isCN ? '登录' : 'Sign In'}</h4>
+                                    <button type="button" onClick={() => setShowLogin(false)} className="text-xs font-bold text-slate-400">{isCN ? '取消' : 'Cancel'}</button>
                                 </div>
-                                <input type="email" placeholder="Email" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold" 
+                                <input type="email" placeholder={isCN ? '邮箱' : 'Email'} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold" 
                                     value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} />
-                                <input type="password" placeholder="Password" className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold"
+                                <input type="password" placeholder={isCN ? '密码' : 'Password'} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold"
                                     value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
                                 {authError && <p className="text-xs text-red-500 font-bold">{authError}</p>}
                                 <button type="button" onClick={handleInlineLogin} disabled={authLoading} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest">
-                                    {authLoading ? 'Signing In...' : 'Sign In & Continue'}
+                                    {authLoading ? (isCN ? '登录中...' : 'Signing In...') : (isCN ? '登录并继续' : 'Sign In & Continue')}
                                 </button>
                              </div>
                          )}
@@ -491,48 +551,48 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-900"></div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">2</span>
-                    Shipping Address
+                    {isCN ? '收货地址' : 'Shipping Address'}
                 </h3>
                 
                 <div className="grid grid-cols-2 gap-6">
                     <div className="col-span-2">
-                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Recipient Name</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">{isCN ? '收件人姓名' : 'Recipient Name'}</label>
                         <input type="text" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         value={clinicInfo.doctorName} onChange={e => setClinicInfo({...clinicInfo, doctorName: e.target.value})} />
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Country / Region</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">{isCN ? '国家/地区' : 'Country / Region'}</label>
                         <select required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs appearance-none"
                             value={clinicInfo.country} onChange={e => { setClinicInfo({...clinicInfo, country: e.target.value, state: ''}); }}>
-                            <option value="" disabled>Select Country</option>
+                            <option value="" disabled>{isCN ? '选择国家' : 'Select Country'}</option>
                             {LOCATIONS.map(loc => <option key={loc.code} value={loc.name}>{loc.name}</option>)}
                         </select>
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">State / Province</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">{isCN ? '省/州' : 'State / Province'}</label>
                         <select required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs appearance-none disabled:opacity-50"
                             value={clinicInfo.state} onChange={e => setClinicInfo({...clinicInfo, state: e.target.value})} disabled={!clinicInfo.country}>
-                            <option value="" disabled>Select State</option>
+                            <option value="" disabled>{isCN ? '选择省份' : 'Select State'}</option>
                             {availableStates.map(state => <option key={state} value={state}>{state}</option>)}
                         </select>
                     </div>
                     <div className="col-span-2">
-                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Street Address</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">{isCN ? '街道地址' : 'Street Address'}</label>
                         <input type="text" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
-                        placeholder="123 Medical Blvd" value={clinicInfo.street} onChange={e => setClinicInfo({...clinicInfo, street: e.target.value})} />
+                        placeholder={isCN ? '某某路123号' : '123 Medical Blvd'} value={clinicInfo.street} onChange={e => setClinicInfo({...clinicInfo, street: e.target.value})} />
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">City</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">{isCN ? '城市' : 'City'}</label>
                         <input type="text" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         value={clinicInfo.city} onChange={e => setClinicInfo({...clinicInfo, city: e.target.value})} />
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Postal Code</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">{isCN ? '邮政编码' : 'Postal Code'}</label>
                         <input type="text" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         value={clinicInfo.zip} onChange={e => setClinicInfo({...clinicInfo, zip: e.target.value})} />
                     </div>
                     <div className="col-span-2">
-                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Phone Number</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">{isCN ? '电话号码' : 'Phone Number'}</label>
                         <input type="tel" required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 font-bold text-sm outline-none focus:border-vs"
                         value={clinicInfo.phone} onChange={e => setClinicInfo({...clinicInfo, phone: e.target.value})} />
                     </div>
@@ -544,7 +604,7 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-900"></div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">3</span>
-                    Payment Method
+                    {isCN ? '支付方式' : 'Payment Method'}
                 </h3>
                 
                 {status === 'error' && <div className="p-4 mb-6 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100">{statusMessage}</div>}
@@ -561,8 +621,8 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                 {(status === 'ready_for_payment' && paymentMethod === 'Stripe' && stripeClientSecret) ? (
                     <div className="animate-in fade-in">
                         <div className="flex justify-between items-center mb-4">
-                            <h4 className="font-bold text-slate-900 text-sm">Complete Payment</h4>
-                            <button type="button" onClick={() => { setStatus('idle'); setStripeClientSecret(null); }} className="text-xs font-bold text-slate-400 hover:text-slate-900">Change Method</button>
+                            <h4 className="font-bold text-slate-900 text-sm">{isCN ? '完成支付' : 'Complete Payment'}</h4>
+                            <button type="button" onClick={() => { setStatus('idle'); setStripeClientSecret(null); }} className="text-xs font-bold text-slate-400 hover:text-slate-900">{isCN ? '更换方式' : 'Change Method'}</button>
                         </div>
                         <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret, appearance: { theme: 'stripe', variables: { colorPrimary: '#635BFF' } } }}>
                             <StripePaymentForm 
@@ -577,35 +637,35 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                     /* Airwallex Embedded Form View */
                     <div>
                         <div className="flex justify-between items-center mb-4">
-                            <h4 className="font-bold text-slate-900 text-sm">Card Details</h4>
-                            <button type="button" onClick={() => setStatus('idle')} className="text-xs font-bold text-slate-400 hover:text-slate-900">Change Method</button>
+                            <h4 className="font-bold text-slate-900 text-sm">{isCN ? '银行卡信息' : 'Card Details'}</h4>
+                            <button type="button" onClick={() => setStatus('idle')} className="text-xs font-bold text-slate-400 hover:text-slate-900">{isCN ? '更换方式' : 'Change Method'}</button>
                         </div>
                         <div id="airwallex-card-container" className="mb-6"></div>
                         <button type="button" onClick={handleAirwallexConfirm} className="w-full bg-vs text-white py-4 rounded-xl font-black text-sm shadow-xl hover:shadow-2xl transition-all">
-                            Pay ¥{totalAmount.toLocaleString()}
+                            {isCN ? '支付' : 'Pay'} ¥{totalAmount.toLocaleString()}
                         </button>
                     </div>
                 ) : (status === 'ready_for_payment' && paymentMethod === 'Wechat' && wechatQrUrl) ? (
                     /* WeChat QR Code View */
                     <div className="text-center">
                         <div className="flex justify-between items-center mb-4">
-                            <h4 className="font-bold text-slate-900 text-sm">WeChat Pay</h4>
-                            <button type="button" onClick={() => { setStatus('idle'); setWechatQrUrl(null); }} className="text-xs font-bold text-slate-400 hover:text-slate-900">Change Method</button>
+                            <h4 className="font-bold text-slate-900 text-sm">{isCN ? '微信支付' : 'WeChat Pay'}</h4>
+                            <button type="button" onClick={() => { setStatus('idle'); setWechatQrUrl(null); }} className="text-xs font-bold text-slate-400 hover:text-slate-900">{isCN ? '更换方式' : 'Change Method'}</button>
                         </div>
                         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm mb-4">
                             <img 
                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(wechatQrUrl)}`} 
-                                alt="WeChat Pay QR Code" 
+                                alt={isCN ? '微信支付二维码' : 'WeChat Pay QR Code'}
                                 className="mx-auto mb-4"
                                 width={200}
                                 height={200}
                             />
-                            <p className="text-sm text-slate-600 font-medium">Scan with WeChat to pay</p>
+                            <p className="text-sm text-slate-600 font-medium">{isCN ? '使用微信扫描二维码支付' : 'Scan with WeChat to pay'}</p>
                             <p className="text-2xl font-black text-slate-900 mt-2">¥{totalAmount.toLocaleString()}</p>
                         </div>
-                        <p className="text-xs text-slate-500">Order ID: {currentOrderId}</p>
+                        <p className="text-xs text-slate-500">{isCN ? '订单号' : 'Order ID'}: {currentOrderId}</p>
                         <button type="button" onClick={() => window.location.reload()} className="mt-4 text-vs text-sm font-bold hover:underline">
-                            I have completed payment
+                            {isCN ? '我已完成支付' : 'I have completed payment'}
                         </button>
                     </div>
                 ) : (
@@ -620,8 +680,20 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                             >
                                 <div className={`text-2xl w-10 h-10 flex items-center justify-center rounded-xl shadow-sm ${method.id === 'Quote' && paymentMethod === 'Quote' ? 'bg-slate-800 text-white' : 'bg-white'}`}>{method.icon}</div>
                                 <div>
-                                    <p className="text-sm font-black">{method.label}</p>
-                                    <p className={`text-xs font-bold ${paymentMethod === method.id ? 'opacity-80' : 'opacity-70'}`}>{method.sub}</p>
+                                    <p className="text-sm font-black">{isCN ? {
+                                        Stripe: '信用卡 / Link',
+                                        Airwallex: '信用卡',
+                                        Alipay: '支付宝',
+                                        Wechat: '微信支付',
+                                        Quote: '申请报价单'
+                                    }[method.id] : method.label}</p>
+                                    <p className={`text-xs font-bold ${paymentMethod === method.id ? 'opacity-80' : 'opacity-70'}`}>{isCN ? {
+                                        Stripe: '安全嵌入式支付',
+                                        Airwallex: 'Airwallex 安全表单',
+                                        Alipay: '人民币支付',
+                                        Wechat: '人民币支付',
+                                        Quote: 'B2B 形式发票'
+                                    }[method.id] : method.sub}</p>
                                 </div>
                                 <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === method.id ? 'border-current' : 'border-slate-200'}`}>
                                     {paymentMethod === method.id && <div className="w-2.5 h-2.5 rounded-full bg-current"></div>}
@@ -634,7 +706,7 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                         {paymentMethod === 'Quote' && (
                             <div className="p-4 mb-6 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in slide-in-from-top-2">
                                 <p className="text-xs text-slate-600 leading-relaxed">
-                                    <span className="font-black text-vs">Note:</span> Choosing this method will generate a formal <span className="font-bold">Proforma Invoice</span>. You can use this document for internal hospital approval or wire transfers. The quote remains valid for 30 days.
+                                    <span className="font-black text-vs">{isCN ? '注意' : 'Note'}:</span> {isCN ? '选择此方式将生成正式的' : 'Choosing this method will generate a formal'} <span className="font-bold">{isCN ? '形式发票' : 'Proforma Invoice'}</span>. {isCN ? '您可以使用此文档进行医院内部审批或电汇。报价有效期为30天。' : 'You can use this document for internal hospital approval or wire transfers. The quote remains valid for 30 days.'}
                                 </p>
                             </div>
                         )}
@@ -642,11 +714,11 @@ const Checkout: React.FC<CheckoutProps> = ({ siteConfig }) => {
                         <button type="submit" disabled={status !== 'idle' && status !== 'error'} 
                             className={`w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all transform active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed
                             ${paymentMethod === 'Quote' ? 'bg-vs text-white ring-4 ring-vs/10' : 'bg-slate-900 text-white'}`}>
-                            {paymentMethod === 'Quote' ? 'Generate Proforma Invoice' : 
-                             paymentMethod === 'Stripe' ? 'Continue to Payment' : `Place Order with ${paymentMethod}`}
+                            {paymentMethod === 'Quote' ? (isCN ? '生成形式发票' : 'Generate Proforma Invoice') : 
+                             paymentMethod === 'Stripe' ? (isCN ? '继续支付' : 'Continue to Payment') : (isCN ? '下单' : `Place Order with ${paymentMethod}`)}
                         </button>
                         <p className="text-center text-[10px] font-bold text-slate-400 mt-4">
-                            By placing this order, you agree to VetSphere&apos;s <span className="underline">Terms of Service</span>.
+                            {isCN ? '下单即表示您同意 VetSphere 的' : "By placing this order, you agree to VetSphere's"} <span className="underline">{isCN ? '服务条款' : 'Terms of Service'}</span>.
                         </p>
                     </div>
                 )}
