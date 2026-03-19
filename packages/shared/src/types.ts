@@ -17,6 +17,19 @@ export type CourseStatus = 'draft' | 'pending' | 'published' | 'offline';
 export type CourseFormat = 'video' | 'live' | 'article' | 'series' | 'offline';
 
 // ============================================
+// Product Image Types (商品图片)
+// ============================================
+
+/** Product image with type distinction for main/detail images */
+export interface ProductImage {
+  id?: string;
+  url: string;
+  type: 'main' | 'detail';
+  sortOrder: number;
+  alt?: string;
+}
+
+// ============================================
 // Doctor Application Types (医生入驻申请)
 // ============================================
 
@@ -229,9 +242,9 @@ export interface Product {
   id: string;
   name: string;
   brand: string;
-  group: ProductGroup;
+  group?: ProductGroup; // Optional for backward compatibility
   price: number;
-  specialty: Specialty;
+  specialty?: Specialty; // Optional for backward compatibility
   imageUrl: string;
   description: string;
   longDescription: string;
@@ -244,7 +257,7 @@ export interface Product {
   };
   stockStatus: 'In Stock' | 'Low Stock' | 'Out of Stock';
   stockQuantity?: number;
-  status?: 'Draft' | 'Pending' | 'Published' | 'Rejected';
+  status?: 'Draft' | 'Pending' | 'Published' | 'Rejected' | 'Offline';
   supplierId?: string;
   rejectionReason?: string;
   updatedAt?: string;
@@ -253,6 +266,8 @@ export interface Product {
     origin: string;
     rating: number;
   };
+  // Multi-image support
+  images?: ProductImage[];
   // B2B Commerce fields
   purchaseMode?: PurchaseMode;
   clinicalCategory?: ClinicalCategory;
@@ -261,6 +276,64 @@ export interface Product {
   certifications?: Certification[];
   instructorRecommendation?: string;
   categorySlug?: string;
+  // New hierarchical category fields
+  category_id?: string;
+  subcategory_id?: string;
+  level3_category_id?: string;
+  // SKU Variant fields
+  hasVariants?: boolean;
+  priceRangeMin?: number;
+  priceRangeMax?: number;
+  totalStock?: number;
+  richDescription?: string;
+  variantAttributes?: ProductVariantAttribute[];
+  skus?: ProductSku[];
+  // International Trade Fields (外贸销售场景)
+  weight?: number;                    // 产品重量
+  weightUnit?: 'g' | 'kg' | 'lb';    // 重量单位：g(克), kg(千克), lb(磅)
+  suggestedRetailPrice?: number;      // 建议销售价（供应商填写）
+  sellingPrice?: number;              // 销售定价（最终商城价格，必填，不能低于供货价）
+  // GEO Content Fields (SEO & AI 生成内容)
+  faq?: Array<{                       // FAQ 问答数组
+    question: string;
+    answer: string;
+    sortOrder?: number;
+  }>;
+  metaTitle?: string;                 // SEO 元标题
+  metaDescription?: string;           // SEO 元描述
+  focusKeyword?: string;              // SEO 核心关键词
+}
+
+// ============================================
+// Product Variant Types (SKU规格变体)
+// ============================================
+
+/** 规格属性定义（颜色、尺寸等维度） */
+export interface ProductVariantAttribute {
+  id: string;
+  productId: string;
+  attributeName: string;           // 规格名称：如"颜色"、"尺寸"
+  attributeValues: string[];       // 规格值列表：如 ['红色','蓝色','白色']
+  sortOrder: number;
+}
+
+/** SKU变体（每个规格组合独立价格/库存） */
+export interface ProductSku {
+  id: string;
+  productId: string;
+  skuCode: string;                 // SKU编码
+  attributeCombination: Record<string, string>;  // {"颜色":"红色","尺寸":"M"}
+  price: number;                   // 供货价（供应商填写）
+  originalPrice?: number;
+  stockQuantity: number;           // 库存数量
+  weight?: number;                 // 产品重量
+  weightUnit?: 'g' | 'kg' | 'lb';  // 重量单位
+  suggestedRetailPrice?: number;   // 建议零售价（供应商建议）
+  sellingPrice?: number;           // 销售定价（Admin填写，最终商城价格）
+  imageUrl?: string;
+  barcode?: string;
+  isActive: boolean;
+  sortOrder: number;
 }
 
 export interface Course {

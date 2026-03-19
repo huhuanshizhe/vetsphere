@@ -30,10 +30,12 @@ const AdminShell: React.FC<AdminShellProps> = ({
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean | undefined>(undefined);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
     window.addEventListener('resize', check);
@@ -41,13 +43,13 @@ const AdminShell: React.FC<AdminShellProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isMobileMenuOpen && isMobile) {
+    if (isMounted && isMobile !== undefined && isMobileMenuOpen && isMobile) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [isMobileMenuOpen, isMobile]);
+  }, [isMounted, isMobile, isMobileMenuOpen]);
 
   // 权限检查
   useEffect(() => {
@@ -66,6 +68,18 @@ const AdminShell: React.FC<AdminShellProps> = ({
   };
 
   const breadcrumbs = getBreadcrumbs(pathname);
+
+  // 服务端渲染时不渲染任何内容，避免 Hydration 不匹配
+  if (!isMounted || isMobile === undefined) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+          <span className="text-slate-500 text-sm">加载中...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!user || user.role !== 'Admin') {
     return (

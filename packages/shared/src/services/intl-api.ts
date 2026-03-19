@@ -84,10 +84,10 @@ export interface IntlProduct {
   display_name: string;
   slug: string;
   summary: string | null;
-  pricing_mode: string;
+  pricing_mode: 'fixed' | 'inquiry' | 'inherit' | 'custom';
   display_price: number | null;
   currency_code: string | null;
-  purchase_type: string | null;
+  purchase_type: 'direct' | 'quote' | null;
   display_order: number;
   is_featured: boolean;
   display_tags: string[];
@@ -110,6 +110,13 @@ export interface IntlProduct {
   specs: Record<string, any>;
   price_min: number | null;
   price_max: number | null;
+  // Base pricing mode from products table
+  base_pricing_mode?: 'fixed' | 'inquiry';
+  base_price?: number | null;
+  stock_quantity?: number;
+  // Supplier info
+  supplier_name?: string;
+  supplier_id?: string;
   // Related training
   related_courses?: IntlCourse[];
 }
@@ -468,6 +475,11 @@ export async function getIntlCourseInstructors(courseId: string, locale: string 
 
 function mapProductRow(sv: any): IntlProduct {
   const base = sv.products || {};
+  // Determine effective pricing_mode: site view override or base product
+  const effectivePricingMode = sv.pricing_mode === 'inherit' || !sv.pricing_mode
+    ? (base.pricing_mode || 'fixed')
+    : sv.pricing_mode;
+  
   return {
     id: sv.id,
     product_id: sv.product_id,
@@ -475,10 +487,10 @@ function mapProductRow(sv: any): IntlProduct {
     display_name: sv.display_name || base.name || '',
     slug: sv.slug_override || base.slug || sv.product_id,
     summary: sv.summary_override || base.subtitle || base.description,
-    pricing_mode: sv.pricing_mode || 'inherit',
-    display_price: sv.display_price,
-    currency_code: sv.currency_code,
-    purchase_type: sv.purchase_type,
+    pricing_mode: effectivePricingMode,
+    display_price: sv.display_price || base.price,
+    currency_code: sv.currency_code || 'USD',
+    purchase_type: sv.purchase_type || (effectivePricingMode === 'inquiry' ? 'quote' : 'direct'),
     display_order: sv.display_order || 0,
     is_featured: sv.is_featured || false,
     display_tags: sv.display_tags_json || [],
@@ -501,6 +513,11 @@ function mapProductRow(sv: any): IntlProduct {
     specs: base.specs || {},
     price_min: base.price_min,
     price_max: base.price_max,
+    // New fields
+    base_pricing_mode: base.pricing_mode,
+    base_price: base.price,
+    stock_quantity: base.stock_quantity,
+    supplier_id: base.supplier_uuid,
   };
 }
 
@@ -510,6 +527,7 @@ export async function getIntlProducts(options?: {
   specialty?: string;
   clinical_category?: string;
   purchase_type?: string;
+  pricing_mode?: 'fixed' | 'inquiry';
   limit?: number;
   offset?: number;
 }): Promise<{ items: IntlProduct[]; total: number }> {
@@ -521,7 +539,8 @@ export async function getIntlProducts(options?: {
         id, slug, name, subtitle, description, long_description,
         brand, specialty, scene_code, clinical_category,
         cover_image_url, specs, price_min, price_max,
-        status
+        status, pricing_mode, price, stock_quantity,
+        supplier_uuid
       )
     `, { count: 'exact' })
     .eq('site_code', SITE_CODE)
@@ -539,6 +558,9 @@ export async function getIntlProducts(options?: {
   }
   if (options?.purchase_type) {
     query = query.eq('purchase_type', options.purchase_type);
+  }
+  if (options?.pricing_mode) {
+    query = query.eq('products.pricing_mode', options.pricing_mode);
   }
 
   query = query.order('display_order').order('published_at', { ascending: false });

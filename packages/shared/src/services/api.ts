@@ -1,5 +1,5 @@
 import { supabase, getSessionSafe } from './supabase';
-import { Order, CartItem, Lead, ShippingTemplate, Quote, Product, Course, Post, Specialty } from '../types';
+import { Order, CartItem, Lead, ShippingTemplate, Quote, Product, Course, Post, Specialty, ProductVariantAttribute, ProductSku } from '../types';
 import { PRODUCTS_CN, COURSES_CN } from '../lib/constants';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://api.vetsphere.net';
@@ -53,16 +53,158 @@ const SEED_POSTS: Post[] = [
 const SEED_PRODUCTS = USE_MOCK_FALLBACK ? [...PRODUCTS_CN] : [];
 const SEED_COURSES = USE_MOCK_FALLBACK ? [...COURSES_CN] : [];
 
+// Helper functions to save product related data
+async function saveProductImages(productId: string, images: Array<{ url: string; type: string; sortOrder?: number }>): Promise<void> {
+  // Delete existing images
+  await supabase.from('product_images').delete().eq('product_id', productId);
+  
+  // Insert new images
+  if (images.length > 0) {
+    const imageRecords = images.map((img, idx) => ({
+      product_id: productId,
+      url: img.url,
+      type: img.type || 'detail',
+      sort_order: img.sortOrder ?? idx,
+    }));
+    await supabase.from('product_images').insert(imageRecords);
+  }
+}
+
+async function saveVariantAttributes(productId: string, attributes: ProductVariantAttribute[]): Promise<void> {
+  console.log('[saveVariantAttributes] Called with:', { productId, attributesCount: attributes.length, attributes });
+  
+  // Delete existing attributes
+  const { error: deleteError } = await supabase.from('product_variant_attributes').delete().eq('product_id', productId);
+  if (deleteError) {
+    console.error('[saveVariantAttributes] Delete error:', deleteError);
+  } else {
+    console.log('[saveVariantAttributes] Deleted existing attributes for', productId);
+  }
+  
+  // Insert new attributes
+  if (attributes.length > 0) {
+    const attrRecords = attributes.map((attr, idx) => ({
+      product_id: productId,
+      attribute_name: attr.attributeName,
+      attribute_values: attr.attributeValues,
+      sort_order: attr.sortOrder ?? idx,
+    }));
+    console.log('[saveVariantAttributes] Inserting records:', JSON.stringify(attrRecords, null, 2));
+    const { error: insertError, data } = await supabase.from('product_variant_attributes').insert(attrRecords).select();
+    if (insertError) {
+      console.error('[saveVariantAttributes] Insert error:', {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        fullError: JSON.stringify(insertError, null, 2)
+      });
+      throw new Error(`Failed to save variant attributes: ${insertError.message}`);
+    } else {
+      console.log('[saveVariantAttributes] ✓ Saved', attributes.length, 'attributes for product', productId, 'Data:', data);
+    }
+  } else {
+    console.log('[saveVariantAttributes] No attributes to save');
+  }
+}
+
+async function saveProductSkus(productId: string, skus: ProductSku[]): Promise<void> {
+  console.log('[saveProductSkus] Called with:', { productId, skusCount: skus.length });
+  
+  // Delete existing SKUs
+  const { error: deleteError } = await supabase.from('product_skus').delete().eq('product_id', productId);
+  if (deleteError) {
+    console.error('[saveProductSkus] Delete error:', deleteError);
+  } else {
+    console.log('[saveProductSkus] Deleted existing SKUs for', productId);
+  }
+  
+  // Insert new SKUs
+  if (skus.length > 0) {
+    const skuRecords = skus.map((sku, idx) => ({
+      product_id: productId,
+      sku_code: sku.skuCode,
+      attribute_combination: sku.attributeCombination,
+      price: sku.price,
+      original_price: sku.originalPrice || null,
+      stock_quantity: sku.stockQuantity,
+      weight: sku.weight ?? null,
+      weight_unit: sku.weightUnit || null,
+      suggested_retail_price: sku.suggestedRetailPrice ?? null,
+      image_url: sku.imageUrl || null,
+      is_active: sku.isActive !== false,
+      sort_order: sku.sortOrder ?? idx,
+    }));
+    console.log('[saveProductSkus] Inserting records:', JSON.stringify(skuRecords, null, 2));
+    const { error: insertError, data } = await supabase.from('product_skus').insert(skuRecords).select();
+    if (insertError) {
+      console.error('[saveProductSkus] Insert error:', {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        fullError: JSON.stringify(insertError, null, 2)
+      });
+      throw new Error(`Failed to save product SKUs: ${insertError.message}`);
+    } else {
+      console.log('[saveProductSkus] ✓ Saved', skus.length, 'SKUs for product', productId, 'Data:', data);
+    }
+  } else {
+    console.log('[saveProductSkus] No SKUs to save');
+  }
+}
+
 // Helper: map DB row to Product
 function mapProduct(p: any): Product {
-  const qty = p.stock_quantity ?? 0;
+  // Parse images array
+  const images = p.images || [];
+
+  // Get main image: from image_url column, or from images array, or first image
+  const mainImage = images.find((img: any) => img.type === 'main');
+  const imageUrl = p.image_url || mainImage?.url || (images.length > 0 ? images[0]?.url : null);
+
+  // Calculate stock and price from SKUs if hasVariants
+  const hasVariants = p.has_variants || false;
+  const skus = (p.skus || []).map((sku: any) => ({
+    id: sku.id,
+    productId: sku.product_id || p.id,
+    skuCode: sku.sku_code,
+    attributeCombination: sku.attribute_combination,
+    price: sku.price,
+    originalPrice: sku.original_price,
+    stockQuantity: sku.stock_quantity,
+    weight: sku.weight,
+    weightUnit: sku.weight_unit,
+    suggestedRetailPrice: sku.suggested_retail_price,
+    sellingPrice: sku.selling_price,
+    imageUrl: sku.image_url,
+    isActive: sku.is_active,
+    sortOrder: sku.sort_order || 0,
+  }));
+
+  // Calculate total stock and price range from SKUs when hasVariants
+  let qty = p.stock_quantity ?? 0;
+  let price = p.price;
+
+  if (hasVariants && skus.length > 0) {
+    // Sum stock from all SKUs
+    qty = skus.reduce((sum: number, sku: any) => sum + (sku.stockQuantity || 0), 0);
+    // Get minimum price from SKUs
+    const prices = skus.map((sku: any) => sku.price).filter((pr: number) => pr > 0);
+    if (prices.length > 0) {
+      price = Math.min(...prices);
+    }
+  }
+
+  // Determine stock status
   let stockStatus: 'In Stock' | 'Low Stock' | 'Out of Stock' = p.stock_status || 'In Stock';
   if (qty === 0) stockStatus = 'Out of Stock';
   else if (qty < 10) stockStatus = 'Low Stock';
   else stockStatus = 'In Stock';
+
   return {
-    id: p.id, name: p.name, brand: p.brand, price: p.price, specialty: p.specialty,
-    group: p.group_category, imageUrl: p.image_url, description: p.description,
+    id: p.id, name: p.name, brand: p.brand, price, specialty: p.specialty,
+    group: p.group_category, imageUrl, description: p.description,
     longDescription: p.long_description || p.description,
     specs: p.specs || {}, compareData: p.compare_data,
     stockStatus,
@@ -80,6 +222,26 @@ function mapProduct(p: any): Product {
     certifications: p.certifications || undefined,
     instructorRecommendation: p.instructor_recommendation || undefined,
     categorySlug: p.category_slug || undefined,
+    // Product form fields
+    category_id: p.category_id || null,
+    subcategory_id: p.subcategory_id || null,
+    level3_category_id: p.level3_category_id || null,
+    images: images.map((img: any) => ({
+      id: img.id,
+      url: img.url,
+      type: img.type,
+      sortOrder: img.sort_order || 0,
+    })),
+    hasVariants,
+    variantAttributes: (p.variant_attributes || []).map((attr: any) => ({
+      id: attr.id,
+      productId: attr.product_id || p.id,
+      attributeName: attr.attribute_name,
+      attributeValues: attr.attribute_values,
+      sortOrder: attr.sort_order || 0,
+    })),
+    skus,
+    richDescription: p.rich_description || undefined,
   };
 }
 
@@ -161,7 +323,11 @@ export const api = {
 
   async getProducts(): Promise<Product[]> {
     try {
-      const { data, error } = await supabase.from('products').select('*');
+      const { data, error } = await supabase.from('products').select(`
+        *,
+        images:product_images(id, url, type, sort_order),
+        skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, is_active, sort_order)
+      `);
       if (error || !data || data.length === 0) return USE_MOCK_FALLBACK ? SEED_PRODUCTS : [];
       return data.map(mapProduct);
     } catch { return USE_MOCK_FALLBACK ? SEED_PRODUCTS : []; }
@@ -169,15 +335,34 @@ export const api = {
 
   async getProductById(id: string): Promise<Product | null> {
     try {
-      const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          images:product_images(id, url, type, sort_order),
+          variant_attributes:product_variant_attributes(id, attribute_name, attribute_values, sort_order),
+          skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, is_active, sort_order)
+        `)
+        .eq('id', id)
+        .single();
+        
+      console.log('[API] getProductById - Raw data:', JSON.stringify(data, null, 2));
+      console.log('[API] getProductById - variant_attributes:', data?.variant_attributes);
+      console.log('[API] getProductById - skus:', data?.skus);
+      console.log('[API] getProductById - Error:', error);
+      
       if (error || !data) {
         if (USE_MOCK_FALLBACK) {
           return SEED_PRODUCTS.find(p => p.id === id) || null;
         }
         return null;
       }
-      return mapProduct(data);
-    } catch {
+      
+      const mapped = mapProduct(data);
+      console.log('[API] getProductById - Mapped product:', mapped);
+      return mapped;
+    } catch (err) {
+      console.error('[API] getProductById - Exception:', err);
       if (USE_MOCK_FALLBACK) {
         return SEED_PRODUCTS.find(p => p.id === id) || null;
       }
@@ -185,10 +370,20 @@ export const api = {
     }
   },
 
-  async manageProduct(action: 'create' | 'update' | 'delete', product: Partial<Product>): Promise<void> {
+  async manageProduct(action: 'create' | 'update' | 'delete', product: Partial<Product>): Promise<string | void> {
+    console.log('[manageProduct] Called with action:', action, 'product:', {
+      id: product.id,
+      name: product.name,
+      hasVariants: product.hasVariants,
+      variantAttributesCount: product.variantAttributes?.length,
+      skusCount: product.skus?.length
+    });
+    
     if (action === 'create') {
+      const productId = product.id || `p-${Date.now()}`;
+      console.log('[manageProduct] Creating new product with ID:', productId);
       const payload = {
-        id: product.id || `p-${Date.now()}`,
+        id: productId,
         name: product.name, brand: product.brand, price: product.price,
         specialty: product.specialty, group_category: product.group,
         image_url: product.imageUrl, description: product.description,
@@ -198,9 +393,58 @@ export const api = {
         status: product.status || 'Draft',
         supplier_id: product.supplierId,
         supplier_info: product.supplier,
+        // Category fields
+        category_id: product.category_id || null,
+        subcategory_id: product.subcategory_id || null,
+        level3_category_id: product.level3_category_id || null,
+        category_slug: product.categorySlug || null,
+        // Variant fields
+        has_variants: product.hasVariants || false,
+        rich_description: product.richDescription || null,
       };
-      await supabase.from('products').insert(payload as any);
+      const { error: productError } = await supabase.from('products').insert(payload as any);
+      if (productError) {
+        console.error('[manageProduct] Failed to create product:', productError);
+        throw new Error(`Failed to create product: ${productError.message}`);
+      }
+      console.log('[manageProduct] ✓ Product created with ID:', productId);
+      
+      // Save related data (images, variant attributes, SKUs)
+      if (product.images && product.images.length > 0) {
+        console.log('[manageProduct] Saving product images...');
+        await saveProductImages(productId, product.images);
+      }
+      if (product.variantAttributes && product.variantAttributes.length > 0) {
+        console.log('[manageProduct] Saving variant attributes...');
+        await saveVariantAttributes(productId, product.variantAttributes);
+      } else {
+        console.log('[manageProduct] No variant attributes to save');
+      }
+      if (product.skus && product.skus.length > 0) {
+        console.log('[manageProduct] Saving product SKUs...');
+        await saveProductSkus(productId, product.skus);
+      } else {
+        console.log('[manageProduct] No SKUs to save');
+      }
+      
+      // Save spec templates (自动保存规格参数模板)
+      if (product.specs && Object.keys(product.specs).length > 0 && product.category_id) {
+        const specsArray = Object.entries(product.specs).map(([key, value]) => ({
+          key,
+          value: String(value)
+        }));
+        this.saveSpecTemplates({
+          categoryId: product.category_id,
+          subcategoryId: product.subcategory_id,
+          level3CategoryId: product.level3_category_id,
+          specs: specsArray
+        }).catch(err => console.error('Failed to save spec templates:', err));
+      }
+      
+      // 返回产品 ID
+      return productId;
     } else if (action === 'update' && product.id) {
+      console.log('[manageProduct] Updating product ID:', product.id);
       const payload: any = {};
       if (product.name !== undefined) payload.name = product.name;
       if (product.brand !== undefined) payload.brand = product.brand;
@@ -216,7 +460,54 @@ export const api = {
       if (product.status !== undefined) payload.status = product.status;
       if (product.supplier !== undefined) payload.supplier_info = product.supplier;
       if (product.rejectionReason !== undefined) payload.rejection_reason = product.rejectionReason;
-      await supabase.from('products').update(payload).eq('id', product.id);
+      // Category fields
+      if (product.category_id !== undefined) payload.category_id = product.category_id;
+      if (product.subcategory_id !== undefined) payload.subcategory_id = product.subcategory_id;
+      if (product.level3_category_id !== undefined) payload.level3_category_id = product.level3_category_id;
+      if (product.categorySlug !== undefined) payload.category_slug = product.categorySlug;
+      // Variant fields
+      if (product.hasVariants !== undefined) payload.has_variants = product.hasVariants;
+      if (product.richDescription !== undefined) payload.rich_description = product.richDescription;
+      
+      console.log('[manageProduct] Update payload:', payload);
+      const { error } = await supabase.from('products').update(payload).eq('id', product.id);
+      if (error) {
+        console.error('[manageProduct] Failed to update product:', error);
+        throw new Error(`Failed to update product: ${error.message}`);
+      }
+      console.log('[manageProduct] ✓ Product updated');
+      
+      // Update related data (images, variant attributes, SKUs)
+      if (product.images !== undefined) {
+        console.log('[manageProduct] Updating product images...');
+        await saveProductImages(product.id, product.images);
+      }
+      if (product.variantAttributes !== undefined) {
+        console.log('[manageProduct] Updating variant attributes...');
+        await saveVariantAttributes(product.id, product.variantAttributes);
+      } else {
+        console.log('[manageProduct] No variant attributes to update (undefined)');
+      }
+      if (product.skus !== undefined) {
+        console.log('[manageProduct] Updating product SKUs...');
+        await saveProductSkus(product.id, product.skus);
+      } else {
+        console.log('[manageProduct] No SKUs to update (undefined)');
+      }
+      
+      // Save spec templates (自动保存规格参数模板)
+      if (product.specs && Object.keys(product.specs).length > 0 && product.category_id) {
+        const specsArray = Object.entries(product.specs).map(([key, value]) => ({
+          key,
+          value: String(value)
+        }));
+        this.saveSpecTemplates({
+          categoryId: product.category_id,
+          subcategoryId: product.subcategory_id,
+          level3CategoryId: product.level3_category_id,
+          specs: specsArray
+        }).catch(err => console.error('Failed to save spec templates:', err));
+      }
     } else if (action === 'delete' && product.id) {
       await supabase.from('products').delete().eq('id', product.id);
     }
@@ -1276,6 +1567,88 @@ export const api = {
       return { items: [], stats: { total_courses: 0, completed_courses: 0, total_study_time_minutes: 0 } };
     } catch {
       return { items: [], stats: { total_courses: 0, completed_courses: 0, total_study_time_minutes: 0 } };
+    }
+  },
+
+  // =====================================================
+  // SPEC TEMPLATES (规格参数模板)
+  // =====================================================
+
+  async saveSpecTemplates(params: {
+    categoryId: string;
+    subcategoryId?: string | null;
+    level3CategoryId?: string | null;
+    specs: Array<{ key: string; value: string }>;
+  }): Promise<void> {
+    try {
+      // 将数组转换为 JSONB 格式
+      const specsJson = JSON.stringify(params.specs);
+      
+      // 去掉 'cat-' 前缀，因为数据库存储的是 slug
+      const categoryId = params.categoryId?.startsWith('cat-') ? params.categoryId.substring(4) : params.categoryId;
+      const subcategoryId = params.subcategoryId?.startsWith('cat-') ? params.subcategoryId.substring(4) : params.subcategoryId;
+      const level3CategoryId = params.level3CategoryId?.startsWith('cat-') ? params.level3CategoryId.substring(4) : params.level3CategoryId;
+      
+      const { data, error } = await supabase.rpc('save_spec_templates', {
+        p_category_id: categoryId,
+        p_subcategory_id: subcategoryId || null,
+        p_level3_category_id: level3CategoryId || null,
+        p_specs: specsJson
+      });
+      
+      if (error) {
+        console.error('Failed to save spec templates:', error);
+      } else {
+        console.log('[API] Spec templates saved successfully:', data);
+      }
+    } catch (err) {
+      console.error('Failed to save spec templates:', err);
+      throw err;
+    }
+  },
+
+  async getSpecTemplates(params: {
+    categoryId: string;
+    subcategoryId?: string | null;
+    level3CategoryId?: string | null;
+  }): Promise<Array<{
+    id: string;
+    specName: string;
+    specNameEn?: string;
+    unit?: string;
+    inputType: string;
+    isRequired: boolean;
+    displayOrder: number;
+    values: string[];
+  }>> {
+    try {
+      // 去掉 'cat-' 前缀，因为数据库存储的是 slug
+      const categoryId = params.categoryId?.startsWith('cat-') ? params.categoryId.substring(4) : params.categoryId;
+      const subcategoryId = params.subcategoryId?.startsWith('cat-') ? params.subcategoryId.substring(4) : params.subcategoryId;
+      const level3CategoryId = params.level3CategoryId?.startsWith('cat-') ? params.level3CategoryId.substring(4) : params.level3CategoryId;
+      
+      const { data, error } = await supabase.rpc('get_spec_templates', {
+        p_category_id: categoryId,
+        p_subcategory_id: subcategoryId || null,
+        p_level3_category_id: level3CategoryId || null
+      });
+      
+      if (error || !data) {
+        return [];
+      }
+      
+      return data.map((t: any) => ({
+        id: t.id,
+        specName: t.spec_name,
+        specNameEn: t.spec_name_en,
+        unit: t.unit,
+        inputType: t.input_type || 'text',
+        isRequired: t.is_required || false,
+        displayOrder: t.display_order || 0,
+        values: t.spec_values || []
+      }));
+    } catch {
+      return [];
     }
   }
 };

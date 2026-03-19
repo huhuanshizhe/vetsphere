@@ -185,7 +185,7 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
   },
 
   // ============================================
-  // 4. 商品与采购 - 商城商品 + 采购线索
+  // 4. 商品与采购 - 产品管理 + 采购线索
   // ============================================
   {
     key: 'products-purchase',
@@ -194,23 +194,30 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
     items: [
       {
         key: 'products-list',
-        label: '商品列表',
+        label: '产品管理',
         icon: 'Package',
         href: '/products',
         permission: 'product.view',
       },
       {
-        key: 'shop-scenes',
-        label: '采购场景',
-        icon: 'ShoppingBag',
-        href: '/shop/scenes',
+        key: 'product-categories',
+        label: '分类管理',
+        icon: 'FolderOpen',
+        href: '/product-categories',
         permission: 'product.view',
       },
       {
-        key: 'course-product-linking',
-        label: '课程关联',
-        icon: 'Link',
-        href: '/course-product-linking',
+        key: 'suppliers',
+        label: '供应商管理',
+        icon: 'Truck',
+        href: '/suppliers',
+        permission: 'product.view',
+      },
+      {
+        key: 'inquiries',
+        label: '询价管理',
+        icon: 'MessageSquareQuote',
+        href: '/inquiries',
         permission: 'product.view',
       },
       {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import GearSidebar from './GearSidebar';
 
 interface GearLayoutProps {
@@ -17,9 +18,9 @@ export default function GearLayout({ children, activeTab, setActiveTab, user, on
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#0A1628] flex">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-64 bg-[#0F172A] border-r border-blue-500/20 fixed h-full">
+      <aside className="hidden lg:flex w-60 flex-col fixed h-full z-30">
         <GearSidebar
           tabs={TABS}
           activeTab={activeTab}
@@ -32,28 +33,24 @@ export default function GearLayout({ children, activeTab, setActiveTab, user, on
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-blue-600/20 rounded-lg border border-blue-500/30"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow"
       >
-        <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
+        <Menu className="w-5 h-5 text-gray-700" />
       </button>
 
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <aside className="absolute left-0 top-0 h-full w-72 bg-[#0F172A] border-r border-blue-500/20 shadow-2xl">
+          <aside className="absolute left-0 top-0 h-full w-72 shadow-2xl animate-slideDown">
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white z-10"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-5 h-5" />
             </button>
             <GearSidebar
               tabs={TABS}
@@ -70,8 +67,10 @@ export default function GearLayout({ children, activeTab, setActiveTab, user, on
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 p-6 lg:p-8">
-        {children}
+      <main className="flex-1 lg:ml-60 min-h-screen">
+        <div className="p-4 lg:p-8">
+          {children}
+        </div>
       </main>
     </div>
   );
