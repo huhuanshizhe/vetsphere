@@ -24,31 +24,27 @@ ADD COLUMN IF NOT EXISTS rejection_reason text,
 ADD COLUMN IF NOT EXISTS published_at timestamp with time zone,
 ADD COLUMN IF NOT EXISTS updated_at timestamp with time zone default timezone('utc'::text, now());
 
--- 产品分类表
-CREATE TABLE IF NOT EXISTS public.product_categories (
-  id text primary key,
-  name text not null,
-  name_zh text,
-  name_en text,
-  slug text unique not null,
-  parent_id text references public.product_categories(id),
-  sort_order integer DEFAULT 0,
-  is_active boolean DEFAULT true,
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
+-- 产品分类表 (检查是否存在，不存在则创建)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'product_categories') THEN
+    CREATE TABLE public.product_categories (
+      id text primary key,
+      name text not null,
+      name_zh text,
+      name_en text,
+      slug text unique not null,
+      parent_id text references public.product_categories(id),
+      sort_order integer DEFAULT 0,
+      is_active boolean DEFAULT true,
+      created_at timestamp with time zone default timezone('utc'::text, now())
+    );
+  END IF;
+END $$;
 
--- 产品站点视图 (Site View 机制)
-CREATE TABLE IF NOT EXISTS public.product_site_views (
-  id uuid primary key default gen_random_uuid(),
-  product_id text not null references public.products(id) on delete cascade,
-  site text not null, -- 'cn' | 'intl'
-  status text DEFAULT 'draft', -- 'draft' | 'published' | 'archived'
-  published_at timestamp with time zone,
-  published_by uuid references auth.users(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  updated_at timestamp with time zone default timezone('utc'::text, now()),
-  unique(product_id, site)
-);
+-- 产品站点视图 (Site View 机制) - 已在 migration 017 创建
+-- 这里只添加新字段（如果需要）
+-- ALTER TABLE public.product_site_views ADD COLUMN IF NOT EXISTS ...
 
 -- ==========================================
 -- 2. 供应商表
@@ -161,32 +157,42 @@ CREATE TABLE IF NOT EXISTS public.inquiries (
 
 -- 产品分类
 ALTER TABLE public.product_categories ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view categories" ON public.product_categories;
 CREATE POLICY "Anyone can view categories" ON public.product_categories FOR SELECT USING (is_active = true);
+DROP POLICY IF EXISTS "Admins can manage categories" ON public.product_categories;
 CREATE POLICY "Admins can manage categories" ON public.product_categories FOR ALL USING (
   EXISTS (SELECT 1 FROM public.user_profiles WHERE id = auth.uid() AND role = 'Admin')
 );
 
 -- 产品站点视图
 ALTER TABLE public.product_site_views ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can view published site views" ON public.product_site_views FOR SELECT USING (status = 'published');
+DROP POLICY IF EXISTS "Anyone can view published site views" ON public.product_site_views;
+CREATE POLICY "Anyone can view published site views" ON public.product_site_views FOR SELECT USING (publish_status = 'published');
+DROP POLICY IF EXISTS "Admins can manage site views" ON public.product_site_views;
 CREATE POLICY "Admins can manage site views" ON public.product_site_views FOR ALL USING (
   EXISTS (SELECT 1 FROM public.user_profiles WHERE id = auth.uid() AND role = 'Admin')
 );
 
 -- 供应商
 ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can view approved suppliers" ON public.suppliers;
 CREATE POLICY "Anyone can view approved suppliers" ON public.suppliers FOR SELECT USING (status = 'approved');
+DROP POLICY IF EXISTS "Suppliers can view own profile" ON public.suppliers;
 CREATE POLICY "Suppliers can view own profile" ON public.suppliers FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Suppliers can update own profile" ON public.suppliers;
 CREATE POLICY "Suppliers can update own profile" ON public.suppliers FOR UPDATE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Admins can manage suppliers" ON public.suppliers;
 CREATE POLICY "Admins can manage suppliers" ON public.suppliers FOR ALL USING (
   EXISTS (SELECT 1 FROM public.user_profiles WHERE id = auth.uid() AND role = 'Admin')
 );
 
 -- 订单项目
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own order items" ON public.order_items;
 CREATE POLICY "Users can view own order items" ON public.order_items FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.orders WHERE id = order_id AND user_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Suppliers can view order items for their products" ON public.order_items;
 CREATE POLICY "Suppliers can view order items for their products" ON public.order_items FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM public.products p 
@@ -194,21 +200,26 @@ CREATE POLICY "Suppliers can view order items for their products" ON public.orde
     WHERE p.id = product_id AND s.user_id = auth.uid()
   )
 );
+DROP POLICY IF EXISTS "Admins can manage order items" ON public.order_items;
 CREATE POLICY "Admins can manage order items" ON public.order_items FOR ALL USING (
   EXISTS (SELECT 1 FROM public.user_profiles WHERE id = auth.uid() AND role = 'Admin')
 );
 
 -- 询盘
 ALTER TABLE public.inquiries ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Customers can view own inquiries" ON public.inquiries;
 CREATE POLICY "Customers can view own inquiries" ON public.inquiries FOR SELECT USING (
   customer_email = (SELECT email FROM auth.users WHERE id = auth.uid())
 );
+DROP POLICY IF EXISTS "Suppliers can view inquiries for their products" ON public.inquiries;
 CREATE POLICY "Suppliers can view inquiries for their products" ON public.inquiries FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.suppliers WHERE id = supplier_id AND user_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Suppliers can update inquiries for their products" ON public.inquiries;
 CREATE POLICY "Suppliers can update inquiries for their products" ON public.inquiries FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.suppliers WHERE id = supplier_id AND user_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Admins can manage inquiries" ON public.inquiries;
 CREATE POLICY "Admins can manage inquiries" ON public.inquiries FOR ALL USING (
   EXISTS (SELECT 1 FROM public.user_profiles WHERE id = auth.uid() AND role = 'Admin')
 );
@@ -223,8 +234,8 @@ CREATE INDEX IF NOT EXISTS idx_products_pricing_mode ON public.products(pricing_
 CREATE INDEX IF NOT EXISTS idx_products_supplier_uuid ON public.products(supplier_uuid);
 
 CREATE INDEX IF NOT EXISTS idx_product_site_views_product ON public.product_site_views(product_id);
-CREATE INDEX IF NOT EXISTS idx_product_site_views_site ON public.product_site_views(site);
-CREATE INDEX IF NOT EXISTS idx_product_site_views_status ON public.product_site_views(status);
+CREATE INDEX IF NOT EXISTS idx_product_site_views_site ON public.product_site_views(site_code);
+CREATE INDEX IF NOT EXISTS idx_product_site_views_status ON public.product_site_views(publish_status);
 
 CREATE INDEX IF NOT EXISTS idx_suppliers_status ON public.suppliers(status);
 CREATE INDEX IF NOT EXISTS idx_suppliers_user ON public.suppliers(user_id);
@@ -292,17 +303,27 @@ CREATE TRIGGER update_inquiries_updated_at BEFORE UPDATE ON public.inquiries
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ==========================================
--- 8. 插入默认分类数据
+-- 8. 插入默认分类数据 (仅当表有 name 列时)
 -- ==========================================
 
-INSERT INTO public.product_categories (id, name, name_zh, name_en, slug, sort_order) VALUES
-('cat-powertools', '电动工具', '电动工具', 'Power Tools', 'power-tools', 1),
-('cat-implants', '植入物', '植入物', 'Implants', 'implants', 2),
-('cat-instruments', '手术器械', '手术器械', 'Surgical Instruments', 'surgical-instruments', 3),
-('cat-consumables', '耗材', '耗材', 'Consumables', 'consumables', 4),
-('cat-equipment', '设备', '设备', 'Equipment', 'equipment', 5),
-('cat-imaging', '影像设备', '影像设备', 'Imaging', 'imaging', 6)
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'product_categories' 
+    AND column_name = 'name'
+  ) THEN
+    INSERT INTO public.product_categories (id, name, name_zh, name_en, slug, sort_order) VALUES
+    ('cat-powertools', '电动工具', '电动工具', 'Power Tools', 'power-tools', 1),
+    ('cat-implants', '植入物', '植入物', 'Implants', 'implants', 2),
+    ('cat-instruments', '手术器械', '手术器械', 'Surgical Instruments', 'surgical-instruments', 3),
+    ('cat-consumables', '耗材', '耗材', 'Consumables', 'consumables', 4),
+    ('cat-equipment', '设备', '设备', 'Equipment', 'equipment', 5),
+    ('cat-imaging', '影像设备', '影像设备', 'Imaging', 'imaging', 6)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
 
 -- ==========================================
 -- 9. 创建视图：已发布产品（用于前端查询）
@@ -311,7 +332,7 @@ ON CONFLICT (id) DO NOTHING;
 CREATE OR REPLACE VIEW public.published_products AS
 SELECT 
   p.*,
-  psv.site as published_site,
+  psv.site_code as published_site,
   psv.published_at as site_published_at,
   s.company_name as supplier_name,
   s.logo_url as supplier_logo,
@@ -320,8 +341,8 @@ FROM public.products p
 JOIN public.product_site_views psv ON p.id = psv.product_id
 LEFT JOIN public.suppliers s ON p.supplier_uuid = s.id
 WHERE p.status = 'published' 
-  AND psv.status = 'published'
-  AND s.status = 'approved';
+  AND psv.publish_status = 'published'
+  AND (s.status = 'approved' OR s.status IS NULL);
 
 -- ==========================================
 -- 验证

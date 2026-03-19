@@ -100,7 +100,9 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
     }
   }, []);
 
-  const isQuoteOnly = product?.purchase_type === 'quote' || product?.pricing_mode === 'custom';
+  // Determine pricing mode: inquiry products require quote request
+  const isInquiryMode = product?.pricing_mode === 'inquiry' || product?.purchase_type === 'quote';
+  const isFixedMode = product?.pricing_mode === 'fixed' && !isInquiryMode;
 
   if (loading) {
     return (
@@ -133,10 +135,15 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
     );
   }
 
-  // Compute price display
+  // Compute price display based on pricing_mode
   const priceDisplay = (() => {
+    // Inquiry mode: no price shown
+    if (isInquiryMode) {
+      return null;
+    }
+    // Fixed mode: show price
     if (product.display_price) {
-      const sym = product.currency_code === 'USD' ? '$' : product.currency_code || '$';
+      const sym = product.currency_code === 'USD' ? '$' : product.currency_code === 'EUR' ? '€' : product.currency_code === 'GBP' ? '£' : product.currency_code || '$';
       return `${sym}${product.display_price.toLocaleString()}`;
     }
     if (product.price_min && product.price_max && product.price_min !== product.price_max) {
@@ -194,7 +201,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                   <span key={i} className="px-3 py-1.5 bg-blue-500/90 text-white text-xs font-bold rounded-full backdrop-blur-sm">{tag}</span>
                 ))}
               </div>
-              {isQuoteOnly && (
+              {isInquiryMode && (
                 <div className="absolute bottom-4 right-4 bg-amber-50/95 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold text-amber-700 border border-amber-100 flex items-center gap-2">
                   <MessageSquareQuote className="w-4 h-4" /> Quote Only
                 </div>
@@ -242,7 +249,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
 
             {/* CTA */}
             <div className="flex flex-wrap gap-3 pt-4">
-              {isQuoteOnly ? (
+              {isInquiryMode ? (
                 <button
                   onClick={() => setShowQuoteModal(true)}
                   className="flex items-center gap-2 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-base hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-900/10"
@@ -252,10 +259,10 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
               ) : (
                 <>
                   <Link
-                    href={`/${locale}/for-clinics#consultation`}
+                    href={`/${locale}/checkout?product=${product.product_id}`}
                     className="flex items-center gap-2 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-base hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-900/10"
                   >
-                    <ShoppingCart className="w-5 h-5" /> Inquire to Purchase
+                    <ShoppingCart className="w-5 h-5" /> Add to Cart
                   </Link>
                   <button
                     onClick={() => setShowQuoteModal(true)}

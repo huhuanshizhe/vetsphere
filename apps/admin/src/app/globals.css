@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-/* Tailwind v4: Source paths for class scanning */
-@source "../../**/*.{js,ts,jsx,tsx}";
-@source "../../../../packages/shared/src/**/*.{js,ts,jsx,tsx}";
-
 /* Admin theme colors - Light Mode */
 @theme {
   --color-admin: #10B981;

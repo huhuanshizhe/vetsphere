@@ -41,10 +41,10 @@ export async function GET(
         *,
         product_images (
           id,
-          image_url,
-          image_type,
+          url,
+          type,
           alt_text,
-          display_order
+          sort_order
         ),
         product_tag_relations (
           product_tags (
@@ -78,7 +78,7 @@ export async function GET(
 
     // 处理图片排序
     const images = (product.product_images || []).sort(
-      (a: any, b: any) => a.display_order - b.display_order
+      (a: any, b: any) => a.sort_order - b.sort_order
     );
 
     // 处理标签

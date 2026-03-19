@@ -58,20 +58,32 @@ const PAGE_SIZE = 12;
 // ============================================
 
 function productCTA(p: IntlProduct): { label: string; icon: typeof ShoppingCart; variant: 'primary' | 'outline' } {
-  if (p.purchase_type === 'quote' || p.pricing_mode === 'custom') {
+  // Inquiry mode - show Request Quote
+  if (p.pricing_mode === 'inquiry' || p.purchase_type === 'quote') {
     return { label: 'Request Quote', icon: MessageSquareQuote, variant: 'outline' };
   }
+  // Fixed price - show Add to Cart / View Product
   return { label: 'View Product', icon: ShoppingCart, variant: 'primary' };
 }
 
 function formatPrice(product: IntlProduct): string | null {
+  // Inquiry mode - no price display
+  if (product.pricing_mode === 'inquiry') {
+    return 'Contact for Price';
+  }
+  // Fixed price with display_price
   if (product.display_price) {
-    const symbol = product.currency_code === 'USD' ? '$' : product.currency_code || '$';
+    const symbol = product.currency_code === 'USD' ? '$' : 
+                   product.currency_code === 'EUR' ? '€' :
+                   product.currency_code === 'GBP' ? '£' : 
+                   product.currency_code || '$';
     return `${symbol}${product.display_price.toLocaleString()}`;
   }
+  // Price range
   if (product.price_min && product.price_max && product.price_min !== product.price_max) {
     return `$${product.price_min.toLocaleString()} - $${product.price_max.toLocaleString()}`;
   }
+  // Minimum price
   if (product.price_min) {
     return `From $${product.price_min.toLocaleString()}`;
   }
