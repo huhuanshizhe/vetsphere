@@ -34,6 +34,13 @@ export async function POST(request: NextRequest) {
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`;
     
+    // Debug logging
+    console.log('[Password Reset] Environment:', process.env.NODE_ENV);
+    console.log('[Password Reset] NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
+    console.log('[Password Reset] Host header:', host);
+    console.log('[Password Reset] Base URL:', baseUrl);
+    console.log('[Password Reset] Redirect to:', `${baseUrl}/${safeLocale}/auth/reset-password`);
+    
     // Generate password reset link with proper site URL and locale
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'recovery',
