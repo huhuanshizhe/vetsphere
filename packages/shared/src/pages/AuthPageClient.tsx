@@ -132,12 +132,30 @@ const Auth: React.FC<AuthProps> = ({ portalType = 'Doctor' }) => {
     setResetLoading(true);
     setErrorMsg('');
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/${locale}/auth`
+      // Call our custom Edge Function to send branded password reset email
+      const response = await fetch(`${window.location.origin}/api/auth/send-password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: resetEmail,
+          locale: locale || 'en'
+        })
       });
-      if (error) throw error;
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send reset email');
+      }
+      
+      // In development, we might get the recovery link back for testing
+      if (result.recoveryLink) {
+        console.log('Password reset link (dev only):', result.recoveryLink);
+      }
+      
       setResetSent(true);
     } catch (err: any) {
+      console.error('Password reset error:', err);
       setErrorMsg(err.message || 'Failed to send reset email');
     } finally {
       setResetLoading(false);
