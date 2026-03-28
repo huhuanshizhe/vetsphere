@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .insert({
-        order_number: orderNumber,
+        order_no: orderNumber,
         user_id: userId,
         status: 'pending',
         payment_status: 'pending',
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     if (orderError || !order) {
       console.error('Failed to create order:', orderError);
       console.error('Order data attempted:', JSON.stringify({
-        order_number: orderNumber,
+        order_no: orderNumber,
         user_id: userId,
         email: formData.email,
         total: total,
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send localized order confirmation email (non-blocking)
-    const orderUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/${locale || 'en'}/orders/${order.order_number}`;
+    const orderUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/${locale || 'en'}/orders/${order.order_no}`;
     
     fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/${locale || 'en'}/api/email/send`, {
       method: 'POST',
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
         to: formData.email,
         locale: locale || 'en',
         data: {
-          orderId: order.order_number,
+          orderId: order.order_no,
           customerName: formData.name,
           items: items.map(item => ({
             name: item.product_name || item.name,
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       orderId: order.id,
-      orderNumber: order.order_number,
+      orderNumber: order.order_no,
     });
   } catch (error) {
     console.error('Order creation error:', error);
