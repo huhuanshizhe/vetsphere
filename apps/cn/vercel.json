@@ -1,5 +1,7 @@
 {
   "framework": "nextjs",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm run build:cn"
+  "rootDirectory": ".",
+  "installCommand": "cd ../../ && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../../ && pnpm run build:cn",
+  "outputDirectory": "apps/cn/.next"
 }
