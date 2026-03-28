@@ -147,7 +147,14 @@ export async function POST(request: NextRequest) {
 
     if (orderError || !order) {
       console.error('Failed to create order:', orderError);
-      return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
+      console.error('Order data attempted:', JSON.stringify({
+        order_number: orderNumber,
+        user_id: userId,
+        email: formData.email,
+        total: total,
+        items_count: items.length
+      }, null, 2));
+      return NextResponse.json({ error: 'Failed to create order', details: orderError?.message }, { status: 500 });
     }
 
     // 创建订单项
