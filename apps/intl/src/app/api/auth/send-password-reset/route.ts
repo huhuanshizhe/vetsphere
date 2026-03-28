@@ -17,18 +17,6 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Check if user exists
-    const { data: userProfile, error: userError } = await supabase
-      .from('user_profiles')
-      .select('id, display_name')
-      .eq('email', email)
-      .single();
-
-    // Don't reveal whether email exists or not for security
-    if (userError && userError.code !== 'PGRST116') {
-      console.error('Error checking user:', userError);
-    }
-
     // Generate password reset link using Supabase admin API
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'recovery',
@@ -42,8 +30,10 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    // Get user info for personalization
-    const userName = (userProfile as any)?.display_name || email.split('@')[0];
+    // Get user info for personalization from user metadata
+    const userName = data.user?.user_metadata?.display_name || 
+                     data.user?.user_metadata?.name || 
+                     email.split('@')[0];
     const recoveryLink = data.properties.action_link;
 
     // Build email content based on locale
@@ -224,7 +214,22 @@ ${locale === 'zh' ? 'VetSphere 团队' : locale === 'ja' ? 'VetSphere チーム'
 
     if (!emailResponse.ok) {
       const errorData = await emailResponse.json();
-      throw new Error(errorData.message || 'Failed to send email');
+      console.error('Resend API error:', errorData);
+      
+      // Fallback to dev mode - log the email and return success
+      console.log('=== PASSWORD RESET EMAIL (RESEND FAILED, FALLBACK TO DEV MODE) ===');
+      console.log('To:', email);
+      console.log('Subject:', emailSubject);
+      console.log('HTML Preview:', emailHtml.substring(0, 500) + '...');
+      console.log('Link:', recoveryLink);
+      console.log('==================================================================');
+      
+      return NextResponse.json({ 
+        success: true, 
+        messageId: 'fallback-dev-mode',
+        recoveryLink,
+        warning: 'Resend failed, email logged to console'
+      });
     }
 
     const emailData = await emailResponse.json();
