@@ -169,7 +169,7 @@ const ShopPageClient: React.FC = () => {
   };
 
   const filteredProducts = products.filter(p => {
-    if (p.status && p.status !== 'Published') return false;
+    if (p.status && p.status.toLowerCase() !== 'published') return false;
     // Check each dimension filter
     for (const dim of dimensions) {
       const filterVal = getFilter(dim.key);

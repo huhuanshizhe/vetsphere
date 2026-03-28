@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { ToastContainer, useToast } from '@/components/ui';
 
 interface Order {
   id: string;
@@ -36,12 +37,14 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 export default function AdminOrdersPage() {
   const supabase = createClient();
+  const { toasts, removeToast, success, error: toastError } = useToast();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [trackingNumber, setTrackingNumber] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -64,18 +67,20 @@ export default function AdminOrdersPage() {
       setOrders(data || []);
     } catch (error) {
       console.error('Failed to load orders:', error);
+      toastError('加载订单失败');
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    setUpdating(true);
     try {
-      const updates: any = { 
+      const updates: any = {
         status: newStatus,
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString()
       };
-      
+
       if (newStatus === 'Shipped' && trackingNumber) {
         updates.tracking_number = trackingNumber;
       }
@@ -86,14 +91,16 @@ export default function AdminOrdersPage() {
         .eq('id', orderId);
 
       if (error) throw error;
-      
+
       setTrackingNumber('');
       setSelectedOrder(null);
       loadOrders();
-      alert('订单状态已更新');
+      success(newStatus === 'Shipped' ? '订单已发货，快递单号已记录' : '订单状态已更新');
     } catch (error) {
       console.error('Failed to update order:', error);
-      alert('更新失败');
+      toastError('更新失败，请重试');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -258,12 +265,19 @@ export default function AdminOrdersPage() {
                     onChange={(e) => setTrackingNumber(e.target.value)}
                     placeholder="请输入快递单号"
                     className="w-full p-3 border border-slate-200 rounded-lg"
+                    disabled={updating}
                   />
-                  <button 
+                  <button
                     onClick={() => handleUpdateStatus(selectedOrder.id, 'Shipped')}
-                    className="mt-2 w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                    disabled={updating || !trackingNumber.trim()}
+                    className="mt-2 w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    确认发货
+                    {updating ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        处理中...
+                      </>
+                    ) : '确认发货'}
                   </button>
                 </div>
               )}
@@ -271,6 +285,9 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* Toast 通知容器 */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

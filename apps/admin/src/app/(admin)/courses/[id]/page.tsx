@@ -4,7 +4,7 @@ import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Course, Specialty } from '@vetsphere/shared/types';
-import { Card, Button, LoadingState, ConfirmDialog } from '@/components/ui';
+import { Card, Button, LoadingState, ConfirmDialog, ToastContainer, useToast } from '@/components/ui';
 
 type Lang = 'en' | 'zh' | 'th' | 'ja';
 
@@ -30,7 +30,12 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
   const [translating, setTranslating] = useState(false);
   const [translateSuccess, setTranslateSuccess] = useState(false);
   const [translateError, setTranslateError] = useState<string | null>(null);
-  
+
+  // 翻译进度状态
+  const [showTranslateModal, setShowTranslateModal] = useState(false);
+  const [translateStep, setTranslateStep] = useState(0);
+  const [translateProgress, setTranslateProgress] = useState(0);
+
   // 离开确认
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
@@ -38,6 +43,9 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [selectedSites, setSelectedSites] = useState<string[]>(['cn']);
   const [publishing, setPublishing] = useState(false);
+
+  // Toast 通知
+  const { toasts, removeToast, success, error: toastError } = useToast();
 
   // 只读模式：已上架课程只能查看不能编辑
   const isReadOnly = course?.status === 'published';
@@ -193,9 +201,29 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
   // AI翻译
   async function handleTranslate() {
     if (!course) return;
+
+    // 显示翻译进度弹框
+    setShowTranslateModal(true);
     setTranslating(true);
     setTranslateError(null);
+    setTranslateStep(1);
+    setTranslateProgress(0);
+
+    // 模拟进度更新
+    const progressInterval = setInterval(() => {
+      setTranslateProgress(prev => {
+        if (prev >= 85) return prev;
+        return prev + Math.random() * 5;
+      });
+    }, 500);
+
     try {
+      // 步骤 1：分析内容
+      await new Promise(r => setTimeout(r, 800));
+      setTranslateStep(2);
+      setTranslateProgress(20);
+
+      // 调用翻译 API
       const res = await fetch('/api/courses/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -205,13 +233,31 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
         const json = await res.json();
         throw new Error(json.error || '翻译失败');
       }
+
+      // 步骤 5：保存结果
+      setTranslateStep(5);
+      setTranslateProgress(95);
+      await new Promise(r => setTimeout(r, 500));
+
+      // 完成
+      clearInterval(progressInterval);
+      setTranslateProgress(100);
       setTranslateSuccess(true);
-      setTimeout(() => setTranslateSuccess(false), 3000);
-      // 重新加载数据
       await loadCourse();
+
+      // 短暂显示完成状态后关闭弹框
+      setTimeout(() => {
+        setShowTranslateModal(false);
+        success('AI 翻译完成，已自动补全英文、泰文、日文内容');
+      }, 1000);
+
     } catch (err) {
+      clearInterval(progressInterval);
       setTranslateError(err instanceof Error ? err.message : '翻译失败');
-      setTimeout(() => setTranslateError(null), 5000);
+      toastError(err instanceof Error ? err.message : '翻译失败');
+      setTimeout(() => {
+        setShowTranslateModal(false);
+      }, 2000);
     } finally {
       setTranslating(false);
     }
@@ -989,6 +1035,89 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
               >
                 {publishing ? '上架中...' : `确认上架 (${selectedSites.length} 个站点)`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast 通知容器 */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      {/* AI 翻译进度弹框 */}
+      {showTranslateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="text-center">
+              {/* 动态图标 */}
+              <div className="w-16 h-16 mx-auto mb-4 relative">
+                {translateProgress >= 100 ? (
+                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : translateError ? (
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                )}
+              </div>
+
+              {/* 标题 */}
+              <h3 className="text-lg font-bold text-slate-900 mb-2">
+                {translateError ? '翻译失败' : translateProgress >= 100 ? '翻译完成' : 'AI 智能翻译中'}
+              </h3>
+
+              {/* 当前步骤 */}
+              {!translateError && translateProgress < 100 && (
+                <div className="mb-4">
+                  <p className="text-sm text-slate-600 mb-3">
+                    {translateStep === 1 && '正在分析课程内容...'}
+                    {translateStep === 2 && '正在翻译到 English...'}
+                    {translateStep >= 3 && translateStep < 5 && '正在翻译多语言内容...'}
+                    {translateStep === 5 && '正在保存翻译结果...'}
+                  </p>
+
+                  {/* 进度条 */}
+                  <div className="w-full bg-slate-100 rounded-full h-2.5 mb-2">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${translateProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-slate-500">{Math.round(translateProgress)}%</p>
+                </div>
+              )}
+
+              {/* 完成状态 */}
+              {translateProgress >= 100 && !translateError && (
+                <div className="text-left bg-emerald-50 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-emerald-700 font-medium mb-2">已完成翻译：</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ English</span>
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ ภาษาไทย</span>
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ 日本語</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 错误状态 */}
+              {translateError && (
+                <div className="text-left bg-red-50 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-red-600">{translateError}</p>
+                </div>
+              )}
+
+              {/* 翻译说明 */}
+              {translateProgress < 100 && !translateError && (
+                <p className="text-xs text-slate-400">
+                  正在使用通义千问 AI 进行多语言翻译，请稍候...
+                </p>
+              )}
             </div>
           </div>
         </div>

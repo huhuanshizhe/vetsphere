@@ -21,9 +21,11 @@ export { NotificationProvider, useNotification } from './context/NotificationCon
 
 // Services
 export { api } from './services/api';
-export { supabase } from './services/supabase';
+export { supabase, getImageUrl } from './services/supabase';
 export * from './services/translation';
+export * from './services/email';
 
 // Lib
 export { PRODUCTS_CN, COURSES_CN, PORTAL_THEME } from './lib/constants';
 export { LOCATIONS } from './lib/locations';
+export { translateSpecKey, translateSpecs, specLabelTranslations } from './lib/spec-translations';

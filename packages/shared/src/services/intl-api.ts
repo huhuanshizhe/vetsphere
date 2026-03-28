@@ -5,7 +5,7 @@
  * Reads from overlay tables (course_site_views, product_site_views, etc.)
  * JOINed with base tables for resolved display data.
  */
-import { supabase } from './supabase';
+import { supabase, getImageUrl } from './supabase';
 
 const SITE_CODE = 'intl';
 
@@ -106,7 +106,7 @@ export interface IntlProduct {
   clinical_category: string | null;
   cover_image_url: string | null;
   description: string | null;
-  long_description: string | null;
+  rich_description: string | null;
   specs: Record<string, any>;
   price_min: number | null;
   price_max: number | null;
@@ -119,6 +119,16 @@ export interface IntlProduct {
   supplier_id?: string;
   // Related training
   related_courses?: IntlCourse[];
+  // SKU aggregated prices (min selling price across all SKUs for each currency)
+  sku_price_usd_min?: number | null;
+  sku_price_jpy_min?: number | null;
+  sku_price_thb_min?: number | null;
+  sku_price_cny_min?: number | null;
+  // SKU max prices (for price range display)
+  sku_price_usd_max?: number | null;
+  sku_price_jpy_max?: number | null;
+  sku_price_thb_max?: number | null;
+  sku_price_cny_max?: number | null;
 }
 
 export interface IntlInstructor {
@@ -473,8 +483,36 @@ export async function getIntlCourseInstructors(courseId: string, locale: string 
 // Product Site Views
 // ============================================
 
-function mapProductRow(sv: any): IntlProduct {
+function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
   const base = sv.products || {};
+  
+  // Get localized name based on locale
+  const getLocalizedName = () => {
+    if (sv.display_name) return sv.display_name;
+    if (locale === 'en' && base.name_en) return base.name_en;
+    if (locale === 'ja' && base.name_ja) return base.name_ja;
+    if (locale === 'th' && base.name_th) return base.name_th;
+    return base.name || sv.product_id;
+  };
+  
+  // Get localized summary/description
+  const getLocalizedSummary = () => {
+    if (sv.summary_override) return sv.summary_override;
+    // Use locale-specific description
+    if (locale === 'en' && base.description_en) return base.description_en;
+    if (locale === 'ja' && base.description_ja) return base.description_ja;
+    if (locale === 'th' && base.description_th) return base.description_th;
+    return base.subtitle || base.description;
+  };
+  
+  // Get localized rich description (HTML with images from Admin)
+  const getLocalizedRichDescription = () => {
+    if (locale === 'en' && base.rich_description_en) return base.rich_description_en;
+    if (locale === 'ja' && base.rich_description_ja) return base.rich_description_ja;
+    if (locale === 'th' && base.rich_description_th) return base.rich_description_th;
+    return base.rich_description;
+  };
+  
   // Determine effective pricing_mode: site view override or base product
   const effectivePricingMode = sv.pricing_mode === 'inherit' || !sv.pricing_mode
     ? (base.pricing_mode || 'fixed')
@@ -484,9 +522,9 @@ function mapProductRow(sv: any): IntlProduct {
     id: sv.id,
     product_id: sv.product_id,
     site_code: sv.site_code,
-    display_name: sv.display_name || base.name || '',
+    display_name: getLocalizedName(),
     slug: sv.slug_override || base.slug || sv.product_id,
-    summary: sv.summary_override || base.subtitle || base.description,
+    summary: getLocalizedSummary(),
     pricing_mode: effectivePricingMode,
     display_price: sv.display_price || base.price,
     currency_code: sv.currency_code || 'USD',
@@ -507,9 +545,9 @@ function mapProductRow(sv: any): IntlProduct {
     specialty: base.specialty,
     scene_code: base.scene_code,
     clinical_category: base.clinical_category,
-    cover_image_url: base.cover_image_url,
-    description: base.description,
-    long_description: base.long_description,
+    cover_image_url: getImageUrl(base.cover_image_url || base.image_url) ?? null,
+    description: getLocalizedSummary(),
+    rich_description: getLocalizedRichDescription(),
     specs: base.specs || {},
     price_min: base.price_min,
     price_max: base.price_max,
@@ -530,15 +568,22 @@ export async function getIntlProducts(options?: {
   pricing_mode?: 'fixed' | 'inquiry';
   limit?: number;
   offset?: number;
+  locale?: string;
+  sortBy?: 'featured' | 'newest' | 'price-low' | 'price-high' | 'name-asc';
+  categoryId?: string;
 }): Promise<{ items: IntlProduct[]; total: number }> {
+  const locale = options?.locale || 'en';
+
   let query = supabase
     .from('product_site_views')
     .select(`
       *,
       products!inner (
-        id, slug, name, subtitle, description, long_description,
+        id, slug, name, name_en, name_ja, name_th,
+        subtitle, description, description_en, description_ja, description_th,
+        rich_description, rich_description_en, rich_description_ja, rich_description_th,
         brand, specialty, scene_code, clinical_category,
-        cover_image_url, specs, price_min, price_max,
+        cover_image_url, image_url, specs, price_min, price_max,
         status, pricing_mode, price, stock_quantity,
         supplier_uuid
       )
@@ -562,8 +607,32 @@ export async function getIntlProducts(options?: {
   if (options?.pricing_mode) {
     query = query.eq('products.pricing_mode', options.pricing_mode);
   }
+  // Category filter - filter by category ID through product_categories relation
+  if (options?.categoryId) {
+    query = query.eq('products.clinical_category', options.categoryId);
+  }
 
-  query = query.order('display_order').order('published_at', { ascending: false });
+  // Sorting
+  switch (options?.sortBy) {
+    case 'newest':
+      query = query.order('published_at', { ascending: false });
+      break;
+    case 'price-low':
+      query = query.order('display_price', { ascending: true, nullsFirst: false });
+      break;
+    case 'price-high':
+      query = query.order('display_price', { ascending: false, nullsFirst: false });
+      break;
+    case 'name-asc':
+      query = query.order('display_name', { ascending: true });
+      break;
+    case 'featured':
+    default:
+      query = query.order('is_featured', { ascending: false })
+                   .order('display_order')
+                   .order('published_at', { ascending: false });
+      break;
+  }
 
   if (options?.limit) {
     const offset = options.offset || 0;
@@ -572,47 +641,158 @@ export async function getIntlProducts(options?: {
 
   const { data, count, error } = await query;
   if (error) {
-    console.error('Failed to fetch INTL products:', error);
+    console.error('[getIntlProducts] Failed to fetch INTL products:', error);
     return { items: [], total: 0 };
   }
 
+  // Get product IDs for SKU price aggregation
+  const productIds = (data || []).map(row => row.products?.id || row.product_id);
+
+  // Batch query SKU min/max prices for each currency
+  interface SkuPriceInfo {
+    usd_min: number | null; usd_max: number | null;
+    jpy_min: number | null; jpy_max: number | null;
+    thb_min: number | null; thb_max: number | null;
+    cny_min: number | null; cny_max: number | null;
+  }
+  let skuPriceMap: Record<string, SkuPriceInfo> = {};
+
+  if (productIds.length > 0) {
+    const { data: skuData } = await supabase
+      .from('product_skus')
+      .select('product_id, selling_price_usd, selling_price_jpy, selling_price_thb, selling_price')
+      .in('product_id', productIds)
+      .eq('is_active', true);
+
+    // Aggregate min/max prices per product
+    if (skuData) {
+      for (const sku of skuData) {
+        const pid = sku.product_id;
+        if (!skuPriceMap[pid]) {
+          skuPriceMap[pid] = {
+            usd_min: null, usd_max: null,
+            jpy_min: null, jpy_max: null,
+            thb_min: null, thb_max: null,
+            cny_min: null, cny_max: null
+          };
+        }
+        // Track USD min/max
+        if (sku.selling_price_usd !== null && sku.selling_price_usd !== undefined && sku.selling_price_usd > 0) {
+          if (skuPriceMap[pid].usd_min === null || sku.selling_price_usd < skuPriceMap[pid].usd_min!) {
+            skuPriceMap[pid].usd_min = sku.selling_price_usd;
+          }
+          if (skuPriceMap[pid].usd_max === null || sku.selling_price_usd > skuPriceMap[pid].usd_max!) {
+            skuPriceMap[pid].usd_max = sku.selling_price_usd;
+          }
+        }
+        // Track JPY min/max
+        if (sku.selling_price_jpy !== null && sku.selling_price_jpy !== undefined && sku.selling_price_jpy > 0) {
+          if (skuPriceMap[pid].jpy_min === null || sku.selling_price_jpy < skuPriceMap[pid].jpy_min!) {
+            skuPriceMap[pid].jpy_min = sku.selling_price_jpy;
+          }
+          if (skuPriceMap[pid].jpy_max === null || sku.selling_price_jpy > skuPriceMap[pid].jpy_max!) {
+            skuPriceMap[pid].jpy_max = sku.selling_price_jpy;
+          }
+        }
+        // Track THB min/max
+        if (sku.selling_price_thb !== null && sku.selling_price_thb !== undefined && sku.selling_price_thb > 0) {
+          if (skuPriceMap[pid].thb_min === null || sku.selling_price_thb < skuPriceMap[pid].thb_min!) {
+            skuPriceMap[pid].thb_min = sku.selling_price_thb;
+          }
+          if (skuPriceMap[pid].thb_max === null || sku.selling_price_thb > skuPriceMap[pid].thb_max!) {
+            skuPriceMap[pid].thb_max = sku.selling_price_thb;
+          }
+        }
+        // Track CNY min/max (selling_price as fallback)
+        if (sku.selling_price !== null && sku.selling_price !== undefined && sku.selling_price > 0) {
+          if (skuPriceMap[pid].cny_min === null || sku.selling_price < skuPriceMap[pid].cny_min!) {
+            skuPriceMap[pid].cny_min = sku.selling_price;
+          }
+          if (skuPriceMap[pid].cny_max === null || sku.selling_price > skuPriceMap[pid].cny_max!) {
+            skuPriceMap[pid].cny_max = sku.selling_price;
+          }
+        }
+      }
+    }
+  }
+
+  // Map products with SKU price data
+  const items = (data || []).map(row => {
+    const product = mapProductRow(row, locale);
+    const pid = row.products?.id || row.product_id;
+    const skuPrices = skuPriceMap[pid];
+    if (skuPrices) {
+      product.sku_price_usd_min = skuPrices.usd_min;
+      product.sku_price_usd_max = skuPrices.usd_max;
+      product.sku_price_jpy_min = skuPrices.jpy_min;
+      product.sku_price_jpy_max = skuPrices.jpy_max;
+      product.sku_price_thb_min = skuPrices.thb_min;
+      product.sku_price_thb_max = skuPrices.thb_max;
+      product.sku_price_cny_min = skuPrices.cny_min;
+      product.sku_price_cny_max = skuPrices.cny_max;
+    }
+    return product;
+  });
+
   return {
-    items: (data || []).map(mapProductRow),
+    items,
     total: count || 0,
   };
 }
 
 /** Get single INTL product by slug or product_id */
-export async function getIntlProductBySlug(slugOrId: string): Promise<IntlProduct | null> {
-  const { data, error } = await supabase
+export async function getIntlProductBySlug(slugOrId: string, locale: string = 'en'): Promise<IntlProduct | null> {
+  // Build base query for product_site_views
+  // Note: product_images loaded separately via getIntlProductImages()
+  const buildSiteViewQuery = () => supabase
     .from('product_site_views')
     .select(`
       *,
-      products!inner (
-        id, slug, name, subtitle, description, long_description,
+      products (
+        id, slug, name, name_en, name_ja, name_th,
+        subtitle, description, description_en, description_ja, description_th,
+        rich_description, rich_description_en, rich_description_ja, rich_description_th,
         brand, specialty, scene_code, clinical_category,
-        cover_image_url, specs, price_min, price_max,
-        status,
-        product_images (id, image_url, image_type, alt_text, display_order)
+        cover_image_url, image_url, specs, price_min, price_max,
+        status, pricing_mode, price, stock_quantity,
+        supplier_uuid
       )
     `)
     .eq('site_code', SITE_CODE)
     .eq('publish_status', 'published')
-    .eq('is_enabled', true)
-    .or(`slug_override.eq.${slugOrId},product_id.eq.${slugOrId}`)
+    .eq('is_enabled', true);
+
+  // Try slug_override first
+  const { data: data2, error: error2 } = await buildSiteViewQuery().eq('slug_override', slugOrId).single();
+
+  if (data2 && !error2) return mapProductRow(data2, locale);
+
+  // Try products.slug - need to first look up product by slug
+  const { data: productData } = await supabase
+    .from('products')
+    .select('id')
+    .eq('slug', slugOrId)
     .single();
 
-  if (error || !data) return null;
-  return mapProductRow(data);
+  if (productData) {
+    const { data: data3, error: error3 } = await buildSiteViewQuery().eq('product_id', productData.id).single();
+    if (data3 && !error3) return mapProductRow(data3, locale);
+  }
+
+  return null;
 }
 
 /** Get product images for a given product_id */
 export async function getIntlProductImages(productId: string) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('product_images')
-    .select('id, image_url, image_type, alt_text, display_order')
+    .select('id, url, type, alt_text, sort_order')
     .eq('product_id', productId)
-    .order('display_order');
+    .order('sort_order');
+  if (error) {
+    console.error('Failed to get product images:', error);
+    return [];
+  }
   return data || [];
 }
 
@@ -639,9 +819,9 @@ export async function getIntlCourseProducts(courseId: string): Promise<IntlProdu
     .select(`
       *,
       products!inner (
-        id, slug, name, subtitle, description, long_description,
+        id, slug, name, subtitle, description, rich_description,
         brand, specialty, scene_code, clinical_category,
-        cover_image_url, specs, price_min, price_max, status
+        cover_image_url, image_url, specs, price_min, price_max, status
       )
     `)
     .eq('site_code', SITE_CODE)
@@ -707,7 +887,7 @@ export async function getIntlRelatedProducts(productId: string, sceneCode: strin
       products!inner (
         id, slug, name, subtitle, description, long_description,
         brand, specialty, scene_code, clinical_category,
-        cover_image_url, specs, price_min, price_max, status
+        cover_image_url, image_url, specs, price_min, price_max, status
       )
     `)
     .eq('site_code', SITE_CODE)
@@ -718,7 +898,97 @@ export async function getIntlRelatedProducts(productId: string, sceneCode: strin
     .limit(limit);
 
   if (!data) return [];
-  return data.map(mapProductRow);
+  return data.map((sv) => mapProductRow(sv, 'en'));
+}
+
+// ============================================
+// Product SKUs
+// ============================================
+
+/** SKU data for international site */
+export interface IntlProductSku {
+  id: string;
+  sku_code: string;
+  attribute_combination: Record<string, string>;
+  // 供货价（仅供参考，不显示给终端用户）
+  price: number;
+  suggested_retail_price: number | null;
+  // 销售价（显示给终端用户）
+  selling_price: number | null;
+  selling_price_usd: number | null;
+  selling_price_jpy: number | null;
+  selling_price_thb: number | null;
+  // 库存
+  stock_quantity: number;
+  // SKU级别规格参数
+  specs: Record<string, string> | null;
+  // 图片和状态
+  image_url: string | null;
+  is_active: boolean;
+}
+
+/** Get SKUs for a product */
+export async function getIntlProductSkus(productId: string): Promise<IntlProductSku[]> {
+  const { data, error } = await supabase
+    .from('product_skus')
+    .select(`
+      id,
+      sku_code,
+      attribute_combination,
+      price,
+      suggested_retail_price,
+      selling_price,
+      selling_price_usd,
+      selling_price_jpy,
+      selling_price_thb,
+      stock_quantity,
+      specs,
+      image_url,
+      is_active
+    `)
+    .eq('product_id', productId)
+    .eq('is_active', true)
+    .order('sku_code');
+
+  if (error) {
+    console.error('Failed to fetch product SKUs:', error);
+    return [];
+  }
+
+  return (data || []).map(sku => ({
+    id: sku.id,
+    sku_code: sku.sku_code,
+    attribute_combination: sku.attribute_combination || {},
+    price: sku.price,
+    suggested_retail_price: sku.suggested_retail_price,
+    selling_price: sku.selling_price,
+    selling_price_usd: sku.selling_price_usd,
+    selling_price_jpy: sku.selling_price_jpy,
+    selling_price_thb: sku.selling_price_thb,
+    stock_quantity: sku.stock_quantity,
+    specs: sku.specs,
+    image_url: sku.image_url,
+    is_active: sku.is_active,
+  }));
+}
+
+/** Get variant attributes for a product (defines SKU dimensions like color, size) */
+export async function getIntlProductVariantAttributes(productId: string): Promise<{ name: string; values: string[] }[]> {
+  const { data, error } = await supabase
+    .from('product_variant_attributes')
+    .select('attribute_name, attribute_values')
+    .eq('product_id', productId)
+    .order('sort_order');
+
+  if (error) {
+    console.error('Failed to fetch variant attributes:', error);
+    return [];
+  }
+
+  return (data || []).map(attr => ({
+    name: attr.attribute_name,
+    values: attr.attribute_values || [],
+  }));
 }
 
 // ============================================
@@ -726,7 +996,7 @@ export async function getIntlRelatedProducts(productId: string, sceneCode: strin
 // ============================================
 
 /** Get published INTL clinic programs */
-export async function getIntlClinicPrograms(): Promise<IntlClinicProgram[]> {
+export async function getIntlClinicPrograms(locale?: string): Promise<IntlClinicProgram[]> {
   const { data, error } = await supabase
     .from('clinic_programs')
     .select('*')
@@ -792,15 +1062,15 @@ export async function submitIntlLead(lead: IntlLeadSubmission): Promise<{ succes
 // ============================================
 
 /** Get all data needed for INTL homepage in parallel */
-export async function getIntlHomePageData() {
+export async function getIntlHomePageData(locale?: string) {
   const [
     featuredCoursesResult,
     featuredProductsResult,
     programsResult,
   ] = await Promise.all([
-    getIntlCourses({ featured: true, limit: 6 }),
-    getIntlProducts({ featured: true, limit: 6 }),
-    getIntlClinicPrograms(),
+    getIntlCourses({ featured: false, limit: 6, locale }), // 改为获取最新课程而不是精选
+    getIntlProducts({ featured: false, limit: 6, locale }), // 改为获取最新产品而不是精选
+    getIntlClinicPrograms(locale),
   ]);
 
   return {
@@ -808,4 +1078,338 @@ export async function getIntlHomePageData() {
     featuredProducts: featuredProductsResult.items,
     clinicPrograms: programsResult,
   };
+}
+
+// ============================================
+// Shipping Zones
+// ============================================
+
+export interface ShippingZone {
+  id: string;
+  zoneCode: string;
+  zoneName: Record<string, string>;
+  region: 'US' | 'EU' | 'SEA';
+  countries: string[];
+  billingType: 'weight' | 'flat';
+  baseFee: number;
+  currency: string;
+  perUnitFee: number;
+  weightUnit: string;
+  estimatedDaysMin: number;
+  estimatedDaysMax: number;
+}
+
+export interface ShippingRate {
+  zoneCode: string;
+  zoneName: string;
+  shippingCost: number;
+  estimatedDays: string;
+  currency: string;
+}
+
+export interface CartShippingEstimate {
+  totalWeight: number;
+  weightUnit: string;
+  rates: ShippingRate[];
+  defaultRate: ShippingRate | null;
+}
+
+export interface CategoryWithCount {
+  slug: string;
+  name: Record<string, string>;
+  productCount: number;
+  richDescriptionAbove: Record<string, string> | null;
+  richDescriptionBelow: Record<string, string> | null;
+}
+
+/** Get all active shipping zones */
+export async function getShippingZones(): Promise<ShippingZone[]> {
+  const { data, error } = await supabase
+    .from('shipping_zones')
+    .select('*')
+    .eq('is_active', true)
+    .order('display_order');
+
+  if (error || !data) {
+    console.error('Failed to fetch shipping zones:', error);
+    return [];
+  }
+
+  return data.map((zone: any) => ({
+    id: zone.id,
+    zoneCode: zone.zone_code,
+    zoneName: zone.zone_name,
+    region: zone.region,
+    countries: zone.countries,
+    billingType: zone.billing_type,
+    baseFee: zone.base_fee,
+    currency: zone.currency,
+    perUnitFee: zone.per_unit_fee,
+    weightUnit: zone.weight_unit,
+    estimatedDaysMin: zone.estimated_days_min,
+    estimatedDaysMax: zone.estimated_days_max,
+  }));
+}
+
+/** Get shipping zone for a specific country */
+export async function getShippingZoneByCountry(countryCode: string): Promise<ShippingZone | null> {
+  const { data, error } = await supabase
+    .from('shipping_zones')
+    .select('*')
+    .eq('is_active', true)
+    .contains('countries', [countryCode.toUpperCase()])
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    zoneCode: data.zone_code,
+    zoneName: data.zone_name,
+    region: data.region,
+    countries: data.countries,
+    billingType: data.billing_type,
+    baseFee: data.base_fee,
+    currency: data.currency,
+    perUnitFee: data.per_unit_fee,
+    weightUnit: data.weight_unit,
+    estimatedDaysMin: data.estimated_days_min,
+    estimatedDaysMax: data.estimated_days_max,
+  };
+}
+
+/** Calculate shipping cost for cart items based on total weight */
+export async function calculateCartShipping(
+  items: Array<{ productId: string; quantity: number }>,
+  locale: string = 'en'
+): Promise<CartShippingEstimate> {
+  if (items.length === 0) {
+    return {
+      totalWeight: 0,
+      weightUnit: 'kg',
+      rates: [],
+      defaultRate: null,
+    };
+  }
+
+  // Get product weights from SKUs
+  const productIds = items.map(i => i.productId);
+  const { data: skus } = await supabase
+    .from('product_skus')
+    .select('product_id, weight, weight_unit, is_active')
+    .in('product_id', productIds)
+    .eq('is_active', true);
+
+  // Calculate total weight (normalize to kg)
+  let totalWeight = 0;
+  let defaultWeightUnit = 'kg';
+
+  for (const item of items) {
+    const productSkus = skus?.filter((s: any) => s.product_id === item.productId) || [];
+    // Use first active SKU's weight as product weight
+    const sku = productSkus[0];
+    if (sku?.weight) {
+      let weight = sku.weight * item.quantity;
+      // Normalize to kg
+      if (sku.weight_unit === 'g') weight = weight / 1000;
+      else if (sku.weight_unit === 'lb') weight = weight * 0.453592;
+      totalWeight += weight;
+      defaultWeightUnit = 'kg';
+    }
+  }
+
+  // Get all active shipping zones
+  const zones = await getShippingZones();
+  const rates: ShippingRate[] = [];
+
+  for (const zone of zones) {
+    let shippingCost = zone.baseFee;
+
+    if (zone.billingType === 'weight' && totalWeight > 0) {
+      shippingCost += zone.perUnitFee * totalWeight;
+    }
+
+    const estimatedDays = zone.estimatedDaysMin === zone.estimatedDaysMax
+      ? `${zone.estimatedDaysMin} days`
+      : `${zone.estimatedDaysMin}-${zone.estimatedDaysMax} days`;
+
+    rates.push({
+      zoneCode: zone.zoneCode,
+      zoneName: zone.zoneName[locale] || zone.zoneName['en'] || zone.zoneCode,
+      shippingCost: Math.round(shippingCost * 100) / 100,
+      estimatedDays,
+      currency: zone.currency,
+    });
+  }
+
+  return {
+    totalWeight: Math.round(totalWeight * 1000) / 1000,
+    weightUnit: defaultWeightUnit,
+    rates,
+    defaultRate: rates[0] || null,
+  };
+}
+
+// ============================================
+// Product Categories (Three-level hierarchy)
+// ============================================
+
+export interface ProductCategory {
+  id: string;
+  name: string;
+  name_en?: string;
+  name_th?: string;
+  name_ja?: string;
+  slug: string;
+  level: number;
+  parent_id: string | null;
+  icon: string | null;
+  description: string | null;
+  site_code: string;
+  sort_order: number;
+  is_active: boolean;
+  children?: ProductCategory[];
+  productCount?: number;
+}
+
+/**
+ * Get full product category tree for INTL site with product counts
+ */
+export async function getIntlProductCategoryTree(locale: string = 'en'): Promise<ProductCategory[]> {
+  // Get all active categories from product_categories table
+  const { data: categories, error } = await supabase
+    .from('product_categories')
+    .select('*')
+    .eq('is_active', true)
+    .or('site_code.eq.intl,site_code.eq.global')
+    .order('level')
+    .order('sort_order');
+
+  if (error || !categories) {
+    console.error('Failed to fetch categories:', error);
+    return [];
+  }
+
+  // Get product counts for each category
+  const { data: products } = await supabase
+    .from('product_site_views')
+    .select('product_id')
+    .eq('site_code', SITE_CODE)
+    .eq('publish_status', 'published')
+    .eq('is_enabled', true);
+
+  // Get category-product mappings
+  const productIds = products?.map(p => p.product_id) || [];
+  const { data: mappings } = await supabase
+    .from('product_category_mappings')
+    .select('category_id, product_id')
+    .in('product_id', productIds);
+
+  // Count products per category
+  const countMap: Record<string, number> = {};
+  if (mappings) {
+    for (const mapping of mappings) {
+      countMap[mapping.category_id] = (countMap[mapping.category_id] || 0) + 1;
+    }
+  }
+
+  // Build tree structure
+  const buildTree = (parentId: string | null = null, level: number = 1): ProductCategory[] => {
+    const levelCategories = categories
+      .filter(c => c.parent_id === parentId && c.level === level)
+      .sort((a, b) => a.sort_order - b.sort_order);
+
+    return levelCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      name_en: cat.name_en,
+      name_th: cat.name_th,
+      name_ja: cat.name_ja,
+      slug: cat.slug,
+      level: cat.level,
+      parent_id: cat.parent_id,
+      icon: cat.icon,
+      description: cat.description,
+      site_code: cat.site_code,
+      sort_order: cat.sort_order,
+      is_active: cat.is_active,
+      productCount: countMap[cat.id] || 0,
+      children: buildTree(cat.id, level + 1),
+    }));
+  };
+
+  return buildTree(null, 1);
+}
+
+/**
+ * Get categories flattened with product counts
+ */
+export async function getIntlCategoriesWithCounts(locale: string = 'en'): Promise<CategoryWithCount[]> {
+  const tree = await getIntlProductCategoryTree(locale);
+
+  // Flatten tree for backward compatibility
+  const flattenCategories = (categories: ProductCategory[]): CategoryWithCount[] => {
+    const result: CategoryWithCount[] = [];
+    for (const cat of categories) {
+      result.push({
+        slug: cat.slug,
+        name: {
+          en: cat.name_en || cat.name,
+          th: cat.name_th || cat.name,
+          ja: cat.name_ja || cat.name,
+          zh: cat.name,
+        },
+        productCount: cat.productCount || 0,
+        richDescriptionAbove: null,
+        richDescriptionBelow: null,
+      });
+      if (cat.children && cat.children.length > 0) {
+        result.push(...flattenCategories(cat.children));
+      }
+    }
+    return result;
+  };
+
+  return flattenCategories(tree);
+}
+
+/** Get categories with product counts for INTL site (dynamic visibility) */
+export async function getIntlCategoriesWithCountsOld(locale: string = 'en'): Promise<CategoryWithCount[]> {
+  // Get clinical categories from product_site_views
+  const { data: counts, error } = await supabase
+    .from('product_site_views')
+    .select('products!inner(clinical_category)')
+    .eq('site_code', SITE_CODE)
+    .eq('publish_status', 'published')
+    .eq('is_enabled', true);
+
+  if (error) {
+    console.error('Failed to fetch category counts:', error);
+  }
+
+  // Count products per category
+  const countMap: Record<string, number> = {};
+  if (counts) {
+    for (const item of counts) {
+      const cat = (item.products as any)?.clinical_category;
+      if (cat) {
+        countMap[cat] = (countMap[cat] || 0) + 1;
+      }
+    }
+  }
+
+  // Categories from site config
+  const categories: CategoryWithCount[] = [
+    { slug: 'imaging-diagnostics', name: { en: 'Imaging & Diagnostics', th: 'การถ่ายภาพและการวินิจฉัย', ja: '画像診断' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
+    { slug: 'surgery-anesthesia', name: { en: 'Surgery & Anesthesia', th: 'ศัลยกรรมและการดมยา', ja: '手術・麻酔' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
+    { slug: 'in-house-lab', name: { en: 'In-House Laboratory', th: 'ห้องปฏิบัติการในคลินิก', ja: '院内検査室' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
+    { slug: 'daily-supplies', name: { en: 'Daily Clinical Supplies', th: 'เวชภัณฑ์ประจำวัน', ja: '日常臨床用品' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
+    { slug: 'course-equipment', name: { en: 'Course-Recommended', th: 'แนะนำจากหลักสูตร', ja: 'コース推奨' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
+  ];
+
+  // Update counts
+  return categories.map(c => ({
+    ...c,
+    productCount: countMap[c.slug] || 0,
+  }));
 }

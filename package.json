@@ -27,6 +27,8 @@
   },
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
-    "pg": "^8.20.0"
+    "openai": "^6.25.0",
+    "pg": "^8.20.0",
+    "undici": "^7.24.5"
   }
 }

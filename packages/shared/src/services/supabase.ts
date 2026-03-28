@@ -5,6 +5,20 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIU
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Storage URL for images
+export const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public`;
+
+// Helper to get full image URL from relative path
+export function getImageUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  // If already absolute URL, return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  // If starts with /, prepend storage URL
+  if (path.startsWith('/')) return `${STORAGE_URL}${path}`;
+  // Otherwise, treat as relative path under uploads bucket
+  return `${STORAGE_URL}/uploads/${path}`;
+}
+
 // Deduplication wrapper for supabase.auth.getSession()
 // Prevents concurrent calls from triggering Web Locks API contention
 // which causes "Lock was not released within 5000ms" errors on slow networks.

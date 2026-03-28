@@ -15,14 +15,16 @@ export async function POST(
   try {
     const { id } = await params;
     const siteCode = requireSiteCode(req);
+    const body = await req.json().catch(() => ({}));
 
     const { data, error } = await supabase
       .from('product_site_views')
       .upsert({
         product_id: id,
         site_code: siteCode,
-        is_enabled: true,
-        publish_status: 'draft',
+        is_enabled: body.is_enabled ?? true,
+        publish_status: body.publish_status || 'draft',
+        published_at: body.publish_status === 'published' ? new Date().toISOString() : null,
       }, { onConflict: 'product_id,site_code' })
       .select()
       .single();

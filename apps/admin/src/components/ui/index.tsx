@@ -611,3 +611,96 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({
 
   return content;
 };
+
+// ============================================================================
+// Toast 通知组件 - New
+// ============================================================================
+import { useEffect, useState } from 'react';
+
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+interface ToastProps {
+  message: string;
+  type?: ToastType;
+  duration?: number;
+  onClose?: () => void;
+}
+
+export const Toast: React.FC<ToastProps> = ({
+  message,
+  type = 'info',
+  duration = 3000,
+  onClose,
+}) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose?.();
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [duration, onClose]);
+
+  const typeStyles: Record<ToastType, string> = {
+    success: 'bg-emerald-500 text-white',
+    error: 'bg-red-500 text-white',
+    warning: 'bg-amber-500 text-white',
+    info: 'bg-blue-500 text-white',
+  };
+
+  const icons: Record<ToastType, string> = {
+    success: '✓',
+    error: '✕',
+    warning: '⚠',
+    info: 'ℹ',
+  };
+
+  return (
+    <div className={`fixed top-4 right-4 z-[100] flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${typeStyles[type]} animate-slide-in`}>
+      <span className="text-lg">{icons[type]}</span>
+      <span className="text-sm font-medium">{message}</span>
+      <button onClick={onClose} className="ml-2 hover:opacity-70">×</button>
+    </div>
+  );
+};
+
+// Toast 容器组件 - 用于管理多个 Toast
+interface ToastData {
+  id: string;
+  message: string;
+  type: ToastType;
+}
+
+interface ToastContainerProps {
+  toasts: ToastData[];
+  removeToast: (id: string) => void;
+}
+
+export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, removeToast }) => {
+  return (
+    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2">
+      {toasts.map(toast => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Hook for toast management
+export function useToast() {
+  const [toasts, setToasts] = useState<ToastData[]>([]);
+
+  const addToast = (message: string, type: ToastType = 'info') => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  return { toasts, addToast, removeToast, success: (msg: string) => addToast(msg, 'success'), error: (msg: string) => addToast(msg, 'error'), warning: (msg: string) => addToast(msg, 'warning'), info: (msg: string) => addToast(msg, 'info') };
+}

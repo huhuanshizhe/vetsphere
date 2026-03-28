@@ -1,0 +1,212 @@
+{
+  "timestamp": "2026-03-16T11:31:00.881Z",
+  "results": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0,
+    "details": [
+      {
+        "test": "待审核 - 显示编辑",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "待审核 - 显示通过",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "待审核 - 显示拒绝",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "待审核 - 颜色bg-emerald-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "待审核 - 颜色bg-green-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "待审核 - 颜色bg-red-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已通过 - 显示编辑",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已通过 - 显示发布中国站",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已通过 - 显示发布国际站",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已通过 - 颜色bg-emerald-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已通过 - 颜色bg-blue-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已通过 - 颜色bg-purple-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已发布 - 显示编辑",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已发布 - 显示下架中国站",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已发布 - 显示下架国际站",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已发布 - 颜色bg-emerald-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已发布 - 颜色bg-slate-500",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已发布 - 颜色bg-slate-500",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "草稿 - 显示编辑",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "草稿 - 颜色bg-emerald-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已拒绝 - 显示编辑",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "已拒绝 - 颜色bg-emerald-600",
+        "status": "passed",
+        "note": "代码中已实现"
+      },
+      {
+        "test": "编辑按钮实现",
+        "status": "passed"
+      },
+      {
+        "test": "通过按钮实现",
+        "status": "passed"
+      },
+      {
+        "test": "拒绝按钮实现",
+        "status": "passed"
+      },
+      {
+        "test": "发布按钮实现",
+        "status": "passed"
+      },
+      {
+        "test": "上下架按钮实现",
+        "status": "passed"
+      },
+      {
+        "test": "详情页路由实现",
+        "status": "passed"
+      },
+      {
+        "test": "统计卡片筛选",
+        "status": "passed"
+      }
+    ]
+  },
+  "testCases": [
+    {
+      "status": "pending_review",
+      "statusLabel": "待审核",
+      "expectedButtons": [
+        "编辑",
+        "通过",
+        "拒绝"
+      ],
+      "expectedColors": [
+        "bg-emerald-600",
+        "bg-green-600",
+        "bg-red-600"
+      ]
+    },
+    {
+      "status": "approved",
+      "statusLabel": "已通过",
+      "expectedButtons": [
+        "编辑",
+        "发布中国站",
+        "发布国际站"
+      ],
+      "expectedColors": [
+        "bg-emerald-600",
+        "bg-blue-600",
+        "bg-purple-600"
+      ]
+    },
+    {
+      "status": "published",
+      "statusLabel": "已发布",
+      "expectedButtons": [
+        "编辑",
+        "下架中国站",
+        "下架国际站"
+      ],
+      "expectedColors": [
+        "bg-emerald-600",
+        "bg-slate-500",
+        "bg-slate-500"
+      ]
+    },
+    {
+      "status": "draft",
+      "statusLabel": "草稿",
+      "expectedButtons": [
+        "编辑"
+      ],
+      "expectedColors": [
+        "bg-emerald-600"
+      ]
+    },
+    {
+      "status": "rejected",
+      "statusLabel": "已拒绝",
+      "expectedButtons": [
+        "编辑"
+      ],
+      "expectedColors": [
+        "bg-emerald-600"
+      ]
+    }
+  ]
+}

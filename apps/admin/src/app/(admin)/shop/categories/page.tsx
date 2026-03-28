@@ -312,7 +312,7 @@ function CategoryModal({ category, categories, onSave, onClose }: CategoryModalP
             </select>
           </div>
 
-          {formData.level > 1 && (
+          {(formData.level ?? 0) > 1 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 上级分类

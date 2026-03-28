@@ -227,43 +227,65 @@ Return format (EXACT structure required):
   };
 
   console.log('DashScope request:', {
-    url: 'https://coding.dashscope.aliyuncs.com/v1/chat/completions',
+    url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
     model: requestBody.model,
     promptLength: prompt.length,
     apiKeyPrefix: apiKey.substring(0, 10) + '...',
   });
 
-  // 使用 axios 代替 fetch，避免 Node.js fetch 的 DNS/连接问题
-  try {
-    const response = await axios.post(
-      'https://coding.dashscope.aliyuncs.com/v1/chat/completions',
-      requestBody,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 120000, // 增加到120秒
-      }
-    );
+  // 使用 Node.js 原生 https 模块
+  const https = require('https');
 
-    const resultText = response.data?.choices?.[0]?.message?.content;
+  return new Promise((resolve, reject) => {
+    const postData = JSON.stringify(requestBody);
+    const options = {
+      hostname: 'dashscope.aliyuncs.com',
+      port: 443,
+      path: '/compatible-mode/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Length': Buffer.byteLength(postData),
+      },
+    };
 
-    if (!resultText) {
-      throw new Error('No translation result from DashScope');
-    }
+    console.log('[DashScope] Using native https module');
 
-    const result = JSON.parse(resultText);
-    console.log('DashScope returned languages:', Object.keys(result));
-    
-    return result as Record<SupportedLanguage, FlatTranslationContent>;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Axios error:', error.message, error.code);
-      throw new Error(`DashScope API call failed: ${error.message}`);
-    }
-    throw error;
-  }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const req = https.request(options, (res: any) => {
+      let body = '';
+      res.on('data', (chunk: any) => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 400) {
+          reject(new Error(`HTTP ${res.statusCode}: ${body.substring(0, 200)}`));
+        } else {
+          try {
+            const data = JSON.parse(body);
+            const resultText = data?.choices?.[0]?.message?.content;
+            if (!resultText) {
+              reject(new Error('No translation result from DashScope'));
+            } else {
+              const result = JSON.parse(resultText);
+              console.log('DashScope returned languages:', Object.keys(result));
+              resolve(result);
+            }
+          } catch (e) {
+            reject(e);
+          }
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.setTimeout(180000, () => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    });
+
+    req.write(postData);
+    req.end();
+  });
 }
 
 /**

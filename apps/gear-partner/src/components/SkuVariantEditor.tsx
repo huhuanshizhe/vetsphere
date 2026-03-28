@@ -1,8 +1,22 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Plus, X, ChevronDown, GripVertical, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { Plus, X, ChevronDown, GripVertical, AlertCircle, CheckCircle, RefreshCw, Upload, Settings2, ChevronRight, ChevronUp } from 'lucide-react';
 import type { ProductSku, ProductVariantAttribute } from '@vetsphere/shared/types';
+
+// 常用规格参数预设
+const SPEC_PRESETS = [
+  '功率',
+  '电压',
+  '尺寸',
+  '材质',
+  '容量',
+  '精度',
+  '速度',
+  '频率',
+  '温度范围',
+  '压力范围',
+];
 
 // Common attribute name presets
 const ATTRIBUTE_PRESETS = [
@@ -260,6 +274,91 @@ export default function SkuVariantEditor({
     onSkusChange(skus.map(sku => ({ ...sku, stockQuantity: stock })));
   }, [skus, onSkusChange]);
 
+  // Upload SKU image
+  const uploadSkuImage = useCallback(async (skuId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'product');
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('上传失败');
+
+      const data = await res.json();
+      updateSku(skuId, 'imageUrl', data.url);
+    } catch (error) {
+      alert('图片上传失败，请重试');
+    }
+  }, [updateSku]);
+
+  // Update SKU spec
+  const updateSkuSpec = useCallback((skuId: string, specKey: string, specValue: string) => {
+    onSkusChange(
+      skus.map(sku => {
+        if (sku.id === skuId) {
+          const newSpecs = { ...(sku.specs || {}) };
+          if (specValue.trim()) {
+            newSpecs[specKey] = specValue.trim();
+          } else {
+            delete newSpecs[specKey];
+          }
+          return { ...sku, specs: newSpecs };
+        }
+        return sku;
+      })
+    );
+  }, [skus, onSkusChange]);
+
+  // Add spec key to SKU
+  const addSkuSpecKey = useCallback((skuId: string, specKey: string) => {
+    if (!specKey.trim()) return;
+    onSkusChange(
+      skus.map(sku => {
+        if (sku.id === skuId) {
+          const newSpecs = { ...(sku.specs || {}) };
+          if (!(specKey in newSpecs)) {
+            newSpecs[specKey.trim()] = '';
+          }
+          return { ...sku, specs: newSpecs };
+        }
+        return sku;
+      })
+    );
+  }, [skus, onSkusChange]);
+
+  // Remove spec key from SKU
+  const removeSkuSpecKey = useCallback((skuId: string, specKey: string) => {
+    onSkusChange(
+      skus.map(sku => {
+        if (sku.id === skuId) {
+          const newSpecs = { ...(sku.specs || {}) };
+          delete newSpecs[specKey];
+          return { ...sku, specs: newSpecs };
+        }
+        return sku;
+      })
+    );
+  }, [skus, onSkusChange]);
+
+  // Track expanded SKU rows for specs editing
+  const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
+
+  const toggleSkuExpanded = useCallback((skuId: string) => {
+    setExpandedSkus(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(skuId)) {
+        newSet.delete(skuId);
+      } else {
+        newSet.add(skuId);
+      }
+      return newSet;
+    });
+  }, []);
+
   // Calculate totals
   const totalStock = useMemo(() =>
     skus.reduce((sum, sku) => sum + sku.stockQuantity, 0),
@@ -289,6 +388,9 @@ export default function SkuVariantEditor({
       suggestedRetailPrice: undefined,
       isActive: true,
       sortOrder: 0,
+      specs: {},
+      barcode: undefined,
+      imageUrl: undefined,
     };
 
     return (
@@ -310,7 +412,7 @@ export default function SkuVariantEditor({
           </div>
         </div>
 
-        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -397,6 +499,111 @@ export default function SkuVariantEditor({
                 placeholder="0"
                 disabled={disabled}
               />
+            </div>
+          </div>
+
+          {/* Barcode row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                条形码
+              </label>
+              <input
+                type="text"
+                value={singleSku.barcode || ''}
+                onChange={e => {
+                  const newSku = { ...singleSku, barcode: e.target.value };
+                  onSkusChange([newSku]);
+                }}
+                className="input"
+                placeholder="可选"
+                disabled={disabled}
+              />
+            </div>
+          </div>
+
+          {/* Specs section */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                <Settings2 className="w-4 h-4" />
+                规格参数
+              </p>
+              <div className="flex gap-2">
+                <select
+                  onChange={e => {
+                    if (e.target.value) {
+                      const newSpecs = { ...(singleSku.specs || {}) };
+                      if (!(e.target.value in newSpecs)) {
+                        newSpecs[e.target.value] = '';
+                      }
+                      onSkusChange([{ ...singleSku, specs: newSpecs }]);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="text-xs border border-gray-300 rounded px-2 py-1"
+                  disabled={disabled}
+                >
+                  <option value="">添加参数...</option>
+                  {SPEC_PRESETS.filter(p => !(singleSku.specs && p in singleSku.specs)).map(preset => (
+                    <option key={preset} value={preset}>{preset}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="自定义参数名"
+                  className="text-xs border border-gray-300 rounded px-2 py-1 w-28"
+                  disabled={disabled}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const value = (e.target as HTMLInputElement).value;
+                      if (value.trim()) {
+                        const newSpecs = { ...(singleSku.specs || {}) };
+                        if (!(value in newSpecs)) {
+                          newSpecs[value.trim()] = '';
+                        }
+                        onSkusChange([{ ...singleSku, specs: newSpecs }]);
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {singleSku.specs && Object.entries(singleSku.specs).map(([key, value]) => (
+                <div key={key} className="flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-1.5">
+                  <span className="text-xs text-gray-500 w-12 truncate">{key}:</span>
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={e => {
+                      const newSpecs = { ...(singleSku.specs || {}) };
+                      newSpecs[key] = e.target.value;
+                      onSkusChange([{ ...singleSku, specs: newSpecs }]);
+                    }}
+                    className="flex-1 text-xs border-none outline-none bg-transparent"
+                    placeholder="值"
+                    disabled={disabled}
+                  />
+                  <button
+                    onClick={() => {
+                      const newSpecs = { ...(singleSku.specs || {}) };
+                      delete newSpecs[key];
+                      onSkusChange([{ ...singleSku, specs: newSpecs }]);
+                    }}
+                    className="text-gray-400 hover:text-red-500"
+                    disabled={disabled}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {(!singleSku.specs || Object.keys(singleSku.specs).length === 0) && (
+                <p className="text-xs text-gray-400 col-span-full py-2">
+                  暂无规格参数，可从上方添加
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -553,6 +760,7 @@ export default function SkuVariantEditor({
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-2 py-3 w-10"></th> {/* Expand button */}
                   {variantAttributes.map(attr => (
                     <th key={attr.attributeName} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       {attr.attributeName}
@@ -563,91 +771,228 @@ export default function SkuVariantEditor({
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">建议零售价</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">重量</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">库存</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">条形码</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {skus.map((sku, index) => (
-                  <tr key={sku.id} className={!sku.isActive ? 'bg-gray-50 opacity-60' : ''}>
-                    {variantAttributes.map(attr => (
-                      <td key={attr.attributeName} className="px-4 py-3 text-sm text-gray-900">
-                        {sku.attributeCombination[attr.attributeName] || '-'}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={sku.skuCode}
-                        onChange={e => updateSku(sku.id, 'skuCode', e.target.value)}
-                        className="input text-sm w-32"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={sku.price}
-                        onChange={e => updateSku(sku.id, 'price', parseFloat(e.target.value) || 0)}
-                        className="input text-sm w-24"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={sku.suggestedRetailPrice || ''}
-                        onChange={e => updateSku(sku.id, 'suggestedRetailPrice', parseFloat(e.target.value) || undefined)}
-                        className="input text-sm w-24"
-                        placeholder="可选"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={sku.weight || ''}
-                          onChange={e => updateSku(sku.id, 'weight', parseFloat(e.target.value) || undefined)}
-                          className="input text-sm w-16"
-                          placeholder="0"
-                        />
-                        <select
-                          value={sku.weightUnit || 'g'}
-                          onChange={e => updateSku(sku.id, 'weightUnit', e.target.value as 'g' | 'kg' | 'lb')}
-                          className="input text-sm w-14 px-1"
-                        >
-                          <option value="g">g</option>
-                          <option value="kg">kg</option>
-                          <option value="lb">lb</option>
-                        </select>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        min="0"
-                        value={sku.stockQuantity}
-                        onChange={e => updateSku(sku.id, 'stockQuantity', parseInt(e.target.value) || 0)}
-                        className="input text-sm w-20"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => updateSku(sku.id, 'isActive', !sku.isActive)}
-                        className={`text-xs px-2 py-1 rounded ${
-                          sku.isActive
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {sku.isActive ? '启用' : '禁用'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {skus.map((sku, index) => {
+                  const isExpanded = expandedSkus.has(sku.id);
+                  return (
+                    <>
+                      <tr key={sku.id} className={!sku.isActive ? 'bg-gray-50 opacity-60' : ''}>
+                        <td className="px-2 py-3">
+                          <button
+                            onClick={() => toggleSkuExpanded(sku.id)}
+                            className="p-1 hover:bg-gray-100 rounded transition-colors"
+                            title={isExpanded ? '收起规格参数' : '展开规格参数'}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4 text-gray-500" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-gray-500" />
+                            )}
+                          </button>
+                        </td>
+                        {variantAttributes.map(attr => (
+                          <td key={attr.attributeName} className="px-4 py-3 text-sm text-gray-900">
+                            {sku.attributeCombination[attr.attributeName] || '-'}
+                          </td>
+                        ))}
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={sku.skuCode}
+                            onChange={e => updateSku(sku.id, 'skuCode', e.target.value)}
+                            className="input text-sm w-32"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={sku.price}
+                            onChange={e => updateSku(sku.id, 'price', parseFloat(e.target.value) || 0)}
+                            className="input text-sm w-24"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={sku.suggestedRetailPrice || ''}
+                            onChange={e => updateSku(sku.id, 'suggestedRetailPrice', parseFloat(e.target.value) || undefined)}
+                            className="input text-sm w-24"
+                            placeholder="可选"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={sku.weight || ''}
+                              onChange={e => updateSku(sku.id, 'weight', parseFloat(e.target.value) || undefined)}
+                              className="input text-sm w-16"
+                              placeholder="0"
+                            />
+                            <select
+                              value={sku.weightUnit || 'g'}
+                              onChange={e => updateSku(sku.id, 'weightUnit', e.target.value as 'g' | 'kg' | 'lb')}
+                              className="input text-sm w-14 px-1"
+                            >
+                              <option value="g">g</option>
+                              <option value="kg">kg</option>
+                              <option value="lb">lb</option>
+                            </select>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            min="0"
+                            value={sku.stockQuantity}
+                            onChange={e => updateSku(sku.id, 'stockQuantity', parseInt(e.target.value) || 0)}
+                            className="input text-sm w-20"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={sku.barcode || ''}
+                            onChange={e => updateSku(sku.id, 'barcode', e.target.value)}
+                            className="input text-sm w-28"
+                            placeholder="条形码"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => updateSku(sku.id, 'isActive', !sku.isActive)}
+                            className={`text-xs px-2 py-1 rounded ${
+                              sku.isActive
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {sku.isActive ? '启用' : '禁用'}
+                          </button>
+                        </td>
+                      </tr>
+                      {/* Expanded row for SKU specs and image */}
+                      {isExpanded && (
+                        <tr key={`${sku.id}-expanded`} className="bg-gray-50">
+                          <td colSpan={variantAttributes.length + 9} className="px-6 py-4">
+                            <div className="flex gap-6">
+                              {/* SKU Image */}
+                              <div className="flex-shrink-0">
+                                <p className="text-xs font-medium text-gray-500 mb-2">SKU图片</p>
+                                <div className="relative w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:border-blue-400 transition-colors">
+                                  {sku.imageUrl ? (
+                                    <>
+                                      <img
+                                        src={sku.imageUrl}
+                                        alt="SKU"
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <button
+                                        onClick={() => updateSku(sku.id, 'imageUrl', undefined)}
+                                        className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
+                                      <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="hidden"
+                                        onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) uploadSkuImage(sku.id, file);
+                                        }}
+                                      />
+                                      <Upload className="w-5 h-5 text-gray-400" />
+                                      <span className="text-xs text-gray-400 mt-1">上传</span>
+                                    </label>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* SKU Specs */}
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                                    <Settings2 className="w-3 h-3" />
+                                    SKU规格参数
+                                  </p>
+                                  <div className="flex gap-1">
+                                    <select
+                                      onChange={e => {
+                                        if (e.target.value) {
+                                          addSkuSpecKey(sku.id, e.target.value);
+                                          e.target.value = '';
+                                        }
+                                      }}
+                                      className="text-xs border border-gray-300 rounded px-2 py-1"
+                                    >
+                                      <option value="">添加参数...</option>
+                                      {SPEC_PRESETS.filter(p => !(sku.specs && p in sku.specs)).map(preset => (
+                                        <option key={preset} value={preset}>{preset}</option>
+                                      ))}
+                                    </select>
+                                    <input
+                                      type="text"
+                                      placeholder="自定义参数名"
+                                      className="text-xs border border-gray-300 rounded px-2 py-1 w-24"
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                          const value = (e.target as HTMLInputElement).value;
+                                          if (value.trim()) {
+                                            addSkuSpecKey(sku.id, value);
+                                            (e.target as HTMLInputElement).value = '';
+                                          }
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                  {sku.specs && Object.entries(sku.specs).map(([key, value]) => (
+                                    <div key={key} className="flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-1">
+                                      <span className="text-xs text-gray-500 w-12 truncate">{key}:</span>
+                                      <input
+                                        type="text"
+                                        value={value}
+                                        onChange={e => updateSkuSpec(sku.id, key, e.target.value)}
+                                        className="flex-1 text-xs border-none outline-none bg-transparent"
+                                        placeholder="值"
+                                      />
+                                      <button
+                                        onClick={() => removeSkuSpecKey(sku.id, key)}
+                                        className="text-gray-400 hover:text-red-500"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  {(!sku.specs || Object.keys(sku.specs).length === 0) && (
+                                    <p className="text-xs text-gray-400 col-span-full py-2">
+                                      暂无规格参数，可从上方添加
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>

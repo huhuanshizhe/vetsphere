@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  sendEmail,
+  inquiryNotificationEmailTemplate,
+  inquiryConfirmationEmailTemplate,
+} from '@vetsphere/shared/services/email';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // Admin email for notifications
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@vetsphere.com';
@@ -12,7 +17,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@vetsphere.com';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     const {
       productId,
       customerName,
@@ -81,8 +86,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get IP and user agent for tracking
-    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0] || 
-                      request.headers.get('x-real-ip') || 
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0] ||
+                      request.headers.get('x-real-ip') ||
                       'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
@@ -127,24 +132,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send email notification to admin
+    // Send email notification to admin (using Resend)
     try {
-      await sendAdminNotification({
-        inquiryId: inquiry.id,
-        customerName,
-        customerEmail,
-        clinicName: clinicName || companyName,
-        country,
-        productName: referenceItem.name,
-        productBrand: referenceItem.brand,
-        budgetRange,
-        estimatedPurchaseTime,
+      const adminEmail = inquiryNotificationEmailTemplate({
+        type: inquiryType || 'Product Inquiry',
+        name: customerName,
+        email: customerEmail,
+        company: companyName || clinicName,
+        phone: customerPhone,
         message,
-        priority,
+        product: referenceItem.name,
+        courseId: referenceType === 'course' ? referenceItem.id : undefined,
+      });
+
+      await sendEmail({
+        to: ADMIN_EMAIL,
+        subject: adminEmail.subject,
+        html: adminEmail.html,
       });
     } catch (emailError) {
-      // Log but don't fail the request if email fails
+      // Log but don't fail request if email fails
       console.error('Failed to send admin notification:', emailError);
+    }
+
+    // Send confirmation email to customer (using Resend)
+    try {
+      const confirmationEmail = inquiryConfirmationEmailTemplate(
+        customerName,
+        inquiryType || 'Product Inquiry',
+        inquiry.id,
+        'en'
+      );
+
+      await sendEmail({
+        to: customerEmail,
+        subject: confirmationEmail.subject,
+        html: confirmationEmail.html,
+      });
+    } catch (emailError) {
+      // Log but don't fail request if email fails
+      console.error('Failed to send confirmation email:', emailError);
     }
 
     console.log(`New inquiry created: ${inquiry.id} for ${referenceType} ${referenceItem.name} (Priority: ${priority})`);
@@ -154,102 +181,12 @@ export async function POST(request: NextRequest) {
       inquiryId: inquiry.id,
       message: 'Inquiry submitted successfully',
     });
-
   } catch (error) {
     console.error('Inquiry API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
-  }
-}
-
-// Send notification email to admin
-async function sendAdminNotification(data: {
-  inquiryId: string;
-  customerName: string;
-  customerEmail: string;
-  clinicName?: string;
-  country?: string;
-  productName: string;
-  productBrand?: string;
-  budgetRange?: string;
-  estimatedPurchaseTime?: string;
-  message: string;
-  priority: string;
-}) {
-  const priorityEmoji = {
-    urgent: '🔴',
-    high: '🟠',
-    normal: '🟡',
-    low: '🟢',
-  }[data.priority] || '🟡';
-
-  const budgetLabels: Record<string, string> = {
-    'under5k': 'Under $5,000',
-    '5k-15k': '$5,000 - $15,000',
-    '15k-50k': '$15,000 - $50,000',
-    '50k-100k': '$50,000 - $100,000',
-    'over100k': 'Over $100,000',
-    'undisclosed': 'Not disclosed',
-  };
-
-  const timelineLabels: Record<string, string> = {
-    'immediate': 'Immediate (within 1 month)',
-    '1-3months': '1-3 months',
-    '3-6months': '3-6 months',
-    '6-12months': '6-12 months',
-    'planning': 'Just planning/researching',
-  };
-
-  const emailBody = `
-${priorityEmoji} New Clinical Consultation Request
-
-Priority: ${data.priority.toUpperCase()}
-Inquiry ID: ${data.inquiryId}
-
-═══════════════════════════════════════
-CONTACT INFORMATION
-═══════════════════════════════════════
-Name: ${data.customerName}
-Email: ${data.customerEmail}
-Clinic: ${data.clinicName || 'Not provided'}
-Country: ${data.country || 'Not provided'}
-
-═══════════════════════════════════════
-PRODUCT INTEREST
-═══════════════════════════════════════
-Product: ${data.productBrand ? `${data.productBrand} - ` : ''}${data.productName}
-
-═══════════════════════════════════════
-PURCHASE PLANNING
-═══════════════════════════════════════
-Budget Range: ${data.budgetRange ? budgetLabels[data.budgetRange] || data.budgetRange : 'Not provided'}
-Timeline: ${data.estimatedPurchaseTime ? timelineLabels[data.estimatedPurchaseTime] || data.estimatedPurchaseTime : 'Not provided'}
-
-═══════════════════════════════════════
-MESSAGE
-═══════════════════════════════════════
-${data.message}
-
----
-View in Admin Dashboard: ${process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.vetsphere.com'}/dashboard
-  `.trim();
-
-  // Call the email API
-  const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      to: ADMIN_EMAIL,
-      subject: `${priorityEmoji} [VetSphere] New Clinical Consultation: ${data.productName} - ${data.clinicName || data.customerName}`,
-      text: emailBody,
-      type: 'inquiry_notification',
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Email API returned ${response.status}`);
   }
 }
 
@@ -320,7 +257,6 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ inquiries });
-
   } catch (error) {
     console.error('Inquiry API error:', error);
     return NextResponse.json(

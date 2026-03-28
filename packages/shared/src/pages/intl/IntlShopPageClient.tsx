@@ -1,472 +1,507 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   getIntlProducts,
+  getIntlProductCategoryTree,
   IntlProduct,
+  ProductCategory,
 } from '../../services/intl-api';
+import ProductCardMobile, { getPriceRangeForProduct } from '../../components/intl/ProductCardMobile';
 import {
   Search,
-  SlidersHorizontal,
+  ChevronRight,
   Package,
-  Wrench,
+  Building2,
   ArrowRight,
-  X,
-  Star,
-  MessageSquareQuote,
-  ShoppingCart,
+  Tag,
+  SlidersHorizontal,
+  Loader2,
 } from 'lucide-react';
 
 // ============================================
 // Constants
 // ============================================
 
-const SPECIALTIES = [
-  'All',
-  'Orthopedics',
-  'Neurosurgery',
-  'Soft Tissue',
-  'Eye Surgery',
-  'Ultrasound',
-  'Exotics',
-];
-
-const CATEGORIES = [
-  'All',
-  'Power Tools',
-  'Implants',
-  'Hand Instruments',
-  'Consumables',
-  'Equipment',
-  'Monitoring',
-];
-
-const PURCHASE_TYPES = [
-  { value: 'All', label: 'All Types' },
-  { value: 'direct', label: 'Direct Purchase' },
-  { value: 'quote', label: 'Quote Required' },
-];
-
 const PAGE_SIZE = 12;
-
-// ============================================
-// Helpers
-// ============================================
-
-function productCTA(p: IntlProduct): { label: string; icon: typeof ShoppingCart; variant: 'primary' | 'outline' } {
-  // Inquiry mode - show Request Quote
-  if (p.pricing_mode === 'inquiry' || p.purchase_type === 'quote') {
-    return { label: 'Request Quote', icon: MessageSquareQuote, variant: 'outline' };
-  }
-  // Fixed price - show Add to Cart / View Product
-  return { label: 'View Product', icon: ShoppingCart, variant: 'primary' };
-}
-
-function formatPrice(product: IntlProduct): string | null {
-  // Inquiry mode - no price display
-  if (product.pricing_mode === 'inquiry') {
-    return 'Contact for Price';
-  }
-  // Fixed price with display_price
-  if (product.display_price) {
-    const symbol = product.currency_code === 'USD' ? '$' : 
-                   product.currency_code === 'EUR' ? '€' :
-                   product.currency_code === 'GBP' ? '£' : 
-                   product.currency_code || '$';
-    return `${symbol}${product.display_price.toLocaleString()}`;
-  }
-  // Price range
-  if (product.price_min && product.price_max && product.price_min !== product.price_max) {
-    return `$${product.price_min.toLocaleString()} - $${product.price_max.toLocaleString()}`;
-  }
-  // Minimum price
-  if (product.price_min) {
-    return `From $${product.price_min.toLocaleString()}`;
-  }
-  return null;
-}
 
 // ============================================
 // Component
 // ============================================
 
 export default function IntlShopPageClient() {
-  const { locale } = useLanguage();
-  const searchParams = useSearchParams();
+  const { locale, t } = useLanguage();
+  const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
+  const s = t.shop;
 
   // Data
   const [products, setProducts] = useState<IntlProduct[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<IntlProduct[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Filters
-  const initialSpecialty = searchParams.get('specialty') || 'All';
-  const initialCategory = searchParams.get('category') || 'All';
-  const [specialty, setSpecialty] = useState(initialSpecialty);
-  const [category, setCategory] = useState(initialCategory);
-  const [purchaseType, setPurchaseType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'featured' | 'newest' | 'price-low' | 'price-high' | 'name-asc'>('featured');
 
-  // Load products
-  useEffect(() => {
-    setLoading(true);
-    getIntlProducts({
-      specialty: specialty !== 'All' ? specialty : undefined,
-      clinical_category: category !== 'All' ? category : undefined,
-      purchase_type: purchaseType !== 'All' ? purchaseType : undefined,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
-    }).then(result => {
-      setProducts(result.items);
-      setTotal(result.total);
-      setLoading(false);
+  // Sort options with translations
+  const SORT_OPTIONS = [
+    { value: 'featured', label: s.sortFeatured },
+    { value: 'newest', label: s.sortNewest },
+    { value: 'price-low', label: s.sortPriceLow },
+    { value: 'price-high', label: s.sortPriceHigh },
+    { value: 'name-asc', label: s.sortNameAsc },
+  ] as const;
+
+  // Handle add to cart
+  const handleAddToCart = useCallback((product: any) => {
+    if (!isAuthenticated) {
+      window.location.href = `/${locale}/auth?redirect=${encodeURIComponent(window.location.pathname)}`;
+      return;
+    }
+
+    // Get proper price based on locale using SKU prices
+    const { minPrice, currency } = getPriceRangeForProduct(product, locale);
+
+    // If product is inquiry/quote type, don't add to cart
+    if (minPrice === null || minPrice === undefined || minPrice <= 0) {
+      return;
+    }
+
+    addToCart({
+      id: product.product_id || product.id,
+      productId: product.product_id || product.id,
+      name: product.display_name,
+      price: minPrice,
+      quantity: 1,
+      type: 'product',
+      currency,
+      imageUrl: product.cover_image_url,
     });
-  }, [specialty, category, purchaseType, page]);
+  }, [isAuthenticated, locale, addToCart]);
 
-  // Client-side search
+  // Load products with filters
+  const loadProducts = useCallback(async (pageNum: number, append: boolean = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const result = await getIntlProducts({
+        featured: false,
+        limit: PAGE_SIZE,
+        offset: pageNum * PAGE_SIZE,
+        locale,
+        sortBy,
+        categoryId: selectedCategory || undefined,
+      });
+
+      if (append) {
+        setProducts(prev => [...prev, ...result.items]);
+      } else {
+        setProducts(result.items);
+      }
+      setTotal(result.total);
+    } catch (error) {
+      console.error('[IntlShopPageClient] Failed to load products:', error);
+      if (!append) {
+        setProducts([]);
+        setTotal(0);
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [locale, sortBy, selectedCategory]);
+
+  // Load featured products
+  const loadFeaturedProducts = useCallback(async () => {
+    try {
+      const result = await getIntlProducts({
+        featured: true,
+        limit: 8,
+        locale,
+      });
+      setFeaturedProducts(result.items);
+    } catch (error) {
+      console.error('Failed to load featured products:', error);
+      setFeaturedProducts([]);
+    }
+  }, [locale]);
+
+  // Load categories
+  const loadCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    try {
+      const tree = await getIntlProductCategoryTree(locale);
+      setCategories(tree);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [locale]);
+
+  // Initial load
+  useEffect(() => {
+    loadProducts(0);
+    loadFeaturedProducts();
+  }, [sortBy, selectedCategory]); // Re-fetch when filters change
+
+  // Load categories once
+  useEffect(() => {
+    loadCategories();
+  }, [locale]);
+
+  // Filter products by search query (client-side)
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return products;
-    const q = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase();
     return products.filter(p =>
-      p.display_name.toLowerCase().includes(q) ||
-      p.summary?.toLowerCase().includes(q) ||
-      p.brand?.toLowerCase().includes(q) ||
-      p.base_name?.toLowerCase().includes(q)
+      p.display_name.toLowerCase().includes(query) ||
+      p.brand?.toLowerCase().includes(query) ||
+      p.specialty?.toLowerCase().includes(query)
     );
   }, [products, searchQuery]);
 
-  const activeFilterCount = [
-    specialty !== 'All',
-    category !== 'All',
-    purchaseType !== 'All',
-    searchQuery.length > 0,
-  ].filter(Boolean).length;
-
-  const clearFilters = () => {
-    setSpecialty('All');
-    setCategory('All');
-    setPurchaseType('All');
-    setSearchQuery('');
+  // Handlers
+  const handleCategoryChange = (categoryId: string | null) => {
+    setSelectedCategory(categoryId);
     setPage(0);
+    setProducts([]);
   };
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const handleSortChange = (newSortBy: typeof sortBy) => {
+    setSortBy(newSortBy);
+    setPage(0);
+    setProducts([]);
+  };
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    loadProducts(nextPage, true);
+  };
+
+  const hasMore = products.length < total;
 
   // ============================================
   // Render
   // ============================================
+
   return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-12 pt-32">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
-        <div className="max-w-xl space-y-3">
-          <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 uppercase tracking-widest">
-            <Package className="w-4 h-4" />
-            Clinical Equipment
-          </div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-            Equipment &amp; Instruments
-          </h1>
-          <p className="text-slate-500 font-medium">
-            Training-compatible veterinary equipment. Purchase directly or request a quote for custom configurations.
-          </p>
+    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50/50 to-white">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 pt-32 pb-20">
+        {/* Background Effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-blue-500 rounded-full blur-[128px] opacity-20" />
+          <div className="absolute bottom-20 left-20 w-96 h-96 bg-emerald-500 rounded-full blur-[128px] opacity-20" />
         </div>
 
-        {/* Search & Filter Toggle */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="relative w-64">
-            <input
-              type="text"
-              placeholder="Search equipment..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm bg-white"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition ${
-              showFilters || activeFilterCount > 0
-                ? 'bg-emerald-600 text-white border-emerald-600'
-                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filter
-            {activeFilterCount > 0 && (
-              <span className="ml-1 w-5 h-5 bg-white/20 rounded-full text-xs flex items-center justify-center">
-                {activeFilterCount}
+        <div className="relative max-w-[1600px] mx-auto px-4 md:px-8 lg:px-16">
+          <div className="max-w-4xl">
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 backdrop-blur-sm mb-6">
+              <Building2 className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-bold text-blue-300 uppercase tracking-widest">{s.b2bBadge}</span>
+            </div>
+
+            <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
+              {s.heroTitle} <br />
+              <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                {s.heroTitleHighlight}
               </span>
-            )}
-          </button>
-        </div>
-      </div>
+            </h1>
 
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="mb-8 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Specialty */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                Specialty
-              </label>
-              <select
-                value={specialty}
-                onChange={(e) => { setSpecialty(e.target.value); setPage(0); }}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              >
-                {SPECIALTIES.map(s => (
-                  <option key={s} value={s}>{s === 'All' ? 'All Specialties' : s}</option>
-                ))}
-              </select>
+            <p className="text-xl text-slate-300 mb-8 max-w-3xl leading-relaxed">
+              {s.heroSubtitle}
+            </p>
+
+            {/* Search Bar */}
+            <div className="relative max-w-2xl">
+              <input
+                type="text"
+                placeholder={s.searchPlaceholder}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-14 pr-6 py-5 rounded-2xl border border-slate-600 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-lg bg-white/95 backdrop-blur-sm shadow-2xl"
+              />
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
             </div>
 
-            {/* Category */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => { setCategory(e.target.value); setPage(0); }}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              >
-                {CATEGORIES.map(c => (
-                  <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>
-                ))}
-              </select>
-            </div>
+            {/* Quick Stats */}
+            <div className="flex flex-wrap gap-8 mt-10 pt-8 border-t border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <Package className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{total}+</p>
+                  <p className="text-sm text-slate-400">{s.productsCount}</p>
+                </div>
+              </div>
 
-            {/* Purchase Type */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                Purchase Type
-              </label>
-              <select
-                value={purchaseType}
-                onChange={(e) => { setPurchaseType(e.target.value); setPage(0); }}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              >
-                {PURCHASE_TYPES.map(pt => (
-                  <option key={pt.value} value={pt.value}>{pt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {activeFilterCount > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
-              <button
-                onClick={clearFilters}
-                className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-emerald-600 transition"
-              >
-                <X className="w-3.5 h-3.5" /> Clear All Filters
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Quick Specialty Tabs (when filters hidden) */}
-      {!showFilters && (
-        <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl mb-8">
-          {SPECIALTIES.map(s => (
-            <button
-              key={s}
-              onClick={() => { setSpecialty(s); setPage(0); }}
-              className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                specialty === s
-                  ? 'bg-white text-emerald-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {s === 'All' ? 'All Specialties' : s}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Results Count */}
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          Showing {filteredProducts.length} of {total} product{total !== 1 ? 's' : ''}
-        </p>
-      </div>
-
-      {/* Product Grid */}
-      {loading ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-slate-200 overflow-hidden bg-white animate-pulse">
-              <div className="aspect-square bg-slate-100" />
-              <div className="p-5 space-y-3">
-                <div className="h-5 bg-slate-100 rounded w-3/4" />
-                <div className="h-4 bg-slate-100 rounded w-1/2" />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <Tag className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{categories.length}+</p>
+                  <p className="text-sm text-slate-400">{s.categoriesCount}</p>
+                </div>
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      ) : filteredProducts.length === 0 ? (
-        <div className="py-24 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-          <Package className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-600 mb-2">No equipment found</h3>
-          <p className="text-slate-400 mb-6">Try adjusting your filters or search terms.</p>
-          <button
-            onClick={clearFilters}
-            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-500 transition"
-          >
-            Clear Filters
-          </button>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map(product => {
-            const cta = productCTA(product);
-            const price = formatPrice(product);
-            return (
+      </section>
+
+      {/* Featured Products Section */}
+      {featuredProducts.length > 0 && (
+        <section className="px-4 md:px-8 lg:px-16 py-12 bg-gradient-to-b from-blue-50/50 to-white">
+          <div className="max-w-[1600px] mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-bold text-slate-900">{s.featuredProducts}</h2>
               <Link
-                key={product.id}
-                href={`/${locale}/shop/${product.slug}`}
-                className="group rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 bg-white flex flex-col"
+                href={`/${locale}/shop`}
+                className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
               >
-                {/* Image */}
-                <div className="aspect-square overflow-hidden relative bg-slate-50">
-                  {product.cover_image_url ? (
-                    <img
-                      src={product.cover_image_url}
-                      alt={product.display_name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-16 h-16 text-slate-200" />
-                    </div>
-                  )}
-                  {/* Badges */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                    {product.is_featured && (
-                      <span className="px-2.5 py-1 bg-amber-400 text-white text-xs font-bold rounded-full flex items-center gap-1">
-                        <Star className="w-3 h-3" /> Featured
-                      </span>
-                    )}
-                    {product.display_tags.slice(0, 2).map((tag, i) => (
-                      <span key={i} className="px-2.5 py-1 bg-blue-500/90 text-white text-xs font-bold rounded-full backdrop-blur-sm">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  {/* Purchase type badge */}
-                  {product.purchase_type === 'quote' && (
-                    <div className="absolute bottom-3 right-3 bg-amber-50/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold text-amber-700 border border-amber-100 flex items-center gap-1.5">
-                      <MessageSquareQuote className="w-3 h-3" />
-                      Quote Only
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="p-5 flex flex-col flex-1">
-                  {product.brand && (
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">{product.brand}</span>
-                  )}
-                  <h3 className="text-base font-bold text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors line-clamp-2">
-                    {product.display_name}
-                  </h3>
-                  {product.summary && (
-                    <p className="text-sm text-slate-500 line-clamp-2 mb-3">{product.summary}</p>
-                  )}
-
-                  {product.recommendation_reason && (
-                    <div className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md mb-3 line-clamp-1 font-medium">
-                      {product.recommendation_reason}
-                    </div>
-                  )}
-
-                  {/* Price & CTA */}
-                  <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                    {price ? (
-                      <span className="text-lg font-bold text-slate-900">{price}</span>
-                    ) : (
-                      <span className="text-sm text-slate-400 font-medium">Contact for pricing</span>
-                    )}
-                    <span className={`text-sm font-bold flex items-center gap-1 ${
-                      cta.variant === 'primary' ? 'text-emerald-600' : 'text-blue-600'
-                    } group-hover:underline`}>
-                      {cta.label} <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
-                </div>
+                {s.viewAll} <ChevronRight className="w-5 h-5" />
               </Link>
-            );
-          })}
-        </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map(product => (
+                <ProductCardMobile
+                  key={product.id}
+                  product={{
+                    id: product.id,
+                    product_id: product.product_id,
+                    display_name: product.display_name,
+                    slug: product.slug,
+                    summary: product.summary,
+                    pricing_mode: product.pricing_mode,
+                    display_price: product.display_price,
+                    currency_code: product.currency_code,
+                    purchase_type: product.purchase_type,
+                    is_featured: product.is_featured,
+                    display_tags: product.display_tags,
+                    recommendation_reason: product.recommendation_reason,
+                    cover_image_url: product.cover_image_url,
+                    brand: product.brand,
+                    price_min: product.price_min,
+                    price_max: product.price_max,
+                    sku_price_usd_min: product.sku_price_usd_min,
+                    sku_price_usd_max: product.sku_price_usd_max,
+                    sku_price_jpy_min: product.sku_price_jpy_min,
+                    sku_price_jpy_max: product.sku_price_jpy_max,
+                    sku_price_thb_min: product.sku_price_thb_min,
+                    sku_price_thb_max: product.sku_price_thb_max,
+                    sku_price_cny_min: product.sku_price_cny_min,
+                    sku_price_cny_max: product.sku_price_cny_max,
+                  }}
+                  locale={locale}
+                  onAddToCart={handleAddToCart}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-12 flex justify-center gap-2">
-          <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            Previous
-          </button>
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setPage(i)}
-              className={`w-10 h-10 rounded-lg text-sm font-bold transition ${
-                page === i
-                  ? 'bg-emerald-600 text-white'
-                  : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
-          <button
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
-            className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            Next
-          </button>
-        </div>
-      )}
+      {/* Main Products Section */}
+      <section className="px-4 md:px-8 lg:px-16 py-12">
+        <div className="max-w-[1600px] mx-auto">
 
-      {/* Bottom CTA */}
-      <div className="mt-16 bg-slate-900 rounded-3xl p-10 md:p-14 text-center">
-        <h2 className="text-2xl md:text-3xl font-extrabold text-white mb-4">
-          Need a Custom Equipment Package?
-        </h2>
-        <p className="text-slate-400 mb-8 max-w-lg mx-auto">
-          We can build a custom equipment package tailored to your training goals and clinic needs.
-        </p>
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Link
-            href={`/${locale}/for-clinics#consultation`}
-            className="px-8 py-4 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-900/20"
-          >
-            Request a Custom Quote
-          </Link>
-          <Link
-            href={`/${locale}/courses`}
-            className="px-8 py-4 bg-white/10 text-white border border-white/20 rounded-2xl font-bold hover:bg-white/20 transition-all"
-          >
-            Explore Training
-          </Link>
+          {/* Filters Bar */}
+          <div className="mb-8 space-y-4">
+            {/* Category Filter */}
+            {categories.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleCategoryChange(null)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedCategory === null
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {s.allCategories}
+                </button>
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      selectedCategory === cat.id
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {cat.name_en || cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Sort Options */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <SlidersHorizontal className="w-4 h-4" />
+                <span>{s.sortBy}</span>
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => handleSortChange(e.target.value as typeof sortBy)}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {SORT_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Results Count */}
+          <div className="mb-6">
+            <p className="text-sm text-slate-500">
+              {s.showingCount.replace('{count}', String(filteredProducts.length)).replace('{total}', String(total))}
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="rounded-2xl border border-slate-200 overflow-hidden bg-white animate-pulse">
+                  <div className="aspect-square bg-slate-100" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-5 bg-slate-100 rounded w-3/4" />
+                    <div className="h-4 bg-slate-100 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-20">
+              <Package className="w-20 h-20 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{s.noProductsFound}</h3>
+              <p className="text-slate-600 mb-6">
+                {searchQuery
+                  ? s.noProductsMatch.replace('{query}', searchQuery)
+                  : s.noProductsAvailable
+                }
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map(product => (
+                  <ProductCardMobile
+                    key={product.id}
+                    product={{
+                      id: product.id,
+                      product_id: product.product_id,
+                      display_name: product.display_name,
+                      slug: product.slug,
+                      summary: product.summary,
+                      pricing_mode: product.pricing_mode,
+                      display_price: product.display_price,
+                      currency_code: product.currency_code,
+                      purchase_type: product.purchase_type,
+                      is_featured: product.is_featured,
+                      display_tags: product.display_tags,
+                      recommendation_reason: product.recommendation_reason,
+                      cover_image_url: product.cover_image_url,
+                      brand: product.brand,
+                      price_min: product.price_min,
+                      price_max: product.price_max,
+                      sku_price_usd_min: product.sku_price_usd_min,
+                      sku_price_usd_max: product.sku_price_usd_max,
+                      sku_price_jpy_min: product.sku_price_jpy_min,
+                      sku_price_jpy_max: product.sku_price_jpy_max,
+                      sku_price_thb_min: product.sku_price_thb_min,
+                      sku_price_thb_max: product.sku_price_thb_max,
+                      sku_price_cny_min: product.sku_price_cny_min,
+                      sku_price_cny_max: product.sku_price_cny_max,
+                    }}
+                    locale={locale}
+                    onAddToCart={handleAddToCart}
+                  />
+                ))}
+              </div>
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="flex justify-center mt-10">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{s.loadMore}...</span>
+                      </>
+                    ) : (
+                      s.loadMore
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="px-4 md:px-8 lg:px-16 py-20">
+        <div className="max-w-[1600px] mx-auto">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-12 md:p-16 text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-10 right-10 w-64 h-64 border border-white rounded-full" />
+              <div className="absolute bottom-10 left-10 w-96 h-96 border border-white rounded-full" />
+            </div>
+            <div className="relative z-10">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">
+                {s.needCustomSolutions}
+              </h2>
+              <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+                {s.customSolutionsDesc}
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <Link
+                  href={`/${locale}/for-clinics#consultation`}
+                  className="px-10 py-4 bg-white text-blue-700 rounded-2xl font-bold text-lg hover:bg-blue-50 transition-all shadow-xl flex items-center justify-center gap-3"
+                >
+                  {s.requestQuote}
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+                <Link
+                  href={`/${locale}/courses`}
+                  className="px-10 py-4 bg-blue-800/50 text-white border-2 border-white/30 rounded-2xl font-bold text-lg hover:bg-blue-800/70 transition-all flex items-center justify-center"
+                >
+                  {s.exploreTraining}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

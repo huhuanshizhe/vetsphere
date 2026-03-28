@@ -58,10 +58,10 @@ const ProductManagementTab: React.FC<ProductManagementTabProps> = ({ products, o
 
   const statusCounts = {
     all: products.length,
-    Pending: products.filter(p => p.status === 'Pending').length,
-    Published: products.filter(p => p.status === 'Published').length,
-    Draft: products.filter(p => p.status === 'Draft').length,
-    Rejected: products.filter(p => p.status === 'Rejected').length,
+    Pending: products.filter(p => p.status?.toLowerCase() === 'pending').length,
+    Published: products.filter(p => p.status?.toLowerCase() === 'published').length,
+    Draft: products.filter(p => p.status?.toLowerCase() === 'draft').length,
+    Rejected: products.filter(p => p.status?.toLowerCase() === 'rejected').length,
   };
 
   const handleApprove = async (productId: string) => {

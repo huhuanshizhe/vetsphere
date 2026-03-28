@@ -40,7 +40,7 @@ const STOCK_STATUS_CONFIG = {
   'Out of Stock': { bg: 'bg-red-50', text: 'text-red-700', label: '缺货', icon: XCircle },
 };
 
-const PRODUCT_STATUS_CONFIG = {
+const PRODUCT_STATUS_CONFIG: Record<string, { bg: string; text: string; label: string; icon: typeof Clock }> = {
   'Draft': { bg: 'bg-gray-100', text: 'text-gray-600', label: '草稿', icon: Clock },
   'draft': { bg: 'bg-gray-100', text: 'text-gray-600', label: '草稿', icon: Clock },
   'Pending': { bg: 'bg-amber-50', text: 'text-amber-700', label: '审核中', icon: Clock },

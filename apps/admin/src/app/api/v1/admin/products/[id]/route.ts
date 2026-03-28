@@ -37,7 +37,7 @@ export async function GET(
       .select(`
         *,
         images:product_images(id, url, type, sort_order),
-        skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, barcode, is_active, sort_order)
+        skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, selling_price_usd, selling_price_jpy, selling_price_thb, image_url, barcode, is_active, sort_order, specs)
       `)
       .eq('id', id)
       .single();
@@ -65,18 +65,21 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    
-    // 调试日志：检查 specs 字段
-    console.log('[Product PATCH] Received body:', {
-      hasSpecs: 'specs' in body,
-      specsValue: body.specs,
-      specsType: typeof body.specs,
-      specsStringified: body.specs ? JSON.stringify(body.specs) : 'undefined'
-    });
-    
+
+    // 过滤掉不应该发送到 products 表的字段
+    const excludedFields = ['site_views', 'images', 'skus', 'variants'];
+    const updateData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (!excludedFields.includes(key)) {
+        updateData[key] = value;
+      }
+    }
+
+    console.log('[Product PATCH] Updating with fields:', Object.keys(updateData));
+
     const { data, error } = await supabase
       .from('products')
-      .update({ ...body, updated_at: new Date().toISOString() })
+      .update({ ...updateData, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
@@ -85,8 +88,8 @@ export async function PATCH(
       console.error('[Product PATCH] Update error:', error);
       throw error;
     }
-    
-    console.log('[Product PATCH] Success, specs saved:', data.specs);
+
+    console.log('[Product PATCH] Success');
     return NextResponse.json(data);
   } catch (error) {
     console.error('Failed to update product:', error);
