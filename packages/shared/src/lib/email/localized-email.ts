@@ -258,7 +258,7 @@ export const emailTranslations = {
       title: 'ยืนยันการชำระเงิน',
       greeting: (name: string) => `สวัสดี ${name}`,
       message: 'การชำระเงินของคุณได้รับการประมวลผลสำเร็จแล้ว ขอบคุณ!',
-      viewReceipt: 'ดูใบเสร็จ`,
+      viewReceipt: 'ดูใบเสร็จ',
       signature: 'ทีม VetSphere'
     }
   }
