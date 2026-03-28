@@ -160,17 +160,13 @@ export async function POST(request: NextRequest) {
     // 创建订单项
     const orderItems = items.map((item: any) => ({
       order_id: order.id,
-      product_id: item.productId,
-      sku_id: item.skuId,
+      product_id: item.productId || null,
       product_name: item.name,
-      sku_code: item.skuCode,
-      quantity: item.quantity,
+      product_sku: item.skuCode || '',
+      product_image: item.imageUrl || '',
       unit_price: item.price,
+      quantity: item.quantity,
       total_price: item.price * item.quantity,
-      currency: currency || 'USD',
-      image_url: item.imageUrl,
-      weight: item.weight,
-      supplier_id: item.supplierId,
     }));
 
     const { error: itemsError } = await supabaseAdmin
