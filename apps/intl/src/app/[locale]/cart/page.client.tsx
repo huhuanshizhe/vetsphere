@@ -6,8 +6,9 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@vetsphere/shared/context/CartContext';
 import { useLanguage } from '@vetsphere/shared/context/LanguageContext';
+import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import { getLocaleCurrency, formatPrice } from '@vetsphere/shared/lib/currency';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Package } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Package, Lock } from 'lucide-react';
 
 interface CartPageClientProps {
   locale: string;
@@ -15,6 +16,7 @@ interface CartPageClientProps {
 
 export default function CartPageClient({ locale }: CartPageClientProps) {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const { cart, updateQuantity, setQuantity, removeFromCart, clearCart, totalAmount, itemCount } = useCart();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
@@ -44,12 +46,39 @@ export default function CartPageClient({ locale }: CartPageClientProps) {
   }
 
   const handleCheckout = () => {
+    // If not authenticated, redirect to login with cart page as redirect target
+    if (!isAuthenticated) {
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/cart`)}`);
+      return;
+    }
+    // If authenticated, proceed to checkout
     router.push(`/${locale}/checkout`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Login Prompt Banner for Guest Users */}
+        {!isAuthenticated && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-900 mb-1">
+                {c.loginRequired}
+              </p>
+              <p className="text-sm text-amber-700">
+                {c.loginToCheckout}{' '}
+                <button
+                  onClick={() => router.push(`/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/cart`)}`)}
+                  className="text-amber-900 font-semibold underline hover:no-underline"
+                >
+                  {c.loginNow}
+                </button>
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">{c.title}</h1>

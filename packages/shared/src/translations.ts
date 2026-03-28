@@ -306,6 +306,9 @@ export const translations = {
       total: 'Total',
       proceedToCheckout: 'Proceed to Checkout',
       processing: 'Processing...',
+      loginRequired: 'Login Required for Checkout',
+      loginToCheckout: 'Please login to proceed with checkout. Your cart items will be saved.',
+      loginNow: 'Login Now',
     },
     checkout: {
       title: 'Checkout',
@@ -2776,6 +2779,9 @@ export const translations = {
       total: 'ยอดรวมทั้งสิ้น',
       proceedToCheckout: 'ดำเนินการชำระเงิน',
       processing: 'กำลังดำเนินการ...',
+      loginRequired: 'ต้องเข้าสู่ระบบเพื่อชำระเงิน',
+      loginToCheckout: 'กรุณาเข้าสู่ระบบเพื่อดำเนินการชำระเงิน สินค้าในตะกร้าของคุณจะถูกบันทึกไว้',
+      loginNow: 'เข้าสู่ระบบเลย',
     },
     checkout: {
       title: 'ชำระเงิน',
@@ -3798,6 +3804,9 @@ export const translations = {
       total: '合計',
       proceedToCheckout: 'チェックアウトへ進む',
       processing: '処理中...',
+      loginRequired: 'チェックアウトにはログインが必要です',
+      loginToCheckout: 'チェックアウトするにはログインしてください。カートの商品は保存されます。',
+      loginNow: '今すぐログイン',
     },
     checkout: {
       title: 'チェックアウト',
