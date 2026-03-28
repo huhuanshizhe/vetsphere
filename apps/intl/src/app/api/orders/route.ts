@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
         subtotal: subtotal,
         shipping_fee: shippingFee,
         tax: 0,
-        total: total,
+        total_amount: total,
         currency: currency || 'USD',
         // 联系信息
         email: formData.email,
