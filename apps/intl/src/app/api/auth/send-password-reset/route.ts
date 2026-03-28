@@ -204,7 +204,7 @@ ${locale === 'zh' ? 'VetSphere 团队' : locale === 'ja' ? 'VetSphere チーム'
         'Authorization': `Bearer ${resendApiKey}`
       },
       body: JSON.stringify({
-        from: 'VetSphere <noreply@vetsphere.com>',
+        from: 'VetSphere <noreply@support.vetsphere.net>',
         to: [email],
         subject: emailSubject,
         html: emailHtml,
