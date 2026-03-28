@@ -64,13 +64,8 @@ export default function IntlShopPageClient() {
     { value: 'name-asc', label: s.sortNameAsc },
   ] as const;
 
-  // Handle add to cart
+  // Handle add to cart - allow guest users to add items, require login at checkout
   const handleAddToCart = useCallback((product: any) => {
-    if (!isAuthenticated) {
-      window.location.href = `/${locale}/auth?redirect=${encodeURIComponent(window.location.pathname)}`;
-      return;
-    }
-
     // Get proper price based on locale using SKU prices
     const { minPrice, currency } = getPriceRangeForProduct(product, locale);
 
@@ -89,7 +84,7 @@ export default function IntlShopPageClient() {
       currency,
       imageUrl: product.cover_image_url,
     });
-  }, [isAuthenticated, locale, addToCart]);
+  }, [locale, addToCart]);
 
   // Load products with filters
   const loadProducts = useCallback(async (pageNum: number, append: boolean = false) => {
