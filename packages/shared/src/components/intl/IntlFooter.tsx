@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin, Languages, ChevronDown, Check } from 'lucide-react';
+import type { SupportedLocale } from '../../site-config.types';
 
 // Footer translations
 const footerTranslations = {
@@ -80,8 +81,20 @@ interface IntlFooterProps {
 }
 
 export function IntlFooter({ locale }: IntlFooterProps) {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const t = footerTranslations[language as keyof typeof footerTranslations] || footerTranslations.en;
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+
+  const languages = [
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'th', name: 'ไทย', flag: '🇹🇭' },
+    { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  ];
+
+  const handleLanguageChange = (langCode: string) => {
+    setLanguage(langCode as SupportedLocale);
+    setLangDropdownOpen(false);
+  };
 
   const footerLinks = {
     programs: [
@@ -129,6 +142,38 @@ export function IntlFooter({ locale }: IntlFooterProps) {
                 <MapPin className="w-4 h-4" />
                 <span>Kwai Chung, Hong Kong SAR</span>
               </div>
+            </div>
+
+            {/* Language Selector - below contact info */}
+            <div className="mt-6 relative">
+              <button
+                type="button"
+                onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-2 bg-background/10 hover:bg-background/20 rounded-lg transition-colors border border-background/20"
+              >
+                <Languages className="w-4 h-4 text-background" />
+                <span className="text-sm font-medium text-background">
+                  {languages.find(l => l.code === language)?.flag} {languages.find(l => l.code === language)?.name}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-background/60 transition-transform ${langDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {langDropdownOpen && (
+                <div className="absolute top-full left-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => handleLanguageChange(lang.code)}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-emerald-50 transition-colors"
+                    >
+                      <span>{lang.flag}</span>
+                      <span className="flex-1 text-left text-sm font-medium text-gray-900">{lang.name}</span>
+                      {lang.code === language && <Check className="w-3 h-3 text-[#00A884]" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

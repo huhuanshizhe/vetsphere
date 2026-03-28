@@ -132,6 +132,8 @@ async function saveProductSkus(productId: string, skus: ProductSku[]): Promise<v
       weight_unit: sku.weightUnit || null,
       suggested_retail_price: sku.suggestedRetailPrice ?? null,
       image_url: sku.imageUrl || null,
+      specs: sku.specs || null,
+      barcode: sku.barcode || null,
       is_active: sku.isActive !== false,
       sort_order: sku.sortOrder ?? idx,
     }));
@@ -177,7 +179,12 @@ function mapProduct(p: any): Product {
     weightUnit: sku.weight_unit,
     suggestedRetailPrice: sku.suggested_retail_price,
     sellingPrice: sku.selling_price,
+    sellingPriceUsd: sku.selling_price_usd,
+    sellingPriceJpy: sku.selling_price_jpy,
+    sellingPriceThb: sku.selling_price_thb,
     imageUrl: sku.image_url,
+    specs: sku.specs,
+    barcode: sku.barcode,
     isActive: sku.is_active,
     sortOrder: sku.sort_order || 0,
   }));
@@ -401,6 +408,19 @@ export const api = {
         // Variant fields
         has_variants: product.hasVariants || false,
         rich_description: product.richDescription || null,
+        // Trade & Logistics fields
+        delivery_time: (product as any).delivery_time || null,
+        packaging_info: (product as any).packaging_info || null,
+        warranty_info: (product as any).warranty_info || null,
+        min_order_quantity: (product as any).min_order_quantity || 1,
+        video_url: (product as any).video_url || null,
+        dimensions: (product as any).dimensions || null,
+        certifications: (product as any).certifications || null,
+        // SEO fields
+        faq: product.faq || null,
+        meta_title: product.metaTitle || null,
+        meta_description: product.metaDescription || null,
+        focus_keyword: product.focusKeyword || null,
       };
       const { error: productError } = await supabase.from('products').insert(payload as any);
       if (productError) {
@@ -468,6 +488,19 @@ export const api = {
       // Variant fields
       if (product.hasVariants !== undefined) payload.has_variants = product.hasVariants;
       if (product.richDescription !== undefined) payload.rich_description = product.richDescription;
+      // Trade & Logistics fields
+      if ((product as any).delivery_time !== undefined) payload.delivery_time = (product as any).delivery_time;
+      if ((product as any).packaging_info !== undefined) payload.packaging_info = (product as any).packaging_info;
+      if ((product as any).warranty_info !== undefined) payload.warranty_info = (product as any).warranty_info;
+      if ((product as any).min_order_quantity !== undefined) payload.min_order_quantity = (product as any).min_order_quantity;
+      if ((product as any).video_url !== undefined) payload.video_url = (product as any).video_url;
+      if ((product as any).dimensions !== undefined) payload.dimensions = (product as any).dimensions;
+      if ((product as any).certifications !== undefined) payload.certifications = (product as any).certifications;
+      // SEO fields
+      if (product.faq !== undefined) payload.faq = product.faq;
+      if (product.metaTitle !== undefined) payload.meta_title = product.metaTitle;
+      if (product.metaDescription !== undefined) payload.meta_description = product.metaDescription;
+      if (product.focusKeyword !== undefined) payload.focus_keyword = product.focusKeyword;
       
       console.log('[manageProduct] Update payload:', payload);
       const { error } = await supabase.from('products').update(payload).eq('id', product.id);

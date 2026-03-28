@@ -1,0 +1,131 @@
+{
+  "timestamp": "2026-03-16T11:32:32.498Z",
+  "summary": {
+    "total": 30,
+    "passed": 30,
+    "failed": 0,
+    "successRate": "100.00%"
+  },
+  "details": [
+    {
+      "test": "产品列表应该从数据库加载",
+      "status": "passed"
+    },
+    {
+      "test": "应该支持按状态筛选产品",
+      "status": "passed"
+    },
+    {
+      "test": "应该显示 5 种状态的统计卡片",
+      "status": "passed"
+    },
+    {
+      "test": "待审核产品应该显示审核按钮",
+      "status": "passed"
+    },
+    {
+      "test": "已通过产品应该显示发布按钮",
+      "status": "passed"
+    },
+    {
+      "test": "已发布产品应该显示上下架按钮",
+      "status": "passed"
+    },
+    {
+      "test": "编辑按钮应该导航到产品详情页",
+      "status": "passed"
+    },
+    {
+      "test": "详情页应该正确接收 params",
+      "status": "passed"
+    },
+    {
+      "test": "详情页应该加载产品数据",
+      "status": "passed"
+    },
+    {
+      "test": "详情页应该支持编辑模式切换",
+      "status": "passed"
+    },
+    {
+      "test": "详情页应该支持审核操作",
+      "status": "passed"
+    },
+    {
+      "test": "详情页应该支持发布操作",
+      "status": "passed"
+    },
+    {
+      "test": "详情页应该显示三标签页",
+      "status": "passed"
+    },
+    {
+      "test": "详情页应该支持保存修改",
+      "status": "passed"
+    },
+    {
+      "test": "批准功能应该更新产品状态为 approved",
+      "status": "passed"
+    },
+    {
+      "test": "拒绝功能应该记录拒绝原因",
+      "status": "passed"
+    },
+    {
+      "test": "发布功能应该创建或更新站点视图",
+      "status": "passed"
+    },
+    {
+      "test": "下架功能应该更新发布状态为 offline",
+      "status": "passed"
+    },
+    {
+      "test": "审核流程状态流转应该完整",
+      "status": "passed"
+    },
+    {
+      "test": "拒绝产品应该显示弹窗输入原因",
+      "status": "passed"
+    },
+    {
+      "test": "不同操作的按钮应该有不同的样式",
+      "status": "passed"
+    },
+    {
+      "test": "产品状态应该用徽章显示",
+      "status": "passed"
+    },
+    {
+      "test": "加载时应该显示加载动画",
+      "status": "passed"
+    },
+    {
+      "test": "操作失败时应该显示错误提示",
+      "status": "passed"
+    },
+    {
+      "test": "操作成功时应该显示成功提示",
+      "status": "passed"
+    },
+    {
+      "test": "产品接口应该包含所有必要字段",
+      "status": "passed"
+    },
+    {
+      "test": "应该加载供应商信息",
+      "status": "passed"
+    },
+    {
+      "test": "应该加载站点发布状态",
+      "status": "passed"
+    },
+    {
+      "test": "更新操作应该更新时间戳",
+      "status": "passed"
+    },
+    {
+      "test": "应该有完善的错误处理",
+      "status": "passed"
+    }
+  ]
+}

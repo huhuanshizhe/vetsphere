@@ -1,11 +1,18 @@
-import type { Metadata } from 'next';
-import UserCenterClient from '@vetsphere/shared/pages/UserCenterClient';
+import { Metadata } from 'next';
+import UserCenterClient from './page.client';
 
 export const metadata: Metadata = {
-  title: 'User Center | VetSphere',
-  description: 'Manage your profile, orders, and enrolled courses',
+  title: 'My Account - VetSphere',
+  description: 'Manage your VetSphere account',
 };
 
-export default function UserCenterPage() {
-  return <UserCenterClient />;
+interface PageProps {
+  params: Promise<{
+    locale: string;
+  }>;
+}
+
+export default async function UserCenterPage({ params }: PageProps) {
+  const { locale } = await params;
+  return <UserCenterClient locale={locale} />;
 }

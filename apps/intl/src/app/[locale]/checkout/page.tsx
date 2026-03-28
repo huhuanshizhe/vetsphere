@@ -1,13 +1,18 @@
 import { Metadata } from 'next';
-import CheckoutPageClient from '@vetsphere/shared/pages/CheckoutPageClient';
-import { siteConfig } from '@/config/site.config';
+import CheckoutClient from './page.client';
 
 export const metadata: Metadata = {
   title: 'Checkout - VetSphere',
-  description: 'Complete your purchase securely. Shop surgical equipment, course enrollments, and professional resources for veterinary surgeons.',
-  robots: { index: false, follow: false },
+  description: 'Complete your order securely',
 };
 
-export default function CheckoutPage() {
-  return <CheckoutPageClient siteConfig={siteConfig} />;
+interface PageProps {
+  params: Promise<{
+    locale: string;
+  }>;
+}
+
+export default async function CheckoutPage({ params }: PageProps) {
+  const { locale } = await params;
+  return <CheckoutClient locale={locale} />;
 }

@@ -1,8 +1,8 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteConfig } from '../../context/SiteConfigContext';
@@ -205,11 +205,14 @@ export default function IntlHomePageClient() {
                 className="group rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 bg-white"
               >
                 <div className="h-48 overflow-hidden relative">
-                  <img
+                  <Image
                     src={course.image}
                     alt={course.title}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 320px"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     loading="lazy"
+                    quality={80}
                   />
                   <div className="absolute top-4 left-4 flex gap-2">
                     <span className="px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full">
@@ -274,11 +277,14 @@ export default function IntlHomePageClient() {
                 className="group cursor-pointer rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 bg-white"
               >
                 <div className="h-64 overflow-hidden relative">
-                  <img
+                  <Image
                     src={d.image}
                     alt={d.title}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 320px"
                     className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ${d.grayscale ? 'grayscale' : ''}`}
                     loading="lazy"
+                    quality={80}
                   />
                   <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-transparent transition-colors"></div>
                 </div>

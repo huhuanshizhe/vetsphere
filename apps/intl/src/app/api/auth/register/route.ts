@@ -1,10 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { sendWelcomeEmail } from '@vetsphere/shared/lib/email';
+import {
+  sendEmail,
+  welcomeEmailTemplate,
+} from '@vetsphere/shared/services/email';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, role, fullName, license, clinic, company, discipline } = await req.json();
+    const { email, password, role, fullName, locale } = await req.json();
+
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
@@ -27,13 +31,9 @@ export async function POST(req: NextRequest) {
       email,
       password,
       email_confirm: true,
-      user_metadata: { 
+      user_metadata: {
         role: role || 'Doctor',
         name: userName,
-        license: license || null,
-        clinic: clinic || null,
-        company: company || null,
-        discipline: discipline || null
       }
     });
 
@@ -42,7 +42,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Send welcome email (non-blocking)
-    sendWelcomeEmail(email, userName).catch(err => {
+    const welcomeEmail = welcomeEmailTemplate(userName, email, locale);
+    sendEmail({
+      to: email,
+      subject: welcomeEmail.subject,
+      html: welcomeEmail.html,
+    }).catch(err => {
       console.error('[Register] Failed to send welcome email:', err);
     });
 

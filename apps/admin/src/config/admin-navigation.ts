@@ -214,6 +214,14 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         permission: 'product.view',
       },
       {
+        key: 'shipping-zones',
+        label: '配送区域',
+        icon: 'Plane',
+        href: '/shop/shipping-zones',
+        permission: 'product.view',
+        badge: 'new' as const,
+      },
+      {
         key: 'inquiries',
         label: '询价管理',
         icon: 'MessageSquareQuote',
@@ -286,14 +294,30 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
     key: 'orders-finance',
     label: '订单与财务',
     icon: 'Receipt',
-    siteScope: 'cn',
     items: [
       {
         key: 'orders',
-        label: '订单管理',
+        label: '课程订单',
         icon: 'Receipt',
         href: '/orders',
         permission: 'order.view',
+        siteScope: 'cn',
+      },
+      {
+        key: 'shop-orders',
+        label: '商品订单',
+        icon: 'ShoppingBag',
+        href: '/shop/orders',
+        permission: 'order.view',
+        badge: 'new' as const,
+      },
+      {
+        key: 'bank-accounts',
+        label: '银行账户',
+        icon: 'Building',
+        href: '/shop/bank-accounts',
+        permission: 'order.view',
+        badge: 'new' as const,
       },
       {
         key: 'memberships',
@@ -301,6 +325,7 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         icon: 'Crown',
         href: '/memberships',
         permission: 'order.view',
+        siteScope: 'cn',
       },
       {
         key: 'coupons',
@@ -308,6 +333,7 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         icon: 'Ticket',
         href: '/coupons',
         permission: 'order.view',
+        siteScope: 'cn',
       },
     ],
   },

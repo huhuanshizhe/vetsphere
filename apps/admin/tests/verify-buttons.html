@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>产品管理按钮验证测试</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f8fafc;
+    }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: #1e293b;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 10px;
+    }
+    .test-result {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 4px;
+    }
+    .test-result.pass {
+      background: #dcfce7;
+      border-left: 4px solid #22c55e;
+    }
+    .test-result.fail {
+      background: #fee2e2;
+      border-left: 4px solid #ef4444;
+    }
+    .test-result.pending {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+    }
+    .icon {
+      font-size: 20px;
+    }
+    .button-preview {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 500;
+      margin: 5px;
+      color: white;
+    }
+    .btn-emerald { background: #059669; }
+    .btn-green { background: #16a34a; }
+    .btn-red { background: #dc2626; }
+    .btn-blue { background: #2563eb; }
+    .btn-purple { background: #9333ea; }
+    .btn-slate { background: #64748b; }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 5px;
+    }
+    .status-pending { background: #fef3c7; color: #d97706; }
+    .status-approved { background: #dcfce7; color: #16a34a; }
+    .status-published { background: #dbeafe; color: #2563eb; }
+    .status-rejected { background: #fee2e2; color: #dc2626; }
+    .status-draft { background: #f1f5f9; color: #64748b; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .summary-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .summary-card h3 {
+      margin: 0;
+      font-size: 32px;
+    }
+    .summary-card p {
+      margin: 5px 0 0 0;
+      opacity: 0.9;
+    }
+    .code-block {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="color: #1e293b; text-align: center;">🧪 产品管理按钮可见性验证测试</h1>
+  
+  <div class="test-section">
+    <h2>📊 测试总览</h2>
+    <div class="summary">
+      <div class="summary-card" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+        <h3 id="total-tests">0</h3>
+        <p>总测试数</p>
+      </div>
+      <div class="summary-card" style="background: linear-gradient(135deg, #22c55e 0%, #4ade80 100%);">
+        <h3 id="passed-tests">0</h3>
+        <p>通过</p>
+      </div>
+      <div class="summary-card" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
+        <h3 id="failed-tests">0</h3>
+        <p>失败</p>
+      </div>
+      <div class="summary-card" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+        <h3 id="pending-tests">0</h3>
+        <p>待验证</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>🎯 测试 1: 待审核产品按钮</h2>
+    <div id="test-1-results"></div>
+    <div class="button-preview btn-emerald">编辑</div>
+    <div class="button-preview btn-green">✓ 通过</div>
+    <div class="button-preview btn-red">✕ 拒绝</div>
+    <div class="status-badge status-pending">待审核</div>
+  </div>
+
+  <div class="test-section">
+    <h2>🎯 测试 2: 已通过产品按钮</h2>
+    <div id="test-2-results"></div>
+    <div class="button-preview btn-emerald">编辑</div>
+    <div class="button-preview btn-blue">发布中国站</div>
+    <div class="button-preview btn-purple">发布国际站</div>
+    <div class="status-badge status-approved">已通过</div>
+  </div>
+
+  <div class="test-section">
+    <h2>🎯 测试 3: 已发布产品按钮</h2>
+    <div id="test-3-results"></div>
+    <div class="button-preview btn-emerald">编辑</div>
+    <div class="button-preview btn-slate">下架中国站</div>
+    <div class="button-preview btn-slate">下架国际站</div>
+    <div class="status-badge status-published">已发布</div>
+  </div>
+
+  <div class="test-section">
+    <h2>🎯 测试 4: 草稿产品按钮</h2>
+    <div id="test-4-results"></div>
+    <div class="button-preview btn-emerald">编辑</div>
+    <div class="status-badge status-draft">草稿</div>
+  </div>
+
+  <div class="test-section">
+    <h2>🎯 测试 5: 已拒绝产品按钮</h2>
+    <div id="test-5-results"></div>
+    <div class="button-preview btn-emerald">编辑</div>
+    <div class="status-badge status-rejected">已拒绝</div>
+  </div>
+
+  <div class="test-section">
+    <h2>📋 测试说明</h2>
+    <div class="code-block">
+测试场景:
+1. 待审核产品 (status: pending_review)
+   ✓ 应该显示：编辑、✓ 通过、✕ 拒绝
+   ✗ 不应该显示：发布、上下架按钮
+
+2. 已通过产品 (status: approved)
+   ✓ 应该显示：编辑、发布中国站、发布国际站
+   ✗ 不应该显示：审核按钮、上下架按钮
+
+3. 已发布产品 (status: published)
+   ✓ 应该显示：编辑、下架中国站、下架国际站
+   ✗ 不应该显示：审核按钮、发布按钮
+
+4. 草稿产品 (status: draft)
+   ✓ 应该显示：编辑
+   ✗ 不应该显示：审核、发布、上下架按钮
+
+5. 已拒绝产品 (status: rejected)
+   ✓ 应该显示：编辑
+   ✗ 不应该显示：审核、发布、上下架按钮
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>🔗 快速访问</h2>
+    <p>
+      <a href="http://localhost:3002/admin/products" target="_blank" style="display: inline-block; padding: 10px 20px; background: #059669; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+        打开产品管理页面
+      </a>
+    </p>
+    <p style="color: #64748b; font-size: 14px; margin-top: 10px;">
+      提示：请确保开发服务器正在运行 (npm run dev)
+    </p>
+  </div>
+
+  <script>
+    // 测试结果跟踪
+    const testResults = {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      pending: 0
+    };
+
+    function addTestResult(sectionId, testName, passed, message = '') {
+      testResults.total++;
+      if (passed) {
+        testResults.passed++;
+      } else if (passed === 'pending') {
+        testResults.pending++;
+      } else {
+        testResults.failed++;
+      }
+
+      const section = document.getElementById(sectionId);
+      const resultDiv = document.createElement('div');
+      resultDiv.className = `test-result ${passed === 'pending' ? 'pending' : passed ? 'pass' : 'fail'}`;
+      
+      const icon = passed === 'pending' ? '⏳' : passed ? '✅' : '❌';
+      const status = passed === 'pending' ? '待验证' : passed ? '通过' : '失败';
+      
+      resultDiv.innerHTML = `
+        <span class="icon">${icon}</span>
+        <span><strong>${testName}</strong>: ${status}</span>
+        ${message ? `<span style="color: #64748b; margin-left: 10px;">${message}</span>` : ''}
+      `;
+      
+      section.appendChild(resultDiv);
+      updateSummary();
+    }
+
+    function updateSummary() {
+      document.getElementById('total-tests').textContent = testResults.total;
+      document.getElementById('passed-tests').textContent = testResults.passed;
+      document.getElementById('failed-tests').textContent = testResults.failed;
+      document.getElementById('pending-tests').textContent = testResults.pending;
+    }
+
+    // 执行自动化测试
+    async function runTests() {
+      console.log('🧪 开始执行按钮可见性测试...');
+
+      try {
+        // 测试 1: 待审核产品
+        addTestResult('test-1-results', '待审核产品显示编辑按钮', 'pending');
+        addTestResult('test-1-results', '待审核产品显示通过按钮', 'pending');
+        addTestResult('test-1-results', '待审核产品显示拒绝按钮', 'pending');
+        addTestResult('test-1-results', '待审核产品不显示发布按钮', 'pending');
+
+        // 测试 2: 已通过产品
+        addTestResult('test-2-results', '已通过产品显示编辑按钮', 'pending');
+        addTestResult('test-2-results', '已通过产品显示发布中国站按钮', 'pending');
+        addTestResult('test-2-results', '已通过产品显示发布国际站按钮', 'pending');
+        addTestResult('test-2-results', '已通过产品不显示审核按钮', 'pending');
+
+        // 测试 3: 已发布产品
+        addTestResult('test-3-results', '已发布产品显示编辑按钮', 'pending');
+        addTestResult('test-3-results', '已发布产品显示下架按钮', 'pending');
+        addTestResult('test-3-results', '已发布产品不显示审核按钮', 'pending');
+
+        // 测试 4: 草稿产品
+        addTestResult('test-4-results', '草稿产品只显示编辑按钮', 'pending');
+        addTestResult('test-4-results', '草稿产品不显示其他按钮', 'pending');
+
+        // 测试 5: 已拒绝产品
+        addTestResult('test-5-results', '已拒绝产品只显示编辑按钮', 'pending');
+        addTestResult('test-5-results', '已拒绝产品不显示其他按钮', 'pending');
+
+        // 样式测试
+        addTestResult('test-1-results', '编辑按钮使用绿色 (emerald-600)', 'pending');
+        addTestResult('test-1-results', '通过按钮使用绿色 (green-600)', 'pending');
+        addTestResult('test-1-results', '拒绝按钮使用红色 (red-600)', 'pending');
+        addTestResult('test-2-results', '发布中国站按钮使用蓝色 (blue-600)', 'pending');
+        addTestResult('test-2-results', '发布国际站按钮使用紫色 (purple-600)', 'pending');
+
+      } catch (error) {
+        console.error('测试执行失败:', error);
+      }
+
+      console.log('✅ 测试初始化完成，请手动验证或访问页面进行自动化测试');
+    }
+
+    // 页面加载后自动运行测试
+    runTests();
+
+    // 添加手动验证功能
+    setTimeout(() => {
+      console.log('💡 提示：请访问 http://localhost:3002/admin/products 进行手动验证');
+      console.log('📋 验证步骤:');
+      console.log('1. 检查待审核产品是否有编辑、通过、拒绝按钮');
+      console.log('2. 检查已通过产品是否有编辑、发布按钮');
+      console.log('3. 检查已发布产品是否有编辑、下架按钮');
+      console.log('4. 检查草稿和已拒绝产品是否只有编辑按钮');
+    }, 1000);
+  </script>
+</body>
+</html>

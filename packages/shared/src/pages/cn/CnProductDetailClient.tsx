@@ -31,6 +31,7 @@ import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
+import { api } from '../../services/api';
 import ClinicalConsultationModal from '../../components/ClinicalConsultationModal';
 import InquiryModal from '../../components/InquiryModal';
 import {
@@ -1202,22 +1203,35 @@ const CnProductDetailClient: React.FC<CnProductDetailClientProps> = ({ productId
   
   // 加载商品数据
   useEffect(() => {
-    // 先尝试获取 Mock 数据
-    const mockProduct = getMockProductById(productId);
-    if (mockProduct) {
-      setProduct(mockProduct);
+    if (!productId) {
       setLoading(false);
       return;
     }
-    
-    // TODO: 实际 API 调用
-    // 暂时使用第一个 Mock 数据作为默认
-    import('../../types/cn-product-mock').then(({ MOCK_PRODUCT_STANDARD }) => {
-      setProduct({
-        ...MOCK_PRODUCT_STANDARD,
-        id: productId,
-        slug: productId,
-      });
+
+    // 从数据库获取真实产品数据
+    api.getProductById(productId).then(dbProduct => {
+      if (dbProduct) {
+        setProduct(dbProduct as unknown as CnProductDetailData);
+        setLoading(false);
+        return;
+      }
+
+      // 回退到 Mock 数据
+      const mockProduct = getMockProductById(productId);
+      if (mockProduct) {
+        setProduct(mockProduct);
+        setLoading(false);
+        return;
+      }
+
+      // 如果都找不到，显示错误
+      setLoading(false);
+    }).catch(() => {
+      // 出错时回退到 Mock
+      const mockProduct = getMockProductById(productId);
+      if (mockProduct) {
+        setProduct(mockProduct);
+      }
       setLoading(false);
     });
   }, [productId]);

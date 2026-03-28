@@ -293,6 +293,13 @@ export interface Product {
   weightUnit?: 'g' | 'kg' | 'lb';    // 重量单位：g(克), kg(千克), lb(磅)
   suggestedRetailPrice?: number;      // 建议销售价（供应商填写）
   sellingPrice?: number;              // 销售定价（最终商城价格，必填，不能低于供货价）
+  // Trade & Logistics Fields (贸易与物流)
+  delivery_time?: string;             // 发货时间
+  packaging_info?: string;            // 包装信息
+  warranty_info?: string;             // 保修信息
+  min_order_quantity?: number;        // 最小起订量
+  video_url?: string;                 // 视频链接
+  dimensions?: string;                // 尺寸 (长x宽x高)
   // GEO Content Fields (SEO & AI 生成内容)
   faq?: Array<{                       // FAQ 问答数组
     question: string;
@@ -323,13 +330,22 @@ export interface ProductSku {
   productId: string;
   skuCode: string;                 // SKU编码
   attributeCombination: Record<string, string>;  // {"颜色":"红色","尺寸":"M"}
-  price: number;                   // 供货价（供应商填写）
-  originalPrice?: number;
+  // 供货价（供应商填写）
+  price: number;                   // 供货价（CNY）
+  originalPrice?: number;          // 原价（划线价）
+  suggestedRetailPrice?: number;   // 建议零售价（供应商建议）
+  // 销售价（Admin填写，最终商城价格）
+  sellingPrice?: number;           // CNY销售价（中国站）
+  sellingPriceUsd?: number;        // USD销售价（国际站）
+  sellingPriceJpy?: number;        // JPY销售价（日本市场）
+  sellingPriceThb?: number;        // THB销售价（泰国市场）
+  // 库存与物流
   stockQuantity: number;           // 库存数量
   weight?: number;                 // 产品重量
   weightUnit?: 'g' | 'kg' | 'lb';  // 重量单位
-  suggestedRetailPrice?: number;   // 建议零售价（供应商建议）
-  sellingPrice?: number;           // 销售定价（Admin填写，最终商城价格）
+  // SKU级别规格参数
+  specs?: Record<string, string>;  // {"功率":"500W","材质":"不锈钢"}
+  // 其他
   imageUrl?: string;
   barcode?: string;
   isActive: boolean;
@@ -478,12 +494,26 @@ export interface Message {
 
 export interface CartItem {
   id: string;
+  productId?: string;              // 产品ID（推荐提供）
+  skuId?: string;                  // SKU ID（多规格商品必需）
   name: string;
-  price: number;
+  price: number;                   // 实际销售价
   currency: string;
   type: 'course' | 'product';
   imageUrl: string;
   quantity: number;
+  // SKU相关信息
+  skuCode?: string;                // SKU编码
+  attributeCombination?: Record<string, string>;  // 规格组合 {"颜色":"红色"}
+  // 供应商信息
+  supplierId?: string;
+  supplierName?: string;
+  // 物流信息
+  weight?: number;                 // 重量
+  weightUnit?: 'g' | 'kg' | 'lb';  // 重量单位
+  // B2B信息
+  minOrderQuantity?: number;       // 最小起订量
+  inStock?: boolean;               // 是否有库存
 }
 
 export interface Order {

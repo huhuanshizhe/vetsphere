@@ -173,6 +173,159 @@ export function breadcrumbSchema(items: { name: string; url: string }[]) {
 }
 
 /**
+ * CategoryPage Schema - CollectionPage for category listing pages
+ * Optimized for e-commerce category pages
+ */
+export function categoryPageSchema(params: {
+  siteConfig: SiteConfig;
+  categoryName: string;
+  categorySlug: string;
+  locale: string;
+  description?: string;
+  imageUrl?: string;
+  numberOfItems?: number;
+}) {
+  const { siteConfig, categoryName, categorySlug, locale, description, imageUrl, numberOfItems } = params;
+  const categoryUrl = `${siteConfig.siteUrl}/${locale}/shop/${categorySlug}`;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": categoryName,
+    "description": description || `${categoryName} - Professional veterinary equipment and instruments`,
+    "url": categoryUrl,
+    ...(imageUrl && { "image": imageUrl }),
+    "publisher": {
+      "@type": "Organization",
+      "name": siteConfig.organizationName,
+      "url": siteConfig.siteUrl,
+      "logo": `${siteConfig.siteUrl}/logo.png`
+    },
+    "inLanguage": locale,
+    ...(numberOfItems !== undefined && { "numberOfItems": numberOfItems }),
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": siteConfig.siteName,
+      "url": siteConfig.siteUrl
+    }
+  };
+}
+
+/**
+ * ItemList Schema - Products in category
+ * Helps search engines understand the product listing structure
+ */
+export function itemListSchema(params: {
+  siteConfig: SiteConfig;
+  products: Array<{
+    name: string;
+    slug: string;
+    price?: number;
+    brand?: string;
+    imageUrl?: string;
+  }>;
+  categorySlug: string;
+  locale: string;
+}) {
+  const { siteConfig, products, categorySlug, locale } = params;
+  const categoryUrl = `${siteConfig.siteUrl}/${locale}/shop/${categorySlug}`;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": `Products in ${categorySlug}`,
+    "description": `List of veterinary equipment products`,
+    "url": categoryUrl,
+    "numberOfItems": products.length,
+    "itemListOrder": "http://schema.org/ItemListOrderDescending",
+    "itemListElement": products.map((product, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "url": `${siteConfig.siteUrl}/${locale}/shop/${product.slug}`,
+      "name": product.name,
+      ...(product.price && {
+        "offers": {
+          "@type": "Offer",
+          "price": product.price,
+          "priceCurrency": siteConfig.defaultCurrency,
+          "availability": "https://schema.org/InStock"
+        }
+      }),
+      ...(product.brand && {
+        "additionalProperty": {
+          "@type": "PropertyValue",
+          "name": "brand",
+          "value": product.brand
+        }
+      })
+    }))
+  };
+}
+
+/**
+ * ProductList Schema - Alternative format for product listings
+ * Combined with CollectionPage for better SEO
+ */
+export function productListSchema(params: {
+  siteConfig: SiteConfig;
+  products: Array<{
+    name: string;
+    slug: string;
+    description?: string;
+    price?: number;
+    brand?: string;
+    imageUrl?: string;
+    availability?: 'InStock' | 'OutOfStock' | 'LimitedAvailability';
+  }>;
+  categoryName: string;
+  categorySlug: string;
+  locale: string;
+}) {
+  const { siteConfig, products, categoryName, categorySlug, locale } = params;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": `${categoryName} Products`,
+    "url": `${siteConfig.siteUrl}/${locale}/shop/${categorySlug}`,
+    "description": `Browse ${categoryName.toLowerCase()} veterinary equipment and instruments`,
+    "isPartOf": {
+      "@type": "CollectionPage",
+      "name": categoryName,
+      "url": `${siteConfig.siteUrl}/${locale}/shop/${categorySlug}`
+    },
+    "mainEntity": {
+      "@type": "ItemList",
+      "numberOfItems": products.length,
+      "itemListElement": products.map((product, index) => ({
+        "@type": "Product",
+        "position": index + 1,
+        "name": product.name,
+        "description": product.description,
+        "url": `${siteConfig.siteUrl}/${locale}/shop/${product.slug}`,
+        ...(product.imageUrl && { "image": product.imageUrl }),
+        ...(product.brand && {
+          "brand": {
+            "@type": "Brand",
+            "name": product.brand
+          }
+        }),
+        ...(product.price && {
+          "offers": {
+            "@type": "Offer",
+            "price": product.price,
+            "priceCurrency": siteConfig.defaultCurrency,
+            "availability": product.availability
+              ? `https://schema.org/${product.availability}`
+              : "https://schema.org/InStock"
+          }
+        })
+      }))
+    }
+  };
+}
+
+/**
  * HowTo Schema for step-by-step guides - optimized for AI search engines (AEO)
  */
 export function howToSchema(howTo: {

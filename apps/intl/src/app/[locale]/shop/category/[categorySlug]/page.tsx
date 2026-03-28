@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import JsonLd, { breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
+import JsonLd, { breadcrumbSchema, categoryPageSchema } from '@vetsphere/shared/components/JsonLd';
 import { siteConfig } from '@/config/site.config';
 import CategoryShopClient from './CategoryShopClient';
 
@@ -19,7 +19,7 @@ const categoryMeta: Record<string, {
     description: {
       en: 'Professional veterinary imaging equipment including ultrasound systems, digital radiography, and endoscopy solutions for clinical diagnostics.',
       th: 'อุปกรณ์ถ่ายภาพสำหรับสัตวแพทย์รวมถึงระบบอัลตราซาวด์ รังสีดิจิทัล และกล้องส่องตรวจสำหรับการวินิจฉัยทางคลินิก',
-      ja: '超音波システム、デジタルX線、内視鏡など、臨床診断用の獣医画像診断機器。',
+      ja: '超音波システム、デジタルX線，内視鏡など、臨床診断用の獣医画像診断機器。',
     },
     keywords: ['veterinary ultrasound', 'digital radiography', 'endoscopy', 'diagnostic imaging', 'veterinary equipment'],
   },
@@ -87,7 +87,7 @@ function getValidCategorySlugs(): string[] {
 export async function generateStaticParams() {
   const slugs = getValidCategorySlugs();
   const locales = siteConfig.locales;
-  
+
   const params: { locale: string; categorySlug: string }[] = [];
   for (const locale of locales) {
     for (const slug of slugs) {
@@ -98,23 +98,23 @@ export async function generateStaticParams() {
 }
 
 // Generate metadata for each category page
-export async function generateMetadata({ 
-  params 
-}: { 
-  params: Promise<{ locale: string; categorySlug: string }> 
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string; categorySlug: string }>
 }): Promise<Metadata> {
   const { locale, categorySlug } = await params;
   const meta = categoryMeta[categorySlug];
-  
+
   if (!meta) {
     return {
       title: 'Equipment Category | VetSphere',
     };
   }
-  
+
   const title = meta.title[locale] || meta.title.en;
   const description = meta.description[locale] || meta.description.en;
-  
+
   return {
     title,
     description,
@@ -140,33 +140,46 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryPage({ 
-  params 
-}: { 
-  params: Promise<{ locale: string; categorySlug: string }> 
+export default async function CategoryPage({
+  params
+}: {
+  params: Promise<{ locale: string; categorySlug: string }>
 }) {
   const { locale, categorySlug } = await params;
-  
+
   // Validate category slug
   const validSlugs = getValidCategorySlugs();
   if (!validSlugs.includes(categorySlug)) {
     notFound();
   }
-  
+
   // Get category info from config
   const tabDimension = siteConfig.shopCategories?.dimensions.find(d => d.displayAs === 'tabs');
   const category = tabDimension?.categories.find(c => (c.slug || c.key) === categorySlug);
   const categoryName = category?.labels[locale] || category?.labels.en || categorySlug;
-  
+  const meta = categoryMeta[categorySlug];
+  const categoryDescription = meta?.description[locale] || meta?.description.en || '';
+
   return (
     <>
+      {/* Breadcrumb JSON-LD */}
       <JsonLd data={breadcrumbSchema([
         { name: 'Home', url: siteConfig.siteUrl },
         { name: 'Equipment Shop', url: `${siteConfig.siteUrl}/${locale}/shop` },
         { name: categoryName, url: `${siteConfig.siteUrl}/${locale}/shop/${categorySlug}` },
       ])} />
-      <CategoryShopClient 
-        categorySlug={categorySlug} 
+
+      {/* Category Page JSON-LD - CollectionPage Schema */}
+      <JsonLd data={categoryPageSchema({
+        siteConfig,
+        categoryName,
+        categorySlug,
+        locale,
+        description: categoryDescription,
+      })} />
+
+      <CategoryShopClient
+        categorySlug={categorySlug}
         categoryName={categoryName}
         locale={locale}
       />

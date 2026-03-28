@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Package,
   Image as ImageIcon,
+  Truck,
   Settings,
   Layers,
   FileText,
@@ -48,8 +49,9 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
   const [loadError, setLoadError] = useState('');
   const [editProductId, setEditProductId] = useState<string | null>(productId || null);
   
-  // 根据商品状态判断是否只读
-  const isReadOnly = initialData?.status === 'Pending' || initialData?.status === 'Published';
+  // 根据商品状态判断是否只读（不区分大小写）
+  const status = initialData?.status?.toLowerCase() || '';
+  const isReadOnly = status === 'pending' || status === 'published';
   
   const {
     formData,
@@ -59,7 +61,6 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
     setPrice,
     setStockQuantity,
     setDescription,
-    setLongDescription,
     setRichDescription,
     setCategory,
     setImages,
@@ -67,6 +68,19 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
     setHasVariants,
     setVariantAttributes,
     setSkus,
+    // Trade & Logistics
+    setDeliveryTime,
+    setPackagingInfo,
+    setWarrantyInfo,
+    setMinOrderQuantity,
+    setVideoUrl,
+    setDimensions,
+    setCertifications,
+    // SEO
+    setFaq,
+    setMetaTitle,
+    setMetaDescription,
+    setFocusKeyword,
     completeness,
     isEdit,
     buildProduct,
@@ -114,6 +128,21 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
         hasVariants: product.hasVariants || false,
         variantAttributes: product.variantAttributes || [],
         skus: product.skus || [],
+        // Trade & Logistics
+        deliveryTime: (product as any).delivery_time || '',
+        packagingInfo: (product as any).packaging_info || '',
+        warrantyInfo: (product as any).warranty_info || '',
+        minOrderQuantity: (product as any).min_order_quantity?.toString() || '1',
+        videoUrl: (product as any).video_url || '',
+        dimensions: (product as any).dimensions || '',
+        certifications: Array.isArray((product as any).certifications) 
+          ? ((product as any).certifications as any[]).map(c => c.type || c).join(', ') 
+          : '',
+        // SEO
+        faq: (product as any).faq || [],
+        metaTitle: (product as any).metaTitle || '',
+        metaDescription: (product as any).metaDescription || '',
+        focusKeyword: (product as any).focusKeyword || '',
       }));
       
       console.log('[ProductForm] Set formData:', {
@@ -536,6 +565,109 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                 />
               </section>
 
+              {/* Section 4.5: Trade & Logistics */}
+              <section id="logistics" className="bg-white rounded-xl border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-blue-600" />
+                  贸易与物流
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      发货时间
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.deliveryTime}
+                      onChange={e => setDeliveryTime(e.target.value)}
+                      placeholder="如：3-5个工作日"
+                      className="input"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      最小起订量
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.minOrderQuantity}
+                      onChange={e => setMinOrderQuantity(e.target.value)}
+                      placeholder="1"
+                      className="input"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      包装信息
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.packagingInfo}
+                      onChange={e => setPackagingInfo(e.target.value)}
+                      placeholder="如：纸箱包装，每箱10件"
+                      className="input"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      保修信息
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.warrantyInfo}
+                      onChange={e => setWarrantyInfo(e.target.value)}
+                      placeholder="如：整机保修1年"
+                      className="input"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      产品尺寸
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.dimensions}
+                      onChange={e => setDimensions(e.target.value)}
+                      placeholder="如：30x20x15 cm"
+                      className="input"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      产品认证
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.certifications}
+                      onChange={e => setCertifications(e.target.value)}
+                      placeholder="如：CE, FDA, ISO13485（逗号分隔）"
+                      className="input"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      产品视频链接
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.videoUrl}
+                      onChange={e => setVideoUrl(e.target.value)}
+                      placeholder="如：https://www.youtube.com/watch?v=xxx"
+                      className="input"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                </div>
+              </section>
+
               {/* Section 5: Detail */}
               <section id="detail" className="bg-white rounded-xl border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -557,20 +689,6 @@ export default function ProductForm({ initialData, productId }: ProductFormProps
                       disabled={isReadOnly}
                     />
                     <p className="text-xs text-gray-500 mt-1">已输入 {formData.description.trim().length} 字</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      详细描述
-                    </label>
-                    <textarea
-                      value={formData.longDescription}
-                      onChange={e => setLongDescription(e.target.value)}
-                      rows={5}
-                      placeholder="详细的产品介绍、使用方法、适应症等..."
-                      className="input resize-none"
-                      disabled={isReadOnly}
-                    />
                   </div>
 
                   <div>

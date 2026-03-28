@@ -285,8 +285,20 @@ export default function AdminProductsPage() {
   };
 
   // Helper to check if product is published to a site
+  // 如果产品状态是 published，但 site_views 为空，默认认为已发布到两个站点
   const isPublishedToSite = useCallback((product: Product, siteCode: string): boolean => {
-    return product.site_views?.some(sv => sv.site_code === siteCode && sv.publish_status === 'published') || false;
+    // 如果有 site_views 数据，检查具体站点状态
+    if (product.site_views && product.site_views.length > 0) {
+      return product.site_views.some(sv =>
+        sv.site_code === siteCode &&
+        (sv.publish_status === 'published' || sv.publish_status === 'Published')
+      );
+    }
+    // 如果产品状态是 published 但没有 site_views 数据，默认返回 true（认为已发布）
+    if (product.status === 'published' || product.status === 'Published') {
+      return true;
+    }
+    return false;
   }, []);
 
   // 分页切换
@@ -450,17 +462,17 @@ export default function AdminProductsPage() {
                       )}
                       
                       {/* 已发布状态 - 显示上下架按钮 */}
-                      {product.status === 'published' && (
+                      {(product.status === 'published' || product.status === 'Published') && (
                         <>
                           {!isPublishedToSite(product, 'cn') ? (
-                            <button 
+                            <button
                               onClick={() => handlePublishToSite(product.id, 'cn')}
                               className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm"
                             >
                               发布中国站
                             </button>
                           ) : (
-                            <button 
+                            <button
                               onClick={() => handleOfflineFromSite(product.id, 'cn')}
                               className="px-4 py-1.5 bg-slate-500 text-white text-sm font-medium rounded-md hover:bg-slate-600 transition-colors shadow-sm"
                             >
@@ -468,14 +480,14 @@ export default function AdminProductsPage() {
                             </button>
                           )}
                           {!isPublishedToSite(product, 'intl') ? (
-                            <button 
+                            <button
                               onClick={() => handlePublishToSite(product.id, 'intl')}
                               className="px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors shadow-sm"
                             >
                               发布国际站
                             </button>
                           ) : (
-                            <button 
+                            <button
                               onClick={() => handleOfflineFromSite(product.id, 'intl')}
                               className="px-4 py-1.5 bg-slate-500 text-white text-sm font-medium rounded-md hover:bg-slate-600 transition-colors shadow-sm"
                             >

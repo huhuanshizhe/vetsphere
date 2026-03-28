@@ -11,9 +11,11 @@ out
 # Turbo
 .turbo
 
-# Environment files - .env.local overrides .env
-# .env is committed with default/placeholder values
-# .env.local is NOT committed and overrides .env for local secrets
+# Environment files - ALL .env files are local and should NOT be committed
+# Only .env.example should be committed with placeholder values
+.env
+.env.*
+!.env.example
 *.local
 .env.local
 .env.*.local

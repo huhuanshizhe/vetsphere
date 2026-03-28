@@ -1312,7 +1312,8 @@ const CnShopPageClient: React.FC = () => {
   // 筛选产品
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      if (p.status && p.status !== 'Published') return false;
+      // 状态筛选（不区分大小写）
+      if (p.status && p.status.toLowerCase() !== 'published') return false;
       
       // 采购场景筛选
       if (filters.purchaseScene !== 'all' && p.purchaseScene !== filters.purchaseScene) {

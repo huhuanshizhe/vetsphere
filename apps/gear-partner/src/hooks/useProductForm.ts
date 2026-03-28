@@ -10,7 +10,6 @@ export interface ProductFormData {
   price: string;
   stockQuantity: string;
   description: string;
-  longDescription: string;
   richDescription: string;
 
   // Category (三级分类)
@@ -32,11 +31,14 @@ export interface ProductFormData {
   variantAttributes: ProductVariantAttribute[];
   skus: ProductSku[];
 
-  // International Trade Fields (外贸销售场景) - 已移到 SKU 级别
-  // weight: string;                    // 产品重量
-  // weightUnit: 'g' | 'kg' | 'lb';    // 重量单位
-  // suggestedRetailPrice: string;      // 建议销售价
-  // sellingPrice: string;              // 销售定价
+  // Trade & Logistics Fields (贸易与物流)
+  deliveryTime: string;              // 发货时间
+  packagingInfo: string;             // 包装信息
+  warrantyInfo: string;              // 保修信息
+  minOrderQuantity: string;          // 最小起订量
+  videoUrl: string;                  // 视频链接
+  dimensions: string;                // 尺寸 (长x宽x高)
+  certifications: string;            // 认证信息 (逗号分隔)
 
   // GEO Content Fields (SEO & AI 生成内容)
   faq: Array<{                      // FAQ 问答数组
@@ -63,7 +65,6 @@ export interface UseProductFormReturn {
   setPrice: (value: string) => void;
   setStockQuantity: (value: string) => void;
   setDescription: (value: string) => void;
-  setLongDescription: (value: string) => void;
   setRichDescription: (value: string) => void;
   setCategory: (data: { level1: string | null; level2: string | null; level3?: string | null; level1Name?: string; level2Name?: string; level3Name?: string }) => void;
   setImages: (images: ProductFormData['images']) => void;
@@ -71,6 +72,19 @@ export interface UseProductFormReturn {
   setHasVariants: (value: boolean) => void;
   setVariantAttributes: (attrs: ProductVariantAttribute[]) => void;
   setSkus: (skus: ProductSku[]) => void;
+  // Trade & Logistics
+  setDeliveryTime: (value: string) => void;
+  setPackagingInfo: (value: string) => void;
+  setWarrantyInfo: (value: string) => void;
+  setMinOrderQuantity: (value: string) => void;
+  setVideoUrl: (value: string) => void;
+  setDimensions: (value: string) => void;
+  setCertifications: (value: string) => void;
+  // SEO
+  setFaq: (faq: ProductFormData['faq']) => void;
+  setMetaTitle: (value: string) => void;
+  setMetaDescription: (value: string) => void;
+  setFocusKeyword: (value: string) => void;
 
   // Computed
   completeness: number;
@@ -88,7 +102,6 @@ const INITIAL_FORM_DATA: ProductFormData = {
   price: '',
   stockQuantity: '0',
   description: '',
-  longDescription: '',
   richDescription: '',
   categoryId: null,
   subcategoryId: null,
@@ -101,7 +114,15 @@ const INITIAL_FORM_DATA: ProductFormData = {
   hasVariants: false,
   variantAttributes: [],
   skus: [],
-  // 外贸字段已移到 SKU 级别
+  // Trade & Logistics
+  deliveryTime: '',
+  packagingInfo: '',
+  warrantyInfo: '',
+  minOrderQuantity: '1',
+  videoUrl: '',
+  dimensions: '',
+  certifications: '',
+  // SEO
   faq: [],
   metaTitle: '',
   metaDescription: '',
@@ -122,7 +143,6 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
       price: initialData.price?.toString() || '',
       stockQuantity: initialData.stockQuantity?.toString() || '0',
       description: initialData.description || '',
-      longDescription: initialData.longDescription || '',
       richDescription: initialData.richDescription || '',
       categoryId: initialData.category_id || null,
       subcategoryId: initialData.subcategory_id || null,
@@ -135,6 +155,19 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
       hasVariants: initialData.hasVariants || false,
       variantAttributes: initialData.variantAttributes || [],
       skus: initialData.skus || [],
+      // Trade & Logistics
+      deliveryTime: (initialData as any).delivery_time || '',
+      packagingInfo: (initialData as any).packaging_info || '',
+      warrantyInfo: (initialData as any).warranty_info || '',
+      minOrderQuantity: (initialData as any).min_order_quantity?.toString() || '1',
+      videoUrl: (initialData as any).video_url || '',
+      dimensions: (initialData as any).dimensions || '',
+      certifications: Array.isArray((initialData as any).certifications) ? ((initialData as any).certifications as string[]).join(', ') : '',
+      // SEO
+      faq: (initialData as any).faq || [],
+      metaTitle: (initialData as any).metaTitle || '',
+      metaDescription: (initialData as any).metaDescription || '',
+      focusKeyword: (initialData as any).focusKeyword || '',
     };
   });
 
@@ -157,10 +190,6 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
 
   const setDescription = useCallback((value: string) => {
     setFormData(prev => ({ ...prev, description: value }));
-  }, []);
-
-  const setLongDescription = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, longDescription: value }));
   }, []);
 
   const setRichDescription = useCallback((value: string) => {
@@ -209,23 +238,36 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
     });
   }, []);
 
-  // New field setters for international trade
-  const setWeight = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, weight: value }));
+  // Trade & Logistics setters
+  const setDeliveryTime = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, deliveryTime: value }));
   }, []);
 
-  const setWeightUnit = useCallback((value: 'g' | 'kg' | 'lb') => {
-    setFormData(prev => ({ ...prev, weightUnit: value }));
+  const setPackagingInfo = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, packagingInfo: value }));
   }, []);
 
-  const setSuggestedRetailPrice = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, suggestedRetailPrice: value }));
+  const setWarrantyInfo = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, warrantyInfo: value }));
   }, []);
 
-  const setSellingPrice = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, sellingPrice: value }));
+  const setMinOrderQuantity = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, minOrderQuantity: value }));
   }, []);
 
+  const setVideoUrl = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, videoUrl: value }));
+  }, []);
+
+  const setDimensions = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, dimensions: value }));
+  }, []);
+
+  const setCertifications = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, certifications: value }));
+  }, []);
+
+  // SEO setters
   const setFaq = useCallback((faq: ProductFormData['faq']) => {
     setFormData(prev => ({ ...prev, faq }));
   }, []);
@@ -255,8 +297,6 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
       mainImage: 8,
       detailImages: 5,
       specs: 5,
-      weight: 5,
-      sellingPrice: 8,
       faq: 5,
       seo: 4,
     };
@@ -277,11 +317,7 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
     if (formData.images.some(img => img.type === 'main')) score += weights.mainImage;
     if (formData.images.filter(img => img.type === 'detail').length >= 2) score += weights.detailImages;
     if (formData.specs.some(s => s.key.trim() && s.value.trim())) score += weights.specs;
-    
-    // International trade fields
-    if (formData.weight && parseFloat(formData.weight) > 0) score += weights.weight;
-    if (formData.sellingPrice && parseFloat(formData.sellingPrice) > 0) score += weights.sellingPrice;
-    
+
     // GEO content
     if (formData.faq && formData.faq.length >= 3) score += weights.faq;
     else if (formData.faq && formData.faq.length > 0) score += weights.faq * 0.5;
@@ -326,7 +362,6 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
       price,
       stockQuantity,
       description: formData.description.trim(),
-      longDescription: formData.longDescription.trim(),
       imageUrl: mainImage?.url || '',
       specs: specsObj,
       stockStatus: stockQuantity === 0 ? 'Out of Stock' : stockQuantity < 10 ? 'Low Stock' : 'In Stock',
@@ -336,6 +371,16 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
       richDescription: formData.richDescription || undefined,
       variantAttributes: formData.variantAttributes,
       skus: formData.skus,
+      // Trade & Logistics Fields
+      delivery_time: formData.deliveryTime.trim() || undefined,
+      packaging_info: formData.packagingInfo.trim() || undefined,
+      warranty_info: formData.warrantyInfo.trim() || undefined,
+      min_order_quantity: parseInt(formData.minOrderQuantity) || 1,
+      video_url: formData.videoUrl.trim() || undefined,
+      dimensions: formData.dimensions.trim() || undefined,
+      certifications: formData.certifications.trim() 
+        ? formData.certifications.split(',').map(c => ({ type: c.trim() })) as any
+        : undefined,
       // GEO Content Fields
       faq: formData.faq?.filter(f => f.question.trim() && f.answer.trim()) || [],
       metaTitle: formData.metaTitle?.trim() || undefined,
@@ -400,7 +445,6 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
     setPrice,
     setStockQuantity,
     setDescription,
-    setLongDescription,
     setRichDescription,
     setCategory,
     setImages,
@@ -408,6 +452,19 @@ export function useProductForm(options: UseProductFormOptions = {}): UseProductF
     setHasVariants,
     setVariantAttributes,
     setSkus,
+    // Trade & Logistics
+    setDeliveryTime,
+    setPackagingInfo,
+    setWarrantyInfo,
+    setMinOrderQuantity,
+    setVideoUrl,
+    setDimensions,
+    setCertifications,
+    // SEO
+    setFaq,
+    setMetaTitle,
+    setMetaDescription,
+    setFocusKeyword,
     completeness,
     isEdit,
     reset,

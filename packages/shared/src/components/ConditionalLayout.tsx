@@ -47,7 +47,7 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
   const NavbarComponent = isCN
     ? () => <CnNavbar locale={locale} />
     : isINTL
-    ? () => <IntlNavbar locale={locale} />
+    ? () => <IntlNavbar />
     : Navbar;
   const FooterComponent = isCN
     ? () => <CnFooter locale={locale} />

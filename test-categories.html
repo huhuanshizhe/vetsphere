@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>测试分类 API</title>
+</head>
+<body>
+  <h1>分类 API 测试</h1>
+  <pre id="result"></pre>
+
+  <script>
+    async function testCategories() {
+      const resultEl = document.getElementById('result');
+      
+      try {
+        // 测试一级分类
+        const res = await fetch('/api/categories?level=1');
+        const data = await res.json();
+        
+        resultEl.textContent = JSON.stringify({
+          status: res.status,
+          categoriesCount: data.categories?.length || 0,
+          categories: data.categories
+        }, null, 2);
+      } catch (err) {
+        resultEl.textContent = 'Error: ' + err.message;
+      }
+    }
+    
+    testCategories();
+  </script>
+</body>
+</html>

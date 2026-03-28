@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { translations } from '../translations';
 import type { SupportedLocale } from '../site-config.types';
@@ -24,14 +24,17 @@ interface LanguageProviderProps {
   defaultLocale?: Locale; // Passed from app config
 }
 
-export const LanguageProvider: React.FC<LanguageProviderProps> = ({ 
-  children, 
+export const LanguageProvider: React.FC<LanguageProviderProps> = ({
+  children,
   initialLocale,
-  locales = ['zh', 'en', 'th'] as const,
+  locales = ['zh', 'en', 'th', 'ja'] as const,
   defaultLocale = 'zh'
 }) => {
   const router = useRouter();
   const pathname = usePathname();
+
+  // State to track if auto-detection has been attempted
+  const [autoDetectionAttempted, setAutoDetectionAttempted] = useState(false);
 
   // Extract locale from pathname or use initial
   const getLocaleFromPath = (): Locale => {
@@ -68,6 +71,47 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
       router.push(`/${lang}${pathname}`);
     }
   }, [pathname, router, locales]);
+
+  // Auto-detect language based on IP/geolocation for first-time visitors
+  // TEMPORARILY DISABLED: Investigating Turbopack crash
+  // useEffect(() => {
+  //   const autoDetect = async () => {
+  //     // Only attempt auto-detection once
+  //     if (autoDetectionAttempted) return;
+
+  //     // Check if user already has a language preference
+  //     if (!shouldAutoDetectLanguage()) {
+  //       setAutoDetectionAttempted(true);
+  //       return;
+  //     }
+
+  //     // Check if current URL already has a language
+  //     const segments = pathname.split('/');
+  //     const pathLocale = segments[1];
+
+  //     // Only auto-detect if path doesn't have a locale or has default locale
+  //     if (locales.includes(pathLocale as Locale) && pathLocale !== defaultLocale) {
+  //       setAutoDetectionAttempted(true);
+  //       return;
+  //     }
+
+  //     try {
+  //       console.log('[LanguageContext] Auto-detecting language...');
+  //       const detectedLanguage = await detectLanguage(locales as readonly string[]);
+
+  //       if (detectedLanguage && detectedLanguage !== language) {
+  //         console.log('[LanguageContext] Detected language:', detectedLanguage);
+  //         setLanguage(detectedLanguage as Locale);
+  //       }
+  //     } catch (error) {
+  //       console.warn('[LanguageContext] Auto-detection failed:', error);
+  //     } finally {
+  //       setAutoDetectionAttempted(true);
+  //     }
+  //   };
+
+  //   autoDetect();
+  // }, [autoDetectionAttempted, pathname, language, locales, defaultLocale]);
 
   // Update document lang attribute
   React.useEffect(() => {

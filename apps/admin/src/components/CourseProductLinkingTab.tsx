@@ -63,7 +63,7 @@ export default function CourseProductLinkingTab() {
   const filteredProducts = useMemo(() => {
     const linkedProductIds = relations.map(r => r.productId);
     return products
-      .filter(p => p.status === 'Published')
+      .filter(p => p.status?.toLowerCase() === 'published')
       .filter(p => !linkedProductIds.includes(p.id))
       .filter(p => {
         if (!searchQuery) return true;

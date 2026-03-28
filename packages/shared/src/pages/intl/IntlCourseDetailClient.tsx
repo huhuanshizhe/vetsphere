@@ -1,8 +1,8 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
 import { useCart } from '../../context/CartContext';
@@ -59,10 +59,11 @@ function productCTA(p: IntlProduct, locale: string): { label: string; href: stri
 // ============================================
 
 export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailClientProps) {
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
   const { addToCart } = useCart();
+  const cd = t.courseDetail;
 
   const [course, setCourse] = useState<IntlCourse | null>(null);
   const [instructors, setInstructors] = useState<IntlInstructor[]>([]);
@@ -118,10 +119,10 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
     return (
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 pt-32 pb-16 text-center">
         <GraduationCap className="w-16 h-16 text-slate-300 mx-auto mb-6" />
-        <h1 className="text-2xl font-bold text-slate-700 mb-4">Course Not Found</h1>
-        <p className="text-slate-500 mb-8">This training program may no longer be available.</p>
+        <h1 className="text-2xl font-bold text-slate-700 mb-4">{cd.notFound}</h1>
+        <p className="text-slate-500 mb-8">{cd.notFoundDesc}</p>
         <Link href={`/${locale}/courses`} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition">
-          Browse All Training
+          {cd.browseAll}
         </Link>
       </div>
     );
@@ -134,9 +135,9 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
       {/* Breadcrumb */}
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 pt-28 pb-4">
         <nav className="flex items-center gap-2 text-sm text-slate-400">
-          <Link href={`/${locale}`} className="hover:text-emerald-600 transition">Home</Link>
+          <Link href={`/${locale}`} className="hover:text-emerald-600 transition">{cd.home}</Link>
           <ChevronRight className="w-3.5 h-3.5" />
-          <Link href={`/${locale}/courses`} className="hover:text-emerald-600 transition">Training</Link>
+          <Link href={`/${locale}/courses`} className="hover:text-emerald-600 transition">{cd.training}</Link>
           <ChevronRight className="w-3.5 h-3.5" />
           <span className="text-slate-600 font-medium truncate max-w-[300px]">{course.title}</span>
         </nav>
@@ -150,11 +151,14 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             {/* Hero Image */}
             <div className="relative rounded-3xl overflow-hidden bg-slate-100 aspect-[16/9]">
               {course.cover_image_url ? (
-                <img
+                <Image
                   src={course.cover_image_url}
                   alt={course.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 720px"
                   className="w-full h-full object-cover"
-                  loading="eager"
+                  priority
+                  quality={85}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -164,7 +168,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
               <div className="absolute top-4 left-4 flex gap-2">
                 {course.is_featured && (
                   <span className="px-3 py-1.5 bg-amber-400 text-white text-xs font-bold rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3" /> Featured
+                    <Star className="w-3 h-3" /> {cd.featured}
                   </span>
                 )}
                 {course.specialty && (
@@ -203,13 +207,13 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                   <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg font-medium">
                     <Clock className="w-4 h-4 text-slate-400" />
                     {course.duration_minutes >= 60
-                      ? `${Math.round(course.duration_minutes / 60)} hours`
-                      : `${course.duration_minutes} min`}
+                      ? `${Math.round(course.duration_minutes / 60)} ${cd.hours}`
+                      : `${course.duration_minutes} ${cd.min}`}
                   </span>
                 )}
                 {course.enrollment_count > 0 && (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg font-medium">
-                    <Users className="w-4 h-4 text-slate-400" /> {course.enrollment_count} enrolled
+                    <Users className="w-4 h-4 text-slate-400" /> {course.enrollment_count} {cd.enrolled}
                   </span>
                 )}
                 {course.avg_rating && (
@@ -223,7 +227,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             {/* Course Schedule & Location Info */}
             {(course.start_date || course.end_date || course.enrollment_deadline || course.location_city || course.teaching_languages.length > 0) && (
               <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-                <h2 className="text-xl font-bold text-slate-900 mb-4">Course Details</h2>
+                <h2 className="text-xl font-bold text-slate-900 mb-4">{cd.courseDetails}</h2>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {/* Dates */}
                   {(course.start_date || course.end_date) && (
@@ -232,7 +236,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                         <Calendar className="w-5 h-5 text-emerald-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dates</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{cd.dates}</p>
                         <p className="text-sm font-medium text-slate-900">
                           {course.start_date && new Date(course.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           {course.start_date && course.end_date && ' - '}
@@ -249,7 +253,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                         <Clock className="w-5 h-5 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Enrollment Deadline</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{cd.enrollmentDeadline}</p>
                         <p className="text-sm font-medium text-slate-900">
                           {new Date(course.enrollment_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </p>
@@ -264,7 +268,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                         <MapPin className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Location</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{cd.location}</p>
                         <p className="text-sm font-medium text-slate-900">
                           {course.location_venue}
                           {course.location_venue && course.location_city && ', '}
@@ -286,7 +290,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                         <Globe className="w-5 h-5 text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Teaching Language</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{cd.teachingLanguage}</p>
                         <p className="text-sm font-medium text-slate-900">
                           {course.teaching_languages.join(', ')}
                         </p>
@@ -300,7 +304,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             {/* Description */}
             {course.description && (
               <div className="prose prose-slate max-w-none">
-                <h2 className="text-xl font-bold text-slate-900 mb-4">About This Training</h2>
+                <h2 className="text-xl font-bold text-slate-900 mb-4">{cd.aboutThisTraining}</h2>
                 <p className="text-slate-600 leading-relaxed whitespace-pre-line">{course.description}</p>
               </div>
             )}
@@ -308,7 +312,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             {/* Target Audience */}
             {course.target_audience && (
               <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100">
-                <h3 className="text-base font-bold text-emerald-800 mb-2">Who Should Attend</h3>
+                <h3 className="text-base font-bold text-emerald-800 mb-2">{cd.whoShouldAttend}</h3>
                 <p className="text-sm text-emerald-700 leading-relaxed">{course.target_audience}</p>
               </div>
             )}
@@ -316,7 +320,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             {/* Curriculum / Chapters */}
             {chapters.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-slate-900">Curriculum</h2>
+                <h2 className="text-xl font-bold text-slate-900">{cd.curriculum}</h2>
                 <div className="space-y-3">
                   {chapters.map((ch, idx) => (
                     <div key={ch.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
@@ -337,7 +341,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                             </span>
                           )}
                           {ch.is_free_preview && (
-                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md font-bold">Free Preview</span>
+                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md font-bold">{cd.freePreview}</span>
                           )}
                         </div>
                       </div>
@@ -350,12 +354,12 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             {/* Agenda / Schedule */}
             {agenda.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-slate-900">Schedule</h2>
+                <h2 className="text-xl font-bold text-slate-900">{cd.schedule}</h2>
                 <div className="space-y-4">
                   {Array.from(new Set(agenda.map(item => item.day_number))).map(dayNum => (
                     <div key={dayNum} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
                       <div className="bg-slate-50 px-5 py-3 border-b border-slate-200">
-                        <h3 className="font-bold text-slate-900">Day {dayNum}</h3>
+                        <h3 className="font-bold text-slate-900">{cd.day} {dayNum}</h3>
                       </div>
                       <div className="divide-y divide-slate-100">
                         {agenda
@@ -384,7 +388,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             {/* Services */}
             {services.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-slate-900">What's Included</h2>
+                <h2 className="text-xl font-bold text-slate-900">{cd.whatsIncluded}</h2>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {services.map(svc => {
                     const iconMap: Record<string, React.ReactNode> = {
@@ -402,7 +406,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                           <div className="flex items-center gap-2">
                             <h4 className="font-bold text-slate-900 text-sm capitalize">{svc.service_type.replace('_', ' ')}</h4>
                             {svc.is_included && (
-                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">Included</span>
+                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">{cd.included}</span>
                             )}
                           </div>
                           {svc.description && (
@@ -419,7 +423,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             {/* Instructors */}
             {instructors.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-slate-900">Instructor{instructors.length > 1 ? 's' : ''}</h2>
+                <h2 className="text-xl font-bold text-slate-900">{instructors.length > 1 ? cd.instructors : cd.instructor}</h2>
                 <div className="space-y-4">
                   {instructors.map(inst => (
                     <div key={inst.id} className="flex items-start gap-5 bg-slate-50 rounded-2xl p-6 border border-slate-100">
@@ -457,8 +461,8 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                     <Wrench className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">Recommended Equipment</h2>
-                    <p className="text-sm text-slate-500">Equipment kits related to this training program</p>
+                    <h2 className="text-xl font-bold text-slate-900">{cd.recommendedEquipment}</h2>
+                    <p className="text-sm text-slate-500">{cd.recommendedEquipmentDesc}</p>
                   </div>
                 </div>
 
@@ -530,12 +534,12 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             <div className="sticky top-28 space-y-6">
               {/* Enrollment Card */}
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Enroll in This Training</h3>
+                <h3 className="text-lg font-bold text-slate-900 mb-4">{cd.enrollInTraining}</h3>
 
                 {/* Price - 使用本地化的 price 和 currency */}
                 <div className="mb-6 pb-4 border-b border-slate-100">
                   {course.is_free ? (
-                    <span className="text-3xl font-extrabold text-emerald-600">Free</span>
+                    <span className="text-3xl font-extrabold text-emerald-600">{cd.free}</span>
                   ) : course.price ? (
                     <span className="text-3xl font-extrabold text-slate-900">
                       {course.currency === 'USD' ? '$' :
@@ -545,10 +549,10 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                       {course.price.toLocaleString()}
                     </span>
                   ) : (
-                    <span className="text-lg font-bold text-slate-500">Contact for pricing</span>
+                    <span className="text-lg font-bold text-slate-500">{cd.contactForPricing}</span>
                   )}
                   {course.pricing_mode !== 'inherit' && course.pricing_mode !== 'fixed' && (
-                    <p className="text-xs text-slate-400 mt-1">Custom pricing available</p>
+                    <p className="text-xs text-slate-400 mt-1">{cd.customPricing}</p>
                   )}
                 </div>
 
@@ -558,7 +562,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                     href={`/${locale}/for-clinics#consultation`}
                     className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-base hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-900/10"
                   >
-                    <MessageSquareQuote className="w-5 h-5" /> Inquire About This Course
+                    <MessageSquareQuote className="w-5 h-5" /> {cd.inquireCourse}
                   </Link>
                 ) : (
                   <button
@@ -578,7 +582,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                     }}
                     className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-base hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-900/10"
                   >
-                    <GraduationCap className="w-5 h-5" /> Enroll Now
+                    <GraduationCap className="w-5 h-5" /> {cd.enrollNow}
                   </button>
                 )}
 
@@ -586,42 +590,42 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                   href={`/${locale}/for-clinics#consultation`}
                   className="w-full mt-3 flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-700 border border-slate-200 rounded-2xl font-bold text-sm hover:bg-slate-50 transition"
                 >
-                  Talk to Our Team
+                  {cd.talkToTeam}
                 </Link>
 
                 {/* Quick Info */}
                 <div className="mt-6 space-y-3">
                   {course.format && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Format</span>
+                      <span className="text-slate-500">{cd.format}</span>
                       <span className="font-bold text-slate-900 capitalize">{course.format}</span>
                     </div>
                   )}
                   {course.level && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Level</span>
+                      <span className="text-slate-500">{cd.level}</span>
                       <span className="font-bold text-slate-900">{course.level}</span>
                     </div>
                   )}
                   {course.specialty && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Specialty</span>
+                      <span className="text-slate-500">{cd.specialty}</span>
                       <span className="font-bold text-slate-900">{course.specialty}</span>
                     </div>
                   )}
                   {course.duration_minutes && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Duration</span>
+                      <span className="text-slate-500">{cd.duration}</span>
                       <span className="font-bold text-slate-900">
                         {course.duration_minutes >= 60
-                          ? `${Math.round(course.duration_minutes / 60)} hours`
-                          : `${course.duration_minutes} min`}
+                          ? `${Math.round(course.duration_minutes / 60)} ${cd.hours}`
+                          : `${course.duration_minutes} ${cd.min}`}
                       </span>
                     </div>
                   )}
                   {course.start_date && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Start Date</span>
+                      <span className="text-slate-500">{cd.startDate}</span>
                       <span className="font-bold text-slate-900">
                         {new Date(course.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
@@ -704,7 +708,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
           href={`/${locale}/courses`}
           className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-emerald-600 transition"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to All Training
+          <ArrowLeft className="w-4 h-4" /> {cd.backToAll}
         </Link>
       </div>
     </div>
