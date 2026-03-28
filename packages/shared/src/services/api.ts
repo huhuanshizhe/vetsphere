@@ -1406,29 +1406,6 @@ export const api = {
     // Try to sign in with existing account
     let { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    // If user doesn't exist, auto-register via server-side admin API
-    // (bypasses Supabase email rate limits and auto-confirms)
-    if (error && error.message.includes('Invalid login credentials')) {
-      const role = email.includes('admin') ? 'Admin' : email.includes('supplier') ? 'ShopSupplier' : email.includes('edu') ? 'CourseProvider' : 'Doctor';
-      
-      const regRes = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role })
-      });
-      const regBody = await regRes.json();
-
-      if (regRes.ok && regBody.success) {
-        // User created and confirmed, retry login
-        const retry = await supabase.auth.signInWithPassword({ email, password });
-        if (retry.error) throw new Error(retry.error.message);
-        data = { user: retry.data.user, session: retry.data.session };
-        error = null;
-      } else {
-        throw new Error(regBody.error || 'Registration failed');
-      }
-    }
-
     // Handle "Email not confirmed" for previously registered but unconfirmed users
     if (error && error.message.includes('Email not confirmed')) {
       await this._autoConfirmAndRetry(email);
@@ -1438,8 +1415,12 @@ export const api = {
       error = null;
     }
 
-    // Authentication failed - no bypass, throw error
+    // Authentication failed - show appropriate error message
     if (error || !data.user) {
+      // Map Supabase errors to user-friendly messages
+      if (error?.status === 400 || error?.message?.includes('Invalid')) {
+        throw new Error("Invalid email or password. Please try again.");
+      }
       throw new Error(error?.message || "Authentication failed. Please check your credentials.");
     }
     
