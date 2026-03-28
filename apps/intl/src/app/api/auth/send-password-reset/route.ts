@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { 
+  sendLocalizedEmail, 
+  generateLocalizedEmailHTML,
+  emailTranslations,
+  type SupportedLocale 
+} from '@vetsphere/shared/lib/email/localized-email';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,18 +17,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
+    // Validate locale
+    const validLocales: SupportedLocale[] = ['en', 'zh', 'ja', 'th'];
+    const safeLocale = validLocales.includes(locale as SupportedLocale) 
+      ? (locale as SupportedLocale) 
+      : 'en';
+
     // Create Supabase client with service role key
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Generate password reset link using Supabase admin API
+    // Get dynamic site URL from request or environment
+    const host = request.headers.get('host') || 'localhost:3001';
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`;
+    
+    // Generate password reset link with proper site URL and locale
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/${locale}/auth/reset-password`
+        redirectTo: `${baseUrl}/${safeLocale}/auth/reset-password`
       }
     });
 
@@ -36,147 +53,26 @@ export async function POST(request: NextRequest) {
                      email.split('@')[0];
     const recoveryLink = data.properties.action_link;
 
-    // Build email content based on locale
-    const emailSubject = locale === 'zh' 
-      ? '重置您的 VetSphere 密码'
-      : locale === 'ja'
-      ? 'VetSphere パスワードのリセット'
-      : locale === 'th'
-      ? 'รีเซ็ตรหัสผ่าน VetSphere ของคุณ'
-      : 'Reset Your VetSphere Password';
+    // Get translations for the locale
+    const t = emailTranslations.passwordReset[safeLocale];
+    const greeting = typeof t.greeting === 'function' ? t.greeting(userName) : t.greeting;
 
-    const emailHtml = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${emailSubject}</title>
-  </head>
-  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
-    <table role="presentation" style="width: 100%; border-collapse: collapse;">
-      <tr>
-        <td style="padding: 40px 20px;">
-          <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            <!-- Header -->
-            <tr>
-              <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">VetSphere</h1>
-                <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
-                  ${locale === 'zh' ? '全球兽医知识共享平台' : locale === 'ja' ? 'グローバル獣医知識共有プラットフォーム' : locale === 'th' ? 'แพลตฟอร์มแบ่งปันความรู้สัตวแพทย์ระดับโลก' : 'Global Veterinary Knowledge Platform'}
-                </p>
-              </td>
-            </tr>
-            
-            <!-- Content -->
-            <tr>
-              <td style="padding: 40px 30px;">
-                <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 24px; font-weight: 600;">
-                  ${locale === 'zh' ? '重置密码' : locale === 'ja' ? 'パスワードをリセット' : locale === 'th' ? 'รีเซ็ตรหัสผ่าน' : 'Reset Your Password'}
-                </h2>
-                
-                <p style="margin: 0 0 16px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                  ${locale === 'zh' ? `你好，${userName}！` : locale === 'ja' ? `こんにちは、${userName}さん！` : locale === 'th' ? `สวัสดี ${userName}` : `Hello ${userName}!`}
-                </p>
-                
-                <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                  ${locale === 'zh' 
-                    ? '我们收到了重置您 VetSphere 账户密码的请求。点击下方按钮即可设置新密码：' 
-                    : locale === 'ja'
-                    ? 'VetSphere アカウントのパスワードリセットがリクエストされました。下のボタンをクリックして新しいパスワードを設定してください：'
-                    : locale === 'th'
-                    ? 'มีคำขอรีเซ็ตรหัสผ่านสำหรับบัญชี VetSphere ของคุณ คลิกปุ่มด้านล่างเพื่อตั้งรหัสผ่านใหม่:'
-                    : 'We received a request to reset your VetSphere account password. Click the button below to set a new password:'}
-                </p>
-                
-                <!-- CTA Button -->
-                <table role="presentation" style="margin: 30px 0; border-collapse: collapse;">
-                  <tr>
-                    <td style="border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                      <a href="${recoveryLink}" 
-                         style="display: inline-block; padding: 16px 40px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
-                        ${locale === 'zh' ? '重置密码' : locale === 'ja' ? 'パスワードをリセット' : locale === 'th' ? 'รีเซ็ตรหัสผ่าน' : 'Reset Password'}
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-                
-                <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                  ${locale === 'zh' 
-                    ? '如果按钮无法点击，您可以复制以下链接到浏览器中打开：' 
-                    : locale === 'ja'
-                    ? 'ボタンがクリックできない場合は、以下のリンクをコピーしてブラウザに貼り付けてください：'
-                    : locale === 'th'
-                    ? 'หากปุ่มไม่สามารถคลิกได้ คุณสามารถคัดลอกลิงก์ด้านล่างและวางในเบราว์เซอร์:'
-                    : 'If the button above doesn\'t work, copy and paste the link below into your browser:'}
-                </p>
-                
-                <p style="margin: 12px 0 0 0; color: #667eea; font-size: 14px; word-break: break-all;">
-                  <a href="${recoveryLink}" style="color: #667eea; text-decoration: none;">${recoveryLink}</a>
-                </p>
-                
-                <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                  ${locale === 'zh' 
-                    ? '为了您的账户安全，请勿将此链接分享给他人。此链接将在 1 小时后过期。' 
-                    : locale === 'ja'
-                    ? 'アカウントのセキュリティのため、このリンクを第三者と共有しないでください。このリンクは 1 時間後に無効になります。'
-                    : locale === 'th'
-                    ? 'เพื่อความปลอดภัยของบัญชีของคุณ โปรดไม่แชร์ลิงก์นี้กับผู้อื่น ลิงก์นี้จะหมดอายุใน 1 ชั่วโมง'
-                    : 'For your security, please do not share this link with anyone. The link will expire in 1 hour.'}
-                </p>
-              </td>
-            </tr>
-            
-            <!-- Footer -->
-            <tr>
-              <td style="background-color: #f9fafb; padding: 30px; border-top: 1px solid #e5e7eb;">
-                <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px; text-align: center;">
-                  ${locale === 'zh' ? 'VetSphere 团队' : locale === 'ja' ? 'VetSphere チーム' : locale === 'th' ? 'ทีม VetSphere' : 'The VetSphere Team'}
-                </p>
-                <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                  ${locale === 'zh' 
-                    ? '© 2026 VetSphere. 保留所有权利。' 
-                    : locale === 'ja'
-                    ? '© 2026 VetSphere. All rights reserved.'
-                    : locale === 'th'
-                    ? '© 2026 VetSphere. สงวนลิขสิทธิ์.'
-                    : '© 2026 VetSphere. All rights reserved.'}
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>
-    `.trim();
+    // Generate localized HTML email
+    const emailHtml = generateLocalizedEmailHTML({
+      locale: safeLocale,
+      title: t.title,
+      greeting: greeting,
+      message: t.message,
+      ctaUrl: recoveryLink,
+      ctaText: t.ctaButton,
+      fallbackUrl: recoveryLink,
+      fallbackText: t.fallbackLink,
+      securityNotice: t.securityNotice,
+      signature: t.signature
+    });
 
-    const emailText = `
-${locale === 'zh' ? '重置您的 VetSphere 密码' : locale === 'ja' ? 'VetSphere パスワードのリセット' : locale === 'th' ? 'รีเซ็ตรหัสผ่าน VetSphere' : 'Reset Your VetSphere Password'}
-
-${locale === 'zh' ? `你好，${userName}！` : locale === 'ja' ? `こんにちは、${userName}さん！` : locale === 'th' ? `สวัสดี ${userName}` : `Hello ${userName}!`}
-
-${locale === 'zh' 
-  ? '我们收到了重置您 VetSphere 账户密码的请求。点击下方链接即可设置新密码：' 
-  : locale === 'ja'
-  ? 'VetSphere アカウントのパスワードリセットがリクエストされました。以下のリンクをクリックして新しいパスワードを設定してください：'
-  : locale === 'th'
-  ? 'มีคำขอรีเซ็ตรหัสผ่านสำหรับบัญชี VetSphere ของคุณ คลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่:'
-  : 'We received a request to reset your VetSphere account password. Click the link below to set a new password:'}
-
-${recoveryLink}
-
-${locale === 'zh' 
-  ? '为了您的账户安全，请勿将此链接分享给他人。此链接将在 1 小时后过期。' 
-  : locale === 'ja'
-  ? 'アカウントのセキュリティのため、このリンクを第三者と共有しないでください。このリンクは 1 時間後に無効になります。'
-  : locale === 'th'
-  ? 'เพื่อความปลอดภัยของบัญชีของคุณ โปรดไม่แชร์ลิงก์นี้กับผู้อื่น ลิงก์นี้จะหมดอายุใน 1 ชั่วโมง'
-  : 'For your security, please do not share this link with anyone. The link will expire in 1 hour.'}
-
-${locale === 'zh' ? 'VetSphere 团队' : locale === 'ja' ? 'VetSphere チーム' : locale === 'th' ? 'ทีม VetSphere' : 'The VetSphere Team'}
-    `.trim();
+    // Generate plain text version
+    const emailText = `${t.subject}\n\n${greeting}\n\n${t.message}\n\n${t.ctaButton}: ${recoveryLink}\n\n${t.securityNotice}\n\n${t.signature}`;
 
     // Send email using Resend API
     const resendApiKey = process.env.RESEND_API_KEY;
@@ -185,7 +81,8 @@ ${locale === 'zh' ? 'VetSphere 团队' : locale === 'ja' ? 'VetSphere チーム'
       // No Resend API key - log email for development
       console.log('=== PASSWORD RESET EMAIL (DEV MODE) ===');
       console.log('To:', email);
-      console.log('Subject:', emailSubject);
+      console.log('Locale:', safeLocale);
+      console.log('Subject:', t.subject);
       console.log('Link:', recoveryLink);
       console.log('=====================================');
       
@@ -197,30 +94,26 @@ ${locale === 'zh' ? 'VetSphere 团队' : locale === 'ja' ? 'VetSphere チーム'
     }
 
     // Send via Resend
-    const emailResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resendApiKey}`
-      },
-      body: JSON.stringify({
-        from: 'VetSphere <noreply@support.vetsphere.net>',
-        to: [email],
-        subject: emailSubject,
-        html: emailHtml,
-        text: emailText
-      })
+    const result = await sendLocalizedEmail({
+      to: email,
+      subject: t.subject,
+      html: emailHtml,
+      text: emailText,
+      from: 'VetSphere <noreply@support.vetsphere.net>'
     });
 
-    if (!emailResponse.ok) {
-      const errorData = await emailResponse.json();
-      console.error('Resend API error:', errorData);
+    if (result.success) {
+      return NextResponse.json({ 
+        success: true, 
+        messageId: result.messageId 
+      });
+    } else {
+      console.error('Resend API error:', result.error);
       
       // Fallback to dev mode - log the email and return success
       console.log('=== PASSWORD RESET EMAIL (RESEND FAILED, FALLBACK TO DEV MODE) ===');
       console.log('To:', email);
-      console.log('Subject:', emailSubject);
-      console.log('HTML Preview:', emailHtml.substring(0, 500) + '...');
+      console.log('Subject:', t.subject);
       console.log('Link:', recoveryLink);
       console.log('==================================================================');
       
@@ -231,13 +124,6 @@ ${locale === 'zh' ? 'VetSphere 团队' : locale === 'ja' ? 'VetSphere チーム'
         warning: 'Resend failed, email logged to console'
       });
     }
-
-    const emailData = await emailResponse.json();
-    
-    return NextResponse.json({ 
-      success: true, 
-      messageId: emailData.id 
-    });
 
   } catch (error: any) {
     console.error('Password reset error:', error);
