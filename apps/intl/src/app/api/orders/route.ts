@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendEmail, orderConfirmationEmailTemplate } from '@vetsphere/shared/services/email';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -194,24 +193,28 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.rpc('update_user_order_stats', { user_id: userId });
     }
 
-    // Send order confirmation email (non-blocking)
-    const orderConfirmationEmail = orderConfirmationEmailTemplate(
-      formData.name,
-      order.order_number,
-      {
-        total: total,
-        currency: currency || 'USD',
-        itemCount: items.length,
-        shippingAddress: `${formData.name}\n${formData.company ? formData.company + '\n' : ''}${formData.addressLine1}\n${formData.addressLine2 ? formData.addressLine2 + '\n' : ''}${formData.city}, ${formData.state}\n${formData.country}\n${formData.postalCode}`,
-        estimatedDelivery: '5-10 business days',
-      },
-      locale || 'en'
-    );
-
-    sendEmail({
-      to: formData.email,
-      subject: orderConfirmationEmail.subject,
-      html: orderConfirmationEmail.html,
+    // Send localized order confirmation email (non-blocking)
+    const orderUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/${locale || 'en'}/orders/${order.order_number}`;
+    
+    fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/${locale || 'en'}/api/email/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'order_confirmation',
+        to: formData.email,
+        locale: locale || 'en',
+        data: {
+          orderId: order.order_number,
+          customerName: formData.name,
+          items: items.map(item => ({
+            name: item.product_name || item.name,
+            quantity: item.quantity,
+            price: parseFloat(item.price) || item.price
+          })),
+          totalAmount: total,
+          orderUrl: orderUrl
+        }
+      })
     }).catch(err => {
       console.error('[Orders] Failed to send order confirmation email:', err);
     });
