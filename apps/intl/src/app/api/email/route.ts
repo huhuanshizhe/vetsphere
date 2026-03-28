@@ -93,9 +93,9 @@ export async function POST(request: NextRequest) {
       case 'order_confirmation': {
         const t = emailTranslations.orderConfirmation[safeLocale];
         const greeting = typeof t.greeting === 'function' ? t.greeting(data.customerName) : t.greeting;
-        const subjectFn = typeof t.subject === 'function' ? t.subject : () => t.subject;
+        const subjectFn = t.subject as (orderId: string) => string;
         
-        subject = typeof subjectFn === 'function' ? subjectFn(data.orderId) : subjectFn;
+        subject = subjectFn(data.orderId);
         
         const itemsHtml = data.items.map((item: any) => `
           <tr>
@@ -143,9 +143,9 @@ export async function POST(request: NextRequest) {
       case 'course_enrollment': {
         const t = emailTranslations.courseEnrollment[safeLocale];
         const greeting = typeof t.greeting === 'function' ? t.greeting(data.userName) : t.greeting;
-        const subjectFn = typeof t.subject === 'function' ? t.subject : () => t.subject;
+        const subjectFn = t.subject as (courseName: string) => string;
         
-        subject = typeof subjectFn === 'function' ? subjectFn(data.courseName) : subjectFn;
+        subject = subjectFn(data.courseName);
         
         html = generateLocalizedEmailHTML({
           locale: safeLocale,
@@ -183,9 +183,9 @@ export async function POST(request: NextRequest) {
       case 'payment_received': {
         const t = emailTranslations.paymentReceived[safeLocale];
         const greeting = typeof t.greeting === 'function' ? t.greeting(data.userName) : t.greeting;
-        const subjectFn = typeof t.subject === 'function' ? t.subject : () => t.subject;
+        const subjectFn = t.subject as (amount: string) => string;
         
-        subject = typeof subjectFn === 'function' ? subjectFn(data.amount) : subjectFn;
+        subject = subjectFn(data.amount);
         
         html = generateLocalizedEmailHTML({
           locale: safeLocale,
