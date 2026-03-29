@@ -2,18 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Check, Package, ArrowRight, Loader2 } from 'lucide-react';
+import { Check, Package, ArrowRight, Loader2, Building2 } from 'lucide-react';
 import { useLanguage } from '@vetsphere/shared/context/LanguageContext';
 
 interface SuccessClientProps {
   locale: string;
   orderId?: string;
   success?: string;
+  paymentMethod?: string;
 }
 
-export default function SuccessClient({ locale, orderId, success }: SuccessClientProps) {
+export default function SuccessClient({ locale, orderId, success, paymentMethod }: SuccessClientProps) {
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<any>(null);
+  const [bankInfo, setBankInfo] = useState<any>(null);
+  const [loadingBankInfo, setLoadingBankInfo] = useState(false);
   const { t } = useLanguage();
   const s = t.checkout.success;
 
@@ -29,6 +32,23 @@ export default function SuccessClient({ locale, orderId, success }: SuccessClien
         if (response.ok) {
           const data = await response.json();
           setOrder(data.order);
+          // 如果是银行转账，获取银行信息
+          if (data.order?.payment_method === 'bank_transfer') {
+            setLoadingBankInfo(true);
+            try {
+              const bankRes = await fetch(`/api/bank-transfer?currency=${data.order.currency || 'USD'}`);
+              if (bankRes.ok) {
+                const bankData = await bankRes.json();
+                if (!bankData.error) {
+                  setBankInfo(bankData);
+                }
+              }
+            } catch (e) {
+              console.error('Failed to fetch bank info:', e);
+            } finally {
+              setLoadingBankInfo(false);
+            }
+          }
         }
       } catch (err) {
         console.error('Failed to verify order:', err);
@@ -103,6 +123,38 @@ export default function SuccessClient({ locale, orderId, success }: SuccessClien
                   <span>{order.currency?.toUpperCase()} {order.total}</span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* 银行转账信息 */}
+          {order?.payment_method === 'bank_transfer' && (
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-left">
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-amber-900">Bank Transfer Details</h3>
+              </div>
+              {loadingBankInfo ? (
+                <div className="flex items-center gap-2 text-amber-800">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading bank information...</span>
+                </div>
+              ) : bankInfo ? (
+                <div className="space-y-1 text-sm text-amber-800">
+                  <p><strong>Bank:</strong> {bankInfo.bankName}</p>
+                  <p><strong>Account Name:</strong> {bankInfo.accountName}</p>
+                  <p><strong>Account Number:</strong> {bankInfo.accountNumber}</p>
+                  <p><strong>SWIFT/BIC:</strong> {bankInfo.swiftBic}</p>
+                  <p><strong>Bank Address:</strong> {bankInfo.bankAddress}</p>
+                  <p className="mt-3 pt-3 border-t border-amber-200">
+                    <strong>Please include your Order Number as payment reference:</strong><br />
+                    <span className="font-mono font-bold text-lg">{orderId}</span>
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-amber-800">
+                  Please check your email for bank transfer details.
+                </p>
+              )}
             </div>
           )}
 

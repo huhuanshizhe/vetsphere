@@ -64,6 +64,8 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [showStripePayment, setShowStripePayment] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [bankTransferInfo, setBankTransferInfo] = useState<any>(null);
+  const [loadingBankInfo, setLoadingBankInfo] = useState(false);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     email: '',
@@ -95,6 +97,24 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
 
   // 订单总额
   const orderTotal = totalAmount + shippingFee;
+
+  // 获取银行转账信息
+  useEffect(() => {
+    if (formData.paymentMethod === 'bank_transfer') {
+      setLoadingBankInfo(true);
+      fetch(`/api/bank-transfer?currency=${currency}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.error) {
+            setBankTransferInfo(data);
+          }
+        })
+        .catch(err => console.error('Failed to fetch bank transfer info:', err))
+        .finally(() => setLoadingBankInfo(false));
+    } else {
+      setBankTransferInfo(null);
+    }
+  }, [formData.paymentMethod, currency]);
 
   // 空购物车检查
   if (cart.length === 0 && !orderCreated) {
@@ -179,6 +199,24 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                 ? c.bankTransferNote
                 : c.confirmationEmail}
             </p>
+
+            {/* 银行转账信息 */}
+            {formData.paymentMethod === 'bank_transfer' && bankTransferInfo && (
+              <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-left">
+                <p className="font-bold text-amber-900 mb-3">{c.bankTransferInstructions}</p>
+                <div className="space-y-1 text-sm text-amber-800">
+                  <p><strong>Bank:</strong> {bankTransferInfo.bankName}</p>
+                  <p><strong>Account Name:</strong> {bankTransferInfo.accountName}</p>
+                  <p><strong>Account Number:</strong> {bankTransferInfo.accountNumber}</p>
+                  <p><strong>SWIFT/BIC:</strong> {bankTransferInfo.swiftBic}</p>
+                  <p><strong>Bank Address:</strong> {bankTransferInfo.bankAddress}</p>
+                  <p className="mt-3 pt-3 border-t border-amber-200">
+                    <strong>Payment Reference:</strong> {orderNumber || orderId}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="mt-8 flex gap-4 justify-center">
               <Link
                 href={`/${locale}/user?tab=orders`}
@@ -587,10 +625,28 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                 {/* 银行转账信息 */}
                 {formData.paymentMethod === 'bank_transfer' && (
                   <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-800">
-                      <strong>{c.bankTransferInstructions}</strong><br />
-                      {c.bankTransferInstructionsDetail}
-                    </p>
+                    {loadingBankInfo ? (
+                      <p className="text-sm text-amber-800">Loading bank information...</p>
+                    ) : bankTransferInfo ? (
+                      <>
+                        <p className="text-sm font-bold text-amber-900 mb-3">{c.bankTransferInstructions}</p>
+                        <div className="space-y-1 text-sm text-amber-800">
+                          <p><strong>Bank:</strong> {bankTransferInfo.bankName}</p>
+                          <p><strong>Account Name:</strong> {bankTransferInfo.accountName}</p>
+                          <p><strong>Account Number:</strong> {bankTransferInfo.accountNumber}</p>
+                          <p><strong>SWIFT/BIC:</strong> {bankTransferInfo.swiftBic}</p>
+                          <p><strong>Bank Address:</strong> {bankTransferInfo.bankAddress}</p>
+                          <p className="mt-2 pt-2 border-t border-amber-200">
+                            <strong>Payment Reference:</strong> {orderNumber || '[Your Order Number]'}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-amber-800">
+                        <strong>{c.bankTransferInstructions}</strong><br />
+                        {c.bankTransferInstructionsDetail}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
