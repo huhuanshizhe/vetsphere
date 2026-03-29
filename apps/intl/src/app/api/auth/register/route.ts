@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "@vetsphere/shared";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   sendLocalizedEmail, 
@@ -8,7 +8,15 @@ import {
 } from '@vetsphere/shared/lib/email/localized-email';
 import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
+  const supabase = await getSupabaseAdmin();
   try {
     // Apply rate limiting
     const rateLimitResult = rateLimiters.register(req);
@@ -29,9 +37,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Service role key not configured' }, { status: 500 });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
+    const adminClient = await getSupabaseAdmin();
 
     const userName = fullName || email.split('@')[0];
 

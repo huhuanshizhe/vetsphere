@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 /**
  * Bank transfer configuration
  * Supports multiple currencies through a single bank account
@@ -28,6 +34,7 @@ const BANK_TRANSFER_CONFIG = {
  * 根据货币返回银行账户信息
  */
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { searchParams } = new URL(request.url);
     const currency = (searchParams.get('currency') || 'USD').toUpperCase();
@@ -68,6 +75,7 @@ export async function GET(request: NextRequest) {
  * 用户提交转账凭证
  */
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // 验证用户身份
     const authHeader = request.headers.get('authorization');

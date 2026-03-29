@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+
+
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = await getSupabaseAdmin();
   try {
     const { id: courseId } = await params;
 

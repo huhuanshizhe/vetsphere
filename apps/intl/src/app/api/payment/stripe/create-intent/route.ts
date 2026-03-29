@@ -1,22 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { getSupabaseAdmin } from "@vetsphere/shared";
+import type Stripe from 'stripe';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16' as any,
-});
+// Lazy-loaded dependencies - nothing is initialized at module load time
+let _stripe: Stripe | null = null;
+let _getSupabaseAdmin: (() => any) | null = null;
 
-// Server-side Supabase client with service role for validation
-const supabaseAdmin = getSupabaseAdmin();
+async function getStripe() {
+  if (!_stripe) {
+    const Stripe = (await import('stripe')).default;
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+      apiVersion: '2023-10-16' as any,
+    });
+  }
+  return _stripe;
+}
+
+async function getSupabaseAdmin() {
+  if (!_getSupabaseAdmin) {
+    const module = await import('@vetsphere/shared/lib/supabase-admin');
+    _getSupabaseAdmin = module.getSupabaseAdmin;
+  }
+  return _getSupabaseAdmin();
+}
 
 // Verify user authentication from Bearer token
 async function verifyAuth(request: NextRequest): Promise<{ userId: string } | null> {
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.substring(7);
+  const supabaseAdmin = await getSupabaseAdmin();
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
   return { userId: user.id };
@@ -24,6 +39,9 @@ async function verifyAuth(request: NextRequest): Promise<{ userId: string } | nu
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const stripe = await getStripe();
+    const supabaseAdmin = await getSupabaseAdmin();
+
     // Check if Stripe is configured
     if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder') {
       return NextResponse.json(
@@ -92,7 +110,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: currency ? currency.toLowerCase() : 'usd',
-      metadata: { 
+      metadata: {
         orderId,
         userId: auth.userId,
         source: 'vetsphere'

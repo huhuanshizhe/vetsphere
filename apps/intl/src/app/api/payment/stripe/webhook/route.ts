@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { getSupabaseAdmin } from "@vetsphere/shared";
+import type Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+async function getStripe() {
+  const Stripe = (await import('stripe')).default;
+  return new Stripe(process.env.STRIPE_SECRET_KEY || '');
+}
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
 
 export async function POST(request: NextRequest) {
+  const supabase = await getSupabaseAdmin();
+  const stripe = await getStripe();
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

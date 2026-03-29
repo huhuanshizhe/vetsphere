@@ -108,7 +108,7 @@ export default function SuccessClient({ locale, orderId, success }: SuccessClien
 
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href={`/${locale}/user/orders`}
+              href={`/${locale}/user?tab=orders`}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
             >
               {s.viewOrders}

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 /**
  * 获取PayPal Access Token
  */
@@ -44,6 +50,7 @@ async function getPayPalAccessToken(): Promise<string> {
  * 捕获PayPal支付
  */
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const clientId = process.env.PAYPAL_CLIENT_ID;
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET;

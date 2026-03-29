@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
+
 import crypto from 'crypto';
 
-const supabaseAdmin = getSupabaseAdmin();
 
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 /**
  * Verify Airwallex webhook signature
  * @see https://www.airwallex.com/docs/api#/Webhooks/Verify_signatures
@@ -48,6 +53,7 @@ function verifyWebhookSignature(
  * Handle payment intent succeeded
  */
 async function handlePaymentIntentSucceeded(event: any) {
+  const supabaseAdmin = await getSupabaseAdmin();
   const data = event.data;
   const paymentIntentId = data.object.id;
   const amount = data.object.amount;
@@ -102,6 +108,7 @@ async function handlePaymentIntentSucceeded(event: any) {
  * Handle payment intent failed
  */
 async function handlePaymentIntentFailed(event: any) {
+  const supabaseAdmin = await getSupabaseAdmin();
   const data = event.data;
   const paymentIntentId = data.object.id;
   const errorMessage = data.object.last_payment_error?.message || 'Payment failed';
@@ -149,6 +156,7 @@ async function handlePaymentIntentFailed(event: any) {
  * Handle refund succeeded
  */
 async function handleRefundSucceeded(event: any) {
+  const supabaseAdmin = await getSupabaseAdmin();
   const data = event.data;
   const refundId = data.object.id;
   const paymentIntentId = data.object.payment_intent_id;

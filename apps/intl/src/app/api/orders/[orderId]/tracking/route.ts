@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
 export const dynamic = 'force-dynamic';
 
 interface TrackingEvent {
@@ -27,6 +31,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { orderId } = await params;
 
@@ -86,6 +91,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { orderId } = await params;
     const body = await request.json();

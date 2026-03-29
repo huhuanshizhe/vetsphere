@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
+
 import { sendEmail, orderShippedEmailTemplate, generateTrackingUrl } from '@vetsphere/shared/services/email';
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 interface RouteParams {
   params: Promise<{ orderId: string }>;
 }
@@ -12,6 +18,7 @@ interface RouteParams {
  * GET /api/orders/[orderId] - 获取订单详情
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { orderId } = await params;
 
@@ -55,6 +62,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * PUT /api/orders/[orderId] - 更新订单
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { orderId } = await params;
 
@@ -148,6 +156,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/orders/[orderId] - 取消订单
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { orderId } = await params;
 

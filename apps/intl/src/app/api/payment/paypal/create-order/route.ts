@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 /**
  * 获取PayPal Access Token
  */
@@ -11,6 +17,10 @@ async function getPayPalAccessToken(): Promise<string> {
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
   const isProduction = process.env.PAYPAL_MODE === 'live';
 
+  console.log('[PayPal] Client ID:', clientId ? clientId.substring(0, 10) + '...' : 'NOT SET');
+  console.log('[PayPal] Client Secret:', clientSecret ? 'SET' : 'NOT SET');
+  console.log('[PayPal] Mode:', isProduction ? 'production' : 'sandbox');
+
   if (!clientId || !clientSecret) {
     throw new Error('PayPal credentials not configured');
   }
@@ -18,6 +28,8 @@ async function getPayPalAccessToken(): Promise<string> {
   const baseUrl = isProduction
     ? 'https://api-m.paypal.com'
     : 'https://api-m.sandbox.paypal.com';
+
+  console.log('[PayPal] Base URL:', baseUrl);
 
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
@@ -44,6 +56,7 @@ async function getPayPalAccessToken(): Promise<string> {
  * 创建PayPal订单
  */
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const clientId = process.env.PAYPAL_CLIENT_ID;
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
@@ -67,12 +80,12 @@ export async function POST(request: NextRequest) {
     if (orderId) {
       const { data: order, error } = await supabaseAdmin
         .from('orders')
-        .select('id, status, total')
+        .select('id, status, total_amount')
         .eq('id', orderId)
         .single();
 
       if (error || !order) {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        return NextResponse.json({ error: 'Order not found', details: error?.message }, { status: 404 });
       }
 
       if (order.status !== 'pending') {

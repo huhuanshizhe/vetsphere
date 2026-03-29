@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 /**
  * GET /api/wishlist - 获取用户收藏列表
  */
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -43,6 +50,7 @@ export async function GET(request: NextRequest) {
  * POST /api/wishlist - 添加到收藏夹
  */
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -119,6 +127,7 @@ export async function POST(request: NextRequest) {
  * DELETE /api/wishlist - 从收藏夹移除
  */
 export async function DELETE(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {

@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 /**
  * GET /api/cart - Get user's shopping cart
  * Requires authentication
  */
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
@@ -118,6 +125,7 @@ export async function GET(request: NextRequest) {
  * Body: { productId, skuId?, quantity }
  */
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
@@ -244,6 +252,7 @@ export async function POST(request: NextRequest) {
  * Body: { itemId, quantity }
  */
 export async function PUT(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
@@ -307,6 +316,7 @@ export async function PUT(request: NextRequest) {
  * Query params: ?itemId=xxx (optional, clears entire cart if not provided)
  */
 export async function DELETE(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization');

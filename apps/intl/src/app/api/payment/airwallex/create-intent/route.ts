@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 const AIRWALLEX_HOST = process.env.AIRWALLEX_HOST || 'https://api-demo.airwallex.com';
 const CLIENT_ID = process.env.AIRWALLEX_CLIENT_ID || 'YOUR_AIRWALLEX_CLIENT_ID';
 const API_KEY = process.env.AIRWALLEX_API_KEY || 'YOUR_AIRWALLEX_API_KEY';
 
-const supabaseAdmin = getSupabaseAdmin();
 
 // Verify user authentication from Bearer token
 async function verifyAuth(request: NextRequest): Promise<{ userId: string } | null> {
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.substring(7);
+  const supabaseAdmin = await getSupabaseAdmin();
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
   return { userId: user.id };
@@ -35,6 +42,7 @@ async function getAirwallexToken() {
 }
 
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // Verify user authentication
     const auth = await verifyAuth(request);

@@ -315,6 +315,56 @@ export const emailTranslations = {
       verificationNote: 'เมื่อยืนยันเสร็จสิ้น คุณจะได้รับอีเมลยืนยันและคำสั่งซื้อจะถูกดำเนินการ',
       signature: 'ทีม VetSphere'
     }
+  },
+  bankTransferInstructions: {
+    en: {
+      subject: 'Bank Transfer Instructions - Order #{orderId}',
+      title: 'Bank Transfer Payment Instructions',
+      greeting: 'Hello!',
+      message: 'Thank you for your order. Please complete your payment via bank transfer using the details below.',
+      instructions: 'Transfer Instructions',
+      orderId: 'Order Number',
+      amount: 'Amount to Transfer',
+      transferNote: 'Please include the order number in the transfer reference.',
+      confirmationNote: 'Your order will be processed once payment is confirmed (1-2 business days).',
+      signature: 'The VetSphere Team'
+    },
+    zh: {
+      subject: '银行转账说明 - 订单 #{orderId}',
+      title: '银行转账支付说明',
+      greeting: '您好！',
+      message: '感谢您的订单。请使用以下信息完成银行转账。',
+      instructions: '转账说明',
+      orderId: '订单号',
+      amount: '转账金额',
+      transferNote: '请在转账备注中填写订单号。',
+      confirmationNote: '付款确认后（1-2个工作日），您的订单将开始处理。',
+      signature: 'VetSphere 团队'
+    },
+    ja: {
+      subject: '銀行振込のご案内 - 注文 #{orderId}',
+      title: '銀行振込によるお支払い手順',
+      greeting: 'こんにちは！',
+      message: 'ご注文ありがとうございます。以下の情報で銀行振込によるお支払いをお願いします。',
+      instructions: '振込手順',
+      orderId: '注文番号',
+      amount: '振込金額',
+      transferNote: '振込名義に注文番号を入力してください。',
+      confirmationNote: 'お支払い確認後（1-2営業日）、ご注文商品的的发货准备工作が始まります。',
+      signature: 'VetSphere チーム'
+    },
+    th: {
+      subject: 'คำแนะนำการโอนเงินผ่านธนาคาร - คำสั่งซื้อ #{orderId}',
+      title: 'คำแนะนำการชำระเงินผ่านธนาคาร',
+      greeting: 'สวัสดี!',
+      message: 'ขอบคุณสำหรับคำสั่งซื้อของคุณ โปรดชำระเงินผ่านธนาคารตามรายละเอียดด้านล่าง',
+      instructions: 'วิธีการโอน',
+      orderId: 'หมายเลขคำสั่งซื้อ',
+      amount: 'จำนวนเงินที่ต้องโอน',
+      transferNote: 'โปรดระบุหมายเลขคำสั่งซื้อในช่องหมายเหตุการโอน',
+      confirmationNote: 'คำสั่งซื้อของคุณจะได้รับการดำเนินการเมื่อยืนยันการชำระเงินแล้ว (1-2 วันทำการ)',
+      signature: 'ทีม VetSphere'
+    }
   }
 };
 

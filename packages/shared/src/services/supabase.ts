@@ -1,9 +1,41 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+// Use environment variables with fallbacks for build time
+// IMPORTANT: Empty string is treated as "not set", so we use || instead of ??
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tvxrgbntiksskywsroax.supabase.co';
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2eHJnYm50aWtzc2t5d3Nyb2F4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDU3MTIsImV4cCI6MjA4NjQyMTcxMn0.xM7u06mRQSCKCoNQwYa2_wEw4he4ZM11iDfyhjfQtDc';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Lazy-initialized Supabase client
+let _supabaseClient: SupabaseClient | null = null;
+
+/**
+ * Get the Supabase client (lazy initialization)
+ * Creates the client on first call, not at module load time
+ */
+export function getSupabaseClient(): SupabaseClient {
+  if (!_supabaseClient) {
+    // Use the constant values (already have fallbacks)
+    _supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  return _supabaseClient;
+}
+
+/**
+ * Supabase client proxy for backward compatibility
+ *
+ * This proxy defers client creation until first property access.
+ * Safe to import at module level - no client is created until actually used.
+ */
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getSupabaseClient();
+    const value = (client as any)[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  }
+});
 
 // Storage URL for images
 export const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public`;
@@ -21,14 +53,14 @@ export function getImageUrl(path: string | null | undefined): string | undefined
 
 // Deduplication wrapper for supabase.auth.getSession()
 // Prevents concurrent calls from triggering Web Locks API contention
-// which causes "Lock was not released within 5000ms" errors on slow networks.
-let _sessionPromise: ReturnType<typeof supabase.auth.getSession> | null = null;
+let _sessionPromise: ReturnType<SupabaseClient['auth']['getSession']> | null = null;
 
 export function getSessionSafe() {
   if (_sessionPromise) {
     return _sessionPromise;
   }
-  _sessionPromise = supabase.auth.getSession().finally(() => {
+  const client = getSupabaseClient();
+  _sessionPromise = client.auth.getSession().finally(() => {
     _sessionPromise = null;
   });
   return _sessionPromise;

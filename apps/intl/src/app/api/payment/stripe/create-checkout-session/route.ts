@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { getSupabaseAdmin } from "@vetsphere/shared";
+import type Stripe from 'stripe';
 
-const supabaseAdmin = getSupabaseAdmin();
+export const dynamic = 'force-dynamic';
+
+async function getStripe(secretKey: string) {
+  const Stripe = (await import('stripe')).default;
+  return new Stripe(secretKey, { apiVersion: '2023-10-16' as any });
+}
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
 
 // Verify user authentication from Bearer token (optional for guest checkout)
 async function verifyAuth(request: NextRequest): Promise<{ userId: string } | null> {
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.substring(7);
+  const supabaseAdmin = await getSupabaseAdmin();
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
   return { userId: user.id };
@@ -24,24 +34,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const stripe = new Stripe(secretKey, {
-      apiVersion: '2023-10-16' as any,
-    });
+    const stripe = await getStripe(secretKey);
+    const supabaseAdmin = await getSupabaseAdmin();
 
     const body = await request.json();
     const { items, orderId, amount, currency, returnUrl } = body;
 
+    console.log('[Stripe] Received orderId:', orderId, 'type:', typeof orderId);
+
     // Verify order exists (optional user authentication for guest checkout)
     const auth = await verifyAuth(request);
     if (orderId) {
-      const { data: order } = await supabaseAdmin
+      console.log('[Stripe] Querying order with id:', orderId);
+      const { data: order, error: orderError } = await supabaseAdmin
         .from('orders')
-        .select('id, user_id, status, total')
+        .select('id, user_id, status, total_amount')
         .eq('id', orderId)
         .single();
 
-      if (!order) {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+      console.log('[Stripe] Order query result:', order, 'error:', orderError);
+
+      if (orderError || !order) {
+        return NextResponse.json({ error: 'Order not found', details: orderError?.message }, { status: 404 });
       }
 
       // 如果订单属于用户，验证身份

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
+
 import { 
   sendLocalizedEmail, 
   generateLocalizedEmailHTML,
@@ -8,6 +8,11 @@ import {
 } from '@vetsphere/shared/lib/email/localized-email';
 import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
@@ -31,10 +36,7 @@ export async function POST(request: NextRequest) {
       : 'en';
 
     // Create Supabase client with service role key
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = await getSupabaseAdmin();
 
     // Get dynamic site URL from request or environment
     const host = request.headers.get('host') || 'localhost:3001';

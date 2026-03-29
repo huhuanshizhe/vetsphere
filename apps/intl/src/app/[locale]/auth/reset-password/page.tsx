@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { useLocale } from 'next-intl';
+import { useLanguage } from '@vetsphere/shared/context/LanguageContext';
 
 // Loading component for Suspense
 function LoadingSpinner() {
@@ -85,8 +85,8 @@ const translations = {
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const locale = useLocale() as 'en' | 'zh' | 'ja' | 'th';
-  const t = translations[locale] || translations.en;
+  const { locale } = useLanguage();
+  const t = translations[locale as 'en' | 'zh' | 'ja' | 'th'] || translations.en;
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

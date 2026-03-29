@@ -1,28 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 // Verify user authentication from Bearer token
 async function verifyAuth(request: NextRequest): Promise<{ userId: string; role: string } | null> {
+  const supabaseAdmin = await getSupabaseAdmin();
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.substring(7);
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
-  
+
   // Get user role
   const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single();
-  
+
   return { userId: user.id, role: profile?.role || 'Doctor' };
 }
 
 // POST /api/refunds - Create refund request
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const auth = await verifyAuth(request);
     if (!auth) {
@@ -123,6 +131,7 @@ export async function POST(request: NextRequest) {
 
 // GET /api/refunds - List refunds
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const auth = await verifyAuth(request);
     if (!auth) {

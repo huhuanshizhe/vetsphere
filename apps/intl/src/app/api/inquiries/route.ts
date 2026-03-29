@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 import {
   sendEmail,
   inquiryNotificationEmailTemplate,
   inquiryConfirmationEmailTemplate,
 } from '@vetsphere/shared/services/email';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // Admin email for notifications
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@vetsphere.com';
 
 export async function POST(request: NextRequest) {
+  const supabase = await getSupabaseAdmin();
   try {
     const body = await request.json();
 
@@ -191,6 +195,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const supabase = await getSupabaseAdmin();
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
