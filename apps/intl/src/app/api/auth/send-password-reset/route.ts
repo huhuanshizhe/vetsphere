@@ -6,11 +6,18 @@ import {
   emailTranslations,
   type SupportedLocale 
 } from '@vetsphere/shared/lib/email/localized-email';
+import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting
+    const rateLimitResult = rateLimiters.passwordReset(request);
+    if (rateLimitResult) {
+      return rateLimitResult;
+    }
+
     const { email, locale = 'en' } = await request.json();
 
     if (!email) {

@@ -6,9 +6,16 @@ import {
   emailTranslations,
   type SupportedLocale 
 } from '@vetsphere/shared/lib/email/localized-email';
+import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
+    // Apply rate limiting
+    const rateLimitResult = rateLimiters.register(req);
+    if (rateLimitResult) {
+      return rateLimitResult;
+    }
+
     const { email, password, role, fullName, locale = 'en' } = await req.json();
 
     if (!email || !password) {
