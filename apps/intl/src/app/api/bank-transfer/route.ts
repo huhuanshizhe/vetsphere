@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     // 验证订单存在且属于用户
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select('id, user_id, status, total, currency')
+      .select('id, user_id, status, total_amount, currency')
       .eq('id', orderId)
       .single();
 

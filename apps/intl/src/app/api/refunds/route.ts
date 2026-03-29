@@ -145,7 +145,14 @@ export async function GET(request: NextRequest) {
           customer_name,
           customer_email,
           total_amount,
-          items
+          order_items (
+            id,
+            product_name,
+            product_sku,
+            quantity,
+            unit_price,
+            total_price
+          )
         )
       `)
       .order('created_at', { ascending: false });
