@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -14,15 +14,24 @@ import {
   GraduationCap,
   Building2,
   Hospital,
+  User,
+  LogOut,
+  Settings,
+  LayoutDashboard,
+  ChevronDown,
+  Package,
 } from 'lucide-react';
 
 export function IntlNavbar() {
   const { language } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const { cart, itemCount } = useCart();
   const pathname = usePathname();
+  const router = useRouter();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const authHref = `/${language}/auth?redirect=${encodeURIComponent(pathname)}`;
 
@@ -33,6 +42,10 @@ export function IntlNavbar() {
       forClinics: '诊所',
       about: '关于',
       signIn: '登录',
+      dashboard: '用户中心',
+      orders: '我的订单',
+      settings: '账户设置',
+      logout: '退出登录',
     },
     en: {
       training: 'Training',
@@ -40,6 +53,10 @@ export function IntlNavbar() {
       forClinics: 'For Clinics',
       about: 'About',
       signIn: 'Sign In',
+      dashboard: 'User Center',
+      orders: 'My Orders',
+      settings: 'Settings',
+      logout: 'Logout',
     },
     th: {
       training: 'การฝึกอบรม',
@@ -47,6 +64,10 @@ export function IntlNavbar() {
       forClinics: 'สำหรับคลินิก',
       about: 'เกี่ยวกับเรา',
       signIn: 'เข้าสู่ระบบ',
+      dashboard: 'ศูนย์ผู้ใช้',
+      orders: 'คำสั่งซื้อของฉัน',
+      settings: 'การตั้งค่า',
+      logout: 'ออกจากระบบ',
     },
     ja: {
       training: 'トレーニング',
@@ -54,6 +75,10 @@ export function IntlNavbar() {
       forClinics: 'クリニック向け',
       about: '会社概要',
       signIn: 'ログイン',
+      dashboard: 'ユーザーセンター',
+      orders: '注文履歴',
+      settings: '設定',
+      logout: 'ログアウト',
     },
   };
 
@@ -63,6 +88,23 @@ export function IntlNavbar() {
     { name: t[language].forClinics, href: `/${language}/for-clinics`, icon: Hospital },
     { name: t[language].about, href: `/${language}/about`, icon: Building2 },
   ];
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    await logout();
+    router.push(`/${language}`);
+  };
 
   return (
     <>
@@ -105,7 +147,67 @@ export function IntlNavbar() {
                 </span>
               )}
             </Link>
-            {!isAuthenticated && (
+            
+            {/* User Menu when logged in */}
+            {isAuthenticated && user ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 py-2 px-3 rounded-xl text-white hover:bg-white/20 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <span className="font-medium text-sm hidden sm:block">
+                    {user.name || user.email?.split('@')[0]}
+                  </span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <p className="font-medium text-slate-900">{user.name || 'User'}</p>
+                      <p className="text-sm text-slate-500">{user.email}</p>
+                    </div>
+                    <Link
+                      href={`/${language}/user`}
+                      className="flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-slate-50 transition-colors"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <LayoutDashboard className="w-5 h-5" />
+                      <span>{t[language].dashboard}</span>
+                    </Link>
+                    <Link
+                      href={`/${language}/user/orders`}
+                      className="flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-slate-50 transition-colors"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <Package className="w-5 h-5" />
+                      <span>{t[language].orders}</span>
+                    </Link>
+                    <Link
+                      href={`/${language}/user/settings`}
+                      className="flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-slate-50 transition-colors"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <Settings className="w-5 h-5" />
+                      <span>{t[language].settings}</span>
+                    </Link>
+                    <div className="border-t border-slate-100 mt-2 pt-2">
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="w-5 h-5" />
+                        <span>{t[language].logout}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
               <Link href={authHref} className="py-2.5 px-6 rounded-xl text-sm font-bold text-white bg-white/20 hover:bg-white/30 transition-colors hover:shadow-lg">
                 {t[language].signIn}
               </Link>
@@ -139,7 +241,38 @@ export function IntlNavbar() {
                 </Link>
               ))}
               <div className="pt-4 mt-4 border-t border-slate-100">
-                {!isAuthenticated && (
+                {/* User info when logged in (mobile) */}
+                {isAuthenticated && user ? (
+                  <>
+                    <div className="px-4 py-3 mb-2 bg-slate-50 rounded-xl">
+                      <p className="font-medium text-slate-900">{user.name || 'User'}</p>
+                      <p className="text-sm text-slate-500">{user.email}</p>
+                    </div>
+                    <Link
+                      href={`/${language}/user`}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-900 hover:bg-slate-50 transition-all font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <LayoutDashboard className="w-5 h-5" />
+                      <span>{t[language].dashboard}</span>
+                    </Link>
+                    <Link
+                      href={`/${language}/user/orders`}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-900 hover:bg-slate-50 transition-all font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Package className="w-5 h-5" />
+                      <span>{t[language].orders}</span>
+                    </Link>
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                      className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-600 hover:bg-red-50 transition-all font-medium"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span>{t[language].logout}</span>
+                    </button>
+                  </>
+                ) : (
                   <Link
                     href={authHref}
                     className="flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-bold bg-[#00A884] text-white hover:bg-[#008F70] active:scale-[0.98] transition-all shadow-md"

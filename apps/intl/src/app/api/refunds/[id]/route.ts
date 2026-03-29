@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from "@vetsphere/shared";
 import Stripe from 'stripe';
 import { sendRefundStatusEmail } from '@vetsphere/shared/lib/email';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+const supabaseAdmin = getSupabaseAdmin();
 
 // Verify admin authentication
 async function verifyAdmin(request: NextRequest): Promise<{ userId: string } | null> {

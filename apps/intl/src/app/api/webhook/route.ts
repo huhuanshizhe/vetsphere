@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from "@vetsphere/shared";
 import { sendPaymentReceivedEmail, sendOrderConfirmation, sendCourseEnrollmentEmail } from '@vetsphere/shared/lib/email';
 
 // Force dynamic rendering
@@ -13,10 +13,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 // Server-side Supabase client
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+const supabaseAdmin = getSupabaseAdmin();
 
 async function updateOrderAndEnrollments(orderId: string, status: 'Paid' | 'refunded') {
   // Update order status
