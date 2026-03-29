@@ -177,6 +177,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch cart' }, { status: 500 });
     }
 
+    // Ensure cart exists
+    if (!cart) {
+      return NextResponse.json({ error: 'Failed to create or retrieve cart' }, { status: 500 });
+    }
+
     // Check if item already exists in cart
     let query = supabaseAdmin
       .from('shopping_cart_items')
