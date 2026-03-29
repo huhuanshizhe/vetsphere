@@ -147,6 +147,27 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', orderId);
 
+    // Send confirmation email (non-blocking)
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net';
+    fetch(`${siteUrl}/api/email/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'bank_transfer_confirmation',
+        to: user.email,
+        locale: 'en',
+        data: {
+          orderId: orderId,
+          transferAmount: transferAmount,
+          transferCurrency: transferCurrency || order.currency,
+          transferDate: transferDate,
+          referenceNumber: referenceNumber,
+        }
+      })
+    }).catch(err => {
+      console.error('[Bank Transfer] Failed to send confirmation email:', err);
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Transfer confirmation submitted. We will verify your payment within 1-2 business days.',
