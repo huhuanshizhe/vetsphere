@@ -76,18 +76,6 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Debug: Log Supabase connection info
-    console.log('[Orders] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log('[Orders] Has service key:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-    
-    // Test Supabase connection
-    const { error: pingError } = await supabaseAdmin.from('orders').select('count').limit(1);
-    if (pingError) {
-      console.error('[Orders] Supabase connection test failed:', pingError.message);
-    } else {
-      console.log('[Orders] Supabase connection OK');
-    }
-    
     // 验证用户身份（支持游客订单）
     let userId: string | null = null;
     const authHeader = request.headers.get('authorization');
@@ -99,9 +87,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { items, formData, currency, subtotal, shippingFee, total, locale } = body;
-    
-    console.log('[Orders] Received order data:', {
-      items_count: items?.length,
       total,
       email: formData?.email,
       locale

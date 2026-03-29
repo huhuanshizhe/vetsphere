@@ -32,8 +32,28 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Check if admin
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    const isAdmin = profile?.role === 'Admin';
+
     const { id } = await params;
-    
+
     const { data: refund, error } = await supabaseAdmin
       .from('refunds')
       .select(`
@@ -45,6 +65,11 @@ export async function GET(
 
     if (error || !refund) {
       return NextResponse.json({ error: 'Refund not found' }, { status: 404 });
+    }
+
+    // Non-admin users can only see their own refunds
+    if (!isAdmin && refund.user_id !== user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     return NextResponse.json({ refund });

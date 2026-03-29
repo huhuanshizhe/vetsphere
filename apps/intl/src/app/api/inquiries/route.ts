@@ -192,9 +192,33 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify authentication
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Check if user is admin
+    const isAdmin = user.app_metadata?.role === 'Admin' || user.user_metadata?.role === 'Admin';
+
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
     const status = searchParams.get('status');
+
+    // Non-admin users can only see their own inquiries
+    if (!isAdmin && email && email.toLowerCase() !== user.email?.toLowerCase()) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Non-admin users without email filter get their own inquiries
+    const queryEmail = isAdmin ? email : (email || user.email);
 
     let query = supabase
       .from('inquiry_requests')
@@ -204,8 +228,8 @@ export async function GET(request: NextRequest) {
       `)
       .order('created_at', { ascending: false });
 
-    if (email) {
-      query = query.eq('customer_email', email.toLowerCase());
+    if (queryEmail) {
+      query = query.eq('customer_email', queryEmail.toLowerCase());
     }
 
     if (status) {
