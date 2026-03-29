@@ -184,9 +184,9 @@ export async function POST(request: NextRequest) {
         const t = emailTranslations.paymentReceived[safeLocale];
         const greeting = typeof t.greeting === 'function' ? t.greeting(data.userName) : t.greeting;
         const subjectFn = t.subject as (amount: string) => string;
-        
+
         subject = subjectFn(data.amount);
-        
+
         html = generateLocalizedEmailHTML({
           locale: safeLocale,
           title: t.title,
@@ -198,6 +198,47 @@ export async function POST(request: NextRequest) {
           additionalContent: data.description ? `<p style="color: #4b5563; line-height: 1.6;">${data.description}</p>` : undefined
         });
         text = `${subject}\n\n${greeting}\n\n${t.message}\n\n${t.viewReceipt}: ${data.receiptUrl}\n\n${t.signature}`;
+        break;
+      }
+
+      case 'bank_transfer_confirmation': {
+        const t = emailTranslations.bankTransferConfirmation[safeLocale];
+
+        subject = t.subject;
+        html = generateLocalizedEmailHTML({
+          locale: safeLocale,
+          title: t.title,
+          greeting: t.greeting,
+          message: t.message,
+          signature: t.signature,
+          additionalContent: `
+            <div style="margin: 30px 0; padding: 20px; background: #f8fafb; border-radius: 8px;">
+              <h3 style="color: #1e293b; font-size: 16px; margin: 0 0 15px 0;">${t.transferDetails}</h3>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b;">${t.orderId}:</td>
+                  <td style="padding: 8px 0; color: #1e293b; font-weight: 600;">${data.orderId}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b;">${t.amount}:</td>
+                  <td style="padding: 8px 0; color: #10B981; font-weight: 600;">${data.transferCurrency || 'USD'} ${data.transferAmount}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b;">${t.date}:</td>
+                  <td style="padding: 8px 0; color: #1e293b;">${data.transferDate}</td>
+                </tr>
+                ${data.referenceNumber ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b;">${t.reference}:</td>
+                  <td style="padding: 8px 0; color: #1e293b;">${data.referenceNumber}</td>
+                </tr>
+                ` : ''}
+              </table>
+            </div>
+            <p style="color: #4b5563; line-height: 1.6;">${t.verificationNote}</p>
+          `
+        });
+        text = `${subject}\n\n${t.greeting}\n\n${t.message}\n\n${t.transferDetails}:\n${t.orderId}: ${data.orderId}\n${t.amount}: ${data.transferCurrency || 'USD'} ${data.transferAmount}\n${t.date}: ${data.transferDate}\n${data.referenceNumber ? `${t.reference}: ${data.referenceNumber}` : ''}\n\n${t.verificationNote}\n\n${t.signature}`;
         break;
       }
 

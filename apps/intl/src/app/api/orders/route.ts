@@ -87,10 +87,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { items, formData, currency, subtotal, shippingFee, total, locale } = body;
-      total,
-      email: formData?.email,
-      locale
-    });
 
     // 验证必填字段
     if (!items || !Array.isArray(items) || items.length === 0) {

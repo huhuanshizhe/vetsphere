@@ -261,6 +261,60 @@ export const emailTranslations = {
       viewReceipt: 'ดูใบเสร็จ',
       signature: 'ทีม VetSphere'
     }
+  },
+  bankTransferConfirmation: {
+    en: {
+      subject: 'Bank Transfer Confirmation Received',
+      title: 'Transfer Confirmation Submitted',
+      greeting: 'Hello!',
+      message: 'Thank you for submitting your bank transfer confirmation. We will verify your payment within 1-2 business days.',
+      transferDetails: 'Transfer Details',
+      orderId: 'Order ID',
+      amount: 'Amount',
+      date: 'Transfer Date',
+      reference: 'Reference Number',
+      verificationNote: 'Once verified, you will receive a confirmation email and your order will be processed.',
+      signature: 'The VetSphere Team'
+    },
+    zh: {
+      subject: '银行转账确认已收到',
+      title: '转账确认已提交',
+      greeting: '您好！',
+      message: '感谢您提交银行转账确认。我们将在 1-2 个工作日内验证您的付款。',
+      transferDetails: '转账详情',
+      orderId: '订单号',
+      amount: '金额',
+      date: '转账日期',
+      reference: '参考编号',
+      verificationNote: '验证完成后，您将收到确认邮件，订单将开始处理。',
+      signature: 'VetSphere 团队'
+    },
+    ja: {
+      subject: '銀行振込確認を受領しました',
+      title: '振込確認が送信されました',
+      greeting: 'こんにちは！',
+      message: '銀行振込確認をご送信いただきありがとうございます。1-2営業日以内に支払いを確認いたします。',
+      transferDetails: '振込詳細',
+      orderId: '注文番号',
+      amount: '金額',
+      date: '振込日',
+      reference: '参照番号',
+      verificationNote: '確認完了後、確認メールをお送りし、注文処理が開始されます。',
+      signature: 'VetSphere チーム'
+    },
+    th: {
+      subject: 'ได้รับการยืนยันการโอนเงินผ่านธนาคารแล้ว',
+      title: 'ส่งการยืนยันการโอนเงินแล้ว',
+      greeting: 'สวัสดี!',
+      message: 'ขอบคุณสำหรับการส่งการยืนยันการโอนเงินผ่านธนาคาร เราจะยืนยันการชำระเงินของคุณภายใน 1-2 วันทำการ',
+      transferDetails: 'รายละเอียดการโอน',
+      orderId: 'หมายเลขคำสั่งซื้อ',
+      amount: 'จำนวนเงิน',
+      date: 'วันที่โอน',
+      reference: 'หมายเลขอ้างอิง',
+      verificationNote: 'เมื่อยืนยันเสร็จสิ้น คุณจะได้รับอีเมลยืนยันและคำสั่งซื้อจะถูกดำเนินการ',
+      signature: 'ทีม VetSphere'
+    }
   }
 };
 
