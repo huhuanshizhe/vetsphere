@@ -29,3 +29,4 @@ export * from './services/email';
 export { PRODUCTS_CN, COURSES_CN, PORTAL_THEME } from './lib/constants';
 export { LOCATIONS } from './lib/locations';
 export { translateSpecKey, translateSpecs, specLabelTranslations } from './lib/spec-translations';
+export { createSupabaseAdmin, getSupabaseAdmin, hasServiceRoleKey } from './lib/supabase-admin';

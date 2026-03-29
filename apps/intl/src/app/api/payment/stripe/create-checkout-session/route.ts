@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+const supabaseAdmin = getSupabaseAdmin();
 
 // Verify user authentication from Bearer token (optional for guest checkout)
 async function verifyAuth(request: NextRequest): Promise<{ userId: string } | null> {

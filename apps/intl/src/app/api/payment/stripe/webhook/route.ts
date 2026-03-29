@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from "@vetsphere/shared";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
