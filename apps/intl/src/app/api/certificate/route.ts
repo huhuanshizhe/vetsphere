@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
 // Initialize Supabase with service role for server-side operations
-const supabaseAdmin = getSupabaseAdmin();
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +90,7 @@ function escapeXml(text: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { searchParams } = new URL(request.url);
     const enrollmentId = searchParams.get('enrollmentId');
@@ -185,6 +190,7 @@ export async function GET(request: NextRequest) {
 
 // Issue certificate (mark as completed and generate)
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { enrollmentId } = await request.json();
 

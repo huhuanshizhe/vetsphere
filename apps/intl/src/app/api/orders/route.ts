@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@vetsphere/shared';
 
-const supabaseAdmin = getSupabaseAdmin();
+export const dynamic = 'force-dynamic';
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
 
 /**
  * 生成订单号
@@ -18,6 +22,7 @@ function generateOrderNumber(): string {
  * GET /api/orders - 获取用户订单列表
  */
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -72,6 +77,7 @@ export async function GET(request: NextRequest) {
  * POST /api/orders - 创建新订单
  */
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // 验证用户身份（支持游客订单）
     let userId: string | null = null;
@@ -190,12 +196,14 @@ export async function POST(request: NextRequest) {
 
     // 更新用户统计（如果是登录用户）
     if (userId) {
-      await supabaseAdmin.rpc('update_user_order_stats', { user_id: userId });
+      try {
+        await supabaseAdmin.rpc('update_user_order_stats', { user_id: userId });
+      } catch { /* ignore errors */ }
     }
 
     // Send localized order confirmation email (non-blocking)
     const orderUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/${locale || 'en'}/orders/${order.order_no}`;
-    
+
     fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/${locale || 'en'}/api/email/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

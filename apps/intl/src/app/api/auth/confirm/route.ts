@@ -1,7 +1,15 @@
-import { getSupabaseAdmin } from "@vetsphere/shared";
+
 import { NextRequest, NextResponse } from 'next/server';
 
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
+  const supabase = await getSupabaseAdmin();
   try {
     const { email } = await req.json();
     if (!email) {
@@ -15,9 +23,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Service role key not configured' }, { status: 500 });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
+    const adminClient = await getSupabaseAdmin();
 
     // Find user by email - paginate to handle large user lists
     let user = null;

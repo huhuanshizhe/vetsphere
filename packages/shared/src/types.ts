@@ -522,6 +522,7 @@ export interface Order {
   customerEmail: string;
   items: CartItem[];
   totalAmount: number;
+  currency: string;
   status: 'Pending' | 'Paid' | 'Shipped' | 'Completed';
   date: string;
   shippingAddress: string;

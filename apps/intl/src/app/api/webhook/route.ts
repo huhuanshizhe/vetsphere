@@ -1,21 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { getSupabaseAdmin } from "@vetsphere/shared";
-import { sendPaymentReceivedEmail, sendOrderConfirmation, sendCourseEnrollmentEmail } from '@vetsphere/shared/lib/email';
+import type Stripe from 'stripe';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16' as any,
-});
+// Lazy-loaded dependencies
+let _stripe: Stripe | null = null;
+let _webhookSecret: string | null = null;
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+async function getStripe() {
+  if (!_stripe) {
+    const Stripe = (await import('stripe')).default;
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+      apiVersion: '2023-10-16' as any,
+    });
+  }
+  return _stripe;
+}
 
-// Server-side Supabase client
-const supabaseAdmin = getSupabaseAdmin();
+function getWebhookSecret() {
+  if (!_webhookSecret) {
+    _webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+  }
+  return _webhookSecret;
+}
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+async function getEmailFunctions() {
+  return await import('@vetsphere/shared/lib/email');
+}
 
 async function updateOrderAndEnrollments(orderId: string, status: 'Paid' | 'refunded') {
+  const supabaseAdmin = await getSupabaseAdmin();
   // Update order status
   await supabaseAdmin
     .from('orders')
@@ -47,6 +67,9 @@ async function updateOrderAndEnrollments(orderId: string, status: 'Paid' | 'refu
 }
 
 async function sendPaymentEmails(orderId: string, amount: number) {
+  const supabaseAdmin = await getSupabaseAdmin();
+  const { sendPaymentReceivedEmail, sendOrderConfirmation, sendCourseEnrollmentEmail } = await getEmailFunctions();
+
   try {
     // Fetch order details
     const { data: order } = await supabaseAdmin
@@ -101,6 +124,10 @@ async function sendPaymentEmails(orderId: string, amount: number) {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const supabaseAdmin = await getSupabaseAdmin();
+  const stripe = await getStripe();
+  const webhookSecret = getWebhookSecret();
+
   try {
     // Require webhook secret in all environments
     if (!webhookSecret || webhookSecret === 'whsec_placeholder') {
@@ -141,7 +168,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const orderId = paymentIntent.metadata?.orderId;
-        
+
         if (orderId) {
           // Idempotency check: skip if already processed
           const { data: existingOrder } = await supabaseAdmin.from('orders').select('status').eq('id', orderId).single();
@@ -169,7 +196,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
         const orderId = charge.metadata?.orderId;
-        
+
         if (orderId) {
           await updateOrderAndEnrollments(orderId, 'refunded');
           console.log(`[Webhook] Refund processed for order: ${orderId}`);

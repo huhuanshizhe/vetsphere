@@ -1227,7 +1227,7 @@ export const api = {
     try {
       const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []).map((o: any) => ({ id: o.id, customerName: o.customer_name, customerEmail: o.customer_email, items: o.items || [], totalAmount: o.total_amount, status: o.status, date: o.date || o.created_at, shippingAddress: o.shipping_address }));
+      return (data || []).map((o: any) => ({ id: o.id, customerName: o.customer_name, customerEmail: o.customer_email, items: o.items || [], totalAmount: o.total_amount, currency: o.currency || 'USD', status: o.status, date: o.date || o.created_at, shippingAddress: o.shipping_address }));
     } catch { return []; }
   },
 

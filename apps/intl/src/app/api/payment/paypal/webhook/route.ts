@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
+
 import crypto from 'crypto';
 
-const supabaseAdmin = getSupabaseAdmin();
 
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 /**
  * Verify PayPal webhook signature
  * @see https://developer.paypal.com/api/rest/webhooks/rest/#verify-webhook-signature
@@ -59,6 +64,7 @@ async function verifyWebhookSignature(
  * Handle payment capture completed
  */
 async function handlePaymentCaptureCompleted(event: any) {
+  const supabaseAdmin = await getSupabaseAdmin();
   const resource = event.resource;
   const transactionId = resource.id;
   const paypalOrderId = resource.supplementary_data?.related_ids?.order_id;
@@ -111,6 +117,7 @@ async function handlePaymentCaptureCompleted(event: any) {
  * Handle refund completed
  */
 async function handleRefundCompleted(event: any) {
+  const supabaseAdmin = await getSupabaseAdmin();
   const resource = event.resource;
   const refundId = resource.id;
   const originalCaptureId = resource.links?.find((l: any) => l.rel === 'up')?.href?.split('/').pop();
@@ -160,6 +167,7 @@ async function handleRefundCompleted(event: any) {
  * Handle payment denied/failed
  */
 async function handlePaymentDenied(event: any) {
+  const supabaseAdmin = await getSupabaseAdmin();
   const resource = event.resource;
   const paypalOrderId = resource.id;
   

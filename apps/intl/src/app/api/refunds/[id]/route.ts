@@ -1,24 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
-import Stripe from 'stripe';
-import { sendRefundStatusEmail } from '@vetsphere/shared/lib/email';
+import type Stripe from 'stripe';
 
-const supabaseAdmin = getSupabaseAdmin();
+export const dynamic = 'force-dynamic';
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+async function getEmailFunctions() {
+  return await import('@vetsphere/shared/lib/email');
+}
 
 // Verify admin authentication
 async function verifyAdmin(request: NextRequest): Promise<{ userId: string } | null> {
+  const supabaseAdmin = await getSupabaseAdmin();
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.substring(7);
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
-  
+
   const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single();
-  
+
   if (profile?.role !== 'Admin') return null;
   return { userId: user.id };
 }
@@ -28,6 +36,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
@@ -81,6 +90,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabaseAdmin = await getSupabaseAdmin();
+  const { sendRefundStatusEmail } = await getEmailFunctions();
+
   try {
     const admin = await verifyAdmin(request);
     if (!admin) {
@@ -139,7 +151,7 @@ export async function PATCH(
         if (refund.status !== 'approved') {
           return NextResponse.json({ error: 'Can only process approved refunds' }, { status: 400 });
         }
-        
+
         // Process refund with payment provider
         const processResult = await processRefundWithProvider(refund);
         if (!processResult.success) {
@@ -205,16 +217,17 @@ async function processRefundWithProvider(refund: any): Promise<{ success: boolea
         if (!stripeKey) {
           return { success: false, error: 'Stripe not configured' };
         }
-        
+
+        const Stripe = (await import('stripe')).default;
         const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' as any });
-        
+
         // Refund the payment intent
         const refundResult = await stripe.refunds.create({
           payment_intent: paymentId,
           amount: Math.round(amount * 100), // Convert to cents
           reason: 'requested_by_customer'
         });
-        
+
         return { success: true, refundId: refundResult.id };
       }
 
@@ -223,9 +236,9 @@ async function processRefundWithProvider(refund: any): Promise<{ success: boolea
         // For Alipay and WeChat, manual processing is typically required
         // Return success and mark as processed - actual refund happens manually
         console.log(`[Refund] ${paymentMethod} refund requires manual processing: ${paymentId}`);
-        return { 
-          success: true, 
-          refundId: `manual-${Date.now()}` 
+        return {
+          success: true,
+          refundId: `manual-${Date.now()}`
         };
 
       default:
@@ -233,9 +246,9 @@ async function processRefundWithProvider(refund: any): Promise<{ success: boolea
     }
   } catch (error) {
     console.error('Payment provider refund error:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Refund processing failed' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Refund processing failed'
     };
   }
 }

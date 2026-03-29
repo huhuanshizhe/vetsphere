@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
 export const dynamic = 'force-dynamic';
 
 // Sensitive words list for auto-flagging (basic implementation)
@@ -32,6 +36,7 @@ function checkContentForFlags(content: string): { flagged: boolean; reasons: str
 
 // GET /api/moderation - List pending moderation items
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'pending';
@@ -90,6 +95,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/moderation - Submit content for moderation / Update status
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const body = await request.json();
     const { action, contentType, contentId, status, reason, reviewerId } = body;
@@ -181,6 +187,7 @@ export async function POST(request: NextRequest) {
 
 // DELETE /api/moderation - Delete content (admin only)
 export async function DELETE(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { searchParams } = new URL(request.url);
     const contentType = searchParams.get('type');

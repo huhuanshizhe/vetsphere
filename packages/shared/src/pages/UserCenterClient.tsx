@@ -10,6 +10,7 @@ import { Order, CourseEnrollment } from '../types';
 import { RefundRequestModal } from '../components/RefundRequestModal';
 import Link from 'next/link';
 import { ShieldCheck, Stethoscope, ArrowRight } from 'lucide-react';
+import { formatPrice } from '../lib/currency';
 
 type TabType = 'overview' | 'profile' | 'orders' | 'courses' | 'points' | 'settings';
 
@@ -695,7 +696,7 @@ const UserCenterClient: React.FC = () => {
                                 {order.items?.length || 0} item(s)
                               </div>
                               <div className="text-lg font-black text-slate-900">
-                                ¥{order.totalAmount?.toLocaleString() || 0}
+                                {formatPrice(order.totalAmount || 0, (order.currency as any) || 'USD')}
                               </div>
                             </div>
                           </div>

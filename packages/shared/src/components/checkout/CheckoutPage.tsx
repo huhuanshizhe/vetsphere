@@ -6,7 +6,14 @@ import { useRouter } from 'next/navigation';
 import { useCart, EnhancedCartItem } from '@vetsphere/shared/context/CartContext';
 import { useLanguage } from '@vetsphere/shared/context/LanguageContext';
 import { getLocaleCurrency, formatPrice } from '@vetsphere/shared/lib/currency';
-import { Package, CreditCard, Building2, MapPin, User, Mail, Phone, Building, FileText, Truck, Shield, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Package, CreditCard, Building2, MapPin, User, Mail, Phone, Building, FileText, Truck, Shield, Check, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// 动态导入 Stripe 嵌入式支付组件以避免 SSR 问题
+const StripeEmbeddedCheckout = dynamic(
+  () => import('./StripeEmbeddedCheckout'),
+  { ssr: false }
+);
 
 interface CheckoutPageProps {
   locale: string;
@@ -55,6 +62,8 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [orderCreated, setOrderCreated] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [showStripePayment, setShowStripePayment] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     email: '',
@@ -108,6 +117,52 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
     );
   }
 
+  // Stripe 嵌入式支付页面
+  if (showStripePayment && orderId && orderNumber) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+          <button
+            onClick={() => {
+              setShowStripePayment(false);
+              setOrderId(null);
+              setOrderNumber(null);
+            }}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to checkout
+          </button>
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Complete Payment</h2>
+            <p className="text-gray-600 mb-4">
+              Order: <span className="font-mono font-bold">{orderNumber}</span>
+            </p>
+            <p className="text-gray-600 mb-6">
+              Total: <span className="font-bold">{formatPrice(orderTotal, currency)}</span>
+            </p>
+            <StripeEmbeddedCheckout
+              orderId={orderId}
+              amount={orderTotal}
+              currency={currency}
+              onSuccess={() => {
+                setOrderCreated(true);
+                setShowStripePayment(false);
+                clearCart();
+              }}
+              onError={(error) => {
+                setError(error);
+              }}
+              onCancel={() => {
+                setShowStripePayment(false);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 订单创建成功页面
   if (orderCreated && orderId) {
     return (
@@ -126,7 +181,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
             </p>
             <div className="mt-8 flex gap-4 justify-center">
               <Link
-                href={`/${locale}/user`}
+                href={`/${locale}/user?tab=orders`}
                 className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
               >
                 {c.viewOrders}
@@ -176,24 +231,19 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
 
       const data = await response.json();
       
+      // 如果订单创建失败
+      if (!data.success || !data.orderId) {
+        throw new Error(data.error || 'Failed to create order');
+      }
+      
       // 根据支付方式处理
       if (formData.paymentMethod === 'stripe') {
-        // 跳转Stripe支付
-        const stripeResponse = await fetch('/api/payment/stripe/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: data.orderId,
-            amount: orderTotal,
-            currency: currency.toLowerCase(),
-          }),
-        });
-        
-        if (stripeResponse.ok) {
-          const stripeData = await stripeResponse.json();
-          window.location.href = stripeData.url;
-          return;
-        }
+        // 显示嵌入式 Stripe 支付
+        setOrderId(data.orderId);
+        setOrderNumber(data.orderNumber || data.orderId);
+        setShowStripePayment(true);
+        setLoading(false);
+        return;
       } else if (formData.paymentMethod === 'paypal') {
         // 跳转PayPal支付
         const paypalResponse = await fetch('/api/payment/paypal/create-order', {
@@ -206,15 +256,22 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
           }),
         });
         
-        if (paypalResponse.ok) {
-          const paypalData = await paypalResponse.json();
+        if (!paypalResponse.ok) {
+          const paypalError = await paypalResponse.json();
+          throw new Error(paypalError.error || 'Failed to create PayPal checkout');
+        }
+        
+        const paypalData = await paypalResponse.json();
+        if (paypalData.approvalUrl) {
           window.location.href = paypalData.approvalUrl;
           return;
+        } else {
+          throw new Error('No approval URL returned from PayPal');
         }
       }
       
       // 银行转账：直接显示订单成功
-      setOrderId(data.orderId);
+      setOrderId(data.orderNumber || data.orderId);
       setOrderCreated(true);
       clearCart();
       

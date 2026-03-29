@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
 
+
+
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+export const dynamic = 'force-dynamic';
 /**
  * GET /api/price-tiers - 获取SKU的价格层级
  * 参数: sku_id - SKU ID
  */
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const { searchParams } = new URL(request.url);
     const skuId = searchParams.get('sku_id');
@@ -79,6 +86,7 @@ export async function GET(request: NextRequest) {
  * POST /api/price-tiers - 创建价格层级（供应商后台使用）
  */
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     // 验证用户身份
     const authHeader = request.headers.get('authorization');

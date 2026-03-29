@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin, hasServiceRoleKey } from "@vetsphere/shared";
 
-const supabaseAdmin = getSupabaseAdmin();
+export const dynamic = 'force-dynamic';
 
+async function getSupabaseAdmin() {
+  const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
+  return getSupabaseAdmin();
+}
+
+async function hasServiceRoleKey() {
+  const { hasServiceRoleKey } = await import('@vetsphere/shared/lib/supabase-admin');
+  return hasServiceRoleKey();
+}
 /**
  * GET /api/auth/me - Get current user info and permissions
  * Used by AuthContext to fetch full user state including dual-track permissions
  */
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = await getSupabaseAdmin();
   try {
     const authHeader = request.headers.get('authorization');
     
@@ -26,7 +35,7 @@ export async function GET(request: NextRequest) {
     let profile = null;
     let identity = null;
     
-    if (hasServiceRoleKey()) {
+    if (await hasServiceRoleKey()) {
       // Only query these tables with service role key (bypasses RLS)
       const { data: profileData } = await supabaseAdmin
         .from('profiles')
