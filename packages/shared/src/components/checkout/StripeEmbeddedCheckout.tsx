@@ -63,7 +63,7 @@ export default function StripeEmbeddedCheckout({
 
     // Step 2: Initialize Stripe
     console.log('[StripeEmbeddedCheckout] Initializing Stripe...');
-    const stripe = loadStripe(publishableKey);
+    const stripe = loadStripe(publishableKey!);
     setStripePromise(stripe);
 
     console.log('[StripeEmbeddedCheckout] Fetching PaymentIntent...');
