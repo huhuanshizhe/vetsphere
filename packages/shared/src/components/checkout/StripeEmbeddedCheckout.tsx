@@ -45,10 +45,17 @@ export default function StripeEmbeddedCheckout({
 
   // Single useEffect: Initialize Stripe and fetch clientSecret
   useEffect(() => {
+    console.log('[StripeEmbeddedCheckout] Starting initialization...');
+    console.log('[StripeEmbeddedCheckout] Key validation:', {
+      hasKey: !!stripePublishableKey,
+      isValid: isValidKey,
+      keyPrefix: stripePublishableKey ? stripePublishableKey.substring(0, 15) + '...' : 'none',
+    });
+
     // Step 1: Validate publishable key
     if (!isValidKey) {
       const errorMsg = 'Stripe is not configured. Please contact support.';
-      console.error('Stripe publishable key validation failed:', stripePublishableKey);
+      console.error('[StripeEmbeddedCheckout] Publishable key validation failed');
       setStripeError(errorMsg);
       setLoading(false);
       onError?.(errorMsg);
@@ -58,11 +65,14 @@ export default function StripeEmbeddedCheckout({
     // Step 2: Verify stripePromise exists
     if (!stripePromise) {
       const errorMsg = 'Stripe initialization failed. Please refresh the page.';
+      console.error('[StripeEmbeddedCheckout] stripePromise is null');
       setStripeError(errorMsg);
       setLoading(false);
       onError?.(errorMsg);
       return;
     }
+
+    console.log('[StripeEmbeddedCheckout] Fetching PaymentIntent...');
 
     // Step 3: Fetch PaymentIntent from API
     fetch('/api/payment/stripe/create-payment-intent', {
@@ -77,12 +87,19 @@ export default function StripeEmbeddedCheckout({
       }),
     })
       .then((res) => {
+        console.log('[StripeEmbeddedCheckout] API Response status:', res.status);
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
         return res.json();
       })
       .then((data) => {
+        console.log('[StripeEmbeddedCheckout] API Response data:', {
+          hasClientSecret: !!data.clientSecret,
+          hasError: !!data.error,
+          clientSecretPrefix: data.clientSecret ? data.clientSecret.substring(0, 20) + '...' : 'none',
+        });
+
         if (data.error) {
           setError(data.error);
           onError?.(data.error);
@@ -99,7 +116,7 @@ export default function StripeEmbeddedCheckout({
       })
       .catch((err) => {
         const errorMsg = 'Failed to initialize payment: ' + (err.message || 'Unknown error');
-        console.error('PaymentIntent fetch error:', err);
+        console.error('[StripeEmbeddedCheckout] PaymentIntent fetch error:', err);
         setError(errorMsg);
         onError?.(errorMsg);
         setLoading(false);
@@ -176,6 +193,12 @@ export default function StripeEmbeddedCheckout({
       </div>
     );
   }
+
+  console.log('[StripeEmbeddedCheckout] Rendering with:', {
+    hasClientSecret: !!clientSecret,
+    clientSecretPrefix: clientSecret.substring(0, 20) + '...',
+    hasStripePromise: !!stripePromise,
+  });
 
   return (
     <div className="bg-white rounded-lg">
