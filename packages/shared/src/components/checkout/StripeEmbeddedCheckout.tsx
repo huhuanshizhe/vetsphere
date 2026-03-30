@@ -7,6 +7,7 @@ import {
   EmbeddedCheckout,
 } from '@stripe/react-stripe-js';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { StripeErrorBoundary } from './StripeErrorBoundary';
 
 // Get the publishable key and validate it
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -201,13 +202,15 @@ export default function StripeEmbeddedCheckout({
   });
 
   return (
-    <div className="bg-white rounded-lg min-h-[400px]">
-      <EmbeddedCheckoutProvider
-        stripe={stripePromise}
-        options={{ clientSecret }}
-      >
-        <EmbeddedCheckout />
-      </EmbeddedCheckoutProvider>
+    <div className="bg-white rounded-lg min-h-[500px]">
+      <StripeErrorBoundary>
+        <EmbeddedCheckoutProvider
+          stripe={stripePromise}
+          options={{ clientSecret }}
+        >
+          <EmbeddedCheckout />
+        </EmbeddedCheckoutProvider>
+      </StripeErrorBoundary>
     </div>
   );
 }
