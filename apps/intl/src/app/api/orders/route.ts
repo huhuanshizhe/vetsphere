@@ -202,9 +202,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Send localized order confirmation email (non-blocking)
-    const orderUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/${locale || 'en'}/orders/${order.order_no}`;
+    const orderUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/${locale || 'en'}/user/orders/${order.order_no}`;
 
-    fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/${locale || 'en'}/api/email/send`, {
+    // 正确的邮件 API 路径: /api/email (不带 locale 前缀)
+    fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/api/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -214,7 +215,7 @@ export async function POST(request: NextRequest) {
         data: {
           orderId: order.order_no,
           customerName: formData.name,
-          items: items.map(item => ({
+          items: items.map((item: any) => ({
             name: item.product_name || item.name,
             quantity: item.quantity,
             price: parseFloat(item.price) || item.price
