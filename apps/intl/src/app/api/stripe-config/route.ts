@@ -20,12 +20,21 @@ export async function GET() {
     return NextResponse.json({
       error: 'Stripe publishable key not configured',
       hint: 'Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in Vercel environment variables',
-    }, { status: 503 });
+    }, { 
+      status: 503,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+      }
+    });
   }
   
   return NextResponse.json({
     publishableKey,
     // Include some debug info (safe to expose)
     keyType: publishableKey.startsWith('pk_live_') ? 'live' : 'test',
+  }, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    }
   });
 }
