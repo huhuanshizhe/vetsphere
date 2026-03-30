@@ -9,9 +9,29 @@ import {
 import { Loader2, AlertCircle } from 'lucide-react';
 import { StripeErrorBoundary } from './StripeErrorBoundary';
 
-// Get the publishable key from environment
-// Note: NEXT_PUBLIC_* vars are inlined at build time by webpack
-const getStripePublishableKey = () => process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+// Get publishable key from API at runtime (more reliable than build-time inlining)
+// This ensures the key is always fresh, even after env var changes on Vercel
+const fetchStripePublishableKey = async (): Promise<string | null> => {
+  try {
+    const res = await fetch('/api/stripe-config');
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.publishableKey || null;
+  } catch (err) {
+    console.error('[StripeEmbeddedCheckout] Failed to fetch publishable key:', err);
+    return null;
+  }
+};
+
+// Fallback: try build-time inlined key (may be undefined if not rebuilt)
+const getBuildTimeKey = (): string | undefined => {
+  // Next.js inlines NEXT_PUBLIC_* vars at build time
+  // This may return undefined if the app was not rebuilt after setting the env var
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  }
+  return undefined;
+};
 
 const isValidKey = (key: string | undefined) => key && key.startsWith('pk_');
 
@@ -37,84 +57,113 @@ export default function StripeEmbeddedCheckout({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stripeError, setStripeError] = useState<string | null>(null);
+  const [publishableKey, setPublishableKey] = useState<string | null>(null);
 
-  // Single useEffect: Initialize Stripe and fetch clientSecret
+  // Initialize Stripe: fetch publishable key from API first, then create PaymentIntent
   useEffect(() => {
-    console.log('[StripeEmbeddedCheckout] Starting initialization...');
+    let cancelled = false;
     
-    // Step 1: Get and validate publishable key at runtime
-    const publishableKey = getStripePublishableKey();
-    const keyValid = isValidKey(publishableKey);
-    
-    console.log('[StripeEmbeddedCheckout] Key validation:', {
-      hasKey: !!publishableKey,
-      isValid: keyValid,
-      keyPrefix: publishableKey ? publishableKey.substring(0, 15) + '...' : 'none',
-    });
-
-    if (!keyValid) {
-      const errorMsg = 'Stripe is not configured. Please contact support.';
-      console.error('[StripeEmbeddedCheckout] Publishable key validation failed');
-      setStripeError(errorMsg);
-      setLoading(false);
-      onError?.(errorMsg);
-      return;
-    }
-
-    // Step 2: Initialize Stripe
-    console.log('[StripeEmbeddedCheckout] Initializing Stripe...');
-    const stripe = loadStripe(publishableKey!);
-    setStripePromise(stripe);
-
-    console.log('[StripeEmbeddedCheckout] Fetching PaymentIntent...');
-
-    // Step 3: Fetch PaymentIntent from API
-    fetch('/api/payment/stripe/create-payment-intent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        orderId,
-        amount,
-        currency: currency.toLowerCase(),
-      }),
-    })
-      .then((res) => {
-        console.log('[StripeEmbeddedCheckout] API Response status:', res.status);
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
+    const initStripe = async () => {
+      console.log('[StripeEmbeddedCheckout] Starting initialization...');
+      
+      // Step 1: Try to get publishable key from API (runtime, most reliable)
+      let key = await fetchStripePublishableKey();
+      
+      console.log('[StripeEmbeddedCheckout] API key fetch result:', {
+        hasKey: !!key,
+        isValid: isValidKey(key),
+        keyPrefix: key ? key.substring(0, 15) + '...' : 'none',
+      });
+      
+      // Step 2: Fallback to build-time inlined key if API failed
+      if (!isValidKey(key)) {
+        key = getBuildTimeKey();
+        console.log('[StripeEmbeddedCheckout] Fallback to build-time key:', {
+          hasKey: !!key,
+          isValid: isValidKey(key),
+          keyPrefix: key ? key.substring(0, 15) + '...' : 'none',
+        });
+      }
+      
+      // Step 3: If no valid key, show error
+      if (!isValidKey(key)) {
+        const errorMsg = 'Stripe is not configured. Please contact support.';
+        console.error('[StripeEmbeddedCheckout] Publishable key validation failed');
+        if (!cancelled) {
+          setStripeError(errorMsg);
+          setLoading(false);
+          onError?.(errorMsg);
         }
-        return res.json();
-      })
-      .then((data) => {
-        console.log('[StripeEmbeddedCheckout] API Response data:', {
+        return;
+      }
+      
+      if (!cancelled) {
+        setPublishableKey(key!);
+      }
+      
+      // Step 4: Initialize Stripe.js
+      console.log('[StripeEmbeddedCheckout] Initializing Stripe.js...');
+      const stripe = loadStripe(key!);
+      if (!cancelled) {
+        setStripePromise(stripe);
+      }
+      
+      // Step 5: Fetch PaymentIntent from backend
+      console.log('[StripeEmbeddedCheckout] Creating PaymentIntent...');
+      try {
+        const res = await fetch('/api/payment/stripe/create-payment-intent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId,
+            amount,
+            currency: currency.toLowerCase(),
+          }),
+        });
+        
+        console.log('[StripeEmbeddedCheckout] PaymentIntent API status:', res.status);
+        
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || `HTTP error! status: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        console.log('[StripeEmbeddedCheckout] PaymentIntent response:', {
           hasClientSecret: !!data.clientSecret,
-          hasError: !!data.error,
           clientSecretPrefix: data.clientSecret ? data.clientSecret.substring(0, 20) + '...' : 'none',
         });
-
-        if (data.error) {
-          setError(data.error);
-          onError?.(data.error);
+        
+        if (!cancelled) {
+          if (data.error) {
+            setError(data.error);
+            onError?.(data.error);
+          } else if (data.clientSecret) {
+            setClientSecret(data.clientSecret);
+          } else {
+            setError('Invalid response from payment server');
+            onError?.('Invalid response from payment server');
+          }
           setLoading(false);
-        } else if (data.clientSecret) {
-          setClientSecret(data.clientSecret);
-          setLoading(false);
-        } else {
-          const errorMsg = 'Invalid response from payment server';
+        }
+      } catch (err: any) {
+        console.error('[StripeEmbeddedCheckout] PaymentIntent fetch error:', err);
+        if (!cancelled) {
+          const errorMsg = 'Failed to initialize payment: ' + (err.message || 'Unknown error');
           setError(errorMsg);
           onError?.(errorMsg);
           setLoading(false);
         }
-      })
-      .catch((err) => {
-        const errorMsg = 'Failed to initialize payment: ' + (err.message || 'Unknown error');
-        console.error('[StripeEmbeddedCheckout] PaymentIntent fetch error:', err);
-        setError(errorMsg);
-        onError?.(errorMsg);
-        setLoading(false);
-      });
+      }
+    };
+    
+    initStripe();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [orderId, amount, currency, onError]);
 
   // Show Stripe configuration error
@@ -127,7 +176,7 @@ export default function StripeEmbeddedCheckout({
         </div>
         <p className="text-red-600 mb-4">{stripeError}</p>
         <p className="text-sm text-red-500 mb-4">
-          The payment system is not properly configured. This may be due to missing environment variables.
+          The payment system is not properly configured. Please ensure NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is set and the app has been rebuilt.
         </p>
         <button
           onClick={onCancel}
@@ -165,7 +214,7 @@ export default function StripeEmbeddedCheckout({
   if (!clientSecret) {
     return (
       <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-600">Failed to load payment form</p>
+        <p className="text-red-600">Failed to load payment form - no client secret</p>
       </div>
     );
   }
@@ -188,8 +237,7 @@ export default function StripeEmbeddedCheckout({
     );
   }
 
-  const publishableKey = getStripePublishableKey();
-  console.log('[StripeEmbeddedCheckout] Rendering with:', {
+  console.log('[StripeEmbeddedCheckout] Rendering EmbeddedCheckout:', {
     hasClientSecret: !!clientSecret,
     clientSecretPrefix: clientSecret.substring(0, 20) + '...',
     hasStripePromise: !!stripePromise,
@@ -197,26 +245,15 @@ export default function StripeEmbeddedCheckout({
   });
 
   return (
-    <div className="bg-white rounded-lg min-h-[500px] relative">
-      {/* Debug overlay */}
-      <div className="absolute top-2 right-2 bg-blue-50 border border-blue-200 rounded p-2 text-xs z-50 shadow-lg">
-        <div className="font-bold mb-1">Stripe Debug:</div>
-        <div>Key: {isValidKey(publishableKey) ? '✅' : '❌'}</div>
-        <div>Promise: {!!stripePromise ? '✅' : '❌'}</div>
-        <div>Secret: {clientSecret ? '✅' : '❌'}</div>
-        <div className="font-mono text-[10px]">{clientSecret?.substring(0, 25)}...</div>
-      </div>
-      
-      {stripePromise && (
-        <StripeErrorBoundary>
-          <EmbeddedCheckoutProvider
-            stripe={stripePromise}
-            options={{ clientSecret }}
-          >
-            <EmbeddedCheckout />
-          </EmbeddedCheckoutProvider>
-        </StripeErrorBoundary>
-      )}
+    <div className="bg-white rounded-lg min-h-[500px]">
+      <StripeErrorBoundary>
+        <EmbeddedCheckoutProvider
+          stripe={stripePromise}
+          options={{ clientSecret }}
+        >
+          <EmbeddedCheckout />
+        </EmbeddedCheckoutProvider>
+      </StripeErrorBoundary>
     </div>
   );
 }
