@@ -237,9 +237,14 @@ export default function StripeEmbeddedCheckout({
     );
   }
 
+  // Log the FULL client secret for debugging (only in development)
+  const isDev = process.env.NODE_ENV === 'development';
   console.log('[StripeEmbeddedCheckout] Rendering EmbeddedCheckout:', {
     hasClientSecret: !!clientSecret,
     clientSecretPrefix: clientSecret.substring(0, 20) + '...',
+    clientSecretFull: isDev ? clientSecret : 'hidden_in_prod',
+    clientSecretLength: clientSecret?.length || 0,
+    clientSecretIncludesSecret: clientSecret?.includes('_secret_'),
     hasStripePromise: !!stripePromise,
     keyValid: isValidKey(publishableKey),
   });
