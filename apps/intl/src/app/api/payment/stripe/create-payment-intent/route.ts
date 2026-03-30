@@ -3,6 +3,13 @@ import type Stripe from 'stripe';
 
 export const dynamic = 'force-dynamic';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 async function getStripe(secretKey: string) {
   const Stripe = (await import('stripe')).default;
   return new Stripe(secretKey, { apiVersion: '2023-10-16' as any });
@@ -23,7 +30,10 @@ export async function POST(request: NextRequest) {
     if (!secretKey || secretKey.includes('placeholder')) {
       return NextResponse.json(
         { error: 'Stripe is not configured. Please set STRIPE_SECRET_KEY.' },
-        { status: 503 }
+        { 
+          status: 503,
+          headers: corsHeaders
+        }
       );
     }
 
@@ -42,11 +52,17 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (orderError || !order) {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        return NextResponse.json({ error: 'Order not found' }, { 
+          status: 404,
+          headers: corsHeaders
+        });
       }
 
       if (order.status === 'paid' || order.status === 'completed') {
-        return NextResponse.json({ error: 'Order already paid' }, { status: 400 });
+        return NextResponse.json({ error: 'Order already paid' }, { 
+          status: 400,
+          headers: corsHeaders
+        });
       }
     }
 
@@ -78,9 +94,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
+    }, {
+      headers: corsHeaders
     });
   } catch (error: any) {
     console.error('Stripe PaymentIntent Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { 
+      status: 500,
+      headers: corsHeaders
+    });
   }
+}
+
+// Handle CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, { 
+    status: 204,
+    headers: corsHeaders
+  });
 }
