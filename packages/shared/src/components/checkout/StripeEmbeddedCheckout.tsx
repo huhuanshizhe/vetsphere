@@ -207,7 +207,7 @@ export default function StripeEmbeddedCheckout({
       <div className="absolute top-2 right-2 bg-blue-50 border border-blue-200 rounded p-2 text-xs z-50 shadow-lg">
         <div className="font-bold mb-1">Stripe Debug:</div>
         <div>Key: {isValidKey ? '✅' : '❌'}</div>
-        <div>Promise: {stripePromise ? '✅' : '❌'}</div>
+        <div>Promise: {!!stripePromise ? '✅' : '❌'}</div>
         <div>Secret: {clientSecret ? '✅' : '❌'}</div>
         <div className="font-mono text-[10px]">{clientSecret?.substring(0, 25)}...</div>
       </div>
