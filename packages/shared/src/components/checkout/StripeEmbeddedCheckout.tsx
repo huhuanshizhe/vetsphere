@@ -131,9 +131,13 @@ export default function StripeEmbeddedCheckout({
         }
         
         const data = await res.json();
+        const isDev = process.env.NODE_ENV === 'development';
         console.log('[StripeEmbeddedCheckout] PaymentIntent response:', {
           hasClientSecret: !!data.clientSecret,
           clientSecretPrefix: data.clientSecret ? data.clientSecret.substring(0, 20) + '...' : 'none',
+          clientSecretLength: data.clientSecret?.length || 0,
+          clientSecretIncludesSecret: data.clientSecret?.includes('_secret_'),
+          clientSecretFull: isDev ? data.clientSecret : 'hidden_in_prod',
         });
         
         if (!cancelled) {
