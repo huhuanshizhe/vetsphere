@@ -39,7 +39,7 @@ async function updateOrderAndEnrollments(orderId: string, status: 'Paid' | 'refu
   // Update order status
   await supabaseAdmin
     .from('orders')
-    .update({ status: status === 'Paid' ? 'Paid' : 'Pending' })
+    .update({ status: status === 'Paid' ? 'paid' : 'refunded', payment_status: status === 'Paid' ? 'paid' : 'refunded' })
     .eq('id', orderId);
 
   // Update course enrollments payment status
@@ -51,15 +51,28 @@ async function updateOrderAndEnrollments(orderId: string, status: 'Paid' | 'refu
 
   // Increment current_enrollment for each course item when paid
   if (status === 'Paid') {
-    const { data: order } = await supabaseAdmin
-      .from('orders')
-      .select('items')
-      .eq('id', orderId)
-      .single();
+    // 从 order_items 表获取订单项
+    const { data: orderItems } = await supabaseAdmin
+      .from('order_items')
+      .select('product_id, product_name')
+      .eq('order_id', orderId);
 
-    const courseItems = (order?.items || []).filter((item: any) => item.type === 'course');
-    for (const item of courseItems) {
-      await supabaseAdmin.rpc('increment_course_enrollment', { p_course_id: item.id });
+    if (orderItems) {
+      // 检查是否有课程产品
+      for (const item of orderItems) {
+        if (item.product_id) {
+          // 检查是否是课程
+          const { data: product } = await supabaseAdmin
+            .from('products')
+            .select('type')
+            .eq('id', item.product_id)
+            .single();
+          
+          if (product?.type === 'course') {
+            await supabaseAdmin.rpc('increment_course_enrollment', { p_course_id: item.product_id });
+          }
+        }
+      }
     }
   }
 
@@ -68,54 +81,70 @@ async function updateOrderAndEnrollments(orderId: string, status: 'Paid' | 'refu
 
 async function sendPaymentEmails(orderId: string, amount: number) {
   const supabaseAdmin = await getSupabaseAdmin();
-  const { sendPaymentReceivedEmail, sendOrderConfirmation, sendCourseEnrollmentEmail } = await getEmailFunctions();
 
   try {
-    // Fetch order details
+    // Fetch order details with order_items
     const { data: order } = await supabaseAdmin
       .from('orders')
-      .select('*')
+      .select('*, order_items(*)')
       .eq('id', orderId)
       .single();
 
-    if (!order) return;
-
-    const customerEmail = order.customer_email;
-    const customerName = order.customer_name || 'Customer';
-
-    // Send payment received email
-    await sendPaymentReceivedEmail(customerEmail, {
-      customerName,
-      orderId,
-      amount,
-      paymentMethod: 'Stripe'
-    });
-
-    // Send order confirmation email
-    const items = order.items || [];
-    await sendOrderConfirmation(customerEmail, {
-      orderId,
-      customerName,
-      items: items.map((item: any) => ({
-        name: item.name,
-        quantity: item.quantity || 1,
-        price: item.price
-      })),
-      totalAmount: order.total_amount,
-      orderUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://vetsphere.pro'}/user?tab=orders`
-    });
-
-    // Send course enrollment emails for course items
-    const courseItems = items.filter((item: any) => item.type === 'course');
-    for (const course of courseItems) {
-      await sendCourseEnrollmentEmail(customerEmail, {
-        studentName: customerName,
-        courseTitle: course.name,
-        startDate: course.startDate || 'TBD',
-        location: course.location || 'Online',
-        courseUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://vetsphere.pro'}/courses/${course.id}`
-      });
+    if (!order) {
+      console.error('[Webhook] Order not found:', orderId);
+      return;
     }
+
+    // 正确的字段名称
+    const customerEmail = order.email;  // 不是 customer_email
+    const customerName = order.shipping_name || 'Customer';  // 不是 customer_name
+    const orderItems = order.order_items || [];  // 不是 items
+
+    console.log('[Webhook] Sending emails to:', customerEmail, 'for order:', orderId);
+
+    // 使用本地化邮件 API
+    const locale = order.locale || 'en';
+    const orderUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/${locale}/user/orders/${order.order_no}`;
+
+    // 发送订单确认邮件
+    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/api/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'order_confirmation',
+        to: customerEmail,
+        locale: locale,
+        data: {
+          orderId: order.order_no,
+          customerName: customerName,
+          items: orderItems.map((item: any) => ({
+            name: item.product_name,
+            quantity: item.quantity,
+            price: item.unit_price
+          })),
+          totalAmount: order.total_amount,
+          orderUrl: orderUrl
+        }
+      })
+    });
+
+    // 发送支付成功邮件
+    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net'}/api/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'payment_received',
+        to: customerEmail,
+        locale: locale,
+        data: {
+          customerName: customerName,
+          orderId: order.order_no,
+          amount: amount,
+          paymentMethod: 'Stripe',
+          receiptUrl: orderUrl
+        }
+      })
+    });
 
     console.log(`[Webhook] Emails sent for order ${orderId}`);
   } catch (error) {
