@@ -60,8 +60,9 @@ function CheckoutForm({ onSuccess, onError, onCancel }: CheckoutFormProps) {
     });
 
     if (error) {
-      setErrorMessage(error.message || 'Payment failed');
-      onError?.(error.message);
+      const errorMsg = error.message || 'Payment failed';
+      setErrorMessage(errorMsg);
+      onError?.(errorMsg);
     } else {
       onSuccess?.();
     }
