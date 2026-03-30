@@ -43,39 +43,28 @@ export default function StripeEmbeddedCheckout({
   const [error, setError] = useState<string | null>(null);
   const [stripeError, setStripeError] = useState<string | null>(null);
 
-  // Check if Stripe is properly configured
+  // Single useEffect: Initialize Stripe and fetch clientSecret
   useEffect(() => {
+    // Step 1: Validate publishable key
     if (!isValidKey) {
       const errorMsg = 'Stripe is not configured. Please contact support.';
+      console.error('Stripe publishable key validation failed:', stripePublishableKey);
       setStripeError(errorMsg);
       setLoading(false);
       onError?.(errorMsg);
       return;
     }
 
-    // Verify Stripe loads correctly
-    stripePromise?.then((stripe) => {
-      if (!stripe) {
-        const errorMsg = 'Failed to initialize Stripe. Please refresh the page.';
-        setStripeError(errorMsg);
-        setLoading(false);
-        onError?.(errorMsg);
-      }
-    }).catch((err) => {
-      const errorMsg = 'Stripe initialization failed: ' + (err.message || 'Unknown error');
+    // Step 2: Verify stripePromise exists
+    if (!stripePromise) {
+      const errorMsg = 'Stripe initialization failed. Please refresh the page.';
       setStripeError(errorMsg);
       setLoading(false);
       onError?.(errorMsg);
-    });
-  }, [onError]);
-
-  useEffect(() => {
-    // Skip if Stripe is not configured
-    if (!isValidKey || stripeError) {
       return;
     }
 
-    // Create PaymentIntent and get clientSecret
+    // Step 3: Fetch PaymentIntent from API
     fetch('/api/payment/stripe/create-payment-intent', {
       method: 'POST',
       headers: {
@@ -87,22 +76,35 @@ export default function StripeEmbeddedCheckout({
         currency: currency.toLowerCase(),
       }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data.error) {
           setError(data.error);
           onError?.(data.error);
-        } else {
+          setLoading(false);
+        } else if (data.clientSecret) {
           setClientSecret(data.clientSecret);
+          setLoading(false);
+        } else {
+          const errorMsg = 'Invalid response from payment server';
+          setError(errorMsg);
+          onError?.(errorMsg);
+          setLoading(false);
         }
-        setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Failed to initialize payment');
-        onError?.(err.message);
+        const errorMsg = 'Failed to initialize payment: ' + (err.message || 'Unknown error');
+        console.error('PaymentIntent fetch error:', err);
+        setError(errorMsg);
+        onError?.(errorMsg);
         setLoading(false);
       });
-  }, [orderId, amount, currency, onError, stripeError]);
+  }, [orderId, amount, currency, onError]);
 
   // Show Stripe configuration error
   if (stripeError) {
