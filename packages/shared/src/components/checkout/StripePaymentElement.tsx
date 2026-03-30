@@ -133,9 +133,9 @@ export default function StripePaymentElement({
       console.log('[StripePaymentElement] Starting initialization...');
 
       // Get publishable key
-      let key = await fetchStripePublishableKey();
+      let key: string | null | undefined = await fetchStripePublishableKey();
       if (!isValidKey(key)) {
-        key = getBuildTimeKey();
+        key = getBuildTimeKey() ?? null;
       }
 
       if (!isValidKey(key)) {
