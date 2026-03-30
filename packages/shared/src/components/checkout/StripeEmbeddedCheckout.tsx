@@ -9,18 +9,11 @@ import {
 import { Loader2, AlertCircle } from 'lucide-react';
 import { StripeErrorBoundary } from './StripeErrorBoundary';
 
-// Get the publishable key and validate it
-const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-const isValidKey = stripePublishableKey && stripePublishableKey.startsWith('pk_');
+// Get the publishable key from environment
+// Note: NEXT_PUBLIC_* vars are inlined at build time by webpack
+const getStripePublishableKey = () => process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-// Initialize Stripe only if key is valid
-let stripePromise: Promise<Stripe | null> | null = null;
-if (isValidKey) {
-  stripePromise = loadStripe(stripePublishableKey);
-} else {
-  console.error('Stripe publishable key is invalid or missing:', stripePublishableKey ? 'key exists but invalid format' : 'key is empty');
-  stripePromise = null;
-}
+const isValidKey = (key: string | undefined) => key && key.startsWith('pk_');
 
 interface StripeEmbeddedCheckoutProps {
   orderId: string;
@@ -39,6 +32,7 @@ export default function StripeEmbeddedCheckout({
   onError,
   onCancel,
 }: StripeEmbeddedCheckoutProps) {
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,14 +41,18 @@ export default function StripeEmbeddedCheckout({
   // Single useEffect: Initialize Stripe and fetch clientSecret
   useEffect(() => {
     console.log('[StripeEmbeddedCheckout] Starting initialization...');
+    
+    // Step 1: Get and validate publishable key at runtime
+    const publishableKey = getStripePublishableKey();
+    const keyValid = isValidKey(publishableKey);
+    
     console.log('[StripeEmbeddedCheckout] Key validation:', {
-      hasKey: !!stripePublishableKey,
-      isValid: isValidKey,
-      keyPrefix: stripePublishableKey ? stripePublishableKey.substring(0, 15) + '...' : 'none',
+      hasKey: !!publishableKey,
+      isValid: keyValid,
+      keyPrefix: publishableKey ? publishableKey.substring(0, 15) + '...' : 'none',
     });
 
-    // Step 1: Validate publishable key
-    if (!isValidKey) {
+    if (!keyValid) {
       const errorMsg = 'Stripe is not configured. Please contact support.';
       console.error('[StripeEmbeddedCheckout] Publishable key validation failed');
       setStripeError(errorMsg);
@@ -63,15 +61,10 @@ export default function StripeEmbeddedCheckout({
       return;
     }
 
-    // Step 2: Verify stripePromise exists
-    if (!stripePromise) {
-      const errorMsg = 'Stripe initialization failed. Please refresh the page.';
-      console.error('[StripeEmbeddedCheckout] stripePromise is null');
-      setStripeError(errorMsg);
-      setLoading(false);
-      onError?.(errorMsg);
-      return;
-    }
+    // Step 2: Initialize Stripe
+    console.log('[StripeEmbeddedCheckout] Initializing Stripe...');
+    const stripe = loadStripe(publishableKey);
+    setStripePromise(stripe);
 
     console.log('[StripeEmbeddedCheckout] Fetching PaymentIntent...');
 
@@ -195,10 +188,12 @@ export default function StripeEmbeddedCheckout({
     );
   }
 
+  const publishableKey = getStripePublishableKey();
   console.log('[StripeEmbeddedCheckout] Rendering with:', {
     hasClientSecret: !!clientSecret,
     clientSecretPrefix: clientSecret.substring(0, 20) + '...',
     hasStripePromise: !!stripePromise,
+    keyValid: isValidKey(publishableKey),
   });
 
   return (
@@ -206,20 +201,22 @@ export default function StripeEmbeddedCheckout({
       {/* Debug overlay */}
       <div className="absolute top-2 right-2 bg-blue-50 border border-blue-200 rounded p-2 text-xs z-50 shadow-lg">
         <div className="font-bold mb-1">Stripe Debug:</div>
-        <div>Key: {isValidKey ? '✅' : '❌'}</div>
+        <div>Key: {isValidKey(publishableKey) ? '✅' : '❌'}</div>
         <div>Promise: {!!stripePromise ? '✅' : '❌'}</div>
         <div>Secret: {clientSecret ? '✅' : '❌'}</div>
         <div className="font-mono text-[10px]">{clientSecret?.substring(0, 25)}...</div>
       </div>
       
-      <StripeErrorBoundary>
-        <EmbeddedCheckoutProvider
-          stripe={stripePromise}
-          options={{ clientSecret }}
-        >
-          <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
-      </StripeErrorBoundary>
+      {stripePromise && (
+        <StripeErrorBoundary>
+          <EmbeddedCheckoutProvider
+            stripe={stripePromise}
+            options={{ clientSecret }}
+          >
+            <EmbeddedCheckout />
+          </EmbeddedCheckoutProvider>
+        </StripeErrorBoundary>
+      )}
     </div>
   );
 }
