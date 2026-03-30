@@ -33,7 +33,7 @@ const getBuildTimeKey = (): string | undefined => {
   return undefined;
 };
 
-const isValidKey = (key: string | undefined) => key && key.startsWith('pk_');
+const isValidKey = (key: string | null | undefined) => key && key.startsWith('pk_');
 
 interface StripeEmbeddedCheckoutProps {
   orderId: string;
@@ -67,7 +67,7 @@ export default function StripeEmbeddedCheckout({
       console.log('[StripeEmbeddedCheckout] Starting initialization...');
       
       // Step 1: Try to get publishable key from API (runtime, most reliable)
-      let key = await fetchStripePublishableKey();
+      let key: string | null | undefined = await fetchStripePublishableKey();
       
       console.log('[StripeEmbeddedCheckout] API key fetch result:', {
         hasKey: !!key,
