@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "buildCommand": "cd ../../ && pnpm run build:intl",
-  "devCommand": "cd ../../ && pnpm run dev:intl",
-  "installCommand": "cd ../../ && pnpm install",
-  "framework": "nextjs",
-  "outputDirectory": "apps/intl/.next",
-  "rootDirectory": "apps/intl"
-}
