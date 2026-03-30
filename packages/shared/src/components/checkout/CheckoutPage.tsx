@@ -9,9 +9,10 @@ import { getLocaleCurrency, formatPrice } from '@vetsphere/shared/lib/currency';
 import { Package, CreditCard, Building2, MapPin, User, Mail, Phone, Building, FileText, Truck, Shield, Check, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-// 动态导入 Stripe 嵌入式支付组件以避免 SSR 问题
-const StripeEmbeddedCheckout = dynamic(
-  () => import('./StripeEmbeddedCheckout'),
+// 动态导入 Stripe 支付组件以避免 SSR 问题
+// 使用 PaymentElement 替代 EmbeddedCheckout，更稳定且配置更简单
+const StripePaymentElement = dynamic(
+  () => import('./StripePaymentElement'),
   { ssr: false }
 );
 
@@ -161,7 +162,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
             <p className="text-gray-600 mb-6">
               Total: <span className="font-bold">{formatPrice(orderTotal, currency)}</span>
             </p>
-            <StripeEmbeddedCheckout
+            <StripePaymentElement
               orderId={orderId}
               amount={orderTotal}
               currency={currency}
