@@ -201,7 +201,7 @@ export default function StripeEmbeddedCheckout({
   });
 
   return (
-    <div className="bg-white rounded-lg">
+    <div className="bg-white rounded-lg min-h-[400px]">
       <EmbeddedCheckoutProvider
         stripe={stripePromise}
         options={{ clientSecret }}
