@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ToastContainer, useToast } from '@/components/ui';
+import DataTable, { Column, SortConfig } from '@/components/DataTable';
+import ProductFilterPanel, { ProductFilterState } from '@/components/ProductFilterPanel';
 
 interface Product {
   id: string;
@@ -12,9 +14,10 @@ interface Product {
   price: number;
   pricing_mode: 'fixed' | 'inquiry';
   stock_quantity: number;
-  status: 'draft' | 'pending_review' | 'approved' | 'rejected' | 'published' | 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Published';
+  status: string;
   supplier_id?: string;
   image_url?: string;
+  brand?: string;
   created_at: string;
   published_at?: string;
   rejection_reason?: string;
@@ -36,92 +39,86 @@ interface StatusCounts {
   rejected: number;
 }
 
-// 兼容两种状态值格式
-function normalizeStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    'Draft': 'draft',
-    'draft': 'draft',
-    'Pending': 'pending_review',
-    'pending_review': 'pending_review',
-    'Approved': 'approved',
-    'approved': 'approved',
-    'Rejected': 'rejected',
-    'rejected': 'rejected',
-    'Published': 'published',
-    'published': 'published',
-  };
-  return statusMap[status] || status;
-}
-
 const statusConfig: Record<string, { label: string; className: string }> = {
   draft: { label: '草稿', className: 'bg-slate-100 text-slate-600' },
-  Draft: { label: '草稿', className: 'bg-slate-100 text-slate-600' },
   pending_review: { label: '待审核', className: 'bg-amber-100 text-amber-600' },
-  Pending: { label: '待审核', className: 'bg-amber-100 text-amber-600' },
   approved: { label: '已通过', className: 'bg-emerald-100 text-emerald-600' },
-  Approved: { label: '已通过', className: 'bg-emerald-100 text-emerald-600' },
   rejected: { label: '已拒绝', className: 'bg-red-100 text-red-600' },
-  Rejected: { label: '已拒绝', className: 'bg-red-100 text-red-600' },
   published: { label: '已发布', className: 'bg-blue-100 text-blue-600' },
-  Published: { label: '已发布', className: 'bg-blue-100 text-blue-600' },
+  offline: { label: '已下架', className: 'bg-gray-100 text-gray-600' },
 };
 
 const PAGE_SIZE = 20;
+const MAX_BATCH_SIZE = 50;
 
 export default function AdminProductsPage() {
   const router = useRouter();
   const supabase = createClient();
-  const { success, error: showError } = useToast();
+  const { toasts, removeToast, success, error: showError } = useToast();
 
+  // Data state
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [statusCounts, setStatusCounts] = useState<StatusCounts>({
-    all: 0,
-    pending_review: 0,
-    approved: 0,
-    published: 0,
-    rejected: 0,
+    all: 0, pending_review: 0, approved: 0, published: 0, rejected: 0,
   });
-  const [offlineConfirm, setOfflineConfirm] = useState<{ productId: string; productName: string; siteCode: 'cn' | 'intl' } | null>(null);
 
-  // 加载状态统计（只查数量，很快）
+  // Filter & search state
+  const [filter, setFilter] = useState('all');
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [advancedFilters, setAdvancedFilters] = useState<ProductFilterState>({
+    status: '', supplier_id: '', site_code: '',
+  });
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+
+  // Selection state
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+
+  // Sort state
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+
+  // Modal state
+  const [rejectModal, setRejectModal] = useState<{ product: Product; reason: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
+  const [offlineConfirm, setOfflineConfirm] = useState<{ product: Product; siteCode: 'cn' | 'intl' } | null>(null);
+  const [bulkConfirm, setBulkConfirm] = useState<{ action: string; siteCodes?: ('cn' | 'intl')[] } | null>(null);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchKeyword);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchKeyword]);
+
+  // Load status counts
   const loadStatusCounts = useCallback(async () => {
     try {
-      const counts: StatusCounts = {
-        all: 0,
-        pending_review: 0,
-        approved: 0,
-        published: 0,
-        rejected: 0,
-      };
-
-      // 并行查询各状态数量
       const [allRes, pendingRes, approvedRes, publishedRes, rejectedRes] = await Promise.all([
-        supabase.from('products').select('id', { count: 'exact', head: true }),
-        supabase.from('products').select('id', { count: 'exact', head: true }).in('status', ['pending_review', 'Pending']),
-        supabase.from('products').select('id', { count: 'exact', head: true }).in('status', ['approved', 'Approved']),
-        supabase.from('products').select('id', { count: 'exact', head: true }).in('status', ['published', 'Published']),
-        supabase.from('products').select('id', { count: 'exact', head: true }).in('status', ['rejected', 'Rejected']),
+        supabase.from('products').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+        supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'pending_review').is('deleted_at', null),
+        supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'approved').is('deleted_at', null),
+        supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'published').is('deleted_at', null),
+        supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'rejected').is('deleted_at', null),
       ]);
 
-      counts.all = allRes.count || 0;
-      counts.pending_review = pendingRes.count || 0;
-      counts.approved = approvedRes.count || 0;
-      counts.published = publishedRes.count || 0;
-      counts.rejected = rejectedRes.count || 0;
-
-      setStatusCounts(counts);
+      setStatusCounts({
+        all: allRes.count || 0,
+        pending_review: pendingRes.count || 0,
+        approved: approvedRes.count || 0,
+        published: publishedRes.count || 0,
+        rejected: rejectedRes.count || 0,
+      });
     } catch (error) {
       console.error('Failed to load counts:', error);
     }
   }, [supabase]);
 
-  // 加载产品列表（分页）
+  // Load products
   const loadProducts = useCallback(async (pageNum: number = 1) => {
     setLoading(true);
     try {
@@ -132,12 +129,33 @@ export default function AdminProductsPage() {
           supplier:suppliers(company_name),
           site_views:product_site_views(site_code, publish_status, is_enabled)
         `, { count: 'exact' })
-        .order('created_at', { ascending: false })
+        .is('deleted_at', null)
         .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1);
 
+      // Status filter (from stat buttons)
       if (filter !== 'all') {
-        const normalizedFilter = filter === 'pending_review' ? ['pending_review', 'Pending'] : [filter];
-        query = query.in('status', normalizedFilter);
+        query = query.eq('status', filter);
+      }
+
+      // Advanced filters
+      if (advancedFilters.status) {
+        query = query.eq('status', advancedFilters.status);
+      }
+      if (advancedFilters.site_code) {
+        query = query.contains('published_sites', { [advancedFilters.site_code]: true });
+      }
+
+      // Search
+      if (debouncedSearch.trim()) {
+        const keyword = debouncedSearch.trim();
+        query = query.or(`name.ilike.%${keyword}%,sku.ilike.%${keyword}%,brand.ilike.%${keyword}%`);
+      }
+
+      // Sort
+      if (sortConfig) {
+        query = query.order(sortConfig.key, { ascending: sortConfig.direction === 'asc' });
+      } else {
+        query = query.order('created_at', { ascending: false });
       }
 
       const { data, error, count } = await query;
@@ -150,260 +168,332 @@ export default function AdminProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, filter]);
+  }, [supabase, filter, advancedFilters, debouncedSearch, sortConfig, showError]);
 
-  // 初始化加载
+  // Initialize
   useEffect(() => {
     loadStatusCounts();
     setPage(1);
-    loadProducts(1);
-  }, [filter]);
+    setSelectedKeys(new Set());
+  }, [filter, advancedFilters, debouncedSearch]);
+
+  useEffect(() => {
+    loadProducts(page);
+  }, [page, loadProducts]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  // 刷新当前页
-  const refreshCurrentPage = useCallback(() => {
+  // Refresh
+  const refresh = useCallback(() => {
     loadStatusCounts();
     loadProducts(page);
+    setSelectedKeys(new Set());
   }, [page, loadProducts, loadStatusCounts]);
+
+  // === Action Handlers ===
 
   const handleApprove = async (productId: string) => {
     try {
       const { error } = await supabase
         .from('products')
-        .update({
-          status: 'approved',
-          rejection_reason: null,
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: 'approved', rejection_reason: null, updated_at: new Date().toISOString() })
         .eq('id', productId);
-
       if (error) throw error;
-      refreshCurrentPage();
+      refresh();
       success('产品已通过审核');
     } catch (error) {
-      console.error('Failed to approve:', error);
       showError('操作失败');
     }
   };
 
-  const handleReject = async (productId: string) => {
-    if (!rejectionReason.trim()) {
+  const handleReject = async () => {
+    if (!rejectModal?.reason.trim()) {
       showError('请输入拒绝原因');
       return;
     }
     try {
       const { error } = await supabase
         .from('products')
-        .update({
-          status: 'rejected',
-          rejection_reason: rejectionReason,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', productId);
-
+        .update({ status: 'rejected', rejection_reason: rejectModal.reason, updated_at: new Date().toISOString() })
+        .eq('id', rejectModal.product.id);
       if (error) throw error;
-      setRejectionReason('');
-      setSelectedProduct(null);
-      refreshCurrentPage();
+      setRejectModal(null);
+      refresh();
       success('产品已拒绝');
     } catch (error) {
-      console.error('Failed to reject:', error);
       showError('操作失败');
     }
   };
 
-  const handlePublishToSite = async (productId: string, siteCode: 'cn' | 'intl') => {
+  const handlePublish = async (productId: string, siteCode: 'cn' | 'intl') => {
     try {
-      // Check if site view exists
-      const { data: existing } = await supabase
-        .from('product_site_views')
-        .select('id')
-        .eq('product_id', productId)
-        .eq('site_code', siteCode)
-        .single();
+      await supabase.from('product_site_views').upsert({
+        product_id: productId, site_code: siteCode,
+        publish_status: 'published', is_enabled: true, published_at: new Date().toISOString()
+      }, { onConflict: 'product_id,site_code' });
 
-      if (existing) {
-        // Update existing site view
-        const { error } = await supabase
-          .from('product_site_views')
-          .update({
-            publish_status: 'published',
-            is_enabled: true,
-            published_at: new Date().toISOString()
-          })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        // Create new site view
-        const { error } = await supabase
-          .from('product_site_views')
-          .insert({
-            product_id: productId,
-            site_code: siteCode,
-            publish_status: 'published',
-            is_enabled: true,
-            published_at: new Date().toISOString()
-          });
-        if (error) throw error;
-      }
-
-      // Update product status to published
-      const { error: productError } = await supabase
-        .from('products')
-        .update({
-          status: 'published',
-          published_at: new Date().toISOString()
-        })
+      await supabase.from('products')
+        .update({ status: 'published', published_at: new Date().toISOString() })
         .eq('id', productId);
 
-      if (productError) throw productError;
-
-      refreshCurrentPage();
-      success(`已发布到 ${siteCode === 'cn' ? '中国站' : '国际站'}`);
+      refresh();
+      success(`已发布到${siteCode === 'cn' ? '中国站' : '国际站'}`);
     } catch (error) {
-      console.error('Failed to publish:', error);
       showError('发布失败');
     }
   };
 
-  const handleOfflineFromSite = async (productId: string, siteCode: 'cn' | 'intl') => {
-    const siteName = siteCode === 'cn' ? '中国站' : '国际站';
-    const productIndex = products.findIndex(p => p.id === productId);
-    const product = products[productIndex];
-
-    if (productIndex === -1) return;
-
-    // Optimistic update - 立即更新 UI
-    const updatedProducts = [...products];
-    const currentProduct = { ...updatedProducts[productIndex] };
-    const currentSiteViews = currentProduct.site_views ? [...currentProduct.site_views] : [];
-
-    // 找到并更新该站点的状态
-    const siteViewIndex = currentSiteViews.findIndex(sv => sv.site_code === siteCode);
-    if (siteViewIndex >= 0) {
-      currentSiteViews[siteViewIndex] = {
-        ...currentSiteViews[siteViewIndex],
-        publish_status: 'offline',
-        is_enabled: false
-      };
-    } else {
-      // 如果没有 site_view 记录，添加一个
-      currentSiteViews.push({
-        site_code: siteCode,
-        publish_status: 'offline',
-        is_enabled: false
-      });
-    }
-    currentProduct.site_views = currentSiteViews;
-    updatedProducts[productIndex] = currentProduct;
-    setProducts(updatedProducts);
+  const handleOffline = async () => {
+    if (!offlineConfirm) return;
+    const { product, siteCode } = offlineConfirm;
 
     try {
-      // 更新数据库
-      const { error } = await supabase
-        .from('product_site_views')
-        .update({
-          publish_status: 'offline',
-          is_enabled: false
-        })
-        .eq('product_id', productId)
-        .eq('site_code', siteCode);
+      await supabase.from('product_site_views')
+        .update({ publish_status: 'offline', is_enabled: false })
+        .eq('product_id', product.id).eq('site_code', siteCode);
 
-      if (error) throw error;
-
-      // 检查是否需要更新产品状态
-      const { data: otherSiteViews } = await supabase
-        .from('product_site_views')
-        .select('publish_status')
-        .eq('product_id', productId)
-        .neq('site_code', siteCode);
-
-      const hasOtherPublished = otherSiteViews?.some(
-        sv => sv.publish_status === 'published' || sv.publish_status === 'Published'
-      );
-
-      if (!hasOtherPublished) {
-        const { error: statusError } = await supabase
-          .from('products')
-          .update({
-            status: 'rejected',
-            rejection_reason: `已从 ${siteName} 下架`,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', productId);
-
-        if (statusError) throw statusError;
-
-        // 更新本地产品状态
-        const finalProducts = [...products];
-        finalProducts[productIndex] = {
-          ...finalProducts[productIndex],
-          status: 'rejected' as const
-        };
-        setProducts(finalProducts);
-      }
-
-      // 只更新统计数据
-      loadStatusCounts();
-      success(`已从 ${siteName} 下架`);
+      refresh();
+      success(`已从${siteCode === 'cn' ? '中国站' : '国际站'}下架`);
     } catch (error) {
-      console.error('Failed to offline:', error);
-      // 回滚 UI
-      setProducts(products);
-      showError('下架失败，请重试');
+      showError('下架失败');
+    }
+    setOfflineConfirm(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+
+    try {
+      const res = await fetch(`/api/v1/admin/products/${deleteConfirm.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setDeleteConfirm(null);
+      refresh();
+      success('产品已删除');
+    } catch (error) {
+      showError('删除失败：' + (error as Error).message);
     }
   };
 
-  // Helper to check if product is published to a site
-  // 如果产品状态是 published，但 site_views 为空，默认认为已发布到两个站点
-  const isPublishedToSite = useCallback((product: Product, siteCode: string): boolean => {
-    // 如果有 site_views 数据，检查具体站点状态
-    if (product.site_views && product.site_views.length > 0) {
-      return product.site_views.some(sv =>
-        sv.site_code === siteCode &&
-        (sv.publish_status === 'published' || sv.publish_status === 'Published')
-      );
-    }
-    // 如果产品状态是 published 但没有 site_views 数据，默认返回 true（认为已发布）
-    if (product.status === 'published' || product.status === 'Published') {
-      return true;
-    }
-    return false;
-  }, []);
+  // === Bulk Actions ===
 
-  // 分页切换
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setPage(newPage);
-      loadProducts(newPage);
+  const handleBulkAction = async () => {
+    if (!bulkConfirm) return;
+    const { action, siteCodes } = bulkConfirm;
+
+    if (selectedKeys.size === 0) {
+      showError('请选择产品');
+      return;
+    }
+    if (selectedKeys.size > MAX_BATCH_SIZE) {
+      showError(`最多选择${MAX_BATCH_SIZE}条产品`);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/v1/admin/products/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          product_ids: Array.from(selectedKeys),
+          site_codes: siteCodes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setBulkConfirm(null);
+      refresh();
+      success(`成功${action === 'approve' ? '通过' : action === 'reject' ? '拒绝' : action === 'publish' ? '发布' : action === 'offline' ? '下架' : '删除'} ${data.affected} 条产品`);
+    } catch (error) {
+      showError('操作失败：' + (error as Error).message);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  // === Export ===
+
+  const handleExport = () => {
+    const params = new URLSearchParams();
+    if (filter !== 'all') params.set('status', filter);
+    if (debouncedSearch) params.set('search', debouncedSearch);
+
+    window.open(`/api/v1/admin/products/export?${params.toString()}`, '_blank');
+  };
+
+  // === Helper Functions ===
+
+  const isPublishedToSite = (product: Product, siteCode: string): boolean => {
+    if (product.site_views?.length) {
+      return product.site_views.some(sv => sv.site_code === siteCode && sv.publish_status === 'published');
+    }
+    return product.status === 'published';
+  };
+
+  // === Table Columns ===
+
+  const columns: Column<Product>[] = useMemo(() => [
+    {
+      key: 'name',
+      header: '产品',
+      render: (_, product) => (
+        <div className="flex items-center gap-3">
+          {product.image_url ? (
+            <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+          <div>
+            <p className="font-medium text-slate-900">{product.name}</p>
+            <p className="text-xs text-slate-500">{product.brand ? `${product.brand} · ` : ''}SKU: {product.sku || '-'}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'supplier',
+      header: '供应商',
+      hideOnMobile: true,
+      render: (_, product) => product.supplier?.company_name || '-',
+    },
+    {
+      key: 'price',
+      header: '价格/库存',
+      render: (_, product) => (
+        <div>
+          {product.pricing_mode === 'fixed' ? (
+            <span className="font-medium">¥{product.price?.toLocaleString()}</span>
+          ) : (
+            <span className="text-slate-500">询价</span>
+          )}
+          <p className="text-xs text-slate-400">库存: {product.stock_quantity ?? '-'}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: '状态',
+      render: (_, product) => (
+        <div>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[product.status]?.className || 'bg-gray-100 text-gray-600'}`}>
+            {statusConfig[product.status]?.label || product.status}
+          </span>
+          {product.rejection_reason && (
+            <p className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={product.rejection_reason}>
+              {product.rejection_reason}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'site_views',
+      header: '发布站点',
+      hideOnMobile: true,
+      render: (_, product) => (
+        <div className="flex gap-1">
+          <span className={`px-2 py-1 text-xs rounded-full ${isPublishedToSite(product, 'cn') ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+            中国站
+          </span>
+          <span className={`px-2 py-1 text-xs rounded-full ${isPublishedToSite(product, 'intl') ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-400'}`}>
+            国际站
+          </span>
+        </div>
+      ),
+    },
+  ], []);
+
+  // === Row Actions ===
+
+  const renderRowActions = (product: Product) => (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => router.push(`/products/${product.id}`)}
+        className="px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-md"
+      >
+        编辑
+      </button>
+
+      {product.status === 'pending_review' && (
+        <>
+          <button onClick={() => handleApprove(product.id)} className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-md">
+            通过
+          </button>
+          <button onClick={() => setRejectModal({ product, reason: '' })} className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md">
+            拒绝
+          </button>
+        </>
+      )}
+
+      {product.status === 'approved' && (
+        <>
+          <button onClick={() => handlePublish(product.id, 'cn')} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md">
+            发布CN
+          </button>
+          <button onClick={() => handlePublish(product.id, 'intl')} className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-md">
+            发布INTL
+          </button>
+        </>
+      )}
+
+      {product.status === 'published' && (
+        <>
+          {isPublishedToSite(product, 'cn') ? (
+            <button onClick={() => setOfflineConfirm({ product, siteCode: 'cn' })} className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-md">
+              下架CN
+            </button>
+          ) : (
+            <button onClick={() => handlePublish(product.id, 'cn')} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md">
+              发布CN
+            </button>
+          )}
+          {isPublishedToSite(product, 'intl') ? (
+            <button onClick={() => setOfflineConfirm({ product, siteCode: 'intl' })} className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-md">
+              下架INTL
+            </button>
+          ) : (
+            <button onClick={() => handlePublish(product.id, 'intl')} className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-md">
+              发布INTL
+            </button>
+          )}
+        </>
+      )}
+
+      <button onClick={() => setDeleteConfirm(product)} className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md">
+        删除
+      </button>
+    </div>
+  );
+
+  // === Render ===
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <ToastContainer />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       <div className="max-w-[1600px] mx-auto p-6">
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">产品管理</h1>
-            <p className="text-slate-500 mt-1">管理所有产品，包括审核、发布和上下架</p>
+            <p className="text-slate-500 mt-1">管理所有产品，包括审核、发布、下架和删除</p>
           </div>
-          <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700">
-            添加产品
-          </button>
+          <div className="flex gap-2">
+            <button onClick={handleExport} className="px-4 py-2 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
+              导出 CSV
+            </button>
+            <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+              添加产品
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           {[
             { key: 'all', label: '全部', count: statusCounts.all },
             { key: 'pending_review', label: '待审核', count: statusCounts.pending_review },
@@ -413,167 +503,90 @@ export default function AdminProductsPage() {
           ].map((stat) => (
             <button
               key={stat.key}
-              onClick={() => setFilter(stat.key)}
-              className={`p-4 rounded-xl border text-left transition-all ${filter === stat.key ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'}`}
+              onClick={() => { setFilter(stat.key); setSelectedKeys(new Set()); }}
+              className={`p-4 rounded-xl border text-left transition-all ${filter === stat.key ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-slate-200 bg-white hover:border-blue-300'}`}
             >
-              <p className="text-2xl font-bold">{stat.count}</p>
+              <p className="text-2xl font-bold text-slate-900">{stat.count}</p>
               <p className="text-sm text-slate-500">{stat.label}</p>
             </button>
           ))}
         </div>
 
-        {/* Products Table */}
+        {/* Search & Filter */}
+        <div className="flex gap-3 mb-4">
+          <div className="relative flex-1 max-w-md">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="搜索产品名称、SKU、品牌..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <ProductFilterPanel
+            filters={advancedFilters}
+            onFiltersChange={setAdvancedFilters}
+            onReset={() => setAdvancedFilters({ status: '', supplier_id: '', site_code: '' })}
+            isOpen={filterPanelOpen}
+            onToggle={() => setFilterPanelOpen(!filterPanelOpen)}
+          />
+        </div>
+
+        {/* Bulk Action Bar */}
+        {selectedKeys.size > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-4">
+            <span className="text-sm font-medium text-blue-800">
+              已选择 <strong>{selectedKeys.size}</strong> 条产品
+            </span>
+            <div className="flex gap-2">
+              {filter === 'pending_review' && (
+                <>
+                  <button onClick={() => setBulkConfirm({ action: 'approve' })} className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700">
+                    批量通过
+                  </button>
+                  <button onClick={() => setBulkConfirm({ action: 'reject' })} className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700">
+                    批量拒绝
+                  </button>
+                </>
+              )}
+              {(filter === 'approved' || filter === 'all') && (
+                <button onClick={() => setBulkConfirm({ action: 'publish', siteCodes: ['cn', 'intl'] })} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+                  批量发布
+                </button>
+              )}
+              {filter === 'published' && (
+                <button onClick={() => setBulkConfirm({ action: 'offline', siteCodes: ['cn', 'intl'] })} className="px-3 py-1.5 bg-slate-600 text-white text-sm rounded-md hover:bg-slate-700">
+                  批量下架
+                </button>
+              )}
+              <button onClick={() => setBulkConfirm({ action: 'delete' })} className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700">
+                批量删除
+              </button>
+              <button onClick={() => setSelectedKeys(new Set())} className="px-3 py-1.5 text-slate-600 text-sm rounded-md hover:bg-slate-100">
+                取消选择
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Data Table */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase text-slate-700">产品</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase text-slate-700">供应商</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase text-slate-700">价格/库存</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase text-slate-700">状态</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase text-slate-700">发布站点</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase text-slate-700">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-lg object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-slate-200"></div>
-                      )}
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-xs text-slate-500">SKU: {product.sku || '-'}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm">{product.supplier?.company_name || '-'}</td>
-                  <td className="px-6 py-4">
-                    <div>
-                      {product.pricing_mode === 'fixed' ? (
-                        <span>¥{product.price?.toLocaleString()}</span>
-                      ) : (
-                        <span className="text-slate-500">询价</span>
-                      )}
-                      <p className="text-xs text-slate-400">库存: {product.stock_quantity ?? '-'}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs ${statusConfig[product.status]?.className}`}>
-                      {statusConfig[product.status]?.label}
-                    </span>
-                    {product.rejection_reason && (
-                      <p className="text-xs text-red-500 mt-1">{product.rejection_reason}</p>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-1">
-                      {isPublishedToSite(product, 'cn') ? (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full">中国站</span>
-                      ) : (
-                        <span className="px-2 py-1 bg-slate-100 text-slate-400 text-xs rounded-full">中国站</span>
-                      )}
-                      {isPublishedToSite(product, 'intl') ? (
-                        <span className="px-2 py-1 bg-purple-100 text-purple-600 text-xs rounded-full">国际站</span>
-                      ) : (
-                        <span className="px-2 py-1 bg-slate-100 text-slate-400 text-xs rounded-full">国际站</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* 编辑/详情按钮 - 所有商品都显示 */}
-                      <button 
-                        onClick={() => router.push(`/products/${product.id}`)}
-                        className="px-4 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors shadow-sm"
-                        title="查看/编辑产品详情"
-                      >
-                        编辑
-                      </button>
-                      
-                      {/* 待审核状态 - 显示审核按钮 */}
-                      {(product.status === 'pending_review' || product.status === 'Pending') && (
-                        <>
-                          <button 
-                            onClick={() => handleApprove(product.id)}
-                            className="px-4 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors shadow-sm"
-                            title="批准产品"
-                          >
-                            ✓ 通过
-                          </button>
-                          <button 
-                            onClick={() => setSelectedProduct(product)}
-                            className="px-4 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm"
-                            title="拒绝产品"
-                          >
-                            ✕ 拒绝
-                          </button>
-                        </>
-                      )}
-                      
-                      {/* 已通过状态 - 显示发布按钮 */}
-                      {product.status === 'approved' && (
-                        <>
-                          <button 
-                            onClick={() => handlePublishToSite(product.id, 'cn')}
-                            className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm"
-                          >
-                            发布中国站
-                          </button>
-                          <button 
-                            onClick={() => handlePublishToSite(product.id, 'intl')}
-                            className="px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors shadow-sm"
-                          >
-                            发布国际站
-                          </button>
-                        </>
-                      )}
-                      
-                      {/* 已发布状态 - 显示上下架按钮 */}
-                      {(product.status === 'published' || product.status === 'Published') && (
-                        <>
-                          {!isPublishedToSite(product, 'cn') ? (
-                            <button
-                              onClick={() => handlePublishToSite(product.id, 'cn')}
-                              className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm"
-                            >
-                              发布中国站
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setOfflineConfirm({ productId: product.id, productName: product.name, siteCode: 'cn' })}
-                              className="px-4 py-1.5 bg-slate-500 text-white text-sm font-medium rounded-md hover:bg-slate-600 transition-colors shadow-sm"
-                            >
-                              下架中国站
-                            </button>
-                          )}
-                          {!isPublishedToSite(product, 'intl') ? (
-                            <button
-                              onClick={() => handlePublishToSite(product.id, 'intl')}
-                              className="px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors shadow-sm"
-                            >
-                              发布国际站
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setOfflineConfirm({ productId: product.id, productName: product.name, siteCode: 'intl' })}
-                              className="px-4 py-1.5 bg-slate-500 text-white text-sm font-medium rounded-md hover:bg-slate-600 transition-colors shadow-sm"
-                            >
-                              下架国际站
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={columns}
+            data={products}
+            keyField="id"
+            selectable
+            selectedKeys={selectedKeys}
+            onSelectionChange={setSelectedKeys}
+            sortConfig={sortConfig}
+            onSortChange={setSortConfig}
+            rowActions={renderRowActions}
+            loading={loading}
+            emptyMessage="暂无产品数据"
+          />
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -582,41 +595,11 @@ export default function AdminProductsPage() {
                 显示 {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, totalCount)} 条，共 {totalCount} 条
               </p>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={page <= 1}
-                  className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100"
-                >
+                <button onClick={() => setPage(p => p - 1)} disabled={page <= 1} className="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-50 hover:bg-slate-100">
                   上一页
                 </button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum: number;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (page <= 3) {
-                      pageNum = i + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = page - 2 + i;
-                    }
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => handlePageChange(pageNum)}
-                        className={`w-8 h-8 text-sm rounded-lg ${page === pageNum ? 'bg-blue-600 text-white' : 'border border-slate-200 hover:bg-slate-100'}`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={page >= totalPages}
-                  className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100"
-                >
+                <span className="text-sm text-slate-600">第 {page} / {totalPages} 页</span>
+                <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages} className="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-50 hover:bg-slate-100">
                   下一页
                 </button>
               </div>
@@ -626,37 +609,49 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Reject Modal */}
-      {selectedProduct && (
+      {rejectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-bold mb-4">拒绝产品</h3>
-            <p className="text-sm text-slate-600 mb-4">产品: {selectedProduct.name}</p>
+            <p className="text-sm text-slate-600 mb-4">产品: {rejectModal.product.name}</p>
             <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
+              value={rejectModal.reason}
+              onChange={(e) => setRejectModal({ ...rejectModal, reason: e.target.value })}
               placeholder="请输入拒绝原因..."
               className="w-full p-3 border border-slate-200 rounded-lg mb-4"
               rows={4}
             />
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => handleReject(selectedProduct.id)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                确认拒绝
-              </button>
+              <button onClick={() => setRejectModal(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">取消</button>
+              <button onClick={handleReject} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">确认拒绝</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Offline Confirmation Modal */}
+      {/* Delete Confirm */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">确认删除</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-2">确定要删除以下产品吗？此操作不可恢复。</p>
+            <p className="text-sm font-medium text-slate-800 mb-6">产品：{deleteConfirm.name}</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">取消</button>
+              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">确认删除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Offline Confirm */}
       {offlineConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
@@ -671,23 +666,28 @@ export default function AdminProductsPage() {
             <p className="text-sm text-slate-600 mb-2">
               确定要从 <strong>{offlineConfirm.siteCode === 'cn' ? '中国站' : '国际站'}</strong> 下架该商品吗？
             </p>
-            <p className="text-sm font-medium text-slate-800 mb-6">商品：{offlineConfirm.productName}</p>
+            <p className="text-sm font-medium text-slate-800 mb-6">商品：{offlineConfirm.product.name}</p>
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setOfflineConfirm(null)}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => {
-                  handleOfflineFromSite(offlineConfirm.productId, offlineConfirm.siteCode);
-                  setOfflineConfirm(null);
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                确认下架
-              </button>
+              <button onClick={() => setOfflineConfirm(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">取消</button>
+              <button onClick={handleOffline} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">确认下架</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Action Confirm */}
+      {bulkConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">
+              确认{bulkConfirm.action === 'approve' ? '批量通过' : bulkConfirm.action === 'reject' ? '批量拒绝' : bulkConfirm.action === 'publish' ? '批量发布' : bulkConfirm.action === 'offline' ? '批量下架' : '批量删除'}
+            </h3>
+            <p className="text-sm text-slate-600 mb-6">
+              将对 <strong className="text-slate-900">{selectedKeys.size}</strong> 条产品执行此操作，确定继续吗？
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setBulkConfirm(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">取消</button>
+              <button onClick={handleBulkAction} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">确认</button>
             </div>
           </div>
         </div>
