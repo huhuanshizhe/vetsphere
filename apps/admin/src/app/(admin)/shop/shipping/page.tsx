@@ -58,9 +58,13 @@ interface Rate {
   price: number;
   billing_type: string;
   base_fee: number;
+  per_unit_fee?: number;
+  weight_unit?: string;
+  free_shipping_threshold?: number | null;
   estimated_days_min: number | null;
   estimated_days_max: number | null;
   is_active: boolean;
+  display_order?: number;
   zone?: Zone;
   method?: Method;
 }
