@@ -208,54 +208,93 @@ export default function IntlShopPageClient() {
         </div>
 
         <div className="relative max-w-[1600px] mx-auto px-4 md:px-8 lg:px-16">
-          <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 backdrop-blur-sm mb-6">
-              <Building2 className="w-4 h-4 text-blue-400" />
-              <span className="text-sm font-bold text-blue-300 uppercase tracking-widest">{s.b2bBadge}</span>
-            </div>
-
-            <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
-              {s.heroTitle} <br />
-              <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-                {s.heroTitleHighlight}
-              </span>
-            </h1>
-
-            <p className="text-xl text-slate-300 mb-8 max-w-3xl leading-relaxed">
-              {s.heroSubtitle}
-            </p>
-
-            {/* Search Bar */}
-            <div className="relative max-w-2xl">
-              <input
-                type="text"
-                placeholder={s.searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-14 pr-6 py-5 rounded-2xl border border-slate-600 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-lg bg-white/95 backdrop-blur-sm shadow-2xl"
-              />
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
-            </div>
-
-            {/* Quick Stats */}
-            <div className="flex flex-wrap gap-8 mt-10 pt-8 border-t border-slate-700">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                  <Package className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{total}+</p>
-                  <p className="text-sm text-slate-400">{s.productsCount}</p>
-                </div>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <div className="max-w-xl">
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 backdrop-blur-sm mb-6">
+                <Building2 className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-bold text-blue-300 uppercase tracking-widest">{s.b2bBadge}</span>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                  <Tag className="w-6 h-6 text-purple-400" />
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-tight">
+                {s.heroTitle} <br />
+                <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                  {s.heroTitleHighlight}
+                </span>
+              </h1>
+
+              <p className="text-lg md:text-xl text-slate-300 mb-8 leading-relaxed">
+                {s.heroSubtitle}
+              </p>
+
+              {/* Search Bar */}
+              <div className="relative max-w-lg">
+                <input
+                  type="text"
+                  placeholder={s.searchPlaceholder}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-14 pr-6 py-4 md:py-5 rounded-2xl border border-slate-600 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-lg bg-white/95 backdrop-blur-sm shadow-2xl"
+                />
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
+              </div>
+
+              {/* Quick Stats */}
+              <div className="flex flex-wrap gap-6 md:gap-8 mt-8 pt-6 border-t border-slate-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                    <Package className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{total}+</p>
+                    <p className="text-sm text-slate-400">{s.productsCount}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{categories.length}+</p>
-                  <p className="text-sm text-slate-400">{s.categoriesCount}</p>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                    <Tag className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{categories.length}+</p>
+                    <p className="text-sm text-slate-400">{s.categoriesCount}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Image */}
+            <div className="hidden lg:block relative">
+              <div className="relative">
+                {/* Main Image Container */}
+                <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl shadow-blue-500/20 border border-white/10">
+                  <img
+                    src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&h=400&fit=crop&q=80"
+                    alt="Veterinary Orthopedic Surgery Equipment"
+                    className="w-full h-auto object-cover"
+                  />
+                  {/* Overlay gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent" />
+                </div>
+
+                {/* Floating Badge */}
+                <div className="absolute -bottom-4 -left-4 z-20 bg-white rounded-2xl shadow-xl p-4 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center">
+                    <Package className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Premium Quality</p>
+                    <p className="text-xs text-slate-500">Veterinary Equipment</p>
+                  </div>
+                </div>
+
+                {/* Secondary Floating Card */}
+                <div className="absolute -top-4 -right-4 z-20 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-bold text-slate-700">Global Shipping</span>
+                  </div>
+                  <p className="text-xs text-slate-500">50+ Countries</p>
                 </div>
               </div>
             </div>
@@ -296,6 +335,7 @@ export default function IntlShopPageClient() {
                     recommendation_reason: product.recommendation_reason,
                     cover_image_url: product.cover_image_url,
                     brand: product.brand,
+                    has_variants: product.has_variants,
                     price_min: product.price_min,
                     price_max: product.price_max,
                     sku_price_usd_min: product.sku_price_usd_min,
@@ -422,6 +462,7 @@ export default function IntlShopPageClient() {
                       recommendation_reason: product.recommendation_reason,
                       cover_image_url: product.cover_image_url,
                       brand: product.brand,
+                      has_variants: product.has_variants,
                       price_min: product.price_min,
                       price_max: product.price_max,
                       sku_price_usd_min: product.sku_price_usd_min,

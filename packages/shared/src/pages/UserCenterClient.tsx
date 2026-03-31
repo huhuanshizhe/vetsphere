@@ -5,14 +5,16 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNotification } from '../context/NotificationContext';
+import { useWishlist } from '../context/WishlistContext';
 import { api } from '../services/api';
 import { Order, CourseEnrollment } from '../types';
 import { RefundRequestModal } from '../components/RefundRequestModal';
 import Link from 'next/link';
-import { ShieldCheck, Stethoscope, ArrowRight } from 'lucide-react';
+import { WishlistPage } from '../components/WishlistPage';
+import { ShieldCheck, Stethoscope, ArrowRight, ShoppingCart, Trash2, ExternalLink } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
 
-type TabType = 'overview' | 'profile' | 'orders' | 'courses' | 'points' | 'settings';
+type TabType = 'overview' | 'profile' | 'orders' | 'courses' | 'wishlist' | 'points' | 'settings';
 
 const UserCenterClient: React.FC = () => {
   const { user, logout, isAuthenticated, updateUser, loading: authLoading, canAccessDoctorWorkspace, doctorPrivilegeStatus } = useAuth();
@@ -25,7 +27,7 @@ const UserCenterClient: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const tabParam = searchParams?.get('tab');
-    const validTabs: TabType[] = ['overview', 'profile', 'orders', 'courses', 'points', 'settings'];
+    const validTabs: TabType[] = ['overview', 'profile', 'orders', 'courses', 'wishlist', 'points', 'settings'];
     if (tabParam && validTabs.includes(tabParam as TabType)) {
       return tabParam as TabType;
     }
@@ -39,6 +41,9 @@ const UserCenterClient: React.FC = () => {
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [learningPlan, setLearningPlan] = useState<any[]>([]);
+
+  // Use global WishlistContext for wishlist state
+  const { wishlist, isLoading: wishlistLoading, removeFromWishlist: globalRemoveFromWishlist, refreshWishlist } = useWishlist();
 
   // Profile edit state
   const [isEditing, setIsEditing] = useState(false);
@@ -124,6 +129,13 @@ const UserCenterClient: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Load wishlist when tab changes to wishlist - use global context
+  useEffect(() => {
+    if (activeTab === 'wishlist' && user?.id && isAuthenticated) {
+      refreshWishlist();
+    }
+  }, [activeTab, user?.id, isAuthenticated, refreshWishlist]);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -267,6 +279,7 @@ const UserCenterClient: React.FC = () => {
     { id: 'profile', label: t.userCenter.personalInfo, icon: '👤' },
     { id: 'courses', label: t.userCenter.myCourses, icon: '📚' },
     { id: 'orders', label: t.userCenter.myOrders, icon: '📦' },
+    { id: 'wishlist', label: t.userCenter.myWishlist || 'My Wishlist', icon: '💝' },
     { id: 'points', label: t.userCenter.pointsHub || t.userCenter.pointsRecord, icon: '⭐' },
     { id: 'settings', label: t.userCenter.accountSettings, icon: '⚙️' }
   ];
@@ -917,6 +930,46 @@ const UserCenterClient: React.FC = () => {
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* Wishlist Tab */}
+              {activeTab === 'wishlist' && (
+                <WishlistPage
+                  wishlist={wishlist}
+                  isLoading={wishlistLoading}
+                  locale={locale || 'en'}
+                  onRemove={globalRemoveFromWishlist}
+                  translations={{
+                    myWishlist: t.userCenter.myWishlist || 'My Wishlist',
+                    itemsSaved: 'saved',
+                    browseEquipment: t.userCenter.browseEquipment || 'Browse Equipment',
+                    empty: t.wishlist?.empty || 'Your wishlist is empty',
+                    emptyDesc: t.wishlist?.emptyDesc || 'Save items you love by clicking the heart icon on any product.',
+                    gridView: 'Grid',
+                    listView: 'List',
+                    sortBy: 'Sort by',
+                    dateAdded: 'Date Added',
+                    priceHighLow: 'Price: High to Low',
+                    priceLowHigh: 'Price: Low to High',
+                    nameAZ: 'Name: A-Z',
+                    inStock: 'In Stock',
+                    outOfStock: 'Out of Stock',
+                    lowStock: 'Low Stock',
+                    addToCart: 'Add to Cart',
+                    viewDetails: 'View',
+                    removeFromWishlist: t.wishlist?.remove || 'Remove from wishlist',
+                    shareWishlist: 'Share',
+                    copyLink: 'Copy Link',
+                    linkCopied: 'Copied!',
+                    selectAll: 'Select All',
+                    selected: 'selected',
+                    deleteSelected: 'Delete',
+                    addSelectedToCart: 'Add to Cart',
+                    noItemsSelected: 'No items selected',
+                    discount: 'OFF',
+                    contactForPrice: t.productDetail?.contactForPricing || 'Contact for Price',
+                  }}
+                />
               )}
 
               {/* Points Tab */}

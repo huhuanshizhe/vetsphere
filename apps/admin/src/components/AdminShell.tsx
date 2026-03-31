@@ -53,6 +53,9 @@ const AdminShell: React.FC<AdminShellProps> = ({
 
   // 权限检查
   useEffect(() => {
+    // 只在挂载后检查权限
+    if (!isMounted) return;
+
     if (!user) {
       router.push('/');
       return;
@@ -60,7 +63,7 @@ const AdminShell: React.FC<AdminShellProps> = ({
     if (user.role !== 'Admin') {
       router.push('/');
     }
-  }, [user, router]);
+  }, [user, router, isMounted]);
 
   const handleLogout = async () => {
     await logout();

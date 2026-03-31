@@ -8,6 +8,7 @@ export async function generateMetadata() {
   };
 }
 
-export default function WishlistPage({ params: { locale } }: { params: { locale: string } }) {
+export default async function WishlistPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
   return <WishlistPageClient locale={locale} />;
 }

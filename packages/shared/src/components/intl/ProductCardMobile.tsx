@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Package, Star, MessageSquareQuote, ShoppingCart, ArrowRight, Heart } from 'lucide-react';
 import { getImageUrl, getAccessTokenSafe } from '../../services/supabase';
 import { useLanguage } from '../../context/LanguageContext';
+import { useWishlist } from '../../context/WishlistContext';
 
 // Product type from intl-api
 interface IntlProductCard {
@@ -23,6 +24,8 @@ interface IntlProductCard {
   recommendation_reason?: string | null;
   cover_image_url?: string | null;
   brand?: string | null;
+  // 是否有多规格变体（需要选择规格后才能加购）
+  has_variants?: boolean;
   // 价格区间字段，用于判断多规格 SKU 是否有价格
   price_min?: number | null;
   price_max?: number | null;
@@ -118,16 +121,24 @@ export function getPriceRangeForProduct(product: IntlProductCard, locale: string
 export default function ProductCardMobile({ product, locale, onAddToCart, onAddToWishlist, isInWishlist: propIsInWishlist }: ProductCardMobileProps) {
   const [added, setAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [isInWishlist, setIsInWishlist] = useState(propIsInWishlist || false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  // Use global wishlist context for persistent state
+  const { isInWishlist: globalIsInWishlist, toggleWishlist: globalToggleWishlist } = useWishlist();
 
   // Get translations
   const { t } = useLanguage();
   const s = t.shop;
   const pd = t.productDetail;
 
+  // Determine if this product is in wishlist (use global state or prop)
+  const isInWishlist = globalIsInWishlist(product.product_id) || propIsInWishlist || false;
+
   // 判断是否为询价产品
   const isInquiry = product.pricing_mode === 'inquiry' || product.purchase_type === 'quote';
+
+  // 判断是否为多规格产品（需要选择规格后才能加购）
+  const hasVariants = product.has_variants === true;
 
   // 检查是否有有效的显示价格
   const hasValidDisplayPrice = product.display_price !== null &&
@@ -145,7 +156,7 @@ export default function ProductCardMobile({ product, locale, onAddToCart, onAddT
   // 所有产品都显示心愿单按钮
   const shouldShowWishlist = true;
 
-  // Handle wishlist toggle
+  // Handle wishlist toggle - uses global context for persistent state
   const handleToggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -156,7 +167,7 @@ export default function ProductCardMobile({ product, locale, onAddToCart, onAddT
       return;
     }
 
-    // Otherwise handle internally
+    // Check if user is logged in
     const token = await getAccessTokenSafe();
     if (!token) {
       // Not logged in, redirect to auth
@@ -166,31 +177,8 @@ export default function ProductCardMobile({ product, locale, onAddToCart, onAddT
 
     setWishlistLoading(true);
     try {
-      if (isInWishlist) {
-        // Remove from wishlist
-        await fetch('/api/wishlist', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ productId: product.product_id }),
-        });
-        setIsInWishlist(false);
-      } else {
-        // Add to wishlist
-        const res = await fetch('/api/wishlist', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ productId: product.product_id }),
-        });
-        if (res.ok) {
-          setIsInWishlist(true);
-        }
-      }
+      // Use global toggle - this will automatically sync state across all components
+      await globalToggleWishlist(product.product_id, 'product');
     } catch (error) {
       console.error('Wishlist error:', error);
     } finally {
@@ -246,7 +234,13 @@ export default function ProductCardMobile({ product, locale, onAddToCart, onAddT
 
     if (isInquiry) {
       // Navigate to product page for quote request
-      // Link already handles navigation, so we just prevent default here
+      window.location.href = `/${locale}/shop/${product.slug}`;
+      return;
+    }
+
+    if (hasVariants) {
+      // Navigate to product page to select options
+      window.location.href = `/${locale}/shop/${product.slug}`;
       return;
     }
 
@@ -261,140 +255,155 @@ export default function ProductCardMobile({ product, locale, onAddToCart, onAddT
     : `https://placehold.co/400x400/E2E8F0/94A3B8?text=${encodeURIComponent(product.display_name.substring(0, 10))}`;
 
   return (
-    <Link
-      href={`/${locale}/shop/${product.slug}`}
-      className="group block bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 active:scale-[0.98] touch-manipulation"
-    >
-      {/* Image Container - Square aspect ratio for mobile */}
-      <div className="relative aspect-square bg-slate-50 overflow-hidden">
-        <Image
-          src={imageUrl}
-          alt={product.display_name}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
-          className="object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95"
-          loading="lazy"
-          quality={80}
-          onError={() => setImageError(true)}
-        />
-
-        {/* Featured Badge */}
-        {product.is_featured && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-amber-400 text-white text-[10px] font-bold rounded-full shadow-sm">
-            <Star className="w-3 h-3 fill-current" />
-            {pd.featured}
-          </div>
+    <div className="group relative bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 active:scale-[0.98] touch-manipulation">
+      {/* Wishlist button - positioned outside Link */}
+      <button
+        onClick={handleToggleWishlist}
+        disabled={wishlistLoading}
+        className={`absolute top-2 left-2 z-10 p-2 rounded-full shadow-sm transition-all duration-200 ${
+          isInWishlist
+            ? 'bg-red-500 text-white'
+            : 'bg-white/90 backdrop-blur-sm text-slate-500 hover:bg-red-50 hover:text-red-500'
+        }`}
+        title={isInWishlist ? s.removeFromWishlist : s.addToWishlist}
+      >
+        {wishlistLoading ? (
+          <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <Heart className={`w-3.5 h-3.5 ${isInWishlist ? 'fill-current' : ''}`} />
         )}
+      </button>
 
-        {/* Tags */}
-        {product.display_tags.length > 0 && (
-          <div className="absolute top-2 right-2 flex flex-col gap-1">
-            {product.display_tags.slice(0, 2).map((tag, i) => (
-              <span
-                key={i}
-                className="px-2 py-1 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-slate-700 rounded-full shadow-sm"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
+      <Link
+        href={`/${locale}/shop/${product.slug}`}
+        className="block"
+      >
+        {/* Image Container - Square aspect ratio for mobile */}
+        <div className="relative aspect-square bg-slate-50 overflow-hidden">
+          <Image
+            src={imageUrl}
+            alt={product.display_name}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
+            className="object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95"
+            loading="lazy"
+            quality={80}
+            onError={() => setImageError(true)}
+          />
 
-        {/* Quote Only Badge - only for inquiry products */}
-        {isInquiry && (
-          <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1.5 bg-blue-50/95 backdrop-blur-sm text-[10px] font-bold text-blue-700 border border-blue-100 rounded-full">
-            <MessageSquareQuote className="w-3 h-3" />
-            {pd.quoteOnly}
-          </div>
-        )}
-      </div>
+          {/* Featured Badge */}
+          {product.is_featured && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-amber-400 text-white text-[10px] font-bold rounded-full shadow-sm">
+              <Star className="w-3 h-3 fill-current" />
+              {pd.featured}
+            </div>
+          )}
 
-      {/* Content */}
-      <div className="p-3.5">
-        {/* Brand */}
-        {product.brand && (
-          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">
-            {product.brand}
-          </span>
-        )}
+          {/* Tags */}
+          {product.display_tags.length > 0 && (
+            <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
+              {product.display_tags.slice(0, 2).map((tag, i) => (
+                <span
+                  key={i}
+                  className="px-2 py-1 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-slate-700 rounded-full shadow-sm"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
-        {/* Product Name */}
-        <h3 className="text-sm font-bold text-slate-900 line-clamp-2 leading-tight mb-2">
-          {product.display_name}
-        </h3>
+          {/* Quote Only Badge - only for inquiry products */}
+          {isInquiry && (
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1.5 bg-blue-50/95 backdrop-blur-sm text-[10px] font-bold text-blue-700 border border-blue-100 rounded-full">
+              <MessageSquareQuote className="w-3 h-3" />
+              {pd.quoteOnly}
+            </div>
+          )}
+        </div>
 
-        {/* Summary - Hidden on very small screens */}
-        {product.summary && (
-          <p className="text-xs text-slate-500 line-clamp-2 hidden sm:block mb-2">
-            {product.summary}
-          </p>
-        )}
+        {/* Content */}
+        <div className="p-3.5">
+          {/* Brand */}
+          {product.brand && (
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">
+              {product.brand}
+            </span>
+          )}
 
-        {/* Recommendation Reason */}
-        {product.recommendation_reason && (
-          <div className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md mb-2 font-medium line-clamp-1">
-            {product.recommendation_reason}
-          </div>
-        )}
+          {/* Product Name */}
+          <h3 className="text-sm font-bold text-slate-900 line-clamp-2 leading-tight mb-2">
+            {product.display_name}
+          </h3>
 
-        {/* Price & CTA */}
-        <div className="flex items-center justify-between pt-3 mt-auto border-t border-slate-100">
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-slate-900">{formatPrice()}</span>
-          </div>
+          {/* Summary - Hidden on very small screens */}
+          {product.summary && (
+            <p className="text-xs text-slate-500 line-clamp-2 hidden sm:block mb-2">
+              {product.summary}
+            </p>
+          )}
 
-          <div className="flex items-center gap-2">
-            {/* Wishlist button - always shown for all products */}
-            <button
-              onClick={handleToggleWishlist}
-              disabled={wishlistLoading}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 ${
-                isInWishlist
-                  ? 'bg-red-50 text-red-500'
-                  : 'bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500'
-              }`}
-              title={isInWishlist ? s.removeFromWishlist : s.addToWishlist}
-            >
-              <Heart className={`w-3.5 h-3.5 ${isInWishlist ? 'fill-current' : ''}`} />
-            </button>
+          {/* Recommendation Reason */}
+          {product.recommendation_reason && (
+            <div className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md mb-2 font-medium line-clamp-1">
+              {product.recommendation_reason}
+            </div>
+          )}
 
-            {/* Add to Cart or Get Quote button */}
-            {isInquiry ? (
-              <button
-                onClick={handleAddToCart}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all duration-200 active:scale-95"
-              >
-                <span>{s.getQuote}</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
-            ) : (
-              <button
-                onClick={handleAddToCart}
-                className={`
-                  flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95
-                  ${added
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-[#00A884] text-white hover:bg-[#008F70] shadow-sm hover:shadow-md'
-                  }
-                `}
-              >
-                {added ? (
-                  <>
-                    <ShoppingCart className="w-3 h-3" />
-                    <span>{s.added}</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="w-3 h-3" />
-                    <span>{s.add}</span>
-                  </>
-                )}
-              </button>
-            )}
+          {/* Price & CTA */}
+          <div className="flex items-center justify-between pt-3 mt-auto border-t border-slate-100">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-slate-900">{formatPrice()}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Add to Cart or Get Quote or Select Options button */}
+              {isInquiry ? (
+                <button
+                  onClick={handleAddToCart}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all duration-200 active:scale-95"
+                >
+                  <span>{s.getQuote}</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              ) : hasVariants ? (
+                // 多规格产品显示 Select Options 按钮，点击后跳转到详情页选择规格
+                <button
+                  onClick={handleAddToCart}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all duration-200 active:scale-95"
+                >
+                  <span>{s.selectOptions || 'Select Options'}</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleAddToCart}
+                  className={`
+                    flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95
+                    ${added
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-[#00A884] text-white hover:bg-[#008F70] shadow-sm hover:shadow-md'
+                    }
+                  `}
+                >
+                  {added ? (
+                    <>
+                      <ShoppingCart className="w-3 h-3" />
+                      <span>{s.added}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-3 h-3" />
+                      <span>{s.add}</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
