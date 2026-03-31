@@ -615,7 +615,7 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({
 // ============================================================================
 // Toast 通知组件 - New
 // ============================================================================
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -695,14 +695,19 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts = [], rem
 export function useToast() {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
-  const addToast = (message: string, type: ToastType = 'info') => {
+  const addToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
-  };
+  }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
-  };
+  }, []);
 
-  return { toasts, addToast, removeToast, success: (msg: string) => addToast(msg, 'success'), error: (msg: string) => addToast(msg, 'error'), warning: (msg: string) => addToast(msg, 'warning'), info: (msg: string) => addToast(msg, 'info') };
+  const success = useCallback((msg: string) => addToast(msg, 'success'), [addToast]);
+  const error = useCallback((msg: string) => addToast(msg, 'error'), [addToast]);
+  const warning = useCallback((msg: string) => addToast(msg, 'warning'), [addToast]);
+  const info = useCallback((msg: string) => addToast(msg, 'info'), [addToast]);
+
+  return { toasts, addToast, removeToast, success, error, warning, info };
 }

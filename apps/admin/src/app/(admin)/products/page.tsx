@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ToastContainer, useToast } from '@/components/ui';
@@ -37,6 +37,7 @@ interface StatusCounts {
   approved: number;
   published: number;
   rejected: number;
+  offline: number;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -53,8 +54,10 @@ const MAX_BATCH_SIZE = 50;
 
 export default function AdminProductsPage() {
   const router = useRouter();
-  const supabase = createClient();
   const { toasts, removeToast, success, error: showError } = useToast();
+
+  // Supabase client - createClient() returns a singleton, so we can call it directly
+  const supabase = createClient();
 
   // Data state
   const [products, setProducts] = useState<Product[]>([]);
@@ -62,7 +65,7 @@ export default function AdminProductsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [statusCounts, setStatusCounts] = useState<StatusCounts>({
-    all: 0, pending_review: 0, approved: 0, published: 0, rejected: 0,
+    all: 0, pending_review: 0, approved: 0, published: 0, rejected: 0, offline: 0,
   });
 
   // Filter & search state
@@ -86,122 +89,174 @@ export default function AdminProductsPage() {
   const [offlineConfirm, setOfflineConfirm] = useState<{ product: Product; siteCode: 'cn' | 'intl' } | null>(null);
   const [bulkConfirm, setBulkConfirm] = useState<{ action: string; siteCodes?: ('cn' | 'intl')[] } | null>(null);
 
+  // Track refresh count to trigger reloads
+  const [refreshCount, setRefreshCount] = useState(0);
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchKeyword);
-      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchKeyword]);
 
-  // Load status counts
-  const loadStatusCounts = useCallback(async () => {
-    try {
-      const [allRes, pendingRes, approvedRes, publishedRes, rejectedRes] = await Promise.all([
-        supabase.from('products').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-        supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'pending_review').is('deleted_at', null),
-        supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'approved').is('deleted_at', null),
-        supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'published').is('deleted_at', null),
-        supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'rejected').is('deleted_at', null),
-      ]);
-
-      setStatusCounts({
-        all: allRes.count || 0,
-        pending_review: pendingRes.count || 0,
-        approved: approvedRes.count || 0,
-        published: publishedRes.count || 0,
-        rejected: rejectedRes.count || 0,
-      });
-    } catch (error) {
-      console.error('Failed to load counts:', error);
-    }
-  }, [supabase]);
-
-  // Load products
-  const loadProducts = useCallback(async (pageNum: number = 1) => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('products')
-        .select(`
-          *,
-          supplier:suppliers(company_name),
-          site_views:product_site_views(site_code, publish_status, is_enabled)
-        `, { count: 'exact' })
-        .is('deleted_at', null)
-        .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1);
-
-      // Status filter (from stat buttons)
-      if (filter !== 'all') {
-        query = query.eq('status', filter);
-      }
-
-      // Advanced filters
-      if (advancedFilters.status) {
-        query = query.eq('status', advancedFilters.status);
-      }
-      if (advancedFilters.site_code) {
-        query = query.contains('published_sites', { [advancedFilters.site_code]: true });
-      }
-
-      // Search
-      if (debouncedSearch.trim()) {
-        const keyword = debouncedSearch.trim();
-        query = query.or(`name.ilike.%${keyword}%,sku.ilike.%${keyword}%,brand.ilike.%${keyword}%`);
-      }
-
-      // Sort
-      if (sortConfig) {
-        query = query.order(sortConfig.key, { ascending: sortConfig.direction === 'asc' });
-      } else {
-        query = query.order('created_at', { ascending: false });
-      }
-
-      const { data, error, count } = await query;
-      if (error) throw error;
-      setProducts(data || []);
-      setTotalCount(count || 0);
-    } catch (error) {
-      console.error('Failed to load products:', error);
-      showError('加载失败：' + (error as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, filter, advancedFilters, debouncedSearch, sortConfig, showError]);
-
-  // Initialize
+  // Load all data when filters/page change
   useEffect(() => {
-    loadStatusCounts();
-    setPage(1);
-    setSelectedKeys(new Set());
+    let isCancelled = false;
+    let loadingTimeout = null;
+
+    async function fetchData() {
+      setLoading(true);
+      try {
+        // Load status counts
+        const [allRes, pendingRes, approvedRes, publishedRes, rejectedRes, offlineRes] = await Promise.all([
+          supabase.from('products').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'pending_review').is('deleted_at', null),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'approved').is('deleted_at', null),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'published').is('deleted_at', null),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'rejected').is('deleted_at', null),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'offline').is('deleted_at', null),
+        ]);
+
+        if (isCancelled) return;
+
+        setStatusCounts({
+          all: allRes.count || 0,
+          pending_review: pendingRes.count || 0,
+          approved: approvedRes.count || 0,
+          published: publishedRes.count || 0,
+          rejected: rejectedRes.count || 0,
+          offline: offlineRes.count || 0,
+        });
+
+        // Load products
+        let query = supabase
+          .from('products')
+          .select(`
+            *,
+            supplier:suppliers(company_name),
+            site_views:product_site_views(site_code, publish_status, is_enabled)
+          `, { count: 'exact' })
+          .is('deleted_at', null)
+          .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+        if (filter !== 'all') {
+          query = query.eq('status', filter);
+        }
+
+        if (advancedFilters.status) {
+          query = query.eq('status', advancedFilters.status);
+        }
+        if (advancedFilters.site_code) {
+          query = query.contains('published_sites', { [advancedFilters.site_code]: true });
+        }
+
+        if (debouncedSearch.trim()) {
+          const keyword = debouncedSearch.trim();
+          query = query.or(`name.ilike.%${keyword}%,sku.ilike.%${keyword}%,brand.ilike.%${keyword}%`);
+        }
+
+        if (sortConfig) {
+          query = query.order(sortConfig.key, { ascending: sortConfig.direction === 'asc' });
+        } else {
+          query = query.order('created_at', { ascending: false });
+        }
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+        if (isCancelled) return;
+
+        console.log('Loaded products:', data?.length, 'count:', count);
+        setProducts(data || []);
+        setTotalCount(count || 0);
+        setLoading(false);
+      } catch (error) {
+        if (isCancelled) return;
+        console.error('Failed to load products:', error);
+        showError('加载失败：' + (error as Error).message);
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [filter, advancedFilters.status, advancedFilters.site_code, debouncedSearch, page, sortConfig?.key, sortConfig?.direction, refreshCount]);
+
+  // Reset page when filters change (separate to avoid race conditions)
+  const prevFilterRef = useRef(filter);
+  const prevAdvFilterRef = useRef(advancedFilters);
+  const prevSearchRef = useRef(debouncedSearch);
+
+  useEffect(() => {
+    if (
+      prevFilterRef.current !== filter ||
+      prevAdvFilterRef.current.status !== advancedFilters.status ||
+      prevAdvFilterRef.current.site_code !== advancedFilters.site_code ||
+      prevSearchRef.current !== debouncedSearch
+    ) {
+      prevFilterRef.current = filter;
+      prevAdvFilterRef.current = advancedFilters;
+      prevSearchRef.current = debouncedSearch;
+      setPage(1);
+      setSelectedKeys(new Set());
+    }
   }, [filter, advancedFilters, debouncedSearch]);
-
-  useEffect(() => {
-    loadProducts(page);
-  }, [page, loadProducts]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  // Refresh
-  const refresh = useCallback(() => {
-    loadStatusCounts();
-    loadProducts(page);
-    setSelectedKeys(new Set());
-  }, [page, loadProducts, loadStatusCounts]);
+  // === Optimistic Update Helpers ===
 
-  // === Action Handlers ===
+  // Refresh data (only used for bulk operations)
+  const refresh = () => {
+    setRefreshCount(c => c + 1);
+    setSelectedKeys(new Set());
+  };
+
+  // Update a single product in the list without refetching
+  const updateProductInList = useCallback((productId: string, updates: Partial<Product>) => {
+    setProducts(prev => prev.map(p =>
+      p.id === productId ? { ...p, ...updates } : p
+    ));
+  }, []);
+
+  // Update status counts when status changes
+  const updateStatusCounts = useCallback((fromStatus: string, toStatus: string) => {
+    setStatusCounts(prev => {
+      const newCounts = { ...prev };
+      if (fromStatus && fromStatus !== 'all') {
+        newCounts[fromStatus as keyof StatusCounts] = Math.max(0, (newCounts[fromStatus as keyof StatusCounts] || 0) - 1);
+      }
+      if (toStatus) {
+        newCounts[toStatus as keyof StatusCounts] = (newCounts[toStatus as keyof StatusCounts] || 0) + 1;
+      }
+      return newCounts;
+    });
+  }, []);
+
+  // === Action Handlers (with optimistic updates) ===
 
   const handleApprove = async (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    const oldStatus = product?.status || '';
+
+    // Optimistic update
+    updateProductInList(productId, { status: 'approved', rejection_reason: undefined });
+    updateStatusCounts(oldStatus, 'approved');
+
     try {
       const { error } = await supabase
         .from('products')
         .update({ status: 'approved', rejection_reason: null, updated_at: new Date().toISOString() })
         .eq('id', productId);
       if (error) throw error;
-      refresh();
       success('产品已通过审核');
     } catch (error) {
+      // Revert on error
+      updateProductInList(productId, { status: oldStatus });
+      updateStatusCounts('approved', oldStatus);
       showError('操作失败');
     }
   };
@@ -211,34 +266,74 @@ export default function AdminProductsPage() {
       showError('请输入拒绝原因');
       return;
     }
+
+    const { product, reason } = rejectModal;
+    const oldStatus = product?.status || '';
+    const oldReason = product?.rejection_reason;
+
+    // Optimistic update
+    updateProductInList(product.id, { status: 'rejected', rejection_reason: reason });
+    updateStatusCounts(oldStatus, 'rejected');
+
     try {
       const { error } = await supabase
         .from('products')
-        .update({ status: 'rejected', rejection_reason: rejectModal.reason, updated_at: new Date().toISOString() })
-        .eq('id', rejectModal.product.id);
+        .update({ status: 'rejected', rejection_reason: reason, updated_at: new Date().toISOString() })
+        .eq('id', product.id);
       if (error) throw error;
       setRejectModal(null);
-      refresh();
       success('产品已拒绝');
     } catch (error) {
+      // Revert on error
+      updateProductInList(product.id, { status: oldStatus, rejection_reason: oldReason });
+      updateStatusCounts('rejected', oldStatus);
       showError('操作失败');
     }
   };
 
   const handlePublish = async (productId: string, siteCode: 'cn' | 'intl') => {
+    const product = products.find(p => p.id === productId);
+    const oldStatus = product?.status || '';
+    const oldSiteViews = product?.site_views ? [...product.site_views] : [];
+
+    // Optimistic update - update site_views
+    const newSiteViews = [...(product?.site_views || [])];
+    const existingIndex = newSiteViews.findIndex(sv => sv.site_code === siteCode);
+    if (existingIndex >= 0) {
+      newSiteViews[existingIndex] = { ...newSiteViews[existingIndex], publish_status: 'published', is_enabled: true };
+    } else {
+      newSiteViews.push({ site_code: siteCode, publish_status: 'published', is_enabled: true });
+    }
+
+    const newStatus = 'published';
+    updateProductInList(productId, { status: newStatus, site_views: newSiteViews });
+    if (oldStatus !== 'published') {
+      updateStatusCounts(oldStatus, 'published');
+    }
+
     try {
-      await supabase.from('product_site_views').upsert({
+      // First update product_site_views
+      const { error: siteViewError } = await supabase.from('product_site_views').upsert({
         product_id: productId, site_code: siteCode,
         publish_status: 'published', is_enabled: true, published_at: new Date().toISOString()
       }, { onConflict: 'product_id,site_code' });
+      if (siteViewError) throw siteViewError;
 
-      await supabase.from('products')
-        .update({ status: 'published', published_at: new Date().toISOString() })
-        .eq('id', productId);
+      // Then update product status if needed
+      if (oldStatus !== 'published') {
+        const { error: productError } = await supabase.from('products')
+          .update({ status: 'published', published_at: new Date().toISOString() })
+          .eq('id', productId);
+        if (productError) throw productError;
+      }
 
-      refresh();
       success(`已发布到${siteCode === 'cn' ? '中国站' : '国际站'}`);
     } catch (error) {
+      // Revert on error
+      updateProductInList(productId, { status: oldStatus, site_views: oldSiteViews });
+      if (oldStatus !== 'published') {
+        updateStatusCounts('published', oldStatus);
+      }
       showError('发布失败');
     }
   };
@@ -247,14 +342,27 @@ export default function AdminProductsPage() {
     if (!offlineConfirm) return;
     const { product, siteCode } = offlineConfirm;
 
+    const oldSiteViews = product?.site_views ? [...product.site_views] : [];
+
+    // Optimistic update
+    const newSiteViews = (product?.site_views || []).map(sv =>
+      sv.site_code === siteCode
+        ? { ...sv, publish_status: 'offline', is_enabled: false }
+        : sv
+    );
+
+    updateProductInList(product.id, { site_views: newSiteViews });
+
     try {
-      await supabase.from('product_site_views')
+      const { error } = await supabase.from('product_site_views')
         .update({ publish_status: 'offline', is_enabled: false })
         .eq('product_id', product.id).eq('site_code', siteCode);
+      if (error) throw error;
 
-      refresh();
       success(`已从${siteCode === 'cn' ? '中国站' : '国际站'}下架`);
     } catch (error) {
+      // Revert on error
+      updateProductInList(product.id, { site_views: oldSiteViews });
       showError('下架失败');
     }
     setOfflineConfirm(null);
@@ -263,15 +371,37 @@ export default function AdminProductsPage() {
   const handleDelete = async () => {
     if (!deleteConfirm) return;
 
+    const oldStatus = deleteConfirm.status || '';
+    const deletedProduct = deleteConfirm;
+
+    // Optimistic update - remove from list
+    setProducts(prev => prev.filter(p => p.id !== deleteConfirm.id));
+    setTotalCount(prev => Math.max(0, prev - 1));
+    setStatusCounts(prev => ({
+      ...prev,
+      all: Math.max(0, prev.all - 1),
+      [oldStatus]: Math.max(0, (prev[oldStatus as keyof StatusCounts] || 0) - 1),
+    }));
+
     try {
       const res = await fetch(`/api/v1/admin/products/${deleteConfirm.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
       setDeleteConfirm(null);
-      refresh();
       success('产品已删除');
     } catch (error) {
+      // Restore on error
+      setProducts(prev => [...prev, deletedProduct].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ));
+      setTotalCount(prev => prev + 1);
+      setStatusCounts(prev => ({
+        ...prev,
+        all: prev.all + 1,
+        [oldStatus]: (prev[oldStatus as keyof StatusCounts] || 0) + 1,
+      }));
+      setDeleteConfirm(null);
       showError('删除失败：' + (error as Error).message);
     }
   };
@@ -325,10 +455,9 @@ export default function AdminProductsPage() {
   // === Helper Functions ===
 
   const isPublishedToSite = (product: Product, siteCode: string): boolean => {
-    if (product.site_views?.length) {
-      return product.site_views.some(sv => sv.site_code === siteCode && sv.publish_status === 'published');
-    }
-    return product.status === 'published';
+    // 必须在 site_views 中找到对应站点的 published 状态才认为已发布
+    // 不能仅凭 product.status 判断，因为产品可能只发布到部分站点
+    return product.site_views?.some(sv => sv.site_code === siteCode && sv.publish_status === 'published' && sv.is_enabled === true) ?? false;
   };
 
   // === Table Columns ===
@@ -410,65 +539,132 @@ export default function AdminProductsPage() {
 
   // === Row Actions ===
 
-  const renderRowActions = (product: Product) => (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={() => router.push(`/products/${product.id}`)}
-        className="px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-md"
-      >
-        编辑
-      </button>
+  const renderRowActions = (product: Product) => {
+    // Normalize status for comparison (handle case inconsistencies)
+    const status = product.status?.toLowerCase() || '';
+    
+    // Check if product is online on each site
+    const isOnlineCN = isPublishedToSite(product, 'cn');
+    const isOnlineINTL = isPublishedToSite(product, 'intl');
 
-      {product.status === 'pending_review' && (
-        <>
-          <button onClick={() => handleApprove(product.id)} className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-md">
-            通过
-          </button>
-          <button onClick={() => setRejectModal({ product, reason: '' })} className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md">
-            拒绝
-          </button>
-        </>
-      )}
+    return (
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => router.push(`/products/${product.id}`)}
+          className="px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-md"
+        >
+          编辑
+        </button>
 
-      {product.status === 'approved' && (
-        <>
-          <button onClick={() => handlePublish(product.id, 'cn')} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md">
-            发布CN
-          </button>
-          <button onClick={() => handlePublish(product.id, 'intl')} className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-md">
-            发布INTL
-          </button>
-        </>
-      )}
-
-      {product.status === 'published' && (
-        <>
-          {isPublishedToSite(product, 'cn') ? (
-            <button onClick={() => setOfflineConfirm({ product, siteCode: 'cn' })} className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-md">
-              下架CN
+        {/* Pending Review: Show Approve and Reject */}
+        {status === 'pending_review' && (
+          <>
+            <button 
+              onClick={() => handleApprove(product.id)} 
+              className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-md"
+            >
+              通过
             </button>
-          ) : (
-            <button onClick={() => handlePublish(product.id, 'cn')} className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md">
+            <button 
+              onClick={() => setRejectModal({ product, reason: '' })} 
+              className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md"
+            >
+              拒绝
+            </button>
+          </>
+        )}
+
+        {/* Approved: Show Publish buttons */}
+        {status === 'approved' && (
+          <>
+            <button 
+              onClick={() => handlePublish(product.id, 'cn')} 
+              className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md"
+            >
               发布CN
             </button>
-          )}
-          {isPublishedToSite(product, 'intl') ? (
-            <button onClick={() => setOfflineConfirm({ product, siteCode: 'intl' })} className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-md">
-              下架INTL
-            </button>
-          ) : (
-            <button onClick={() => handlePublish(product.id, 'intl')} className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-md">
+            <button 
+              onClick={() => handlePublish(product.id, 'intl')} 
+              className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-md"
+            >
               发布INTL
             </button>
-          )}
-        </>
-      )}
+          </>
+        )}
 
-      <button onClick={() => setDeleteConfirm(product)} className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md">
-        删除
-      </button>
-    </div>
-  );
+        {/* Published: Show Online/Offline toggle for each site */}
+        {status === 'published' && (
+          <>
+            {isOnlineCN ? (
+              <button 
+                onClick={() => setOfflineConfirm({ product, siteCode: 'cn' })} 
+                className="px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 rounded-md"
+              >
+                下架CN
+              </button>
+            ) : (
+              <button 
+                onClick={() => handlePublish(product.id, 'cn')} 
+                className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md"
+              >
+                发布CN
+              </button>
+            )}
+            {isOnlineINTL ? (
+              <button 
+                onClick={() => setOfflineConfirm({ product, siteCode: 'intl' })} 
+                className="px-3 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 rounded-md"
+              >
+                下架INTL
+              </button>
+            ) : (
+              <button 
+                onClick={() => handlePublish(product.id, 'intl')} 
+                className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-md"
+              >
+                发布INTL
+              </button>
+            )}
+          </>
+        )}
+
+        {/* Offline: Show Republish buttons */}
+        {status === 'offline' && (
+          <>
+            <button 
+              onClick={() => handlePublish(product.id, 'cn')} 
+              className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md"
+            >
+              发布CN
+            </button>
+            <button 
+              onClick={() => handlePublish(product.id, 'intl')} 
+              className="px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-md"
+            >
+              发布INTL
+            </button>
+          </>
+        )}
+
+        {/* Rejected: Show Re-submit for review */}
+        {status === 'rejected' && (
+          <button 
+            onClick={() => handleApprove(product.id)} 
+            className="px-3 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-md"
+          >
+            重新通过
+          </button>
+        )}
+
+        <button 
+          onClick={() => setDeleteConfirm(product)} 
+          className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md"
+        >
+          删除
+        </button>
+      </div>
+    );
+  };
 
   // === Render ===
 
@@ -493,12 +689,13 @@ export default function AdminProductsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
           {[
             { key: 'all', label: '全部', count: statusCounts.all },
             { key: 'pending_review', label: '待审核', count: statusCounts.pending_review },
             { key: 'approved', label: '已通过', count: statusCounts.approved },
             { key: 'published', label: '已发布', count: statusCounts.published },
+            { key: 'offline', label: '已下架', count: statusCounts.offline },
             { key: 'rejected', label: '已拒绝', count: statusCounts.rejected },
           ].map((stat) => (
             <button
