@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+interface ExportProduct {
+  id: string;
+  name: string;
+  sku: string | null;
+  brand: string | null;
+  price: number | null;
+  stock_quantity: number | null;
+  status: string;
+  created_at: string;
+  published_at: string | null;
+  supplier: { company_name: string } | { company_name: string }[] | null;
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -48,7 +61,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('supplier_id', supplierId);
     }
 
-    const { data: products, error } = await query;
+    const { data: products, error } = await query as { data: ExportProduct[]; error: null | { message: string } };
 
     if (error) throw error;
 
