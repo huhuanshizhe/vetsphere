@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { ToastContainer, useToast } from '@/components/ui';
 
 interface Product {
   id: string;
@@ -70,6 +71,7 @@ const PAGE_SIZE = 20;
 export default function AdminProductsPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { success, error: showError } = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,7 @@ export default function AdminProductsPage() {
     published: 0,
     rejected: 0,
   });
+  const [offlineConfirm, setOfflineConfirm] = useState<{ productId: string; productName: string; siteCode: 'cn' | 'intl' } | null>(null);
 
   // 加载状态统计（只查数量，很快）
   const loadStatusCounts = useCallback(async () => {
@@ -143,7 +146,7 @@ export default function AdminProductsPage() {
       setTotalCount(count || 0);
     } catch (error) {
       console.error('Failed to load products:', error);
-      alert('加载失败：' + (error as Error).message);
+      showError('加载失败：' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -177,16 +180,16 @@ export default function AdminProductsPage() {
 
       if (error) throw error;
       refreshCurrentPage();
-      alert('产品已通过审核');
+      success('产品已通过审核');
     } catch (error) {
       console.error('Failed to approve:', error);
-      alert('操作失败');
+      showError('操作失败');
     }
   };
 
   const handleReject = async (productId: string) => {
     if (!rejectionReason.trim()) {
-      alert('请输入拒绝原因');
+      showError('请输入拒绝原因');
       return;
     }
     try {
@@ -203,10 +206,10 @@ export default function AdminProductsPage() {
       setRejectionReason('');
       setSelectedProduct(null);
       refreshCurrentPage();
-      alert('产品已拒绝');
+      success('产品已拒绝');
     } catch (error) {
       console.error('Failed to reject:', error);
-      alert('操作失败');
+      showError('操作失败');
     }
   };
 
@@ -257,15 +260,47 @@ export default function AdminProductsPage() {
       if (productError) throw productError;
 
       refreshCurrentPage();
-      alert(`已发布到 ${siteCode === 'cn' ? '中国站' : '国际站'}`);
+      success(`已发布到 ${siteCode === 'cn' ? '中国站' : '国际站'}`);
     } catch (error) {
       console.error('Failed to publish:', error);
-      alert('发布失败');
+      showError('发布失败');
     }
   };
 
   const handleOfflineFromSite = async (productId: string, siteCode: 'cn' | 'intl') => {
+    const siteName = siteCode === 'cn' ? '中国站' : '国际站';
+    const productIndex = products.findIndex(p => p.id === productId);
+    const product = products[productIndex];
+
+    if (productIndex === -1) return;
+
+    // Optimistic update - 立即更新 UI
+    const updatedProducts = [...products];
+    const currentProduct = { ...updatedProducts[productIndex] };
+    const currentSiteViews = currentProduct.site_views ? [...currentProduct.site_views] : [];
+
+    // 找到并更新该站点的状态
+    const siteViewIndex = currentSiteViews.findIndex(sv => sv.site_code === siteCode);
+    if (siteViewIndex >= 0) {
+      currentSiteViews[siteViewIndex] = {
+        ...currentSiteViews[siteViewIndex],
+        publish_status: 'offline',
+        is_enabled: false
+      };
+    } else {
+      // 如果没有 site_view 记录，添加一个
+      currentSiteViews.push({
+        site_code: siteCode,
+        publish_status: 'offline',
+        is_enabled: false
+      });
+    }
+    currentProduct.site_views = currentSiteViews;
+    updatedProducts[productIndex] = currentProduct;
+    setProducts(updatedProducts);
+
     try {
+      // 更新数据库
       const { error } = await supabase
         .from('product_site_views')
         .update({
@@ -276,11 +311,47 @@ export default function AdminProductsPage() {
         .eq('site_code', siteCode);
 
       if (error) throw error;
-      refreshCurrentPage();
-      alert(`已从 ${siteCode === 'cn' ? '中国站' : '国际站'} 下架`);
+
+      // 检查是否需要更新产品状态
+      const { data: otherSiteViews } = await supabase
+        .from('product_site_views')
+        .select('publish_status')
+        .eq('product_id', productId)
+        .neq('site_code', siteCode);
+
+      const hasOtherPublished = otherSiteViews?.some(
+        sv => sv.publish_status === 'published' || sv.publish_status === 'Published'
+      );
+
+      if (!hasOtherPublished) {
+        const { error: statusError } = await supabase
+          .from('products')
+          .update({
+            status: 'rejected',
+            rejection_reason: `已从 ${siteName} 下架`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', productId);
+
+        if (statusError) throw statusError;
+
+        // 更新本地产品状态
+        const finalProducts = [...products];
+        finalProducts[productIndex] = {
+          ...finalProducts[productIndex],
+          status: 'rejected' as const
+        };
+        setProducts(finalProducts);
+      }
+
+      // 只更新统计数据
+      loadStatusCounts();
+      success(`已从 ${siteName} 下架`);
     } catch (error) {
       console.error('Failed to offline:', error);
-      alert('下架失败');
+      // 回滚 UI
+      setProducts(products);
+      showError('下架失败，请重试');
     }
   };
 
@@ -319,6 +390,7 @@ export default function AdminProductsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <ToastContainer />
       <div className="max-w-[1600px] mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -473,7 +545,7 @@ export default function AdminProductsPage() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleOfflineFromSite(product.id, 'cn')}
+                              onClick={() => setOfflineConfirm({ productId: product.id, productName: product.name, siteCode: 'cn' })}
                               className="px-4 py-1.5 bg-slate-500 text-white text-sm font-medium rounded-md hover:bg-slate-600 transition-colors shadow-sm"
                             >
                               下架中国站
@@ -488,7 +560,7 @@ export default function AdminProductsPage() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleOfflineFromSite(product.id, 'intl')}
+                              onClick={() => setOfflineConfirm({ productId: product.id, productName: product.name, siteCode: 'intl' })}
                               className="px-4 py-1.5 bg-slate-500 text-white text-sm font-medium rounded-md hover:bg-slate-600 transition-colors shadow-sm"
                             >
                               下架国际站
@@ -567,17 +639,54 @@ export default function AdminProductsPage() {
               rows={4}
             />
             <div className="flex gap-2 justify-end">
-              <button 
+              <button
                 onClick={() => setSelectedProduct(null)}
                 className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
               >
                 取消
               </button>
-              <button 
+              <button
                 onClick={() => handleReject(selectedProduct.id)}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 确认拒绝
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Offline Confirmation Modal */}
+      {offlineConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">确认下架</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-2">
+              确定要从 <strong>{offlineConfirm.siteCode === 'cn' ? '中国站' : '国际站'}</strong> 下架该商品吗？
+            </p>
+            <p className="text-sm font-medium text-slate-800 mb-6">商品：{offlineConfirm.productName}</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setOfflineConfirm(null)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  handleOfflineFromSite(offlineConfirm.productId, offlineConfirm.siteCode);
+                  setOfflineConfirm(null);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                确认下架
               </button>
             </div>
           </div>

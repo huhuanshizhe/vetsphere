@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLanguage } from '../../context/LanguageContext';
 import { useCart } from '../../context/CartContext';
+import { useWishlist } from '../../context/WishlistContext';
 import { getImageUrl, getAccessTokenSafe } from '../../services/supabase';
 import { translateSpecs } from '../../lib/spec-translations';
 import { getLocaleCurrency, formatPrice } from '../../lib/currency';
@@ -77,35 +78,17 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   const [quantity, setQuantity] = useState(1);
   const [tierPrice, setTierPrice] = useState<number | null>(null); // 阶梯价格（根据数量计算）
 
-  // Wishlist state
-  const [isInWishlist, setIsInWishlist] = useState(false);
+  // Use global wishlist context for persistent state
+  const { isInWishlist: globalIsInWishlist, toggleWishlist: globalToggleWishlist } = useWishlist();
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  // Check if product is in wishlist on mount
-  useEffect(() => {
-    const checkWishlist = async () => {
-      if (!product?.product_id) return;
-      const token = await getAccessTokenSafe();
-      if (!token) return;
+  // Determine if current product is in wishlist (computed from global state)
+  const isInWishlist = product?.product_id ? globalIsInWishlist(product.product_id) : false;
 
-      try {
-        const res = await fetch('/api/wishlist', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const inList = data.wishlist?.some((w: any) => w.product_id === product.product_id);
-          setIsInWishlist(inList);
-        }
-      } catch (e) {
-        console.error('Failed to check wishlist:', e);
-      }
-    };
-    checkWishlist();
-  }, [product?.product_id]);
-
-  // Handle wishlist toggle
+  // Handle wishlist toggle - uses global context
   const handleToggleWishlist = async () => {
+    if (!product?.product_id) return;
+
     const token = await getAccessTokenSafe();
     if (!token) {
       window.location.href = `/${locale}/auth?redirect=${encodeURIComponent(window.location.pathname)}`;
@@ -114,29 +97,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
 
     setWishlistLoading(true);
     try {
-      if (isInWishlist) {
-        await fetch('/api/wishlist', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ productId: product?.product_id }),
-        });
-        setIsInWishlist(false);
-      } else {
-        const res = await fetch('/api/wishlist', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ productId: product?.product_id }),
-        });
-        if (res.ok) {
-          setIsInWishlist(true);
-        }
-      }
+      await globalToggleWishlist(product.product_id, 'product');
     } catch (error) {
       console.error('Wishlist error:', error);
     } finally {

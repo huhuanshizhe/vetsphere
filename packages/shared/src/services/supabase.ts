@@ -15,7 +15,15 @@ let _supabaseClient: SupabaseClient | null = null;
 export function getSupabaseClient(): SupabaseClient {
   if (!_supabaseClient) {
     // Use the constant values (already have fallbacks)
-    _supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Note: Supabase JS client v2 handles SSR automatically
+    // Do not manually set storage - let Supabase use its default adaptive storage
+    _supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
+    });
   }
   return _supabaseClient;
 }
@@ -67,6 +75,19 @@ export function getSessionSafe() {
 }
 
 export async function getAccessTokenSafe(): Promise<string | null> {
-  const { data: { session } } = await getSessionSafe();
-  return session?.access_token || null;
+  try {
+    const { data: { session }, error } = await getSessionSafe();
+    if (error) {
+      console.error('[getAccessTokenSafe] Session error:', error);
+      return null;
+    }
+    if (!session) {
+      console.log('[getAccessTokenSafe] No session found');
+      return null;
+    }
+    return session.access_token || null;
+  } catch (err) {
+    console.error('[getAccessTokenSafe] Error:', err);
+    return null;
+  }
 }

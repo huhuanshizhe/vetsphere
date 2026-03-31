@@ -93,6 +93,8 @@ const Dashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
+  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userPoints, setUserPoints] = useState(user?.points || 0);
   const [userLevel, setUserLevel] = useState(user?.level || 'Resident');
@@ -165,7 +167,8 @@ const Dashboard: React.FC = () => {
     }
 
     loadData();
-    
+    loadWishlist();
+
     setSystemPrompt(getSystemInstruction());
     setAiConfig(getAIConfig());
   }, [user, router]);
@@ -178,20 +181,20 @@ const Dashboard: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    
+
     const [fetchedOrders, fetchedProducts, fetchedCourses, pointsData] = await Promise.all([
         api.getOrders(user?.email),
         api.getProducts(),
         api.getCourses(),
         user?.id ? api.fetchUserPoints(user.id) : Promise.resolve({ points: 0, level: 'Resident' })
     ]);
-    
+
     // Fetch enrollments for doctors
     if (user?.role === 'Doctor' && user?.id) {
       const fetchedEnrollments = await api.getEnrollments(user.id);
       setEnrollments(fetchedEnrollments);
     }
-    
+
     setOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
     setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []);
     setCourses(Array.isArray(fetchedCourses) ? fetchedCourses : []);
@@ -199,8 +202,50 @@ const Dashboard: React.FC = () => {
       setUserPoints(pointsData.points);
       setUserLevel(pointsData.level);
     }
-    
+
     setLoading(false);
+  };
+
+  // Load wishlist
+  const loadWishlist = async () => {
+    if (!user?.id) return;
+    setWishlistLoading(true);
+    try {
+      const token = localStorage.getItem('sb-access-token');
+      if (!token) return;
+
+      const res = await fetch('/api/wishlist', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWishlist(data.wishlist || data.items || []);
+      }
+    } catch (error) {
+      console.error('Failed to load wishlist:', error);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  // Remove from wishlist
+  const handleRemoveFromWishlist = async (productId: string) => {
+    try {
+      const token = localStorage.getItem('sb-access-token');
+      if (!token) return;
+
+      await fetch('/api/wishlist', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ productId })
+      });
+      setWishlist(prev => prev.filter((item: any) => item.product_id !== productId));
+    } catch (error) {
+      console.error('Failed to remove from wishlist:', error);
+    }
   };
 
   const handleShipOrder = async (orderId: string) => {
@@ -454,8 +499,8 @@ const Dashboard: React.FC = () => {
      const completedCourses = enrollments.filter(e => e.completionStatus === 'completed').length;
      
      return (
-        <DashboardLayout 
-            sidebarItems={[t.dashboard.myDashboard, t.dashboard.myCourses, t.dashboard.myOrders, t.dashboard.rewardsHub]}
+        <DashboardLayout
+            sidebarItems={[t.dashboard.myDashboard, t.dashboard.myCourses, t.dashboard.myOrders, t.dashboard.myWishlist, t.dashboard.rewardsHub]}
             user={user}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -604,6 +649,70 @@ const Dashboard: React.FC = () => {
                </div>
              )}
              
+             {activeTab === t.dashboard.myWishlist && (
+               <div className="space-y-6">
+                 <h3 className="font-black text-xl text-slate-900">{t.dashboard.myWishlist}</h3>
+                 {wishlistLoading ? (
+                   <div className="text-center py-12 text-slate-400">Loading...</div>
+                 ) : wishlist.length === 0 ? (
+                   <div className="bg-white p-12 rounded-[32px] border border-slate-100 text-center">
+                     <div className="text-6xl mb-4">💝</div>
+                     <p className="text-slate-400 mb-4">{t.wishlist.empty}</p>
+                     <button onClick={() => router.push(`/${locale}/shop`)} className="bg-vs text-white px-6 py-3 rounded-xl font-bold text-sm">
+                       {t.shop.browseProducts || 'Browse Products'}
+                     </button>
+                   </div>
+                 ) : (
+                   <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                     {wishlist.map((item: any) => (
+                       <div key={item.id} className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm">
+                         <div className="aspect-square bg-slate-100 rounded-xl mb-4 overflow-hidden">
+                           {item.product?.image_url || item.products?.cover_image_url ? (
+                             <img
+                               src={item.product?.image_url || item.products?.cover_image_url}
+                               alt={item.product?.name || item.products?.display_name || 'Product'}
+                               className="w-full h-full object-cover"
+                             />
+                           ) : (
+                             <div className="w-full h-full flex items-center justify-center text-slate-300">
+                               <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                               </svg>
+                             </div>
+                           )}
+                         </div>
+                         <h4 className="font-bold text-slate-900 mb-1 line-clamp-1">
+                           {item.product?.name || item.products?.display_name || 'Product'}
+                         </h4>
+                         <p className="text-sm text-slate-500 mb-3">
+                           {item.product?.brand || item.products?.brand || ''}
+                         </p>
+                         <div className="flex items-center justify-between">
+                           <span className="font-bold text-vs">
+                             ${item.product?.selling_price_usd || item.products?.display_price || '---'}
+                           </span>
+                           <div className="flex gap-2">
+                             <button
+                               onClick={() => router.push(`/${locale}/shop/${item.product?.slug || item.products?.slug || item.product_id}`)}
+                               className="px-3 py-2 bg-vs text-white text-xs font-bold rounded-lg hover:bg-vs-dark transition-colors"
+                             >
+                               {t.common.view || 'View'}
+                             </button>
+                             <button
+                               onClick={() => handleRemoveFromWishlist(item.product_id)}
+                               className="px-3 py-2 bg-red-50 text-red-500 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
+                             >
+                               {t.wishlist.remove}
+                             </button>
+                           </div>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </div>
+             )}
+
              {activeTab === t.dashboard.rewardsHub && (
                <div className="bg-white p-10 rounded-[32px] border border-slate-100">
                  <h3 className="font-black text-xl text-slate-900 mb-6">{t.dashboard.pointsRewards}</h3>

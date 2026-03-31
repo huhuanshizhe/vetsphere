@@ -6,6 +6,7 @@ import { CartProvider } from '../context/CartContext';
 import { LanguageProvider } from '../context/LanguageContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import { SiteConfigProvider } from '../context/SiteConfigContext';
+import { WishlistProvider } from '../context/WishlistContext';
 import type { SupportedLocale, SiteConfig } from '../site-config.types';
 
 interface ProvidersProps {
@@ -44,19 +45,21 @@ export default function Providers({
   return (
     <SiteConfigProvider config={config}>
       <AuthProvider>
-        <Suspense fallback={null}>
-          <LanguageProvider 
-            initialLocale={locale}
-            locales={locales}
-            defaultLocale={defaultLocale}
-          >
-            <CartProvider>
-              <NotificationProvider>
-                {children}
-              </NotificationProvider>
-            </CartProvider>
-          </LanguageProvider>
-        </Suspense>
+        <WishlistProvider>
+          <Suspense fallback={null}>
+            <LanguageProvider 
+              initialLocale={locale}
+              locales={locales}
+              defaultLocale={defaultLocale}
+            >
+              <CartProvider>
+                <NotificationProvider>
+                  {children}
+                </NotificationProvider>
+              </CartProvider>
+            </LanguageProvider>
+          </Suspense>
+        </WishlistProvider>
       </AuthProvider>
     </SiteConfigProvider>
   );

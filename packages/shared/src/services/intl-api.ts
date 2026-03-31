@@ -117,6 +117,8 @@ export interface IntlProduct {
   // Supplier info
   supplier_name?: string;
   supplier_id?: string;
+  // 是否有多规格变体
+  has_variants?: boolean;
   // Related training
   related_courses?: IntlCourse[];
   // SKU aggregated prices (min selling price across all SKUs for each currency)
@@ -556,6 +558,7 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
     base_price: base.price,
     stock_quantity: base.stock_quantity,
     supplier_id: base.supplier_uuid,
+    has_variants: base.has_variants || false,
   };
 }
 
@@ -585,7 +588,7 @@ export async function getIntlProducts(options?: {
         brand, specialty, scene_code, clinical_category,
         cover_image_url, image_url, specs, price_min, price_max,
         status, pricing_mode, price, stock_quantity,
-        supplier_uuid
+        supplier_uuid, has_variants
       )
     `, { count: 'exact' })
     .eq('site_code', SITE_CODE)

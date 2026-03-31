@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Heart, ShoppingCart, Trash2, Loader2, Package, ChevronRight } from 'lucide-react';
-import { getLocaleCurrency, formatPrice } from '@vetsphere/shared/lib/currency';
+import { getLocaleCurrency, formatPrice, Currency } from '@vetsphere/shared/lib/currency';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import { useCart } from '@vetsphere/shared/context/CartContext';
 import { useLanguage } from '@vetsphere/shared/context/LanguageContext';
+import { getSessionSafe } from '@vetsphere/shared/services/supabase';
 
 interface WishlistPageClientProps {
   locale: string;
@@ -18,21 +19,64 @@ interface WishlistItem {
   product_id: string;
   product: {
     id: string;
-    name: string;
+    name?: string;
+    display_name?: string;
+    name_en?: string;
+    name_ja?: string;
+    name_th?: string;
     brand?: string;
-    image_url: string;
-    display_price?: number;
-    selling_price_usd?: number;
-    selling_price_jpy?: number;
-    selling_price_thb?: number;
-    slug: string;
-  };
+    brand_en?: string;
+    brand_ja?: string;
+    brand_th?: string;
+    image_url?: string;
+    cover_image_url?: string;
+    price?: number;
+    price_min?: number | null;
+    price_max?: number | null;
+    display_price?: number | null;
+    sku_price_usd_min?: number | null;
+    sku_price_usd_max?: number | null;
+    sku_price_jpy_min?: number | null;
+    sku_price_jpy_max?: number | null;
+    sku_price_thb_min?: number | null;
+    sku_price_thb_max?: number | null;
+    currency?: string;
+    slug?: string;
+    slug_en?: string;
+    slug_ja?: string;
+    slug_th?: string;
+    summary?: string;
+    description?: string;
+    description_en?: string;
+    description_ja?: string;
+    description_th?: string;
+    stock_status?: string;
+    stock_quantity?: number;
+    has_price?: boolean;
+    has_variants?: boolean;
+  } | null;
   created_at: string;
 }
 
+interface ExchangeRates {
+  USD: number;
+  JPY: number;
+  THB: number;
+  CNY: number;
+  [key: string]: number;
+}
+
+// 汇率转换 - USD为基准货币
+const DEFAULT_RATES: ExchangeRates = {
+  USD: 1,
+  JPY: 149.5,
+  THB: 35.2,
+  CNY: 7.25,
+};
+
 export default function WishlistPageClient({ locale }: WishlistPageClientProps) {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { addToCart } = useCart();
   const { t } = useLanguage();
   const w = t.wishlist;
@@ -42,20 +86,50 @@ export default function WishlistPageClient({ locale }: WishlistPageClientProps) 
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>(DEFAULT_RATES);
+
+  // Fetch exchange rates
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const response = await fetch('/api/exchange-rates');
+        if (response.ok) {
+          const data = await response.json();
+          const rates: ExchangeRates = { ...DEFAULT_RATES };
+          if (data.rates) {
+            Object.entries(data.rates).forEach(([key, value]: [string, any]) => {
+              rates[key] = value.rate;
+            });
+          }
+          setExchangeRates(rates);
+        }
+      } catch (error) {
+        console.error('Failed to fetch exchange rates:', error);
+      }
+    };
+    fetchRates();
+  }, []);
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) return;
+    
     if (!isAuthenticated || !user) {
       router.push(`/${locale}/auth?redirect=/${locale}/user/wishlist`);
       return;
     }
 
     fetchWishlist();
-  }, [isAuthenticated, user, locale, router]);
+  }, [isAuthenticated, user, locale, router, authLoading]);
 
   const fetchWishlist = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('accessToken');
+      const { data: { session } } = await getSessionSafe();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('No session');
+      }
       const response = await fetch('/api/wishlist', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -78,7 +152,10 @@ export default function WishlistPageClient({ locale }: WishlistPageClientProps) 
   const removeFromWishlist = async (productId: string) => {
     setRemovingId(productId);
     try {
-      const token = localStorage.getItem('accessToken');
+      const { data: { session } } = await getSessionSafe();
+      const token = session?.access_token;
+      if (!token) return;
+      
       const response = await fetch('/api/wishlist', {
         method: 'DELETE',
         headers: {
@@ -100,27 +177,151 @@ export default function WishlistPageClient({ locale }: WishlistPageClientProps) 
     }
   };
 
+  // Get localized product name
+  const getProductName = (item: WishlistItem): string => {
+    if (!item.product) return 'Unknown Product';
+    const p = item.product;
+    switch (locale) {
+      case 'ja':
+        return p.name_ja || p.name_en || p.display_name || p.name || 'Unknown Product';
+      case 'th':
+        return p.name_th || p.name_en || p.display_name || p.name || 'Unknown Product';
+      case 'zh':
+        return p.name || p.display_name || 'Unknown Product';
+      default:
+        return p.name_en || p.display_name || p.name || 'Unknown Product';
+    }
+  };
+
+  // Get localized brand
+  const getProductBrand = (item: WishlistItem): string | null => {
+    if (!item.product) return null;
+    const p = item.product;
+    switch (locale) {
+      case 'ja':
+        return p.brand_ja || p.brand_en || p.brand || null;
+      case 'th':
+        return p.brand_th || p.brand_en || p.brand || null;
+      default:
+        return p.brand_en || p.brand || null;
+    }
+  };
+
+  // Get localized slug
+  const getProductSlug = (item: WishlistItem): string => {
+    if (!item.product) return '';
+    const p = item.product;
+    switch (locale) {
+      case 'ja':
+        return p.slug_ja || p.slug_en || p.slug || '';
+      case 'th':
+        return p.slug_th || p.slug_en || p.slug || '';
+      default:
+        return p.slug_en || p.slug || '';
+    }
+  };
+
+  // Get product image URL
+  const getProductImage = (item: WishlistItem): string | null => {
+    if (!item.product) return null;
+    return item.product.cover_image_url || item.product.image_url || null;
+  };
+
+  // Convert price from USD to target currency
+  const convertPrice = (priceUSD: number, targetCurrency: Currency): number => {
+    const rate = exchangeRates[targetCurrency] || 1;
+    return priceUSD * rate;
+  };
+
+  // Get product price range in display currency
+  // Returns { min, max } - if min === max, it's a single price
+  const getProductPriceRange = (item: WishlistItem): { min: number; max: number; isRange: boolean } => {
+    if (!item.product) return { min: 0, max: 0, isRange: false };
+    const p = item.product;
+
+    // Determine which SKU prices to use based on currency
+    let minPrice: number | null = null;
+    let maxPrice: number | null = null;
+
+    if (currency === 'JPY') {
+      // Use JPY SKU prices if available
+      if (p.sku_price_jpy_min != null && p.sku_price_jpy_min > 0) {
+        minPrice = p.sku_price_jpy_min;
+        maxPrice = p.sku_price_jpy_max ?? p.sku_price_jpy_min;
+      }
+    } else if (currency === 'THB') {
+      // Use THB SKU prices if available
+      if (p.sku_price_thb_min != null && p.sku_price_thb_min > 0) {
+        minPrice = p.sku_price_thb_min;
+        maxPrice = p.sku_price_thb_max ?? p.sku_price_thb_min;
+      }
+    }
+
+    // If no direct currency price, use USD and convert
+    if (minPrice === null) {
+      if (p.sku_price_usd_min != null && p.sku_price_usd_min > 0) {
+        minPrice = convertPrice(p.sku_price_usd_min, currency);
+        maxPrice = p.sku_price_usd_max != null ? convertPrice(p.sku_price_usd_max, currency) : minPrice;
+      } else if (p.price_min != null && p.price_min > 0) {
+        minPrice = convertPrice(p.price_min, currency);
+        maxPrice = p.price_max != null && p.price_max > 0 ? convertPrice(p.price_max, currency) : minPrice;
+      } else if (p.price != null && p.price > 0) {
+        minPrice = convertPrice(p.price, currency);
+        maxPrice = minPrice;
+      }
+    }
+
+    // Ensure valid values
+    minPrice = minPrice ?? 0;
+    maxPrice = maxPrice ?? minPrice;
+
+    return {
+      min: minPrice,
+      max: maxPrice,
+      isRange: minPrice !== maxPrice && maxPrice > minPrice
+    };
+  };
+
+  // Get product price in display currency (for backward compatibility)
+  const getProductPrice = (item: WishlistItem): number => {
+    const range = getProductPriceRange(item);
+    return range.min;
+  };
+
+  // Format price range for display
+  const formatPriceRange = (item: WishlistItem): string => {
+    const range = getProductPriceRange(item);
+    if (range.isRange) {
+      return `${formatPrice(range.min, currency)} - ${formatPrice(range.max, currency)}`;
+    }
+    return formatPrice(range.min, currency);
+  };
+
+  // Check if product has price
+  const hasProductPrice = (item: WishlistItem): boolean => {
+    if (!item.product) return false;
+    const p = item.product;
+    const minPrice = p.sku_price_usd_min ?? p.price_min ?? p.price ?? p.display_price;
+    return p.has_price !== false && minPrice != null && minPrice > 0;
+  };
+
   const handleAddToCart = async (item: WishlistItem) => {
+    if (!item.product) return;
+    
     setAddingToCartId(item.product_id);
     try {
-      // Get price based on locale
-      let price = item.product.display_price || 0;
-      if (locale === 'en' && item.product.selling_price_usd) {
-        price = item.product.selling_price_usd;
-      } else if (locale === 'ja' && item.product.selling_price_jpy) {
-        price = item.product.selling_price_jpy;
-      } else if (locale === 'th' && item.product.selling_price_thb) {
-        price = item.product.selling_price_thb;
-      }
+      const price = getProductPrice(item);
+      const productName = getProductName(item);
+      const imageUrl = getProductImage(item) || '';
 
       await addToCart({
         id: item.product_id,
         productId: item.product.id,
-        name: item.product.name,
+        name: productName,
         price,
         currency,
         type: 'product' as const,
-        imageUrl: item.product.image_url,
+        imageUrl: imageUrl,
         quantity: 1,
         supplierId: undefined,
         supplierName: undefined,
@@ -132,27 +333,18 @@ export default function WishlistPageClient({ locale }: WishlistPageClientProps) 
     }
   };
 
-  const getProductPrice = (item: WishlistItem): number => {
-    if (locale === 'ja' && item.product.selling_price_jpy) {
-      return item.product.selling_price_jpy;
-    }
-    if (locale === 'th' && item.product.selling_price_thb) {
-      return item.product.selling_price_thb;
-    }
-    if (locale === 'en' && item.product.selling_price_usd) {
-      return item.product.selling_price_usd;
-    }
-    return item.product.display_price || 0;
-  };
-
-  const emptyWishlist = () => {
-    if (confirm(t.common.confirm)) {
+  const emptyWishlist = async () => {
+    if (confirm(t.common.confirm || 'Are you sure you want to clear your wishlist?')) {
+      const { data: { session } } = await getSessionSafe();
+      const token = session?.access_token;
+      if (!token) return;
+      
       setWishlist([]);
       wishlist.forEach(item => {
         fetch('/api/wishlist', {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ productId: item.product_id }),
@@ -161,7 +353,7 @@ export default function WishlistPageClient({ locale }: WishlistPageClientProps) 
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
@@ -227,87 +419,101 @@ export default function WishlistPageClient({ locale }: WishlistPageClientProps) 
 
             {/* Product Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {wishlist.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-emerald-200 transition-all duration-300 group"
-                >
-                  {/* Product Image */}
-                  <div className="relative aspect-square overflow-hidden bg-slate-100">
-                    <Link href={`/${locale}/shop/${item.product.slug}`}>
-                      {item.product.image_url ? (
-                        <img
-                          src={item.product.image_url}
-                          alt={item.product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-16 h-16 text-slate-300" />
-                        </div>
-                      )}
-                    </Link>
-
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => removeFromWishlist(item.product_id)}
-                      disabled={removingId === item.product_id}
-                      className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={w.remove}
-                    >
-                      {removingId === item.product_id ? (
-                        <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-600" />
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="p-5">
-                    <div className="mb-3">
-                      {item.product.brand && (
-                        <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">
-                          {item.product.brand}
-                        </p>
-                      )}
-                      <Link
-                        href={`/${locale}/shop/${item.product.slug}`}
-                        className="font-bold text-slate-900 hover:text-emerald-600 transition-colors line-clamp-2"
-                      >
-                        {item.product.name}
+              {wishlist.map((item) => {
+                const productName = getProductName(item);
+                const productBrand = getProductBrand(item);
+                const productSlug = getProductSlug(item);
+                const productImage = getProductImage(item);
+                const hasPrice = hasProductPrice(item);
+                
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-emerald-200 transition-all duration-300 group"
+                  >
+                    {/* Product Image */}
+                    <div className="relative aspect-square overflow-hidden bg-slate-100">
+                      <Link href={`/${locale}/shop/${productSlug}`}>
+                        {productImage ? (
+                          <img
+                            src={productImage}
+                            alt={productName}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-16 h-16 text-slate-300" />
+                          </div>
+                        )}
                       </Link>
+
+                      {/* Remove Button */}
+                      <button
+                        onClick={() => removeFromWishlist(item.product_id)}
+                        disabled={removingId === item.product_id}
+                        className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={w.remove}
+                      >
+                        {removingId === item.product_id ? (
+                          <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-600" />
+                        )}
+                      </button>
                     </div>
 
-                    {/* Price */}
-                    <div className="mb-4">
-                      <p className="text-xl font-bold text-slate-900">
-                        {formatPrice(getProductPrice(item), currency)}
-                      </p>
-                    </div>
+                    {/* Product Info */}
+                    <div className="p-5">
+                      <div className="mb-3">
+                        {productBrand && (
+                          <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">
+                            {productBrand}
+                          </p>
+                        )}
+                        <Link
+                          href={`/${locale}/shop/${productSlug}`}
+                          className="font-bold text-slate-900 hover:text-emerald-600 transition-colors line-clamp-2"
+                        >
+                          {productName}
+                        </Link>
+                      </div>
 
-                    {/* Actions */}
-                    <button
-                      onClick={() => handleAddToCart(item)}
-                      disabled={addingToCartId === item.product_id}
-                      className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
-                    >
-                      {addingToCartId === item.product_id ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          {t.common.loading}
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="w-4 h-4" />
-                          {w.addToCart}
-                        </>
-                      )}
-                    </button>
+                      {/* Price */}
+                      <div className="mb-4">
+                        {hasPrice ? (
+                          <p className="text-xl font-bold text-slate-900">
+                            {formatPriceRange(item)}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-slate-500">
+                            Contact for price
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <button
+                        onClick={() => handleAddToCart(item)}
+                        disabled={addingToCartId === item.product_id}
+                        className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                      >
+                        {addingToCartId === item.product_id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {t.common.loading}
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-4 h-4" />
+                            {w.addToCart}
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
