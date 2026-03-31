@@ -21,11 +21,17 @@ interface CheckoutPageProps {
 }
 
 interface ShippingMethod {
+  id?: string;
   code: string;
   name: string;
   description: string;
   price: number;
+  priceFormula?: string;
   estimatedDays: string;
+  billingType?: string;
+  baseFee?: number;
+  perUnitFee?: number;
+  freeShippingThreshold?: number | null;
 }
 
 interface CheckoutFormData {
@@ -82,15 +88,71 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
     companyName: '',
     poNumber: '',
     taxId: '',
-    shippingMethod: 'standard',
+    shippingMethod: '',
     paymentMethod: 'stripe',
     notes: '',
   });
 
-  const shippingMethods: ShippingMethod[] = [
-    { code: 'standard', name: c.standardShipping, description: c.standardShippingDesc, price: 15, estimatedDays: '5-10' },
-    { code: 'express', name: c.expressShipping, description: c.expressShippingDesc, price: 35, estimatedDays: '2-5' },
-  ];
+  // 运费方法（从API获取）
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [shippingZone, setShippingZone] = useState<{ code: string; name: Record<string, string> } | null>(null);
+
+  // 获取运费方法
+  useEffect(() => {
+    if (!formData.country) {
+      // 如果没有选择国家，使用默认运费
+      setShippingMethods([
+        { code: 'standard', name: c.standardShipping, description: c.standardShippingDesc, price: 15, estimatedDays: '5-10' },
+        { code: 'express', name: c.expressShipping, description: c.expressShippingDesc, price: 35, estimatedDays: '2-5' },
+      ]);
+      return;
+    }
+
+    setLoadingShipping(true);
+    fetch(`/api/shipping-methods?country=${formData.country}&weight=${totalWeight}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.methods && data.methods.length > 0) {
+          setShippingZone(data.zone);
+          const methods: ShippingMethod[] = data.methods.map((m: any) => ({
+            id: m.id,
+            code: m.method_code,
+            name: m.method_name?.en || m.method_code,
+            description: m.price_formula || m.method_description?.en || '',
+            price: m.price || 0,
+            priceFormula: m.price_formula,
+            estimatedDays: m.estimated_days_min && m.estimated_days_max
+              ? `${m.estimated_days_min}-${m.estimated_days_max}`
+              : '',
+            billingType: m.billing_type,
+            baseFee: m.base_fee,
+            perUnitFee: m.per_unit_fee,
+            freeShippingThreshold: m.free_shipping_threshold,
+          }));
+          setShippingMethods(methods);
+          // 自动选择第一个运费方法
+          if (methods.length > 0 && !formData.shippingMethod) {
+            setFormData(prev => ({ ...prev, shippingMethod: methods[0].code }));
+          }
+        } else {
+          // 如果没有匹配的区域，使用默认运费
+          setShippingMethods([
+            { code: 'standard', name: c.standardShipping, description: c.standardShippingDesc, price: 15, estimatedDays: '5-10' },
+            { code: 'express', name: c.expressShipping, description: c.expressShippingDesc, price: 35, estimatedDays: '2-5' },
+          ]);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch shipping methods:', err);
+        // 出错时使用默认运费
+        setShippingMethods([
+          { code: 'standard', name: c.standardShipping, description: c.standardShippingDesc, price: 15, estimatedDays: '5-10' },
+          { code: 'express', name: c.expressShipping, description: c.expressShippingDesc, price: 35, estimatedDays: '2-5' },
+        ]);
+      })
+      .finally(() => setLoadingShipping(false));
+  }, [formData.country, totalWeight, c.standardShipping, c.standardShippingDesc, c.expressShipping, c.expressShippingDesc]);
 
   // 计算运费
   const selectedShipping = shippingMethods.find(s => s.code === formData.shippingMethod);
@@ -517,35 +579,55 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
                   <Truck className="w-5 h-5" /> {c.shippingMethod}
+                  {shippingZone && (
+                    <span className="text-sm font-normal text-gray-500 ml-2">
+                      ({shippingZone.name?.en || shippingZone.code})
+                    </span>
+                  )}
                 </h2>
-                <div className="space-y-3">
-                  {shippingMethods.map((method) => (
-                    <label
-                      key={method.code}
-                      className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
-                        formData.shippingMethod === method.code
-                          ? 'border-emerald-500 bg-emerald-50'
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="shippingMethod"
-                          value={method.code}
-                          checked={formData.shippingMethod === method.code}
-                          onChange={(e) => handleInputChange('shippingMethod', e.target.value)}
-                          className="w-4 h-4 text-emerald-600"
-                        />
-                        <div>
-                          <p className="font-medium text-gray-900">{method.name}</p>
-                          <p className="text-sm text-gray-500">{method.description}</p>
+                {loadingShipping ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                    <span className="ml-2 text-gray-500">Loading shipping options...</span>
+                  </div>
+                ) : shippingMethods.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>{c.selectCountryFirst || 'Please select a country to see shipping options'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {shippingMethods.map((method) => (
+                      <label
+                        key={method.code}
+                        className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                          formData.shippingMethod === method.code
+                            ? 'border-emerald-500 bg-emerald-50'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="shippingMethod"
+                            value={method.code}
+                            checked={formData.shippingMethod === method.code}
+                            onChange={(e) => handleInputChange('shippingMethod', e.target.value)}
+                            className="w-4 h-4 text-emerald-600"
+                          />
+                          <div>
+                            <p className="font-medium text-gray-900">{method.name}</p>
+                            <p className="text-sm text-gray-500">
+                              {method.estimatedDays && <span>{method.estimatedDays} days</span>}
+                              {method.estimatedDays && method.description && ' - '}
+                              {method.description}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <p className="font-medium text-gray-900">{formatPrice(method.price, currency)}</p>
-                    </label>
-                  ))}
-                </div>
+                        <p className="font-medium text-gray-900">{formatPrice(method.price, currency)}</p>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* 5. 支付方式 */}
