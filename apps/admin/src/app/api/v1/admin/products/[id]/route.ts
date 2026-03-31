@@ -105,6 +105,51 @@ export async function PUT(
   return PATCH(req, { params });
 }
 
+// DELETE /api/v1/admin/products/[id] - soft delete product
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    // Check if product exists and is not already deleted
+    const { data: product, error: fetchError } = await supabase
+      .from('products')
+      .select('id, name, status')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchError || !product) {
+      return NextResponse.json({ error: '产品不存在或已删除' }, { status: 404 });
+    }
+
+    // Soft delete - set deleted_at, is_deleted, and status
+    // The trigger will automatically disable site_views
+    const { error: deleteError } = await supabase
+      .from('products')
+      .update({
+        deleted_at: new Date().toISOString(),
+        is_deleted: true,
+        status: 'offline',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('[Product DELETE] Error:', deleteError);
+      throw deleteError;
+    }
+
+    console.log(`[Product DELETE] Successfully deleted: ${product.name}`);
+    return NextResponse.json({ success: true, message: `产品 "${product.name}" 已删除` });
+  } catch (error) {
+    console.error('Failed to delete product:', error);
+    return NextResponse.json({ error: '删除失败' }, { status: 500 });
+  }
+}
+
 // POST /api/v1/admin/products/[id]/approve - approve product
 export async function POST(
   req: NextRequest,
