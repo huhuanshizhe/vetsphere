@@ -59,6 +59,10 @@ interface WishlistProduct {
   stock_status?: 'in_stock' | 'out_of_stock' | 'low_stock';
   stock_quantity?: number;
   created_at?: string;
+  // Product publish status on intl site
+  is_published_intl?: boolean;
+  publish_status?: string | null;
+  status?: string | null;
 }
 
 interface WishlistItem {
@@ -92,6 +96,8 @@ interface WishlistPageProps {
     inStock: string;
     outOfStock: string;
     lowStock: string;
+    unavailable: string; // 新增：产品失效
+    unavailableDesc: string; // 新增：产品下架说明
     addToCart: string;
     viewDetails: string;
     removeFromWishlist: string;
@@ -434,6 +440,12 @@ export function WishlistPage({
       <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' : 'space-y-4'}>
         {sortedWishlist.map((item) => {
           const product = (item.product || {}) as Partial<WishlistProduct>;
+
+          // Check if product is unavailable (removed from platform or not published on intl site)
+          const isProductEmpty = !item.product || Object.keys(product).length === 0;
+          const isNotPublishedIntl = product.is_published_intl === false || product.publish_status === 'offline' || product.status === 'offline';
+          const isUnavailable = isProductEmpty || isNotPublishedIntl;
+
           const imageUrl = product.image_url || product.cover_image_url;
           const displayImage = imageUrl ? getImageUrl(imageUrl) : null;
           const productName = product.display_name || product.name || 'Unknown Product';
@@ -444,8 +456,8 @@ export function WishlistPage({
           const isSelected = selectedItems.has(item.product_id);
           const isRemoving = removingId === item.product_id;
 
-          // Mock stock status (in real app, this would come from product data)
-          const stockStatus = product.stock_status || (Math.random() > 0.2 ? 'in_stock' : 'out_of_stock');
+          // Stock status - mark as unavailable if product is null or not published
+          const stockStatus = isUnavailable ? 'unavailable' : (product.stock_status || 'in_stock');
 
           if (viewMode === 'grid') {
             // Grid view card
@@ -491,6 +503,16 @@ export function WishlistPage({
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <span className="bg-white text-slate-800 text-sm font-bold px-3 py-1.5 rounded-lg">
                           {t.outOfStock}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Unavailable overlay - product removed from platform */}
+                    {stockStatus === 'unavailable' && (
+                      <div className="absolute inset-0 bg-slate-800/70 flex items-center justify-center">
+                        <span className="bg-white text-slate-800 text-sm font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                          <X className="w-4 h-4" />
+                          {t.unavailable || 'Unavailable'}
                         </span>
                       </div>
                     )}
@@ -553,11 +575,17 @@ export function WishlistPage({
                         <span className="text-xs text-red-600 font-medium">{t.outOfStock}</span>
                       </>
                     )}
+                    {stockStatus === 'unavailable' && (
+                      <>
+                        <X className="w-4 h-4 text-slate-500" />
+                        <span className="text-xs text-slate-600 font-medium">{t.unavailable || 'Unavailable'}</span>
+                      </>
+                    )}
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 mt-4">
-                    {onAddToCart && stockStatus !== 'out_of_stock' && (
+                    {onAddToCart && stockStatus !== 'out_of_stock' && stockStatus !== 'unavailable' && (
                       <button
                         onClick={() => onAddToCart(item.product_id)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
@@ -647,6 +675,12 @@ export function WishlistPage({
                               <span className="text-xs text-red-600 font-medium">{t.outOfStock}</span>
                             </>
                           )}
+                          {stockStatus === 'unavailable' && (
+                            <>
+                              <X className="w-4 h-4 text-slate-500" />
+                              <span className="text-xs text-slate-600 font-medium">{t.unavailable || 'Unavailable'}</span>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -704,7 +738,7 @@ export function WishlistPage({
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {onAddToCart && stockStatus !== 'out_of_stock' && (
+                        {onAddToCart && stockStatus !== 'out_of_stock' && stockStatus !== 'unavailable' && (
                           <button
                             onClick={() => onAddToCart(item.product_id)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
@@ -713,13 +747,15 @@ export function WishlistPage({
                             {t.addToCart}
                           </button>
                         )}
-                        <Link
-                          href={`/${locale}/shop/${productSlug}`}
-                          className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          {t.viewDetails}
-                        </Link>
+                        {stockStatus !== 'unavailable' && (
+                          <Link
+                            href={`/${locale}/shop/${productSlug}`}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            {t.viewDetails}
+                          </Link>
+                        )}
                         <button
                           onClick={() => handleRemove(item.product_id)}
                           disabled={isRemoving}

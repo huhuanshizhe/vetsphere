@@ -1225,10 +1225,43 @@ export const api = {
 
   async getOrders(userEmail?: string): Promise<Order[]> {
     try {
-      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      // Get current user session for secure filtering
+      const { data: { session } } = await getSessionSafe();
+      if (!session?.user?.id) {
+        console.warn('getOrders: No authenticated user session');
+        return [];
+      }
+
+      // Filter by user_id for data isolation
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
-      return (data || []).map((o: any) => ({ id: o.id, customerName: o.customer_name, customerEmail: o.customer_email, items: o.items || [], totalAmount: o.total_amount, currency: o.currency || 'USD', status: o.status, date: o.date || o.created_at, shippingAddress: o.shipping_address }));
-    } catch { return []; }
+      return (data || []).map((o: any) => ({
+        id: o.id,
+        customerName: o.customer_name || o.shipping_name,
+        customerEmail: o.customer_email || o.email,
+        items: (o.order_items || o.items || []).map((item: any) => ({
+          id: item.id,
+          name: item.product_name || item.name,
+          price: item.unit_price || item.price,
+          quantity: item.quantity,
+          imageUrl: item.image_url || item.product_image || item.imageUrl,
+          type: item.type || 'product',
+        })),
+        totalAmount: o.total_amount || o.total,
+        currency: o.currency || 'USD',
+        status: o.status,
+        date: o.date || o.created_at,
+        shippingAddress: o.shipping_address,
+      }));
+    } catch (err) {
+      console.error('getOrders error:', err);
+      return [];
+    }
   },
 
   async updateOrderStatus(orderId: string, status: 'Paid' | 'Shipped' | 'Completed'): Promise<void> {

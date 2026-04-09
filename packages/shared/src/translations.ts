@@ -32,6 +32,7 @@ export const translations = {
       status: 'Status',
       items: 'Items',
       view: 'View',
+      all: 'All',
     },
     userCenter: {
       personalInfo: 'Personal Information',

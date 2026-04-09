@@ -25,10 +25,13 @@
     "@tiptap/react": "^3.20.1",
     "@tiptap/starter-kit": "^3.20.1",
     "@vetsphere/shared": "workspace:*",
+    "ali-oss": "^6.23.0",
     "next": "16.1.6",
     "openai": "^6.25.0",
+    "proxy-agent": "5",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

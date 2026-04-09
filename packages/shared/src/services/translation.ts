@@ -1,6 +1,6 @@
 /**
  * DashScope Translation Service
- * 使用阿里云通义千问进行课程内容多语言翻译
+ * 使用阿里云通义千问或OpenAI兼容API进行课程内容多语言翻译
  */
 
 import type { Course } from '../types';
@@ -21,6 +21,18 @@ export const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
 export const PUBLISH_LANG_TO_CODE: Record<string, SupportedLanguage> = {
   'zh': 'zh', 'en': 'en', 'ja': 'ja', 'th': 'th',
   '中文': 'zh', 'English': 'en', '日本語': 'ja', 'ภาษาไทย': 'th',
+};
+
+// API配置 - 支持DashScope或OpenAI兼容API
+const getApiConfig = () => {
+  const baseUrl = process.env.AI_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  const url = new URL(`${baseUrl}/chat/completions`);
+  return {
+    hostname: url.hostname,
+    port: url.port || 443,
+    path: url.pathname,
+    protocol: url.protocol,
+  };
 };
 
 // === 固定汇率配置 (基准: 1 USD) ===
@@ -188,7 +200,7 @@ function extractFlatContent(course: Course): FlatTranslationContent {
 }
 
 /**
- * 调用 DashScope API 进行翻译
+ * 调用 DashScope 或 OpenAI 兼容 API 进行翻译
  */
 async function translateWithDashScope(
   content: FlatTranslationContent,
@@ -217,8 +229,14 @@ Return format (EXACT structure required):
   "${targetLangs[3]}": { ... }
 }`;
 
+  // 使用环境变量配置或默认值
+  const baseUrl = process.env.AI_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  const model = process.env.AI_MODEL || 'qwen3.5-plus';
+  // 优先使用传入的 apiKey，否则使用环境变量
+  const effectiveApiKey = apiKey || process.env.AI_API_KEY || process.env.DASHSCOPE_API_KEY || '';
+
   const requestBody = {
-    model: 'qwen3.5-plus',
+    model,
     messages: [
       { role: 'system', content: 'You are a translator. Return only valid JSON.' },
       { role: 'user', content: prompt },
@@ -226,48 +244,55 @@ Return format (EXACT structure required):
     temperature: 0.3,
   };
 
-  console.log('DashScope request:', {
-    url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-    model: requestBody.model,
+  console.log('AI Translation request:', {
+    url: `${baseUrl}/chat/completions`,
+    model,
     promptLength: prompt.length,
-    apiKeyPrefix: apiKey.substring(0, 10) + '...',
+    apiKeyPrefix: effectiveApiKey.substring(0, 10) + '...',
   });
 
   // 使用 Node.js 原生 https 模块
   const https = require('https');
+  const http = require('http');
+  const url = new URL(`${baseUrl}/chat/completions`);
+  const isHttps = url.protocol === 'https:';
+  const client = isHttps ? https : http;
 
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify(requestBody);
     const options = {
-      hostname: 'dashscope.aliyuncs.com',
-      port: 443,
-      path: '/compatible-mode/v1/chat/completions',
+      hostname: url.hostname,
+      port: url.port || (isHttps ? 443 : 80),
+      path: url.pathname,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${effectiveApiKey}`,
         'Content-Length': Buffer.byteLength(postData),
+        'User-Agent': 'VetSphere-Translation/1.0',
+        'Accept': 'application/json',
       },
     };
 
-    console.log('[DashScope] Using native https module');
+    console.log(`[AI Translation] Using ${isHttps ? 'HTTPS' : 'HTTP'} to ${url.hostname}${url.pathname}`);
+    console.log(`[AI Translation] Request body length: ${postData.length} chars`);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const req = https.request(options, (res: any) => {
+    const req = client.request(options, (res: any) => {
       let body = '';
       res.on('data', (chunk: any) => { body += chunk; });
       res.on('end', () => {
         if (res.statusCode && res.statusCode >= 400) {
-          reject(new Error(`HTTP ${res.statusCode}: ${body.substring(0, 200)}`));
+          reject(new Error(`HTTP ${res.statusCode}: ${body.substring(0, 500)}`));
         } else {
           try {
             const data = JSON.parse(body);
             const resultText = data?.choices?.[0]?.message?.content;
             if (!resultText) {
-              reject(new Error('No translation result from DashScope'));
+              reject(new Error('No translation result from AI API: ' + JSON.stringify(data).substring(0, 200)));
             } else {
               const result = JSON.parse(resultText);
-              console.log('DashScope returned languages:', Object.keys(result));
+              console.log('AI returned languages:', Object.keys(result));
               resolve(result);
             }
           } catch (e) {

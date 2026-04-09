@@ -47,6 +47,32 @@ export default function CourseEditModal({
     }
   }, [course, loadCourse]);
 
+  // 关闭确认
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      if (window.confirm('您有未保存的更改，确定要离开吗？')) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  }, [isDirty, onClose]);
+
+  // 键盘事件：Escape键关闭弹窗
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    if (course) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [course, handleClose]);
+
   // 保存更改（保持当前状态）
   const handleSave = useCallback(async () => {
     if (!course?.id) return;
@@ -98,17 +124,6 @@ export default function CourseEditModal({
     }
   }, [course?.id, formData, validateAll, onSuccess, onClose]);
 
-  // 关闭确认
-  const handleClose = useCallback(() => {
-    if (isDirty) {
-      if (window.confirm('您有未保存的更改，确定要离开吗？')) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
-  }, [isDirty, onClose]);
-
   if (!course) return null;
 
   // 判断是否可编辑（只有 Draft 状态可以编辑）
@@ -131,6 +146,7 @@ export default function CourseEditModal({
             </p>
           </div>
           <button
+            type="button"
             onClick={handleClose}
             className="w-10 h-10 rounded-lg bg-purple-500/10 text-gray-400 hover:text-white hover:bg-purple-500/20 transition-colors flex items-center justify-center"
           >
@@ -253,6 +269,7 @@ export default function CourseEditModal({
 
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={handleClose}
               disabled={isSubmitting}
               className="px-5 py-2.5 bg-gray-500/20 text-gray-300 rounded-xl hover:bg-gray-500/30 transition-colors disabled:opacity-50"
