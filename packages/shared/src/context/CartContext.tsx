@@ -11,6 +11,7 @@ export interface EnhancedCartItem extends CartItem {
   supplierName?: string;
   minOrderQuantity?: number;
   inStock?: boolean;
+  unavailable?: boolean; // 产品已下架/失效
 }
 
 interface CartContextType {

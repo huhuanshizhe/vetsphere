@@ -63,3 +63,64 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
   }
 }
+
+// POST /api/v1/admin/products - Create a new product
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    // Generate product ID
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    const productId = `prod_${timestamp}_${random}`;
+
+    // Generate slug from name
+    const slug = body.name
+      ? body.name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').substring(0, 100)
+      : `product-${timestamp}`;
+
+    const productData = {
+      id: productId,
+      name: body.name || '',
+      name_en: body.name_en || body.name || '',
+      brand: body.brand || '',
+      brand_en: body.brand_en || body.brand || '',
+      description: body.description || '',
+      description_en: body.description_en || body.description || '',
+      rich_description: body.rich_description || '',
+      rich_description_en: body.rich_description_en || body.rich_description || '',
+      category_id: body.category_id || null,
+      slug: slug,
+      slug_en: slug,
+      status: body.status || 'draft',
+      has_price: body.has_price ?? true,
+      min_order_quantity: body.min_order_quantity || 1,
+      weight: body.weight || 0,
+      specifications: body.specifications || {},
+      faq: body.faq || null,
+      supplier_id: null, // Admin-created products have no supplier
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('products')
+      .insert(productData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Product POST] Insert error:', error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    console.log('[Product POST] Created product:', data.id);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[Product POST] Error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to create product' },
+      { status: 500 }
+    );
+  }
+}

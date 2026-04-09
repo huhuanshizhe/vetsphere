@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { CourseFormData } from '@/hooks/useCourseForm';
 import { Specialty } from '@vetsphere/shared/types';
 
@@ -434,11 +434,17 @@ export default function CourseFormFields({
 }: CourseFormFieldsProps) {
   
   // 当发布语言改变时，自动设置对应币种
+  // 使用useRef追踪上一次的publishLanguage值，只在真正改变时才同步
+  const prevPublishLanguageRef = useRef(formData.publishLanguage);
   useEffect(() => {
-    if (formData.publishLanguage) {
-      const lang = PUBLISH_LANGUAGES.find(l => l.value === formData.publishLanguage);
-      if (lang && formData.currency !== lang.currency) {
-        onUpdate('currency', lang.currency);
+    // 只在publishLanguage实际改变时才同步（不是初始挂载）
+    if (prevPublishLanguageRef.current !== formData.publishLanguage) {
+      prevPublishLanguageRef.current = formData.publishLanguage;
+      if (formData.publishLanguage) {
+        const lang = PUBLISH_LANGUAGES.find(l => l.value === formData.publishLanguage);
+        if (lang && formData.currency !== lang.currency) {
+          onUpdate('currency', lang.currency);
+        }
       }
     }
   }, [formData.publishLanguage, formData.currency, onUpdate]);

@@ -82,12 +82,35 @@ export async function GET(request: NextRequest) {
         currency,
         has_price,
         pricing_mode,
-        has_variants
+        has_variants,
+        status
       `)
       .in('id', productIds);
 
     if (productsError) {
       console.log('[Wishlist] Products query error:', productsError?.message);
+    }
+
+    // Check product_site_views for intl site publish status
+    const { data: siteViewsData, error: siteViewsError } = await supabaseAdmin
+      .from('product_site_views')
+      .select('product_id, publish_status, is_enabled')
+      .eq('site_code', 'intl')
+      .in('product_id', productIds);
+
+    if (siteViewsError) {
+      console.log('[Wishlist] Site views query error:', siteViewsError?.message);
+    }
+
+    // Create a map of product_id -> site view status
+    const siteViewStatusMap = new Map<string, { publish_status: string; is_enabled: boolean }>();
+    if (siteViewsData) {
+      siteViewsData.forEach(sv => {
+        siteViewStatusMap.set(sv.product_id, {
+          publish_status: sv.publish_status,
+          is_enabled: sv.is_enabled
+        });
+      });
     }
 
     // Get SKU data for products with variants
@@ -146,7 +169,13 @@ export async function GET(request: NextRequest) {
     if (productsData) {
       products = productsData.map(p => {
         const skuPrices = skuPriceMap.get(p.id);
-        
+
+        // Check if product is published on intl site
+        const siteViewStatus = siteViewStatusMap.get(p.id);
+        const isPublishedIntl = siteViewStatus
+          ? siteViewStatus.publish_status === 'published' && siteViewStatus.is_enabled === true
+          : false;
+
         // Determine price range - prefer SKU aggregated prices
         let finalPriceMin: number | null = null;
         let finalPriceMax: number | null = null;
@@ -164,7 +193,7 @@ export async function GET(request: NextRequest) {
           skuPriceJpyMax = skuPrices.maxJpy === 0 ? null : skuPrices.maxJpy;
           skuPriceThbMin = skuPrices.minThb === Infinity ? null : skuPrices.minThb;
           skuPriceThbMax = skuPrices.maxThb === 0 ? null : skuPrices.maxThb;
-          
+
           finalPriceMin = skuPriceUsdMin;
           finalPriceMax = skuPriceUsdMax;
         } else if (p.price_range_min && p.price_range_max) {
@@ -229,9 +258,13 @@ export async function GET(request: NextRequest) {
           has_price: p.has_price,
           pricing_mode: p.pricing_mode,
           has_variants: p.has_variants,
+          // Product status and intl site publish status
+          status: p.status,
+          is_published_intl: isPublishedIntl,
+          publish_status: siteViewStatus?.publish_status || null,
         };
       });
-      console.log('[Wishlist] Found', products.length, 'products from products table with SKU prices');
+      console.log('[Wishlist] Found', products.length, 'products from products table with SKU prices and publish status');
     }
 
     // Merge product data into wishlist items

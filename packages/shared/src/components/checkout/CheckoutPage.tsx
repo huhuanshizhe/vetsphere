@@ -101,11 +101,9 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
   // 获取运费方法
   useEffect(() => {
     if (!formData.country) {
-      // 如果没有选择国家，使用默认运费
-      setShippingMethods([
-        { code: 'standard', name: c.standardShipping, description: c.standardShippingDesc, price: 15, estimatedDays: '5-10' },
-        { code: 'express', name: c.expressShipping, description: c.expressShippingDesc, price: 35, estimatedDays: '2-5' },
-      ]);
+      // 如果没有选择国家，清空运费选项，提示用户选择国家
+      setShippingMethods([]);
+      setShippingZone(null);
       return;
     }
 
@@ -754,29 +752,51 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
 
                 {/* 商品列表 */}
                 <div className="space-y-4 mb-6">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex gap-4">
-                      <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-6 h-6 text-gray-400" />
-                          </div>
-                        )}
+                  {cart.map((item) => {
+                    const isUnavailable = item.unavailable;
+                    const isOutOfStock = item.inStock === false;
+                    const hasIssue = isUnavailable || isOutOfStock;
+
+                    return (
+                      <div key={item.id} className={`flex gap-4 ${hasIssue ? 'opacity-60' : ''}`}>
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          {/* 失效/下架标记 */}
+                          {isUnavailable && (
+                            <div className="absolute inset-0 bg-slate-800/60 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">Unavailable</span>
+                            </div>
+                          )}
+                          {isOutOfStock && !isUnavailable && (
+                            <div className="absolute inset-0 bg-red-500/60 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">Out of Stock</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${hasIssue ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{item.name}</p>
+                          {item.skuCode && (
+                            <p className="text-xs text-gray-500">SKU: {item.skuCode}</p>
+                          )}
+                          <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                          {hasIssue && (
+                            <p className="text-xs text-red-500 font-medium mt-1">
+                              {isUnavailable ? 'Product no longer available' : 'Out of stock'}
+                            </p>
+                          )}
+                        </div>
+                        <p className={`text-sm font-medium ${hasIssue ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                          {formatPrice(item.price * item.quantity, currency)}
+                        </p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                        {item.skuCode && (
-                          <p className="text-xs text-gray-500">SKU: {item.skuCode}</p>
-                        )}
-                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                      </div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatPrice(item.price * item.quantity, currency)}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* 价格明细 */}
@@ -787,7 +807,11 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>{c.shippingFee}</span>
-                    <span>{formatPrice(shippingFee, currency)}</span>
+                    {!formData.country ? (
+                      <span className="text-amber-600">{c.selectCountryFirst || 'Select country first'}</span>
+                    ) : (
+                      <span>{formatPrice(shippingFee, currency)}</span>
+                    )}
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>{c.tax}</span>
