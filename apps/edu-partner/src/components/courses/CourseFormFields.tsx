@@ -53,7 +53,7 @@ const PUBLISH_LANGUAGES = [
 ];
 
 const TEACHING_LANGUAGES = [
-  { value: 'zh', label: '中文' },
+  { value: 'CN', label: '中文' },
   { value: 'en', label: 'English' },
   { value: 'ja', label: '日本語' },
   { value: 'th', label: 'ภาษาไทย' },
