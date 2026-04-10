@@ -1035,8 +1035,6 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
                 商品详情 ({editLang === publishLang ? `${editLang} - 源` : editLang})
               </label>
-              {/* 编辑模式 */}
-              
                 <RichTextEditor
                   value={getLocalizedValue('rich_description') || ''}
                   onChange={(value) => {
@@ -1045,7 +1043,6 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                   }}
                   placeholder="请输入商品详情内容..."
                 />
-              )}
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">商品图片</label>
