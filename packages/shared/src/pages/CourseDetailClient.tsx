@@ -370,10 +370,23 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
           <div className="lg:col-span-2 space-y-8">
             {/* Description */}
             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-              <h2 className="text-2xl font-black text-slate-900 mb-4">
-                {language === 'zh' ? '课程简介' : language === 'ja' ? 'コース概要' : 'Course Overview'}
-              </h2>
-              <p className="text-slate-600 leading-relaxed text-lg">{desc}</p>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-black text-slate-900">
+                  {language === 'zh' ? '课程简介' : language === 'ja' ? 'コース概要' : 'Course Overview'}
+                </h2>
+              </div>
+              <div 
+                className="text-slate-600 leading-relaxed text-lg space-y-4 whitespace-pre-line"
+                style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                data-testid="course-description"
+              >
+                {desc}
+              </div>
             </div>
 
             {/* INTL: What You Will Upgrade in Your Practice */}
@@ -415,33 +428,42 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
 
             {/* Instructor */}
             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-              <h2 className="text-2xl font-black text-slate-900 mb-6">
-                {language === 'zh' ? '主讲导师' : language === 'ja' ? '講師紹介' : 'Course Instructor'}
-              </h2>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-black text-slate-900">
+                  {language === 'zh' ? '主讲导师' : language === 'ja' ? '講師紹介' : 'Course Instructor'}
+                </h2>
+              </div>
               <div className="flex flex-col md:flex-row gap-6 items-start">
                 {course.instructor.imageUrl && (
                   <img 
                     src={course.instructor.imageUrl} 
                     alt={instructor.name}
-                    className="w-28 h-28 rounded-2xl object-cover border-4 border-slate-50 shadow-lg"
+                    className="w-32 h-32 rounded-2xl object-cover border-4 border-purple-100 shadow-xl shadow-purple-500/20"
                   />
                 )}
                 <div className="flex-1">
-                  <h3 className="text-xl font-black text-slate-900 mb-1">{instructor.name}</h3>
-                  <p className="text-sm font-bold text-vs uppercase tracking-widest mb-3">{instructor.title}</p>
+                  <h3 className="text-2xl font-black text-slate-900 mb-1">{instructor.name}</h3>
+                  <p className="text-sm font-bold text-purple-600 uppercase tracking-widest mb-4">{instructor.title}</p>
                   {instructor.credentials && instructor.credentials.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-4">
                       {instructor.credentials.map((cred, idx) => (
-                        <span key={idx} className="px-3 py-1 bg-emerald-50 text-vs text-xs font-bold rounded-full">
+                        <span key={idx} className="px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 text-xs font-bold rounded-full border border-purple-200">
                           {cred}
                         </span>
                       ))}
                     </div>
                   )}
                   {instructor.bio && (
-                    <p className="text-slate-600 leading-relaxed italic border-l-4 border-vs pl-4">
-                      &quot;{instructor.bio}&quot;
-                    </p>
+                    <div className="bg-gradient-to-r from-purple-50 to-slate-50 p-5 rounded-2xl border border-purple-100">
+                      <p className="text-slate-700 leading-relaxed italic">
+                        &quot;{instructor.bio}&quot;
+                      </p>
+                    </div>
                   )}
                   {/* Instructor Recommended Tools */}
                   <InstructorToolsBlock relations={equipmentRelations} locale={locale} instructorName={instructor.name} />
@@ -554,22 +576,47 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
 
                 {/* Directions */}
                 {services.directions && (
-                  <div className="mb-4">
-                    <h3 className="text-sm font-black text-slate-700 mb-2 flex items-center gap-2">
-                      &#128506;&#65039; {language === 'zh' ? '交通指南' : language === 'ja' ? '交通案内' : 'Directions'}
-                    </h3>
-                    <p className="text-slate-600 text-sm leading-relaxed bg-slate-50 p-4 rounded-xl">
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                      </div>
+                      <h3 className="text-sm font-black text-slate-700">
+                        {language === 'zh' ? '交通指南' : language === 'ja' ? '交通案内' : 'Directions'}
+                      </h3>
+                    </div>
+                    <div 
+                      className="text-slate-600 text-sm leading-relaxed bg-gradient-to-r from-blue-50 to-slate-50 p-5 rounded-2xl border border-blue-100 whitespace-pre-line"
+                      style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                    >
                       {services.directions}
-                    </p>
+                    </div>
                   </div>
                 )}
 
                 {/* Notes */}
                 {services.notes && (
-                  <div>
-                    <h3 className="text-sm font-black text-slate-700 mb-2 flex items-center gap-2">
-                      &#128221; {language === 'zh' ? '其他备注' : language === 'ja' ? 'その他' : 'Additional Notes'}
-                    </h3>
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-sm font-black text-slate-700">
+                        {language === 'zh' ? '其他备注' : language === 'ja' ? 'その他' : 'Additional Notes'}
+                      </h3>
+                    </div>
+                    <div 
+                      className="text-slate-600 text-sm leading-relaxed bg-gradient-to-r from-amber-50 to-slate-50 p-5 rounded-2xl border border-amber-100 whitespace-pre-line"
+                      style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                    >
+                      {services.notes}
+                    </div>
+                  </div>
+                )}
                     <p className="text-slate-600 text-sm leading-relaxed bg-slate-50 p-4 rounded-xl">
                       {services.notes}
                     </p>

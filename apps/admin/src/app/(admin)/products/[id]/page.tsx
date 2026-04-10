@@ -68,8 +68,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const [priceTiers, setPriceTiers] = useState<Record<string, any[]>>({});
   const [loadingTiers, setLoadingTiers] = useState<Record<string, boolean>>({});
 
-  // 只读模式：只有供应商提交前的草稿状态才只读（Admin 可以编辑所有状态）
-  const isReadOnly = product?.status === 'draft' && product?.provider_id;
+  // Admin 可以编辑所有状态的产品
+  const isReadOnly = false;
 
   // 是否为新建模式
   const isNewProduct = productId === 'new';
@@ -414,15 +414,35 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   
   const getLocalizedValue = (baseField: string, obj: any = editForm): string => {
     const publishLang = getPublishLang();
-    const suffixValue = obj?.[`${baseField}_${editLang}`];
-    if (suffixValue) return suffixValue;
-    if (editLang === publishLang) return obj?.[baseField] || '';
+    
+    // 优先检查带语言后缀的字段（包括源语言）
+    const suffixKey = `${baseField}_${editLang}`;
+    if (obj && suffixKey in obj) {
+      const suffixValue = obj[suffixKey];
+      if (suffixValue !== undefined && suffixValue !== null) {
+        return String(suffixValue);
+      }
+    }
+    
+    // 如果是源语言且没有后缀字段，检查不带后缀的字段
+    if (editLang === publishLang) {
+      const baseValue = obj?.[baseField];
+      if (baseValue !== undefined && baseValue !== null) {
+        return String(baseValue);
+      }
+    }
+    
     return '';
   };
   
   const setLocalizedValue = (baseField: string, value: string) => {
     const publishLang = getPublishLang();
-    const field = editLang === publishLang ? baseField : `${baseField}_${editLang}`;
+    
+    // 如果带后缀的字段存在，优先使用带后缀的字段（包括源语言）
+    const suffixKey = `${baseField}_${editLang}`;
+    const useSuffix = editForm && suffixKey in editForm;
+    const field = useSuffix ? suffixKey : (editLang === publishLang ? baseField : `${baseField}_${editLang}`);
+    
     setEditForm((prev: any) => ({ ...prev, [field]: value }));
     setIsDirty(true);
   };
@@ -918,7 +938,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={handleTranslate} loading={translating} disabled={isReadOnly}
+          <Button variant="secondary" onClick={handleTranslate} loading={translating}
             className={translateSuccess ? '!bg-emerald-500 !text-white' : '!bg-purple-600 hover:!bg-purple-500 !text-white'}>
             {translating ? 'AI 翻译中...' : translateSuccess ? '翻译完成 ✓' : 'AI 补全翻译'}
           </Button>
@@ -928,11 +948,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               <Button variant="secondary" onClick={handleReject} loading={saving} className="!bg-red-600 hover:!bg-red-500 !text-white">✕ 拒绝</Button>
             </>
           )}
-          {!isReadOnly && (
-            <Button onClick={handleSaveClick} loading={saving} className={saveSuccess ? '!bg-green-500' : ''}>
-              {saving ? '保存中...' : saveSuccess ? '已保存 ✓' : '保存修改'}
-            </Button>
-          )}
+          <Button onClick={handleSaveClick} loading={saving} className={saveSuccess ? '!bg-green-500' : ''}>
+            {saving ? '保存中...' : saveSuccess ? '已保存 ✓' : '保存修改'}
+          </Button>
           {(product.status === 'pending_review' || product.status === 'Pending' || product.status === 'rejected' || product.status === 'Rejected' || product.status === 'draft' || product.status === 'Draft') && (
             <Button onClick={() => setShowPublishDialog(true)} className="!bg-emerald-600 hover:!bg-emerald-500 !text-white">保存并上架</Button>
           )}
@@ -941,15 +959,6 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
       {(saveError || translateError) && (
         <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl text-sm">{saveError || translateError}</div>
-      )}
-
-      {isReadOnly && (
-        <div className="bg-blue-500/10 border border-blue-500/30 text-blue-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>此产品已发布，当前为只读模式。如需修改，请先下架产品。</span>
-        </div>
       )}
 
       {/* 语言切换 */}
@@ -1006,28 +1015,28 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
                   商品名称 ({editLang === publishLang ? `${editLang} - 源` : editLang})
                 </label>
-                <input type="text" value={getLocalizedValue('name')} onChange={(e) => setLocalizedValue('name', e.target.value)} disabled={isReadOnly}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
+                <input type="text" value={getLocalizedValue('name')} onChange={(e) => setLocalizedValue('name', e.target.value)} 
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">品牌 Brand</label>
-                <input type="text" value={editForm.brand || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, brand: e.target.value })); setIsDirty(true); }} disabled={isReadOnly}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
+                <input type="text" value={editForm.brand || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, brand: e.target.value })); setIsDirty(true); }} 
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
               </div>
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
                 商品描述 ({editLang === publishLang ? `${editLang} - 源` : editLang})
               </label>
-              <textarea value={getLocalizedValue('description')} onChange={(e) => setLocalizedValue('description', e.target.value)} disabled={isReadOnly} rows={4}
-                className="w-full min-h-[100px] px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50" />
+              <textarea value={getLocalizedValue('description')} onChange={(e) => setLocalizedValue('description', e.target.value)}  rows={4}
+                className="w-full min-h-[100px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50" />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
                 商品详情 ({editLang === publishLang ? `${editLang} - 源` : editLang})
               </label>
               {/* 编辑模式 */}
-              {!isReadOnly && (
+              
                 <RichTextEditor
                   value={getLocalizedValue('rich_description') || ''}
                   onChange={(value) => {
@@ -1036,19 +1045,6 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                   }}
                   placeholder="请输入商品详情内容..."
                 />
-              )}
-              {/* 只读模式显示 */}
-              {isReadOnly && (
-                editForm.rich_description ? (
-                  <div
-                    className="w-full min-h-[200px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 overflow-auto"
-                    dangerouslySetInnerHTML={{ __html: getLocalizedValue('rich_description') || editForm.rich_description }}
-                  />
-                ) : (
-                  <div className="w-full min-h-[100px] px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-400 italic">
-                    暂无商品详情
-                  </div>
-                )
               )}
             </div>
             <div>
@@ -1077,19 +1073,19 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 </div>
               )}
               {editForm.image_url && (
-                <input type="text" value={editForm.image_url} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, image_url: e.target.value })); setIsDirty(true); }} disabled={isReadOnly} placeholder="图片 URL"
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
+                <input type="text" value={editForm.image_url} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, image_url: e.target.value })); setIsDirty(true); }}  placeholder="图片 URL"
+                  className="w-full px-4 py-2 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
               )}
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">专科分类 Specialty</label>
-              <input type="text" value={editForm.specialty || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, specialty: e.target.value })); setIsDirty(true); }} disabled={isReadOnly} placeholder="例如：Orthodontics, Oral Surgery"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
+              <input type="text" value={editForm.specialty || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, specialty: e.target.value })); setIsDirty(true); }}  placeholder="例如：Orthodontics, Oral Surgery"
+                className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">来源 URL Source URL</label>
-              <input type="url" value={editForm.source_url || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, source_url: e.target.value })); setIsDirty(true); }} disabled={isReadOnly} placeholder="例如：https://www.alibaba.com/product-detail/..."
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
+              <input type="url" value={editForm.source_url || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, source_url: e.target.value })); setIsDirty(true); }}  placeholder="例如：https://www.alibaba.com/product-detail/..."
+                className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
               <p className="mt-1 text-xs text-slate-500">产品来源链接，用于追溯原始供应商或采购渠道</p>
             </div>
 
@@ -1101,41 +1097,41 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">定价模式</label>
-                  <select value={editForm.pricing_mode || 'fixed'} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, pricing_mode: e.target.value })); setIsDirty(true); }} disabled={isReadOnly}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50">
+                  <select value={editForm.pricing_mode || 'fixed'} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, pricing_mode: e.target.value })); setIsDirty(true); }} 
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50">
                     <option value="fixed">固定价格</option>
                     <option value="inquiry">询价模式</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">发货时间</label>
-                  <input type="text" value={getLocalizedValue('delivery_time') || editForm.delivery_time_en || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, delivery_time: e.target.value, delivery_time_en: e.target.value })); setIsDirty(true); }} disabled={isReadOnly}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：3-5个工作日" />
+                  <input type="text" value={getLocalizedValue('delivery_time') || editForm.delivery_time_en || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, delivery_time: e.target.value, delivery_time_en: e.target.value })); setIsDirty(true); }} 
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：3-5个工作日" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">最小起订量</label>
-                  <input type="number" min="1" value={editForm.min_order_quantity || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, min_order_quantity: Number(e.target.value) })); setIsDirty(true); }} disabled={isReadOnly}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="1" />
+                  <input type="number" min="1" value={editForm.min_order_quantity || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, min_order_quantity: Number(e.target.value) })); setIsDirty(true); }} 
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="1" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">包装信息</label>
-                  <input type="text" value={editForm.packaging_info || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, packaging_info: e.target.value })); setIsDirty(true); }} disabled={isReadOnly}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：纸箱包装，每箱10件" />
+                  <input type="text" value={editForm.packaging_info || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, packaging_info: e.target.value })); setIsDirty(true); }} 
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：纸箱包装，每箱10件" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">保修信息</label>
-                  <input type="text" value={editForm.warranty_info || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, warranty_info: e.target.value })); setIsDirty(true); }} disabled={isReadOnly}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：整机保修1年" />
+                  <input type="text" value={editForm.warranty_info || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, warranty_info: e.target.value })); setIsDirty(true); }} 
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：整机保修1年" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">产品尺寸</label>
-                  <input type="text" value={editForm.dimensions || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, dimensions: e.target.value })); setIsDirty(true); }} disabled={isReadOnly}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：30x20x15 cm" />
+                  <input type="text" value={editForm.dimensions || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, dimensions: e.target.value })); setIsDirty(true); }} 
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：30x20x15 cm" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">产品视频</label>
-                  <input type="url" value={editForm.video_url || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, video_url: e.target.value })); setIsDirty(true); }} disabled={isReadOnly}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="https://..." />
+                  <input type="url" value={editForm.video_url || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, video_url: e.target.value })); setIsDirty(true); }} 
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="https://..." />
                 </div>
               </div>
             </div>
@@ -1164,8 +1160,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                         setEditForm((prev: any) => ({ ...prev, category_id: categoryId, subcategory_id: '' })); 
                         setIsDirty(true); 
                       }} 
-                      disabled={isReadOnly}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                      
+                      className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
                     >
                       <option value="">选择一级分类</option>
                       {categories.filter(c => c.level === 1).map(cat => (
@@ -1181,8 +1177,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                         setEditForm((prev: any) => ({ ...prev, subcategory_id: e.target.value })); 
                         setIsDirty(true); 
                       }} 
-                      disabled={isReadOnly || !editForm.category_id}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                      disabled={!editForm.category_id}
+                      className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
                     >
                       <option value="">选择二级分类</option>
                       {categories
@@ -1236,7 +1232,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 <h5 className="text-sm font-bold text-slate-900">规格维度</h5>
                 <button 
                   onClick={() => setVariantAttributes(prev => [...prev, { id: `new-${Date.now()}`, attribute_name: '', attribute_values: [], product_id: productId }])}
-                  disabled={isReadOnly}
+                  
                   className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
                 >
                   + 添加规格
@@ -1255,7 +1251,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        disabled={isReadOnly}
+                        
                         placeholder="规格名称（如：颜色、尺寸、型号）"
                         className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
                       />
@@ -1265,7 +1261,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        disabled={isReadOnly}
+                        
                         className="px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
                       >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1285,7 +1281,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        disabled={isReadOnly}
+                        
                         placeholder="例如：红色，蓝色，白色 或 S, M, L, XL"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
                       />
@@ -1780,8 +1776,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">规格参数 (JSON 格式)</label>
               <textarea value={JSON.stringify(editForm.specifications || {}, null, 2)} onChange={(e) => {
-                try { const specifications = JSON.parse(e.target.value); setEditForm((prev: any) => ({ ...prev, specifications })); setIsDirty(true); } catch { } }} disabled={isReadOnly} rows={10}
-                  className="w-full min-h-[200px] px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm font-mono text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
+                try { const specifications = JSON.parse(e.target.value); setEditForm((prev: any) => ({ ...prev, specifications })); setIsDirty(true); } catch { } }}  rows={10}
+                  className="w-full min-h-[200px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm font-mono text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
                   placeholder={`{\n  "material": "医用级不锈钢",\n  "size": "10cm x 5cm",\n  "weight": "200g"\n}`} />
             </div>
           </div>
@@ -1800,19 +1796,19 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               <h5 className="text-sm font-bold text-slate-900">SEO 元数据</h5>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">核心关键词</label>
-                <input type="text" value={editForm.focus_keyword || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, focus_keyword: e.target.value })); setIsDirty(true); }} disabled={isReadOnly}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="例如：兽用手术器械，宠物医疗耗材" />
+                <input type="text" value={editForm.focus_keyword || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, focus_keyword: e.target.value })); setIsDirty(true); }} 
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="例如：兽用手术器械，宠物医疗耗材" />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">Meta 标题</label>
-                <input type="text" value={editForm.meta_title || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, meta_title: e.target.value })); setIsDirty(true); }} disabled={isReadOnly} maxLength={60}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="搜索引擎结果中显示的标题" />
+                <input type="text" value={editForm.meta_title || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, meta_title: e.target.value })); setIsDirty(true); }}  maxLength={60}
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="搜索引擎结果中显示的标题" />
                 <p className="mt-1 text-xs text-slate-500">建议长度：50-60 个字符，当前长度：{editForm.meta_title?.length || 0}</p>
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">Meta 描述</label>
-                <textarea value={editForm.meta_description || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, meta_description: e.target.value })); setIsDirty(true); }} disabled={isReadOnly} maxLength={160} rows={3}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50" placeholder="搜索引擎结果中显示的产品描述" />
+                <textarea value={editForm.meta_description || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, meta_description: e.target.value })); setIsDirty(true); }}  maxLength={160} rows={3}
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50" placeholder="搜索引擎结果中显示的产品描述" />
                 <p className="mt-1 text-xs text-slate-500">建议长度：150-160 个字符，当前长度：{editForm.meta_description?.length || 0}</p>
               </div>
             </div>
@@ -1829,7 +1825,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                         const newFaq = editForm.faq.filter((_: any, i: number) => i !== idx);
                         setEditForm((prev: any) => ({ ...prev, faq: newFaq }));
                         setIsDirty(true);
-                      }} disabled={isReadOnly} className="text-red-600 hover:text-red-800 p-1">
+                      }}  className="text-red-600 hover:text-red-800 p-1">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -1843,7 +1839,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           newFaq[idx].question = e.target.value;
                           setEditForm((prev: any) => ({ ...prev, faq: newFaq }));
                           setIsDirty(true);
-                        }} disabled={isReadOnly}
+                        }} 
                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="客户可能会问的问题" />
                       </div>
                       <div>
@@ -1853,7 +1849,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           newFaq[idx].answer = e.target.value;
                           setEditForm((prev: any) => ({ ...prev, faq: newFaq }));
                           setIsDirty(true);
-                        }} disabled={isReadOnly} rows={3}
+                        }}  rows={3}
                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="详细、专业的回答" />
                       </div>
                     </div>
@@ -1863,7 +1859,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               <button onClick={() => {
                 setEditForm((prev: any) => ({ ...prev, faq: [...(prev.faq || []), { question: '', answer: '' }] }));
                 setIsDirty(true);
-              }} disabled={isReadOnly}
+              }} 
                 className="mt-3 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
                 + 添加 FAQ
               </button>
@@ -1901,12 +1897,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                       </div>
                       <div className="flex gap-2">
                         {!isPublished ? (
-                          <button onClick={() => { setSelectedSites([site.code]); handleSaveAndPublish(); }} disabled={isReadOnly}
+                          <button onClick={() => { setSelectedSites([site.code]); handleSaveAndPublish(); }} 
                             className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 bg-emerald-600 text-white hover:bg-emerald-700">
                             发布
                           </button>
                         ) : (
-                          <button onClick={() => handleOfflineFromSite(site.code)} disabled={isReadOnly}
+                          <button onClick={() => handleOfflineFromSite(site.code)} 
                             className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 bg-slate-500 text-white hover:bg-slate-600">
                             下架
                           </button>

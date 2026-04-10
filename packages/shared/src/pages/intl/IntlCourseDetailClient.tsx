@@ -130,6 +130,22 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
 
   const leadInstructor = instructors[0];
 
+  // Fallback: if no instructors from junction table, use course.instructor JSONB fields
+  const effectiveInstructors: { id: string; name: string; title: string; bio: string | null; avatar_url: string | null; credentials: string | null; role?: string }[] =
+    instructors.length > 0
+      ? instructors
+      : course.instructor_name
+        ? [{
+            id: 'jsonb-instructor',
+            name: course.instructor_name,
+            title: course.instructor_title || '',
+            bio: course.instructor_bio || null,
+            avatar_url: course.instructor_avatar_url || null,
+            credentials: null,
+          }]
+        : [];
+  const effectiveLeadInstructor = effectiveInstructors[0] || null;
+
   return (
     <div className="bg-white">
       {/* Breadcrumb */}
@@ -303,9 +319,21 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
 
             {/* Description */}
             {course.description && (
-              <div className="prose prose-slate max-w-none">
-                <h2 className="text-xl font-bold text-slate-900 mb-4">{cd.aboutThisTraining}</h2>
-                <p className="text-slate-600 leading-relaxed whitespace-pre-line">{course.description}</p>
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">{cd.aboutThisTraining}</h2>
+                </div>
+                <div 
+                  className="text-slate-600 leading-relaxed whitespace-pre-line"
+                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                >
+                  {course.description}
+                </div>
               </div>
             )}
 
@@ -421,11 +449,11 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
             )}
 
             {/* Instructors */}
-            {instructors.length > 0 && (
+            {effectiveInstructors.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-slate-900">{instructors.length > 1 ? cd.instructors : cd.instructor}</h2>
+                <h2 className="text-xl font-bold text-slate-900">{effectiveInstructors.length > 1 ? cd.instructors : cd.instructor}</h2>
                 <div className="space-y-4">
-                  {instructors.map(inst => (
+                  {effectiveInstructors.map(inst => (
                     <div key={inst.id} className="flex items-start gap-5 bg-slate-50 rounded-2xl p-6 border border-slate-100">
                       {inst.avatar_url ? (
                         <img src={inst.avatar_url} alt={inst.name} className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md shrink-0" />
@@ -661,20 +689,20 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
               )}
 
               {/* Lead instructor mini card */}
-              {leadInstructor && (
+              {effectiveLeadInstructor && (
                 <div className="bg-white border border-slate-200 rounded-2xl p-5">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Lead Instructor</h4>
                   <div className="flex items-center gap-3">
-                    {leadInstructor.avatar_url ? (
-                      <img src={leadInstructor.avatar_url} alt={leadInstructor.name} className="w-12 h-12 rounded-full object-cover border border-slate-100" />
+                    {effectiveLeadInstructor.avatar_url ? (
+                      <img src={effectiveLeadInstructor.avatar_url} alt={effectiveLeadInstructor.name} className="w-12 h-12 rounded-full object-cover border border-slate-100" />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-lg">
-                        {leadInstructor.name.charAt(0)}
+                        {effectiveLeadInstructor.name.charAt(0)}
                       </div>
                     )}
                     <div>
-                      <p className="font-bold text-slate-900">{leadInstructor.name}</p>
-                      <p className="text-xs text-slate-500">{leadInstructor.title}</p>
+                      <p className="font-bold text-slate-900">{effectiveLeadInstructor.name}</p>
+                      <p className="text-xs text-slate-500">{effectiveLeadInstructor.title}</p>
                     </div>
                   </div>
                 </div>

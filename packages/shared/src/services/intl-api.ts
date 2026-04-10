@@ -74,6 +74,7 @@ export interface IntlCourse {
   instructor_name?: string;
   instructor_title?: string;
   instructor_bio?: string;
+  instructor_avatar_url?: string;
 }
 
 export interface IntlProduct {
@@ -278,6 +279,7 @@ function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
     instructor_name: getLocalizedJsonbValue(instructor, 'name', locale),
     instructor_title: getLocalizedJsonbValue(instructor, 'title', locale),
     instructor_bio: getLocalizedJsonbValue(instructor, 'bio', locale),
+    instructor_avatar_url: instructor.imageUrl || instructor.avatar_url || null,
   };
 }
 
