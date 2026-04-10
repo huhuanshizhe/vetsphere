@@ -100,11 +100,14 @@ const HeroSection = memo(function HeroSection({ locale, t }: { locale: string; t
           {/* Right Content - Hero Visual */}
           <div className="relative animate-fade-in">
             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 aspect-[4/3] group">
-              <img
+              <Image
                 src="/images/hero-vet-training.png"
                 alt="Veterinary Clinical Training and Equipment"
+                fill
+                sizes="(max-width: 1024px) 100vw, 720px"
+                priority
+                quality={90}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[2s] ease-out"
-                loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
               
