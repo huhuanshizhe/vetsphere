@@ -248,7 +248,7 @@ function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
     level: base.level || '',
     format: base.format || 'workshop',
     duration_minutes: base.duration_minutes,
-    cover_image_url: base.cover_image_url || base.image_url,
+    cover_image_url: getImageUrl(base.cover_image_url || base.image_url) ?? null,
     description: localizedDesc,
     target_audience: localizedTargetAudience,
     is_free: base.is_free || false,
