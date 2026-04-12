@@ -119,29 +119,111 @@ async function processImages(
 }
 
 /**
- * Convert plain text with line breaks to HTML format
- * Preserves formatting from Excel rich text cells
+ * Convert plain text with line breaks to structured HTML format
+ * Detects headings, lists, and paragraphs from product description text
  */
 function convertToHtmlRichText(text: string): string {
   if (!text) return '';
 
   // If already contains HTML tags, return as-is
-  if (text.includes('<') && text.includes('>')) {
+  if (/<[a-z][\s\S]*>/i.test(text)) {
     return text;
   }
 
-  // Convert line breaks to HTML
+  // Ensure text is a string
+  const str = String(text);
+
   // Split by common line break patterns
-  const lines = text.split(/\r?\n|\r|\n/);
+  const lines = str.split(/\r?\n/);
 
-  // Wrap each non-empty line in <p> tags
-  const htmlLines = lines
-    .map(line => line.trim())
-    .filter(line => line)
-    .map(line => `<p>${line}</p>`)
-    .join('');
+  // Common section heading keywords in product descriptions
+  const headingKeywords = [
+    'product overview', 'overview', 'key features', 'features', 'specifications',
+    'product specifications', 'applications', 'how to use', 'package includes',
+    'important notes', 'why choose', 'technical details', 'description',
+    'benefits', 'warnings', 'cautions', 'storage', 'usage', 'contents',
+    'what\'s included', 'warranty', 'dimensions', 'compatibility',
+  ];
 
-  return htmlLines || text;
+  function isHeadingLine(line: string, nextLine: string | undefined): boolean {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.length > 80) return false;
+    // Check if it matches known heading keywords
+    const lower = trimmed.toLowerCase();
+    if (headingKeywords.some(kw => lower === kw || lower.startsWith(kw + ' ') || lower.endsWith(' ' + kw))) {
+      return true;
+    }
+    // Short line (<=60 chars) that doesn't end with common sentence punctuation
+    // and is followed by a non-empty content line
+    if (trimmed.length <= 60 && !/[.;,!?:]$/.test(trimmed) && nextLine && nextLine.trim()) {
+      // Check if it looks like a title (no lowercase-starting words or very short)
+      const words = trimmed.split(/\s+/);
+      if (words.length <= 5) return true;
+    }
+    return false;
+  }
+
+  function isListItem(line: string): { type: 'ul' | 'ol'; content: string } | null {
+    const trimmed = line.trim();
+    // Unordered list: starts with -, *, •, ▪
+    const ulMatch = trimmed.match(/^[-*•▪]\s+(.+)/);
+    if (ulMatch) return { type: 'ul', content: ulMatch[1] };
+    // Ordered list: starts with "1.", "2.", etc.
+    const olMatch = trimmed.match(/^(\d+)[.)]\s+(.+)/);
+    if (olMatch) return { type: 'ol', content: olMatch[2] };
+    return null;
+  }
+
+  const htmlParts: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Skip empty lines
+    if (!trimmed) {
+      i++;
+      continue;
+    }
+
+    // Check for heading
+    if (isHeadingLine(trimmed, lines[i + 1])) {
+      htmlParts.push(`<h2>${trimmed}</h2>`);
+      i++;
+      continue;
+    }
+
+    // Check for list items - collect consecutive list items
+    const listItem = isListItem(trimmed);
+    if (listItem) {
+      const items: string[] = [];
+      let listType = listItem.type;
+      items.push(listItem.content);
+      i++;
+      while (i < lines.length) {
+        const nextItem = isListItem(lines[i].trim());
+        if (nextItem) {
+          items.push(nextItem.content);
+          i++;
+        } else if (!lines[i].trim()) {
+          i++;
+          break;
+        } else {
+          break;
+        }
+      }
+      const tag = listType === 'ol' ? 'ol' : 'ul';
+      htmlParts.push(`<${tag}>${items.map(item => `<li>${item}</li>`).join('')}</${tag}>`);
+      continue;
+    }
+
+    // Regular paragraph
+    htmlParts.push(`<p>${trimmed}</p>`);
+    i++;
+  }
+
+  return htmlParts.join('') || `<p>${str}</p>`;
 }
 
 /**
@@ -278,10 +360,12 @@ async function createProduct(row: ImportRow): Promise<{ success: boolean; produc
       meta_title_en: row.metaTitle || '',
       meta_description: '',  // Empty - will be translated
       meta_description_en: row.metaDescription || '',
-      // Specifications (stored as JSONB)
-      specifications: specifications,
-      // FAQs
-      faq: row.faqs.length > 0 ? row.faqs : null,
+      // Specifications (stored as JSONB) - English source goes to _en column
+      specifications: {},  // Empty - will be translated to Chinese
+      specifications_en: specifications,  // English specs from Excel
+      // FAQs - English source goes to _en column
+      faq: null,  // Empty - will be translated to Chinese
+      faq_en: row.faqs.length > 0 ? row.faqs : null,  // English FAQs from Excel
       // Weight (stored at SKU level)
       weight: normalizedWeight,
       // Source language marker - English is the source
@@ -413,98 +497,151 @@ async function translateProduct(productId: string): Promise<boolean> {
 
     if (Object.keys(content).length === 0) {
       console.log(`[Batch Import] Translation: No content to translate for ${productId}`);
-      return true; // No content to translate
+      return true;
     }
 
-    console.log(`[Batch Import] Translation: Translating ${Object.keys(content).length} fields for ${productId}`);
+    // Extract JSONB fields (specifications, faq)
+    const sourceSpecs = product.specifications_en;
+    const hasSpecs = sourceSpecs && typeof sourceSpecs === 'object' && Object.keys(sourceSpecs).length > 0;
+    const sourceFaq = product.faq_en;
+    const hasFaq = Array.isArray(sourceFaq) && sourceFaq.length > 0;
 
-    // Call DashScope for translation
+    console.log(`[Batch Import] Translation: Translating ${Object.keys(content).length} fields, specs:${hasSpecs}, faq:${hasFaq} for ${productId}`);
+
+    // Create AI client with undici fetch
     const { fetch } = require('undici');
+    const baseURL = process.env.AI_BASE_URL || 'https://coding.dashscope.aliyuncs.com/v1';
+    const model = process.env.AI_MODEL || 'qwen3-coder-plus';
     const client = new OpenAI({
-      apiKey: apiKey,
-      baseURL: 'https://coding.dashscope.aliyuncs.com/v1',
-      fetch: fetch,
+      apiKey,
+      baseURL,
+      fetch,
+      timeout: 180000,
+      maxRetries: 3,
     });
 
-    // Target languages: Chinese, Thai, Japanese
+    // Target languages: Chinese, Thai, Japanese (sequential for stability)
     const targetLangs: ('zh' | 'th' | 'ja')[] = ['zh', 'th', 'ja'];
-    const languageNames: Record<string, string> = {
-      zh: '中文',
-      th: 'ภาษาไทย',
-      ja: '日本語'
-    };
+    const languageNames: Record<string, string> = { zh: '中文', th: 'ภาษาไทย', ja: '日本語' };
 
-    const prompt = `Translate the following product content from English to these languages: ${targetLangs.map(l => languageNames[l]).join(', ')}
+    const updatePayload: Record<string, any> = {};
+
+    for (const lang of targetLangs) {
+      try {
+        // Translate text fields
+        const contentEntries = Object.entries(content)
+          .map(([key, value]) => `${key}: "${value.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`)
+          .join('\n');
+
+        const prompt = `Translate the following product content from English to ${languageNames[lang]}.
 
 RULES:
 1. Return ONLY valid JSON
-2. Each language key contains the same structure with translated values
-3. Keep product names, brand names, and technical terms transliterated when appropriate
-4. For HTML content (rich_description), preserve HTML tags
+2. Translate ALL fields to ${languageNames[lang]}
+3. Keep product names, brand names, and technical terms transliterated or in original form when appropriate
+4. For HTML content (rich_description), preserve HTML tags in the translation
 5. Make translations natural and professional for e-commerce
-6. For Chinese (zh), use Simplified Chinese characters
 
 SOURCE CONTENT (English):
-${Object.entries(content).map(([k, v]) => `${k}: "${v.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`).join('\n')}
+${contentEntries}
 
-Return format (EXACT structure):
-{
-  "zh": { ${Object.keys(content).map(k => `"${k}": "..."`).join(', ')} },
-  "th": { ${Object.keys(content).map(k => `"${k}": "..."`).join(', ')} },
-  "ja": { ${Object.keys(content).map(k => `"${k}": "..."`).join(', ')} }
-}`;
+Return format (EXACT JSON, no extra text):
+{ ${Object.keys(content).map(k => `"${k}": "translated value"`).join(', ')} }`;
 
-    const completion = await client.chat.completions.create({
-      model: 'qwen3.5-plus',
-      messages: [
-        { role: 'system', content: 'You are a professional e-commerce translator. Return only valid JSON, no markdown formatting.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.3,
-    });
+        const completion = await client.chat.completions.create({
+          model,
+          messages: [
+            { role: 'system', content: 'You are a professional e-commerce translator. Return only valid JSON. /no_think' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.3,
+        });
 
-    const resultText = completion.choices[0].message.content;
-    if (!resultText) {
-      console.error(`[Batch Import] Translation: No response from AI for ${productId}`);
-      return false;
-    }
+        const resultText = completion.choices[0].message.content;
+        if (!resultText) throw new Error(`No translation result for ${languageNames[lang]}`);
 
-    // Parse result
-    let cleanText = resultText;
-    if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
-    else if (cleanText.startsWith('```')) cleanText = cleanText.slice(3);
-    if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
+        let cleanText = resultText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
+        else if (cleanText.startsWith('```')) cleanText = cleanText.slice(3);
+        if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
 
-    const translations = JSON.parse(cleanText.trim());
-    console.log(`[Batch Import] Translation: Received translations for ${Object.keys(translations).join(', ')}`);
+        const translated = JSON.parse(cleanText.trim());
 
-    // Build update payload
-    const updatePayload: Record<string, string | null> = {};
-
-    // For Chinese (zh), update the base fields (no suffix)
-    if (translations.zh) {
-      for (const [field, value] of Object.entries(translations.zh as Record<string, string>)) {
-        if (value) {
-          updatePayload[field] = value;  // Base field for Chinese
-          if (field === 'name') {
-            updatePayload['slug'] = generateSlug(value);
-          }
-        }
-      }
-    }
-
-    // For Thai and Japanese, update the _th and _ja fields
-    for (const lang of ['th', 'ja'] as const) {
-      if (translations[lang]) {
-        for (const [field, value] of Object.entries(translations[lang] as Record<string, string>)) {
+        for (const [field, value] of Object.entries(translated as Record<string, string>)) {
           if (value) {
-            updatePayload[`${field}_${lang}`] = value;
-            if (field === 'name') {
-              updatePayload[`slug_${lang}`] = generateSlug(value);
+            if (lang === 'zh') {
+              updatePayload[field] = value;
+              if (field === 'name') updatePayload['slug'] = generateSlug(value);
+            } else {
+              updatePayload[`${field}_${lang}`] = value;
+              if (field === 'name') updatePayload[`slug_${lang}`] = generateSlug(value);
             }
           }
         }
+
+        // Translate specifications (JSONB)
+        if (hasSpecs) {
+          try {
+            const specsPrompt = `Translate these product specifications from English to ${languageNames[lang]}.
+RULES: Return ONLY valid JSON object. Translate BOTH keys and values. Keep units/numbers accurate.
+SOURCE: ${JSON.stringify(sourceSpecs, null, 2)}
+Return EXACT JSON object, no extra text.`;
+            const specsCompletion = await client.chat.completions.create({
+              model,
+              messages: [
+                { role: 'system', content: 'You are a professional translator. Return only valid JSON. /no_think' },
+                { role: 'user', content: specsPrompt },
+              ],
+              temperature: 0.2,
+            });
+            let specsText = (specsCompletion.choices[0].message.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            if (specsText.startsWith('```json')) specsText = specsText.slice(7);
+            else if (specsText.startsWith('```')) specsText = specsText.slice(3);
+            if (specsText.endsWith('```')) specsText = specsText.slice(0, -3);
+            const specsKey = lang === 'zh' ? 'specifications' : `specifications_${lang}`;
+            updatePayload[specsKey] = JSON.parse(specsText.trim());
+            console.log(`[Batch Import] Specs to ${languageNames[lang]} done`);
+          } catch (e) {
+            console.error(`[Batch Import] Specs translation failed for ${lang}:`, e instanceof Error ? e.message : e);
+          }
+        }
+
+        // Translate FAQ (JSONB)
+        if (hasFaq) {
+          try {
+            const faqPrompt = `Translate these FAQ items from English to ${languageNames[lang]}.
+RULES: Return ONLY valid JSON array. Translate both "question" and "answer" fields.
+SOURCE: ${JSON.stringify(sourceFaq, null, 2)}
+Return EXACT JSON array [{"question":"...","answer":"..."},...], no extra text.`;
+            const faqCompletion = await client.chat.completions.create({
+              model,
+              messages: [
+                { role: 'system', content: 'You are a professional translator. Return only valid JSON array. /no_think' },
+                { role: 'user', content: faqPrompt },
+              ],
+              temperature: 0.3,
+            });
+            let faqText = (faqCompletion.choices[0].message.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            if (faqText.startsWith('```json')) faqText = faqText.slice(7);
+            else if (faqText.startsWith('```')) faqText = faqText.slice(3);
+            if (faqText.endsWith('```')) faqText = faqText.slice(0, -3);
+            const faqKey = lang === 'zh' ? 'faq' : `faq_${lang}`;
+            updatePayload[faqKey] = JSON.parse(faqText.trim());
+            console.log(`[Batch Import] FAQ to ${languageNames[lang]} done`);
+          } catch (e) {
+            console.error(`[Batch Import] FAQ translation failed for ${lang}:`, e instanceof Error ? e.message : e);
+          }
+        }
+
+        console.log(`[Batch Import] Translation to ${languageNames[lang]} completed`);
+      } catch (langError) {
+        console.error(`[Batch Import] Translation failed for ${languageNames[lang]}:`, langError instanceof Error ? langError.message : langError);
       }
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      console.error(`[Batch Import] Translation: All languages failed for ${productId}`);
+      return false;
     }
 
     updatePayload.translated_at = new Date().toISOString();

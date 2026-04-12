@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     // Convert to JSON with header row
     const jsonData = XLSX.utils.sheet_to_json(worksheet, {
       defval: '', // Default value for empty cells
-      raw: false, // Return formatted strings
+      raw: true,  // Return raw values: text preserves \n, numbers as number type
     });
 
     console.log(`[Excel Parse] Parsed ${jsonData.length} rows from ${filename}`);

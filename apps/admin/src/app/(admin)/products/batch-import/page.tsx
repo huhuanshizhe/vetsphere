@@ -82,6 +82,28 @@ interface SystemCategory {
 }
 
 export default function ProductBatchImportPage() {
+
+  // 防御性价格解析：处理 number/string/格式化货币等各种输入
+  function parsePrice(value: any): number {
+    if (typeof value === 'number') return isNaN(value) ? 0 : value;
+    if (typeof value === 'string') {
+      const cleaned = value.replace(/[^0-9.\-]/g, '');
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? 0 : num;
+    }
+    return 0;
+  }
+
+  // 防御性整数解析
+  function parseIntSafe(value: any): number {
+    if (typeof value === 'number') return isNaN(value) ? 0 : Math.round(value);
+    if (typeof value === 'string') {
+      const cleaned = value.replace(/[^0-9.\-]/g, '');
+      const num = parseInt(cleaned, 10);
+      return isNaN(num) ? 0 : num;
+    }
+    return 0;
+  }
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -278,12 +300,12 @@ export default function ProductBatchImportPage() {
         fullDescription: row['Full Description'] || '',
         primaryImageUrl: row['Primary Image URL'] || '',
         additionalImages: row['Additional Images'] || '',
-        costPriceCny: parseFloat(row['Cost Price (CNY)']) || 0,
-        sellingPriceUsd: parseFloat(row['Selling Price (USD)']) || 0,
-        minOrderQty: parseInt(row['Min Order Qty']) || 1,
-        packageQty: parseInt(row['Package Qty']) || 1,
+        costPriceCny: parsePrice(row['Cost Price (CNY)']),
+        sellingPriceUsd: parsePrice(row['Selling Price (USD)']),
+        minOrderQty: parseIntSafe(row['Min Order Qty']) || 1,
+        packageQty: parseIntSafe(row['Package Qty']) || 1,
         packageUnit: row['Package Unit'] || 'Each',
-        weight: parseFloat(row['Weight (kg)']) || 0,
+        weight: parsePrice(row['Weight (kg)']),
         weightUnit: row['Weight Unit'] || 'kg',  // Parse weight unit (kg/g/lb)
         leadTime: row['Lead Time'] || '2-4 weeks',
         availability: row['Availability'] || 'In Stock',
