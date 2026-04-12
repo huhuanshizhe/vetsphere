@@ -103,7 +103,8 @@ export async function uploadMultipleImages(
       results.push(ossUrl);
     } catch (error) {
       console.error(`[OSS] Failed to upload ${url}:`, error);
-      results.push(''); // Return empty string for failed uploads
+      console.warn(`[OSS] Falling back to original URL: ${url}`);
+      results.push(url.trim()); // Fallback to original URL instead of empty string
     }
   }
 

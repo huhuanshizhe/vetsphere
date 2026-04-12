@@ -42,6 +42,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const [showTranslateModal, setShowTranslateModal] = useState(false);
   const [translateStep, setTranslateStep] = useState(0);
   const [translateProgress, setTranslateProgress] = useState(0);
+  const [translateSteps, setTranslateSteps] = useState<{step: number; text: string; progress: number}[]>([]);
+  const [translateTargetLangs, setTranslateTargetLangs] = useState<{code: string; name: string}[]>([]);
 
   // UI 状态
   const [activeTab, setActiveTab] = useState('basic');
@@ -424,8 +426,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       }
     }
     
-    // 如果是源语言且没有后缀字段，检查不带后缀的字段
-    if (editLang === publishLang) {
+    // 回退到基础字段：源语言 或 中文（中文内容始终存储在基础字段，数据库无 _zh 列）
+    if (editLang === publishLang || editLang === 'zh') {
       const baseValue = obj?.[baseField];
       if (baseValue !== undefined && baseValue !== null) {
         return String(baseValue);
@@ -441,8 +443,38 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     // 如果带后缀的字段存在，优先使用带后缀的字段（包括源语言）
     const suffixKey = `${baseField}_${editLang}`;
     const useSuffix = editForm && suffixKey in editForm;
-    const field = useSuffix ? suffixKey : (editLang === publishLang ? baseField : `${baseField}_${editLang}`);
+    // 中文始终写入基础字段（数据库无 _zh 列）
+    const field = useSuffix ? suffixKey
+      : (editLang === publishLang || editLang === 'zh') ? baseField
+      : `${baseField}_${editLang}`;
     
+    setEditForm((prev: any) => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  };
+
+  // JSONB 多语言读写（用于 specifications、faq 等 JSONB 字段）
+  const getLocalizedJsonValue = (baseField: string): any => {
+    const publishLang = getPublishLang();
+    const suffixKey = `${baseField}_${editLang}`;
+    // 优先检查带后缀的字段
+    if (editForm && suffixKey in editForm) {
+      const val = editForm[suffixKey];
+      if (val !== undefined && val !== null) return val;
+    }
+    // 回退到基础字段（中文或源语言）
+    if (editLang === publishLang || editLang === 'zh') {
+      return editForm?.[baseField];
+    }
+    return undefined;
+  };
+
+  const setLocalizedJsonValue = (baseField: string, value: any) => {
+    const publishLang = getPublishLang();
+    const suffixKey = `${baseField}_${editLang}`;
+    const useSuffix = editForm && suffixKey in editForm;
+    const field = useSuffix ? suffixKey
+      : (editLang === publishLang || editLang === 'zh') ? baseField
+      : `${baseField}_${editLang}`;
     setEditForm((prev: any) => ({ ...prev, [field]: value }));
     setIsDirty(true);
   };
@@ -723,6 +755,29 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   async function handleTranslate() {
     if (!product) return;
 
+    // 根据源语言动态计算目标语言
+    const currentPublishLang = getPublishLang();
+    const allLangs: { code: string; name: string }[] = [
+      { code: 'en', name: 'English' },
+      { code: 'zh', name: '中文' },
+      { code: 'th', name: 'ภาษาไทย' },
+      { code: 'ja', name: '日本語' },
+    ];
+    const targets = allLangs.filter(l => l.code !== currentPublishLang);
+    setTranslateTargetLangs(targets);
+
+    // 动态生成进度步骤
+    const dynamicSteps = [
+      { step: 1, text: '正在分析产品内容...', progress: 5 },
+      ...targets.map((t, i) => ({
+        step: i + 2,
+        text: `正在翻译到 ${t.name}...`,
+        progress: Math.round(5 + ((i + 1) / (targets.length + 1)) * 85),
+      })),
+      { step: targets.length + 2, text: '正在保存翻译结果...', progress: 92 },
+    ];
+    setTranslateSteps(dynamicSteps);
+
     // 显示翻译进度弹框
     setShowTranslateModal(true);
     setTranslating(true);
@@ -730,43 +785,52 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     setTranslateStep(1);
     setTranslateProgress(0);
 
-    // 翻译步骤定义
-    const steps = [
-      { step: 1, text: '正在分析产品内容...', progress: 10 },
-      { step: 2, text: '正在翻译到 English...', progress: 30 },
-      { step: 3, text: '正在翻译到 ภาษาไทย...', progress: 50 },
-      { step: 4, text: '正在翻译到 日本語...', progress: 70 },
-      { step: 5, text: '正在保存翻译结果...', progress: 90 },
-    ];
-
-    // 模拟进度更新（让用户看到动态过程）
+    // 模拟进度更新：逐步切换步骤，模拟逐语言翻译
+    let currentStepIdx = 0;
+    const stepDuration = 15000; // 每个语言约 15 秒
     const progressInterval = setInterval(() => {
       setTranslateProgress(prev => {
-        if (prev >= 85) return prev; // 等待实际完成
-        return prev + Math.random() * 5;
+        if (prev >= 88) return prev; // 等待实际完成
+        // 计算当前应该在哪个步骤
+        const elapsed = prev;
+        const expectedStep = dynamicSteps.find(s => s.progress > elapsed);
+        if (expectedStep && expectedStep.step > currentStepIdx + 1) {
+          currentStepIdx = expectedStep.step - 1;
+          setTranslateStep(expectedStep.step);
+        }
+        return prev + Math.random() * 2 + 0.5;
       });
-    }, 500);
+    }, 800);
+
+    // 逐步推进步骤（基于时间估算）
+    const stepTimers: NodeJS.Timeout[] = [];
+    targets.forEach((_, i) => {
+      const timer = setTimeout(() => {
+        setTranslateStep(i + 2);
+      }, 1000 + i * stepDuration);
+      stepTimers.push(timer);
+    });
 
     try {
-      // 步骤 1：分析内容
-      await new Promise(r => setTimeout(r, 800));
-      setTranslateStep(2);
-      setTranslateProgress(20);
-
-      // 步骤 2-4：调用翻译 API
+      // 调用翻译 API（后端逐语言翻译，总耗时较长）
       const res = await fetch('/api/products/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId }),
       });
 
+      // 清理步骤定时器
+      stepTimers.forEach(t => clearTimeout(t));
+
       if (!res.ok) {
         const json = await res.json();
         throw new Error(json.error || '翻译失败');
       }
 
-      // 步骤 5：保存结果
-      setTranslateStep(5);
+      const result = await res.json();
+
+      // 保存步骤
+      setTranslateStep(dynamicSteps[dynamicSteps.length - 1].step);
       setTranslateProgress(95);
       await new Promise(r => setTimeout(r, 500));
 
@@ -776,14 +840,30 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       setTranslateSuccess(true);
       await loadProduct();
 
-      // 短暂显示完成状态后关闭弹框
-      setTimeout(() => {
-        setShowTranslateModal(false);
-        success('AI 翻译完成，已自动补全英文、泰文、日文内容');
-      }, 1000);
+      // 动态成功消息
+      const langNamesZh: Record<string, string> = { en: '英文', zh: '中文', th: '泰文', ja: '日文' };
+      if (result.failedLangs && result.failedLangs.length > 0) {
+        const failedNames = result.failedLangs.map((l: string) => langNamesZh[l] || l).join('、');
+        const completedNames = (result.completedLangs || []).map((l: string) => langNamesZh[l] || l).join('、');
+        // 部分成功也更新已翻译的目标语言显示
+        setTranslateTargetLangs(
+          targets.filter(t => (result.completedLangs || []).includes(t.code))
+        );
+        setTimeout(() => {
+          setShowTranslateModal(false);
+          warning(`已完成${completedNames}翻译，${failedNames}翻译失败`);
+        }, 1500);
+      } else {
+        const targetNames = targets.map(t => langNamesZh[t.code] || t.name).join('、');
+        setTimeout(() => {
+          setShowTranslateModal(false);
+          success(`AI 翻译完成，已自动补全${targetNames}内容`);
+        }, 1000);
+      }
 
     } catch (err) {
       clearInterval(progressInterval);
+      stepTimers.forEach(t => clearTimeout(t));
       setTranslateError(err instanceof Error ? err.message : '翻译失败');
       toastError(err instanceof Error ? err.message : '翻译失败');
       setTimeout(() => {
@@ -1035,14 +1115,14 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
                 商品详情 ({editLang === publishLang ? `${editLang} - 源` : editLang})
               </label>
-                <RichTextEditor
-                  value={getLocalizedValue('rich_description') || ''}
-                  onChange={(value) => {
-                    setLocalizedValue('rich_description', value);
-                    setIsDirty(true);
-                  }}
-                  placeholder="请输入商品详情内容..."
-                />
+              <RichTextEditor
+                value={getLocalizedValue('rich_description') || ''}
+                onChange={(value) => {
+                  setLocalizedValue('rich_description', value);
+                  setIsDirty(true);
+                }}
+                placeholder="请输入商品详情内容..."
+              />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">商品图片</label>
@@ -1441,6 +1521,34 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                       </div>
                                     </div>
 
+                                    {/* SKU 重量 */}
+                                    <div className="flex-shrink-0">
+                                      <p className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
+                                        <Settings2 className="w-3 h-3" />
+                                        重量（运费计算）
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          value={sku.weight ?? ''}
+                                          onChange={(e) => updateSkuField(sku.id, 'weight', parseFloat(e.target.value) || null)}
+                                          className="w-24 px-3 py-2 border border-slate-200 rounded-lg text-sm text-center"
+                                          placeholder="0.00"
+                                        />
+                                        <select
+                                          value={sku.weight_unit || 'kg'}
+                                          onChange={(e) => updateSkuField(sku.id, 'weight_unit', e.target.value)}
+                                          className="px-2 py-2 border border-slate-200 rounded-lg text-sm"
+                                        >
+                                          <option value="kg">kg</option>
+                                          <option value="g">g</option>
+                                          <option value="lb">lb</option>
+                                        </select>
+                                      </div>
+                                    </div>
+
                                     {/* SKU 规格参数 */}
                                     <div className="flex-1">
                                       <div className="flex items-center justify-between mb-2">
@@ -1771,9 +1879,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           </h4>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">规格参数 (JSON 格式)</label>
-              <textarea value={JSON.stringify(editForm.specifications || {}, null, 2)} onChange={(e) => {
-                try { const specifications = JSON.parse(e.target.value); setEditForm((prev: any) => ({ ...prev, specifications })); setIsDirty(true); } catch { } }}  rows={10}
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">规格参数 (JSON 格式) ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</label>
+              <textarea value={JSON.stringify(getLocalizedJsonValue('specifications') || {}, null, 2)} onChange={(e) => {
+                try { const specifications = JSON.parse(e.target.value); setLocalizedJsonValue('specifications', specifications); } catch { } }}  rows={10}
                   className="w-full min-h-[200px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm font-mono text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
                   placeholder={`{\n  "material": "医用级不锈钢",\n  "size": "10cm x 5cm",\n  "weight": "200g"\n}`} />
             </div>
@@ -1792,36 +1900,36 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             <div className="space-y-4">
               <h5 className="text-sm font-bold text-slate-900">SEO 元数据</h5>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">核心关键词</label>
-                <input type="text" value={editForm.focus_keyword || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, focus_keyword: e.target.value })); setIsDirty(true); }} 
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">核心关键词 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</label>
+                <input type="text" value={getLocalizedValue('focus_keyword')} onChange={(e) => setLocalizedValue('focus_keyword', e.target.value)} 
                   className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="例如：兽用手术器械，宠物医疗耗材" />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">Meta 标题</label>
-                <input type="text" value={editForm.meta_title || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, meta_title: e.target.value })); setIsDirty(true); }}  maxLength={60}
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">Meta 标题 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</label>
+                <input type="text" value={getLocalizedValue('meta_title')} onChange={(e) => setLocalizedValue('meta_title', e.target.value)}  maxLength={60}
                   className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="搜索引擎结果中显示的标题" />
-                <p className="mt-1 text-xs text-slate-500">建议长度：50-60 个字符，当前长度：{editForm.meta_title?.length || 0}</p>
+                <p className="mt-1 text-xs text-slate-500">建议长度：50-60 个字符，当前长度：{(getLocalizedValue('meta_title') || '').length}</p>
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">Meta 描述</label>
-                <textarea value={editForm.meta_description || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, meta_description: e.target.value })); setIsDirty(true); }}  maxLength={160} rows={3}
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">Meta 描述 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</label>
+                <textarea value={getLocalizedValue('meta_description')} onChange={(e) => setLocalizedValue('meta_description', e.target.value)}  maxLength={160} rows={3}
                   className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50" placeholder="搜索引擎结果中显示的产品描述" />
-                <p className="mt-1 text-xs text-slate-500">建议长度：150-160 个字符，当前长度：{editForm.meta_description?.length || 0}</p>
+                <p className="mt-1 text-xs text-slate-500">建议长度：150-160 个字符，当前长度：{(getLocalizedValue('meta_description') || '').length}</p>
               </div>
             </div>
 
             {/* FAQ 字段 */}
             <div className="border-t pt-6">
-              <h5 className="text-sm font-bold text-slate-900 mb-4">FAQ 常见问题</h5>
+              <h5 className="text-sm font-bold text-slate-900 mb-4">FAQ 常见问题 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</h5>
               <div className="space-y-3">
-                {(editForm.faq || []).map((faq: any, idx: number) => (
+                {(getLocalizedJsonValue('faq') || []).map((faqItem: any, idx: number) => (
                   <div key={idx} className="border rounded-xl p-4 bg-slate-50">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-bold text-slate-900">问题 {idx + 1}</span>
                       <button onClick={() => {
-                        const newFaq = editForm.faq.filter((_: any, i: number) => i !== idx);
-                        setEditForm((prev: any) => ({ ...prev, faq: newFaq }));
-                        setIsDirty(true);
+                        const currentFaq = getLocalizedJsonValue('faq') || [];
+                        const newFaq = currentFaq.filter((_: any, i: number) => i !== idx);
+                        setLocalizedJsonValue('faq', newFaq);
                       }}  className="text-red-600 hover:text-red-800 p-1">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1831,21 +1939,21 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     <div className="space-y-3">
                       <div>
                         <label className="block text-xs text-slate-600 mb-1">问题</label>
-                        <input type="text" value={faq.question || ''} onChange={(e) => {
-                          const newFaq = [...editForm.faq];
-                          newFaq[idx].question = e.target.value;
-                          setEditForm((prev: any) => ({ ...prev, faq: newFaq }));
-                          setIsDirty(true);
+                        <input type="text" value={faqItem.question || ''} onChange={(e) => {
+                          const currentFaq = getLocalizedJsonValue('faq') || [];
+                          const newFaq = [...currentFaq];
+                          newFaq[idx] = { ...newFaq[idx], question: e.target.value };
+                          setLocalizedJsonValue('faq', newFaq);
                         }} 
                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="客户可能会问的问题" />
                       </div>
                       <div>
                         <label className="block text-xs text-slate-600 mb-1">回答</label>
-                        <textarea value={faq.answer || ''} onChange={(e) => {
-                          const newFaq = [...editForm.faq];
-                          newFaq[idx].answer = e.target.value;
-                          setEditForm((prev: any) => ({ ...prev, faq: newFaq }));
-                          setIsDirty(true);
+                        <textarea value={faqItem.answer || ''} onChange={(e) => {
+                          const currentFaq = getLocalizedJsonValue('faq') || [];
+                          const newFaq = [...currentFaq];
+                          newFaq[idx] = { ...newFaq[idx], answer: e.target.value };
+                          setLocalizedJsonValue('faq', newFaq);
                         }}  rows={3}
                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="详细、专业的回答" />
                       </div>
@@ -1854,8 +1962,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 ))}
               </div>
               <button onClick={() => {
-                setEditForm((prev: any) => ({ ...prev, faq: [...(prev.faq || []), { question: '', answer: '' }] }));
-                setIsDirty(true);
+                const currentFaq = getLocalizedJsonValue('faq') || [];
+                setLocalizedJsonValue('faq', [...currentFaq, { question: '', answer: '' }]);
               }} 
                 className="mt-3 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
                 + 添加 FAQ
@@ -2029,11 +2137,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               {!translateError && translateProgress < 100 && (
                 <div className="mb-4">
                   <p className="text-sm text-slate-600 mb-3">
-                    {translateStep === 1 && '正在分析产品内容...'}
-                    {translateStep === 2 && '正在翻译到 English...'}
-                    {translateStep === 3 && '正在翻译到 ภาษาไทย...'}
-                    {translateStep === 4 && '正在翻译到 日本語...'}
-                    {translateStep === 5 && '正在保存翻译结果...'}
+                    {translateSteps.find(s => s.step === translateStep)?.text || '处理中...'}
                   </p>
 
                   {/* 进度条 */}
@@ -2052,9 +2156,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 <div className="text-left bg-emerald-50 rounded-lg p-4 mb-4">
                   <p className="text-sm text-emerald-700 font-medium mb-2">已完成翻译：</p>
                   <div className="flex flex-wrap gap-2">
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ English</span>
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ ภาษาไทย</span>
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ 日本語</span>
+                    {translateTargetLangs.map(t => (
+                      <span key={t.code} className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ {t.name}</span>
+                    ))}
                   </div>
                 </div>
               )}
