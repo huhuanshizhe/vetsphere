@@ -4,14 +4,21 @@
 
 import OSS from 'ali-oss';
 
-// OSS Client Configuration
-const ossClient = new OSS({
-  region: process.env.OSS_REGION || 'oss-cn-hangzhou',
-  accessKeyId: process.env.OSS_ACCESS_KEY_ID || '',
-  accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || '',
-  bucket: process.env.OSS_BUCKET || 'vertax',
-  endpoint: process.env.OSS_ENDPOINT || 'https://oss-cn-hangzhou.aliyuncs.com',
-});
+// Lazy-initialized OSS client to avoid build-time errors when env vars are missing
+let _ossClient: OSS | null = null;
+
+function getOSSClient(): OSS {
+  if (!_ossClient) {
+    _ossClient = new OSS({
+      region: process.env.OSS_REGION || 'oss-cn-hangzhou',
+      accessKeyId: process.env.OSS_ACCESS_KEY_ID || '',
+      accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || '',
+      bucket: process.env.OSS_BUCKET || 'vertax',
+      endpoint: process.env.OSS_ENDPOINT || 'https://oss-cn-hangzhou.aliyuncs.com',
+    });
+  }
+  return _ossClient;
+}
 
 const OSS_PREFIX = 'vetsphere/products';
 
@@ -57,7 +64,7 @@ export async function uploadImageToOSS(
     const ossPath = `${OSS_PREFIX}/${filename}`;
 
     // Upload to OSS
-    const result = await ossClient.put(ossPath, buffer, {
+    const result = await getOSSClient().put(ossPath, buffer, {
       headers: {
         'Content-Type': contentType,
       },
