@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Settings, User, Bell, Globe, Shield, Trash2, ChevronRight, Loader2, Check } from 'lucide-react';
+import { User, Bell, Shield, ChevronRight, Loader2, Check } from 'lucide-react';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import { useLanguage } from '@vetsphere/shared/context/LanguageContext';
 
 export default function SettingsClient() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
-  const { t, locale, setLanguage } = useLanguage();
+  const { user, isAuthenticated } = useAuth();
+  const { t, locale } = useLanguage();
   const uc = t.userCenter;
   const s = t.settings;
 
@@ -24,7 +24,6 @@ export default function SettingsClient() {
     hospital: '',
     specialty: '',
     email_notifications: true,
-    language: 'en',
   });
 
   useEffect(() => {
@@ -39,7 +38,6 @@ export default function SettingsClient() {
         hospital: '',
         specialty: '',
         email_notifications: true,
-        language: locale,
       });
     }
     setLoading(false);
@@ -48,11 +46,6 @@ export default function SettingsClient() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Update language preference
-      if (formData.language !== locale) {
-        setLanguage(formData.language as any);
-      }
-
       // Simulate save
       await new Promise(resolve => setTimeout(resolve, 1000));
       setSaved(true);
@@ -62,13 +55,6 @@ export default function SettingsClient() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!confirm(s.deleteConfirm)) return;
-    // Account deletion logic would go here
-    await logout();
-    router.push(`/${locale}`);
   };
 
   if (loading) {
@@ -142,32 +128,6 @@ export default function SettingsClient() {
       ),
     },
     {
-      icon: Globe,
-      title: uc.languagePreference,
-      description: s.languageDesc,
-      content: (
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { code: 'en', label: 'English' },
-            { code: 'ja', label: '日本語' },
-            { code: 'th', label: 'ไทย' },
-          ].map((lang) => (
-            <button
-              key={lang.code}
-              onClick={() => setFormData({ ...formData, language: lang.code })}
-              className={`py-3 px-4 rounded-xl text-sm font-bold transition-all ${
-                formData.language === lang.code
-                  ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-500'
-                  : 'bg-slate-100 text-slate-600 border-2 border-transparent hover:bg-slate-200'
-              }`}
-            >
-              {lang.label}
-            </button>
-          ))}
-        </div>
-      ),
-    },
-    {
       icon: Shield,
       title: s.security,
       description: s.securityDesc,
@@ -219,25 +179,6 @@ export default function SettingsClient() {
               <div className="mt-4">{section.content}</div>
             </div>
           ))}
-
-          {/* Danger Zone */}
-          <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                <Trash2 className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <h2 className="font-bold text-red-600">{uc.dangerZone}</h2>
-                <p className="text-sm text-slate-500">{uc.deleteWarning}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleDeleteAccount}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-500 transition-colors"
-            >
-              {uc.deleteAccount}
-            </button>
-          </div>
         </div>
 
         {/* Save Button */}

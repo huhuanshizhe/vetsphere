@@ -16,7 +16,6 @@ import {
   Hospital,
   User,
   LogOut,
-  Settings,
   LayoutDashboard,
   ChevronDown,
   Package,
@@ -186,14 +185,6 @@ export function IntlNavbar() {
                     >
                       <Package className="w-5 h-5" />
                       <span>{t[language].orders}</span>
-                    </Link>
-                    <Link
-                      href={`/${language}/user/settings`}
-                      className="flex items-center gap-3 px-4 py-3 text-slate-700 hover:bg-slate-50 transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <Settings className="w-5 h-5" />
-                      <span>{t[language].settings}</span>
                     </Link>
                     <div className="border-t border-slate-100 mt-2 pt-2">
                       <button

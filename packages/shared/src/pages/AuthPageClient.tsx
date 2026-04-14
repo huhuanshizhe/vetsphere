@@ -100,6 +100,26 @@ const Auth: React.FC<AuthProps> = ({ portalType = 'Doctor' }) => {
     }
 
     try {
+      if (!isLogin) {
+        // --- Registration flow: call register API first, then login ---
+        const registerRes = await fetch(`${window.location.origin}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            role: portalType || 'Doctor',
+            fullName: formData.fullName || undefined,
+            locale: locale || 'en',
+          }),
+        });
+        const registerData = await registerRes.json();
+        if (!registerRes.ok) {
+          throw new Error(registerData.error || 'Registration failed');
+        }
+        // Registration succeeded, now login
+      }
+
       const { user } = await api.login(formData.email, formData.password);
       
       // Role Check - reject if role doesn't match portal type (except Doctor portal which accepts all)
@@ -224,35 +244,35 @@ const Auth: React.FC<AuthProps> = ({ portalType = 'Doctor' }) => {
                             <div className="space-y-4 animate-in slide-in-from-right fade-in duration-300">
                                  <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.fullName}</label>
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.fullName} <span className="text-red-500">*</span></label>
                                         <input type="text" required 
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-vs outline-none transition-all"
                                             value={formData.fullName} onChange={e => handleChange('fullName', e.target.value)} />
                                     </div>
                                     <div>
                                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.license}</label>
-                                        <input type="text" required 
+                                        <input type="text"
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-vs outline-none transition-all"
                                             value={formData.license} onChange={e => handleChange('license', e.target.value)} />
                                     </div>
                                  </div>
                                  <div>
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.clinic}</label>
-                                    <input type="text" required 
+                                    <input type="text"
                                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-vs outline-none transition-all"
                                         value={formData.clinic} onChange={e => handleChange('clinic', e.target.value)} />
                                  </div>
                             </div>
                         )}
                         <div>
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.email}</label>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.auth.email} <span className="text-red-500">*</span></label>
                             <input type="email" required 
                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-vs outline-none transition-all"
                                 value={formData.email} onChange={e => handleChange('email', e.target.value)} />
                         </div>
                         <div>
                             <div className="flex justify-between mb-1.5">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest block">{t.auth.password}</label>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest block">{t.auth.password} <span className="text-red-500">*</span></label>
                                 {isLogin && <button type="button" onClick={() => { setShowResetModal(true); setResetEmail(formData.email); setResetSent(false); setErrorMsg(''); }} className="text-xs font-bold text-vs hover:underline">{t.auth.forgotPass}</button>}
                             </div>
                             <input type="password" required 

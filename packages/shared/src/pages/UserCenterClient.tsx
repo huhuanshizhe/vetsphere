@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useNotification } from '../context/NotificationContext';
 import { useWishlist } from '../context/WishlistContext';
 import { api } from '../services/api';
+import { supabase } from '../services/supabase';
 import { Order, CourseEnrollment } from '../types';
 import Link from 'next/link';
 import { WishlistPage } from '../components/WishlistPage';
@@ -54,6 +55,11 @@ const UserCenterClient: React.FC = () => {
     phone: '',
     bio: ''
   });
+
+  // Password change state
+  const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     // Wait for AuthContext to finish initializing
@@ -891,21 +897,65 @@ const UserCenterClient: React.FC = () => {
                       </label>
                     </div>
 
+                    {/* Change Password */}
                     <div className="p-4 border border-slate-200 rounded-xl">
-                      <h3 className="font-bold text-slate-700 mb-2">{t.userCenter.languagePreference}</h3>
-                      <select className="w-full md:w-64 px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-vs/20 focus:border-vs">
-                        <option value="zh">中文</option>
-                        <option value="en">English</option>
-                        <option value="th">ไทย</option>
-                      </select>
-                    </div>
-
-                    <div className="p-4 border border-red-200 rounded-xl bg-red-50">
-                      <h3 className="font-bold text-red-700 mb-2">{t.userCenter.dangerZone}</h3>
-                      <p className="text-sm text-red-600 mb-3">{t.userCenter.deleteWarning}</p>
-                      <button className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition">
-                        {t.userCenter.deleteAccount}
-                      </button>
+                      <h3 className="font-bold text-slate-700 mb-2">{t.settings?.changePassword || 'Change Password'}</h3>
+                      <p className="text-sm text-slate-500 mb-4">{t.settings?.passwordDesc || 'Update your account password'}</p>
+                      <div className="space-y-3 max-w-md">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-600 mb-1">{t.settings?.newPassword || 'New Password'} <span className="text-red-500">*</span></label>
+                          <input
+                            type="password"
+                            value={passwordForm.newPassword}
+                            onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                            placeholder="••••••••"
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                          />
+                          {passwordForm.newPassword && passwordForm.newPassword.length < 8 && (
+                            <p className="text-xs text-amber-600 mt-1">{t.auth?.passwordTooShort || 'Password must be at least 8 characters'}</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-600 mb-1">{t.settings?.confirmPassword || 'Confirm Password'} <span className="text-red-500">*</span></label>
+                          <input
+                            type="password"
+                            value={passwordForm.confirmPassword}
+                            onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                            placeholder="••••••••"
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                          />
+                          {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
+                            <p className="text-xs text-red-600 mt-1">{t.settings?.passwordMismatch || 'Passwords do not match'}</p>
+                          )}
+                        </div>
+                        {passwordMsg && (
+                          <div className={`p-3 rounded-lg text-sm font-medium ${passwordMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                            {passwordMsg.text}
+                          </div>
+                        )}
+                        <button
+                          onClick={async () => {
+                            if (passwordForm.newPassword.length < 8) return;
+                            if (passwordForm.newPassword !== passwordForm.confirmPassword) return;
+                            setPasswordSaving(true);
+                            setPasswordMsg(null);
+                            try {
+                              const { error } = await supabase.auth.updateUser({ password: passwordForm.newPassword });
+                              if (error) throw error;
+                              setPasswordMsg({ type: 'success', text: t.settings?.passwordUpdated || 'Password updated successfully!' });
+                              setPasswordForm({ newPassword: '', confirmPassword: '' });
+                            } catch (err: any) {
+                              setPasswordMsg({ type: 'error', text: err.message || 'Failed to update password' });
+                            } finally {
+                              setPasswordSaving(false);
+                            }
+                          }}
+                          disabled={passwordSaving || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword}
+                          className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {passwordSaving ? (t.common?.loading || 'Processing...') : (t.settings?.changePassword || 'Change Password')}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
