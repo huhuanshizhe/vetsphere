@@ -336,24 +336,10 @@ export default function ProductCardMobile({ product, locale, onAddToCart, onAddT
             {product.display_name}
           </h3>
 
-          {/* Summary - Hidden on very small screens */}
-          {product.summary && (
-            <p className="text-xs text-slate-500 line-clamp-2 hidden sm:block mb-2">
-              {product.summary}
-            </p>
-          )}
-
-          {/* Recommendation Reason */}
-          {product.recommendation_reason && (
-            <div className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md mb-2 font-medium line-clamp-1">
-              {product.recommendation_reason}
-            </div>
-          )}
-
           {/* Price & CTA */}
           <div className="flex items-center justify-between pt-3 mt-auto border-t border-slate-100">
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-slate-900">{formatPrice()}</span>
+              <span className="text-sm font-bold text-slate-900">{formatPrice()}</span>
             </div>
 
             <div className="flex items-center gap-2">

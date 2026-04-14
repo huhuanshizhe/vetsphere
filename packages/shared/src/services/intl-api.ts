@@ -576,8 +576,23 @@ export async function getIntlProducts(options?: {
   locale?: string;
   sortBy?: 'featured' | 'newest' | 'price-low' | 'price-high' | 'name-asc';
   categoryId?: string;
+  // New filter params
+  search?: string;
+  brands?: string[];
+  priceMin?: number;
+  priceMax?: number;
+  purchaseType?: 'direct' | 'quote';
 }): Promise<{ items: IntlProduct[]; total: number }> {
   const locale = options?.locale || 'en';
+
+  // If categoryId is provided, resolve product IDs through category mappings
+  let categoryProductIds: string[] | null = null;
+  if (options?.categoryId) {
+    categoryProductIds = await getProductIdsByCategory(options.categoryId);
+    if (categoryProductIds.length === 0) {
+      return { items: [], total: 0 };
+    }
+  }
 
   let query = supabase
     .from('product_site_views')
@@ -612,9 +627,33 @@ export async function getIntlProducts(options?: {
   if (options?.pricing_mode) {
     query = query.eq('products.pricing_mode', options.pricing_mode);
   }
-  // Category filter - filter by category ID through product_categories relation
-  if (options?.categoryId) {
-    query = query.eq('products.clinical_category', options.categoryId);
+
+  // Category filter via product_category_mappings
+  if (categoryProductIds) {
+    query = query.in('product_id', categoryProductIds);
+  }
+
+  // Server-side search: match across name fields and brand
+  if (options?.search) {
+    const term = `%${options.search}%`;
+    query = query.or(
+      `display_name.ilike.${term},products.name.ilike.${term},products.name_en.ilike.${term},products.brand.ilike.${term}`
+    );
+  }
+
+  // Brand filter
+  if (options?.brands && options.brands.length > 0) {
+    query = query.in('products.brand', options.brands);
+  }
+
+  // Purchase type filter
+  if (options?.purchaseType) {
+    if (options.purchaseType === 'quote') {
+      query = query.eq('purchase_type', 'quote');
+    } else {
+      // direct = everything that is NOT quote
+      query = query.or('purchase_type.is.null,purchase_type.neq.quote');
+    }
   }
 
   // Sorting
@@ -771,6 +810,11 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
   const { data: data2, error: error2 } = await buildSiteViewQuery().eq('slug_override', slugOrId).single();
 
   if (data2 && !error2) return mapProductRow(data2, locale);
+
+  // Try product_id directly (cards fall back to product_id as slug when no slug is set)
+  const { data: data4, error: error4 } = await buildSiteViewQuery().eq('product_id', slugOrId).single();
+
+  if (data4 && !error4) return mapProductRow(data4, locale);
 
   // Try products.slug - need to first look up product by slug
   const { data: productData } = await supabase
@@ -1417,4 +1461,86 @@ export async function getIntlCategoriesWithCountsOld(locale: string = 'en'): Pro
     ...c,
     productCount: countMap[c.slug] || 0,
   }));
+}
+
+// ============================================
+// Category-based product filtering helper
+// ============================================
+
+/**
+ * Get all product IDs that belong to a category or any of its descendants.
+ * Used by getIntlProducts for accurate category filtering via product_category_mappings.
+ */
+async function getProductIdsByCategory(categoryId: string): Promise<string[]> {
+  // 1. Get all descendant category IDs (including the given one)
+  const { data: allCategories } = await supabase
+    .from('product_categories')
+    .select('id, parent_id')
+    .eq('is_active', true);
+
+  if (!allCategories) return [];
+
+  const descendantIds = new Set<string>([categoryId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const cat of allCategories) {
+      if (cat.parent_id && descendantIds.has(cat.parent_id) && !descendantIds.has(cat.id)) {
+        descendantIds.add(cat.id);
+        changed = true;
+      }
+    }
+  }
+
+  const catArray = Array.from(descendantIds);
+
+  // 2. Get product IDs where category_id, subcategory_id, or level3_category_id matches
+  //    Products store category references directly on the products table
+  const [r1, r2, r3] = await Promise.all([
+    supabase.from('products').select('id').in('category_id', catArray),
+    supabase.from('products').select('id').in('subcategory_id', catArray),
+    supabase.from('products').select('id').in('level3_category_id', catArray),
+  ]);
+
+  const ids = new Set<string>();
+  for (const r of [r1, r2, r3]) {
+    if (r.data) r.data.forEach(p => ids.add(p.id));
+  }
+  return [...ids];
+}
+
+// ============================================
+// Brand list for filter panel
+// ============================================
+
+export interface BrandWithCount {
+  brand: string;
+  count: number;
+}
+
+/**
+ * Get distinct brands from published INTL products with product counts.
+ */
+export async function getIntlProductBrands(): Promise<BrandWithCount[]> {
+  const { data } = await supabase
+    .from('product_site_views')
+    .select('product_id, products!inner(brand)')
+    .eq('site_code', SITE_CODE)
+    .eq('publish_status', 'published')
+    .eq('is_enabled', true);
+
+  if (!data) return [];
+
+  const countMap: Record<string, number> = {};
+  for (const row of data) {
+    const brand = (row as any).products?.brand;
+    if (brand && typeof brand === 'string' && brand.trim()) {
+      const key = brand.trim();
+      countMap[key] = (countMap[key] || 0) + 1;
+    }
+  }
+
+  return Object.entries(countMap)
+    .map(([brand, count]) => ({ brand, count }))
+    .sort((a, b) => b.count - a.count);
 }
