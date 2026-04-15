@@ -382,14 +382,14 @@ function getCTAConfig(product: ExtendedProduct, isAuthenticated: boolean) {
     case 'low':
       return {
         showPrice: true,
-        priceLabel: `¥${product.price.toLocaleString()}`,
+        priceLabel: `¥${(product.price ?? 0).toLocaleString()}`,
         primary: { label: '加入购物车', action: 'add-to-cart', style: 'bg-emerald-500 hover:bg-emerald-600 text-white' },
         secondary: { label: '立即购买', action: 'buy-now', style: 'border border-emerald-500 text-emerald-600 hover:bg-emerald-50' },
       };
     case 'medium':
       return {
         showPrice: isAuthenticated,
-        priceLabel: isAuthenticated ? `¥${product.price.toLocaleString()}` : '🔒 登录看价',
+        priceLabel: isAuthenticated ? `¥${(product.price ?? 0).toLocaleString()}` : '🔒 登录看价',
         primary: isAuthenticated
           ? { label: '加入购物车', action: 'add-to-cart', style: 'bg-blue-500 hover:bg-blue-600 text-white' }
           : { label: '登录看价', action: 'login', style: 'bg-blue-500 hover:bg-blue-600 text-white' },
@@ -412,7 +412,7 @@ function getCTAConfig(product: ExtendedProduct, isAuthenticated: boolean) {
     default:
       return {
         showPrice: true,
-        priceLabel: `¥${product.price.toLocaleString()}`,
+        priceLabel: `¥${(product.price ?? 0).toLocaleString()}`,
         primary: { label: '加入购物车', action: 'add-to-cart', style: 'bg-emerald-500 hover:bg-emerald-600 text-white' },
         secondary: null,
       };

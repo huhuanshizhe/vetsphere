@@ -196,10 +196,22 @@ function mapProduct(p: any): Product {
   if (hasVariants && skus.length > 0) {
     // Sum stock from all SKUs
     qty = skus.reduce((sum: number, sku: any) => sum + (sku.stockQuantity || 0), 0);
-    // Get minimum price from SKUs
-    const prices = skus.map((sku: any) => sku.price).filter((pr: number) => pr > 0);
+    // Get minimum price from SKUs (prefer sellingPrice over cost price)
+    const prices = skus.map((sku: any) => sku.sellingPrice || sku.price).filter((pr: number) => pr > 0);
     if (prices.length > 0) {
       price = Math.min(...prices);
+    }
+  }
+
+  // Fallback: if price is still null/0, try price_min or SKU sellingPrice
+  if (!price || price <= 0) {
+    if (p.price_min && p.price_min > 0) {
+      price = p.price_min;
+    } else if (skus.length > 0) {
+      const fallbackPrices = skus.map((sku: any) => sku.sellingPrice || sku.price).filter((pr: number) => pr > 0);
+      if (fallbackPrices.length > 0) {
+        price = Math.min(...fallbackPrices);
+      }
     }
   }
 
@@ -330,44 +342,71 @@ export const api = {
 
   async getProducts(): Promise<Product[]> {
     try {
-      const { data, error } = await supabase.from('products').select(`
-        *,
-        images:product_images(id, url, type, sort_order),
-        skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, is_active, sort_order)
-      `);
+      // 通过 product_site_views 获取 CN 站已发布的产品
+      const { data, error } = await supabase
+        .from('product_site_views')
+        .select(`
+          *,
+          products!inner(
+            *,
+            images:product_images(id, url, type, sort_order),
+            skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, is_active, sort_order)
+          )
+        `)
+        .eq('site_code', 'cn')
+        .eq('publish_status', 'published')
+        .eq('is_enabled', true)
+        .order('display_order', { ascending: true });
+
       if (error || !data || data.length === 0) return USE_MOCK_FALLBACK ? SEED_PRODUCTS : [];
-      return data.map(mapProduct);
+      // 展平 site_view + products 嵌套结构，传给 mapProduct
+      return data.map((sv: any) => {
+        const p = sv.products;
+        // site_view 覆盖字段优先
+        const flat = {
+          ...p,
+          // 覆盖显示名称/价格（如果 site_view 有设置）
+          name: sv.display_name || p.name,
+          price: sv.pricing_mode === 'custom' && sv.display_price ? sv.display_price : p.price,
+        };
+        return mapProduct(flat);
+      });
     } catch { return USE_MOCK_FALLBACK ? SEED_PRODUCTS : []; }
   },
 
   async getProductById(id: string): Promise<Product | null> {
     try {
+      // 通过 product_site_views 获取 CN 站的单个产品
       const { data, error } = await supabase
-        .from('products')
+        .from('product_site_views')
         .select(`
           *,
-          images:product_images(id, url, type, sort_order),
-          variant_attributes:product_variant_attributes(id, attribute_name, attribute_values, sort_order),
-          skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, is_active, sort_order)
+          products!inner(
+            *,
+            images:product_images(id, url, type, sort_order),
+            variant_attributes:product_variant_attributes(id, attribute_name, attribute_values, sort_order),
+            skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, is_active, sort_order)
+          )
         `)
-        .eq('id', id)
+        .eq('product_id', id)
+        .eq('site_code', 'cn')
         .single();
-        
-      console.log('[API] getProductById - Raw data:', JSON.stringify(data, null, 2));
-      console.log('[API] getProductById - variant_attributes:', data?.variant_attributes);
-      console.log('[API] getProductById - skus:', data?.skus);
-      console.log('[API] getProductById - Error:', error);
-      
+
       if (error || !data) {
         if (USE_MOCK_FALLBACK) {
           return SEED_PRODUCTS.find(p => p.id === id) || null;
         }
         return null;
       }
-      
-      const mapped = mapProduct(data);
-      console.log('[API] getProductById - Mapped product:', mapped);
-      return mapped;
+
+      const p = (data as any).products;
+      const sv = data as any;
+      const flat = {
+        ...p,
+        name: sv.display_name || p.name,
+        price: sv.pricing_mode === 'custom' && sv.display_price ? sv.display_price : p.price,
+      };
+      return mapProduct(flat);
     } catch (err) {
       console.error('[API] getProductById - Exception:', err);
       if (USE_MOCK_FALLBACK) {
@@ -1235,13 +1274,14 @@ export const api = {
       // Filter by user_id for data isolation
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
+        .select('*, order_items(*)')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return (data || []).map((o: any) => ({
         id: o.id,
+        orderType: o.order_type || 'product',
         customerName: o.customer_name || o.shipping_name,
         customerEmail: o.customer_email || o.email,
         items: (o.order_items || o.items || []).map((item: any) => ({

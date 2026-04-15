@@ -6,6 +6,18 @@ import { useRouter } from 'next/navigation';
 import { MapPin, Plus, Edit2, Trash2, Check, Loader2, ChevronRight, X } from 'lucide-react';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import { useLanguage } from '@vetsphere/shared/context/LanguageContext';
+import { supabase } from '@vetsphere/shared/services/supabase';
+
+/** 获取认证 headers */
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      return { 'Authorization': `Bearer ${session.access_token}` };
+    }
+  } catch { /* ignore */ }
+  return {};
+}
 
 interface Address {
   id: string;
@@ -61,7 +73,8 @@ export default function AddressesClient() {
 
   const fetchAddresses = async () => {
     try {
-      const response = await fetch('/api/addresses');
+      const authHeaders = await getAuthHeaders();
+      const response = await fetch('/api/addresses', { headers: authHeaders });
       if (response.ok) {
         const data = await response.json();
         setAddresses(data.addresses || []);
@@ -84,9 +97,10 @@ export default function AddressesClient() {
         ? { id: editingAddress.id, ...formData }
         : formData;
 
+      const authHeaders = await getAuthHeaders();
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(body),
       });
 
@@ -107,8 +121,10 @@ export default function AddressesClient() {
     if (!confirm(a.confirmDelete)) return;
 
     try {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch(`/api/addresses?id=${id}`, {
         method: 'DELETE',
+        headers: authHeaders,
       });
 
       if (response.ok) {
@@ -121,9 +137,10 @@ export default function AddressesClient() {
 
   const handleSetDefault = async (id: string) => {
     try {
+      const authHeaders = await getAuthHeaders();
       const response = await fetch('/api/addresses', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ id, is_default: true }),
       });
 

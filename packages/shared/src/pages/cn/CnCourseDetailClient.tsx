@@ -777,7 +777,7 @@ const EnrollmentCard: React.FC<{
             : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl'
         }`}
       >
-        <ShoppingCart className="w-5 h-5" />
+        <GraduationCap className="w-5 h-5" />
         {isAuthenticated 
           ? (isFull ? '已满员' : '立即报名') 
           : '登录后报名'}
@@ -853,7 +853,6 @@ const CnCourseDetailClient: React.FC<CnCourseDetailClientProps> = ({ courseId })
   const { t, language } = useLanguage();
   const { isAuthenticated, user } = useAuth();
   const { addNotification } = useNotification();
-  const { addToCart } = useCart();
   
   const [course, setCourse] = useState<ExtendedCourse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -889,26 +888,16 @@ const CnCourseDetailClient: React.FC<CnCourseDetailClientProps> = ({ courseId })
       .catch(() => setEquipmentRelations([]));
   }, [courseId]);
 
-  // 报名处理
+  // 报名处理 - 直接跳转课程购买页
   const handleRegister = () => {
     if (!course) return;
     
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/courses/${course.id}/buy`)}`);
       return;
     }
     
-    addToCart({
-      id: course.id,
-      name: course.title_zh || course.title,
-      price: course.price_cny || course.price,
-      currency: 'CNY',
-      imageUrl: course.imageUrl,
-      type: 'course',
-      quantity: 1
-    });
-    
-    router.push(`/${locale}/checkout`);
+    router.push(`/${locale}/courses/${course.id}/buy`);
   };
 
   // 分享处理
@@ -1249,7 +1238,7 @@ const CnCourseDetailClient: React.FC<CnCourseDetailClientProps> = ({ courseId })
               onClick={handleRegister}
               className="px-8 py-4 bg-emerald-500 text-white rounded-xl font-bold text-base shadow-lg hover:bg-emerald-600 transition-all flex items-center gap-2"
             >
-              <ShoppingCart className="w-5 h-5" />
+              <GraduationCap className="w-5 h-5" />
               {isAuthenticated ? '立即报名' : '登录后报名'}
             </button>
             <button

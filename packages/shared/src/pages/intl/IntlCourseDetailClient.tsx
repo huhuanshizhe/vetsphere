@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '../../context/LanguageContext';
-import { useCart } from '../../context/CartContext';
 import {
   getIntlCourseBySlug,
   getIntlCourseInstructors,
@@ -62,7 +61,6 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
   const { locale, t } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
-  const { addToCart } = useCart();
   const cd = t.courseDetail;
 
   const [course, setCourse] = useState<IntlCourse | null>(null);
@@ -596,17 +594,8 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                   <button
                     onClick={() => {
                       if (!course) return;
-                      // 添加到购物车并跳转到结账页面
-                      addToCart({
-                        id: course.course_id,
-                        type: 'course',
-                        name: course.title,
-                        price: course.price || 0,
-                        currency: course.currency || 'USD',
-                        imageUrl: course.cover_image_url || '',
-                        quantity: 1,
-                      });
-                      router.push(`/${locale}/checkout`);
+                      // 直接跳转课程购买页
+                      router.push(`/${locale}/courses/${course.course_id}/buy`);
                     }}
                     className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-base hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-900/10"
                   >

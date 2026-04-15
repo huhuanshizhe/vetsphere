@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useSite } from '@/context/SiteContext';
 import { ToastContainer, useToast } from '@/components/ui';
 import DataTable, { Column } from '@/components/DataTable';
 
@@ -172,7 +173,7 @@ function isSelfOwned(product: Product): boolean {
 // ActionDropdown Component
 // ============================================================================
 
-function ActionDropdown({ product, onEdit, onApprove, onReject, onPublish, onOffline, onDelete, onSubmitReview }: {
+function ActionDropdown({ product, onEdit, onApprove, onReject, onPublish, onOffline, onDelete, onSubmitReview, adminSite }: {
   product: Product;
   onEdit: () => void;
   onApprove: () => void;
@@ -181,6 +182,7 @@ function ActionDropdown({ product, onEdit, onApprove, onReject, onPublish, onOff
   onOffline: (site: 'cn' | 'intl') => void;
   onDelete: () => void;
   onSubmitReview: () => void;
+  adminSite: 'cn' | 'intl' | 'global';
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
@@ -269,8 +271,8 @@ function ActionDropdown({ product, onEdit, onApprove, onReject, onPublish, onOff
           {status === 'draft' && selfOwned && (
             <>
               <Divider />
-              {!isOnCN && <Item onClick={() => onPublish('cn')} icon={iconGlobe} label="发布中国站" color="text-blue-600 hover:bg-blue-50" />}
-              {!isOnINTL && <Item onClick={() => onPublish('intl')} icon={iconGlobe} label="发布国际站" color="text-purple-600 hover:bg-purple-50" />}
+              {!isOnCN && adminSite !== 'intl' && <Item onClick={() => onPublish('cn')} icon={iconGlobe} label="发布中国站" color="text-blue-600 hover:bg-blue-50" />}
+              {!isOnINTL && adminSite !== 'cn' && <Item onClick={() => onPublish('intl')} icon={iconGlobe} label="发布国际站" color="text-purple-600 hover:bg-purple-50" />}
             </>
           )}
 
@@ -292,10 +294,10 @@ function ActionDropdown({ product, onEdit, onApprove, onReject, onPublish, onOff
           {(status === 'approved' || status === 'published' || status === 'offline') && (
             <>
               <Divider />
-              {!isOnCN && <Item onClick={() => onPublish('cn')} icon={iconGlobe} label="发布中国站" color="text-blue-600 hover:bg-blue-50" />}
-              {isOnCN && <Item onClick={() => onOffline('cn')} icon={iconBan} label="下架中国站" color="text-amber-600 hover:bg-amber-50" />}
-              {!isOnINTL && <Item onClick={() => onPublish('intl')} icon={iconGlobe} label="发布国际站" color="text-purple-600 hover:bg-purple-50" />}
-              {isOnINTL && <Item onClick={() => onOffline('intl')} icon={iconBan} label="下架国际站" color="text-amber-600 hover:bg-amber-50" />}
+              {!isOnCN && adminSite !== 'intl' && <Item onClick={() => onPublish('cn')} icon={iconGlobe} label="发布中国站" color="text-blue-600 hover:bg-blue-50" />}
+              {isOnCN && adminSite !== 'intl' && <Item onClick={() => onOffline('cn')} icon={iconBan} label="下架中国站" color="text-amber-600 hover:bg-amber-50" />}
+              {!isOnINTL && adminSite !== 'cn' && <Item onClick={() => onPublish('intl')} icon={iconGlobe} label="发布国际站" color="text-purple-600 hover:bg-purple-50" />}
+              {isOnINTL && adminSite !== 'cn' && <Item onClick={() => onOffline('intl')} icon={iconBan} label="下架国际站" color="text-amber-600 hover:bg-amber-50" />}
             </>
           )}
 
@@ -322,6 +324,7 @@ export default function AdminProductsPage() {
   const router = useRouter();
   const { toasts, removeToast, success, error: showError } = useToast();
   const supabase = createClient();
+  const { currentSite, isCN, isINTL, isGLOBAL } = useSite();
 
   // Data state
   const [products, setProducts] = useState<Product[]>([]);
@@ -369,21 +372,26 @@ export default function AdminProductsPage() {
     }
   }, [debouncedSearch]);
 
-  // ---- Load categories once ----
+  // ---- Load categories (site-filtered) ----
   useEffect(() => {
     async function loadCategories() {
-      const { data } = await supabase
+      let query = supabase
         .from('product_categories')
         .select('id, name, name_en, level, parent_id')
         .eq('is_active', true)
         .order('display_order', { ascending: true });
+      // 非全局模式：只加载当前站点和全局分类
+      if (currentSite !== 'global') {
+        query = query.or(`site_code.eq.${currentSite},site_code.eq.global`);
+      }
+      const { data } = await query;
       if (data) {
         setCategories(data as ProductCategory[]);
       }
     }
     loadCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentSite]);
 
   // ---- Load products & counts ----
   useEffect(() => {
@@ -392,12 +400,23 @@ export default function AdminProductsPage() {
     async function fetchData() {
       setLoading(true);
       try {
+        // 非全局模式：先获取当前站点的 product_ids
+        let siteProductIds: string[] | null = null;
+        if (currentSite !== 'global') {
+          const { data: svData } = await supabase
+            .from('product_site_views')
+            .select('product_id')
+            .eq('site_code', currentSite);
+          siteProductIds = (svData || []).map((r: any) => r.product_id);
+        }
+
         // Load status counts in parallel
         const statuses = ['all', 'draft', 'pending_review', 'approved', 'published', 'rejected', 'offline'] as const;
         const countResults = await Promise.all(
           statuses.map(s => {
             let q = supabase.from('products').select('id', { count: 'exact', head: true }).is('deleted_at', null);
             if (s !== 'all') q = q.eq('status', s);
+            if (siteProductIds !== null) q = q.in('id', siteProductIds.length > 0 ? siteProductIds : ['__none__']);
             return q;
           })
         );
@@ -415,6 +434,10 @@ export default function AdminProductsPage() {
         });
 
         // Build product query with joins
+        // 非全局模式：使用 inner join 过滤只有当前站点 site_view 的产品
+        const siteViewJoin = currentSite !== 'global'
+          ? `site_views:product_site_views!inner(site_code, publish_status, is_enabled)`
+          : `site_views:product_site_views(site_code, publish_status, is_enabled)`;
         let query = supabase
           .from('products')
           .select(`
@@ -423,12 +446,17 @@ export default function AdminProductsPage() {
             created_at, updated_at, published_at, rejection_reason,
             category_id, supplier_id, supplier_uuid,
             supplier:suppliers(company_name),
-            site_views:product_site_views(site_code, publish_status, is_enabled),
+            ${siteViewJoin},
             product_skus(id, sku_code, price, selling_price, selling_price_usd, stock_quantity, is_active),
             category:product_categories!category_id(id, name, name_en, level)
           `, { count: 'exact' })
           .is('deleted_at', null)
           .range((page - 1) * pageSize, page * pageSize - 1);
+
+        // 站点过滤 (inner join + eq on site_code)
+        if (currentSite !== 'global') {
+          query = query.eq('site_views.site_code', currentSite);
+        }
 
         // Status filter
         if (statusFilter !== 'all') {
@@ -487,7 +515,7 @@ export default function AdminProductsPage() {
     fetchData();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, categoryFilter, debouncedSearch, page, pageSize, sortBy, refreshCount, categories.length]);
+  }, [statusFilter, categoryFilter, debouncedSearch, page, pageSize, sortBy, refreshCount, categories.length, currentSite]);
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -892,7 +920,11 @@ export default function AdminProductsPage() {
         {/* ---- Header ---- */}
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">产品管理</h1>
+            <h1 className="text-2xl font-bold text-slate-900">
+              产品管理
+              {isCN && <span className="ml-2 text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">中国站</span>}
+              {isINTL && <span className="ml-2 text-sm font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">国际站</span>}
+            </h1>
             <p className="text-slate-500 mt-1 text-sm">
               管理所有产品的审核、发布与下架
             </p>
@@ -1011,12 +1043,16 @@ export default function AdminProductsPage() {
               {/* 草稿/已通过/已下架/全部：上架按钮 */}
               {(['draft', 'approved', 'offline', 'all'].includes(statusFilter)) && (
                 <>
-                  <button onClick={() => setBulkConfirm({ action: 'publish', siteCodes: ['cn'] })} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors">
-                    上架中国站
-                  </button>
-                  <button onClick={() => setBulkConfirm({ action: 'publish', siteCodes: ['intl'] })} className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-md hover:bg-purple-700 transition-colors">
-                    上架国际站
-                  </button>
+                  {currentSite !== 'intl' && (
+                    <button onClick={() => setBulkConfirm({ action: 'publish', siteCodes: ['cn'] })} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors">
+                      上架中国站
+                    </button>
+                  )}
+                  {currentSite !== 'cn' && (
+                    <button onClick={() => setBulkConfirm({ action: 'publish', siteCodes: ['intl'] })} className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-md hover:bg-purple-700 transition-colors">
+                      上架国际站
+                    </button>
+                  )}
                 </>
               )}
               {/* 草稿：提交审核（供应商产品） */}
@@ -1045,12 +1081,16 @@ export default function AdminProductsPage() {
               {/* 已发布/全部：下架按钮 */}
               {(statusFilter === 'published' || statusFilter === 'all') && (
                 <>
-                  <button onClick={() => setBulkConfirm({ action: 'offline', siteCodes: ['cn'] })} className="px-3 py-1.5 bg-slate-500 text-white text-xs font-medium rounded-md hover:bg-slate-600 transition-colors">
-                    下架中国站
-                  </button>
-                  <button onClick={() => setBulkConfirm({ action: 'offline', siteCodes: ['intl'] })} className="px-3 py-1.5 bg-slate-500 text-white text-xs font-medium rounded-md hover:bg-slate-600 transition-colors">
-                    下架国际站
-                  </button>
+                  {currentSite !== 'intl' && (
+                    <button onClick={() => setBulkConfirm({ action: 'offline', siteCodes: ['cn'] })} className="px-3 py-1.5 bg-slate-500 text-white text-xs font-medium rounded-md hover:bg-slate-600 transition-colors">
+                      下架中国站
+                    </button>
+                  )}
+                  {currentSite !== 'cn' && (
+                    <button onClick={() => setBulkConfirm({ action: 'offline', siteCodes: ['intl'] })} className="px-3 py-1.5 bg-slate-500 text-white text-xs font-medium rounded-md hover:bg-slate-600 transition-colors">
+                      下架国际站
+                    </button>
+                  )}
                 </>
               )}
               {/* 所有状态：删除 */}
@@ -1083,6 +1123,7 @@ export default function AdminProductsPage() {
                 onOffline={(site) => setOfflineConfirm({ product, siteCode: site })}
                 onDelete={() => setDeleteConfirm(product)}
                 onSubmitReview={() => handleSubmitReview(product.id)}
+                adminSite={currentSite}
               />
             )}
             loading={loading}

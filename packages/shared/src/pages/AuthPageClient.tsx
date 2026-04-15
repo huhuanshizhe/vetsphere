@@ -128,7 +128,12 @@ const Auth: React.FC<AuthProps> = ({ portalType = 'Doctor' }) => {
       }
 
       login(user);
-      router.push(`/${locale}/dashboard`);
+      // Doctor 用户直接跳转到用户中心，避免经过 Dashboard 产生闪烁
+      if (user.role === 'Doctor') {
+        router.push(`/${locale}/user`);
+      } else {
+        router.push(`/${locale}/dashboard`);
+      }
 
     } catch (error: any) {
       console.error("Authentication Error:", error);

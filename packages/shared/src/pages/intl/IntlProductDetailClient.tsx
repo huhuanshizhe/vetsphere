@@ -215,8 +215,8 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
         attributeCombination: selectedSku?.attribute_combination,
         supplierId: product.supplier_id,
         supplierName: product.supplier_name,
-        weight: undefined,
-        weightUnit: 'kg' as const,
+        weight: product.weight || undefined,
+        weightUnit: (product.weight_unit as 'g' | 'kg' | 'lb') || 'kg',
         minOrderQuantity: 1,
       };
 

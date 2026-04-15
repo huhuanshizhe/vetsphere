@@ -3,6 +3,7 @@
 import React, { useState, useEffect, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useSite } from '@/context/SiteContext';
 import { Card, Button, LoadingState, ConfirmDialog, Toast, ToastContainer, useToast } from '@/components/ui';
 import RichTextEditor from '@/components/RichTextEditor';
 import { ChevronRight, ChevronUp, Upload, X, Settings2, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
@@ -19,6 +20,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const { id: productId } = use(params);
   const router = useRouter();
   const supabase = createClient();
+  const { currentSite, isCN, isINTL, isGLOBAL } = useSite();
 
   // 数据状态
   const [product, setProduct] = useState<any>(null);
@@ -49,7 +51,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const [activeTab, setActiveTab] = useState('basic');
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
-  const [selectedSites, setSelectedSites] = useState<string[]>(['cn']);
+  const [selectedSites, setSelectedSites] = useState<string[]>([currentSite === 'global' ? 'cn' : currentSite]);
   const [publishing, setPublishing] = useState(false);
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
 
@@ -1984,9 +1986,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               <h3 className="text-sm font-bold text-slate-900 mb-3">站点发布状态</h3>
               <div className="space-y-3">
                 {[
-                  { code: 'cn', label: '中国站 (CN)', desc: 'www.vetsphere.net' },
-                  { code: 'intl', label: '国际站 (INTL)', desc: 'intl.vetsphere.net' },
-                ].map(site => {
+                  { code: 'cn', label: '中国站 (CN)', desc: 'vetsphere.cn' },
+                  { code: 'intl', label: '国际站 (INTL)', desc: 'vetsphere.net' },
+                ].filter(site => isGLOBAL || site.code === currentSite).map(site => {
                   const isPublished = product.site_views?.some((sv: any) => sv.site_code === site.code && sv.publish_status === 'published');
                   return (
                     <div key={site.code} className="flex items-center justify-between p-4 border rounded-xl">
@@ -2060,7 +2062,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               {[
                 { code: 'cn', label: '中国站 (CN)', desc: '面向中国大陆用户' },
                 { code: 'intl', label: '国际站 (INTL)', desc: '面向海外用户' },
-              ].map(site => (
+              ].filter(site => isGLOBAL || site.code === currentSite).map(site => (
                 <label key={site.code} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                   selectedSites.includes(site.code) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
                 }`}>

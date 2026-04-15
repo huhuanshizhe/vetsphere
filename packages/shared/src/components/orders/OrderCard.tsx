@@ -142,10 +142,14 @@ export function OrderCard({
             </div>
 
             {/* Items Preview Text */}
-            {order.items_preview && order.items_preview.length > 0 && (
+            {order.items_preview && order.items_preview.length > 0 ? (
               <p className="text-sm text-slate-500 truncate line-clamp-1">
                 {order.items_preview.slice(0, 2).map((item) => item.product_name).join(', ')}
                 {order.items_preview.length > 2 && ` +${order.items_preview.length - 2} more`}
+              </p>
+            ) : (
+              <p className="text-sm text-slate-400 italic">
+                Item details unavailable
               </p>
             )}
 

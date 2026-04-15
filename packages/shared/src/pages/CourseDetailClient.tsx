@@ -6,7 +6,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../services/api';
 import { Course, CourseProductRelation } from '../types';
-import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -57,7 +56,6 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
   const { t, language } = useLanguage();
   const { isAuthenticated, user } = useAuth();
   const { addNotification } = useNotification();
-  const { addToCart } = useCart();
   const { isINTL } = useSiteConfig();
   
   const [course, setCourse] = useState<Course | null>(null);
@@ -218,23 +216,11 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
     if (!course) return;
     
     if (!isAuthenticated) {
-      router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
+      router.push(`/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/courses/${course.id}/buy`)}`);
       return;
     }
     
-    const { title } = getLocalizedContent(course);
-    
-    addToCart({
-      id: course.id,
-      name: title,
-      price: course.price,
-      currency: course.currency,
-      imageUrl: course.imageUrl,
-      type: 'course',
-      quantity: 1
-    });
-    
-    router.push(`/${locale}/checkout`);
+    router.push(`/${locale}/courses/${course.id}/buy`);
   };
 
   const handleShare = async () => {
@@ -615,11 +601,6 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
                     >
                       {services.notes}
                     </div>
-                  </div>
-                )}
-                    <p className="text-slate-600 text-sm leading-relaxed bg-slate-50 p-4 rounded-xl">
-                      {services.notes}
-                    </p>
                   </div>
                 )}
               </div>

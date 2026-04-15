@@ -227,8 +227,8 @@ export async function GET(request: NextRequest) {
           // Use cover_image_url or fallback to image_url
           cover_image_url: p.cover_image_url || p.image_url,
           image_url: p.image_url,
-          // Use localized slug if available
-          slug: p.slug_en || p.slug,
+          // Use localized slug if available, fallback to product ID
+          slug: p.slug_en || p.slug || p.id,
           slug_en: p.slug_en,
           slug_ja: p.slug_ja,
           slug_th: p.slug_th,
@@ -367,8 +367,8 @@ export async function POST(request: NextRequest) {
         // Use cover_image_url or fallback to image_url
         cover_image_url: productData.cover_image_url || productData.image_url,
         image_url: productData.image_url,
-        // Use localized slug if available
-        slug: productData.slug_en || productData.slug,
+        // Use localized slug if available, fallback to product ID
+        slug: productData.slug_en || productData.slug || productData.id,
         slug_en: productData.slug_en,
         slug_ja: productData.slug_ja,
         slug_th: productData.slug_th,

@@ -121,6 +121,9 @@ export interface IntlProduct {
   // 是否有多规格变体
   has_variants?: boolean;
   min_order_quantity?: number;
+  // Weight
+  weight?: number | null;
+  weight_unit?: 'g' | 'kg' | 'lb' | null;
   // Related training
   related_courses?: IntlCourse[];
   // SKU aggregated prices (min selling price across all SKUs for each currency)
@@ -563,6 +566,8 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
     supplier_id: base.supplier_uuid,
     has_variants: base.has_variants || false,
     min_order_quantity: base.min_order_quantity || 1,
+    weight: base.weight || null,
+    weight_unit: base.weight_unit || null,
   };
 }
 
@@ -607,7 +612,8 @@ export async function getIntlProducts(options?: {
         brand, specialty, scene_code, clinical_category,
         cover_image_url, image_url, specs, price_min, price_max,
         status, pricing_mode, price, stock_quantity,
-        supplier_uuid, has_variants, min_order_quantity
+        supplier_uuid, has_variants, min_order_quantity,
+        weight, weight_unit
       )
     `, { count: 'exact' })
     .eq('site_code', SITE_CODE)
@@ -801,7 +807,8 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
         brand, specialty, scene_code, clinical_category,
         cover_image_url, image_url, specs, price_min, price_max,
         status, pricing_mode, price, stock_quantity,
-        supplier_uuid, has_variants, min_order_quantity
+        supplier_uuid, has_variants, min_order_quantity,
+        weight, weight_unit
       )
     `)
     .eq('site_code', SITE_CODE)
@@ -828,6 +835,18 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
   if (productData) {
     const { data: data3, error: error3 } = await buildSiteViewQuery().eq('product_id', productData.id).single();
     if (data3 && !error3) return mapProductRow(data3, locale);
+  }
+
+  // Try products.slug_en (international site localized slug)
+  const { data: productBySlugEn } = await supabase
+    .from('products')
+    .select('id')
+    .eq('slug_en', slugOrId)
+    .single();
+
+  if (productBySlugEn) {
+    const { data: data5, error: error5 } = await buildSiteViewQuery().eq('product_id', productBySlugEn.id).single();
+    if (data5 && !error5) return mapProductRow(data5, locale);
   }
 
   return null;

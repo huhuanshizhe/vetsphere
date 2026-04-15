@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useSite } from '@/context/SiteContext';
 import {
   ChevronRight,
   ChevronDown,
@@ -50,6 +51,7 @@ const initialFormData: CategoryFormData = {
 
 export default function ProductCategoriesPage() {
   const supabase = createClient();
+  const { currentSite, isCN, isINTL, isGLOBAL } = useSite();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -60,16 +62,24 @@ export default function ProductCategoriesPage() {
 
   useEffect(() => {
     loadCategories();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSite]);
 
-  const loadCategories = async () => {
-    setLoading(true);
+  const loadCategories = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('product_categories')
         .select('*')
         .order('level')
         .order('sort_order');
+
+      // 非全局模式：只加载当前站点和全局分类
+      if (currentSite !== 'global') {
+        query = query.or(`site_code.eq.${currentSite},site_code.eq.global`);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -77,13 +87,15 @@ export default function ProductCategoriesPage() {
       const tree = buildTree(data || []);
       setCategories(tree);
       
-      // Auto-expand level 1
-      const level1Ids = (data || []).filter(c => c.level === 1).map(c => c.id);
-      setExpandedIds(new Set(level1Ids));
+      // Auto-expand level 1 only on initial load
+      if (!silent) {
+        const level1Ids = (data || []).filter(c => c.level === 1).map(c => c.id);
+        setExpandedIds(new Set(level1Ids));
+      }
     } catch (error) {
       console.error('Failed to load categories:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -138,6 +150,7 @@ export default function ProductCategoriesPage() {
       ...initialFormData,
       parent_id: parentId,
       level: level,
+      site_code: currentSite === 'global' ? 'global' : currentSite,
     });
     setShowModal(true);
   };
@@ -168,7 +181,7 @@ export default function ProductCategoriesPage() {
         .eq('id', category.id);
 
       if (error) throw error;
-      loadCategories();
+      loadCategories(true);
     } catch (error) {
       console.error('Failed to delete category:', error);
       alert('删除失败');
@@ -183,7 +196,7 @@ export default function ProductCategoriesPage() {
         .eq('id', category.id);
 
       if (error) throw error;
-      loadCategories();
+      loadCategories(true);
     } catch (error) {
       console.error('Failed to toggle category:', error);
     }
@@ -204,6 +217,8 @@ export default function ProductCategoriesPage() {
       const slug = formData.slug || generateSlug(formData.name);
       const id = editingCategory?.id || `cat-${slug}-${Date.now()}`;
 
+      const siteCode = isGLOBAL ? formData.site_code : currentSite;
+
       if (editingCategory) {
         const { error } = await supabase
           .from('product_categories')
@@ -212,18 +227,23 @@ export default function ProductCategoriesPage() {
             slug: slug,
             icon: formData.icon || null,
             description: formData.description || null,
-            site_code: formData.site_code,
+            site_code: siteCode,
           })
           .eq('id', editingCategory.id);
 
         if (error) throw error;
       } else {
         // Get max sort_order for this level/parent
-        const { data: siblings } = await supabase
+        let siblingsQuery = supabase
           .from('product_categories')
           .select('sort_order')
-          .eq('level', formData.level)
-          .eq('parent_id', formData.parent_id || null);
+          .eq('level', formData.level);
+        if (formData.parent_id) {
+          siblingsQuery = siblingsQuery.eq('parent_id', formData.parent_id);
+        } else {
+          siblingsQuery = siblingsQuery.is('parent_id', null);
+        }
+        const { data: siblings } = await siblingsQuery;
 
         const maxOrder = siblings?.reduce((max, s) => Math.max(max, s.sort_order || 0), 0) || 0;
 
@@ -232,12 +252,13 @@ export default function ProductCategoriesPage() {
           .insert({
             id: id,
             name: formData.name,
+            name_en: slug,
             slug: slug,
             parent_id: formData.parent_id,
             level: formData.level,
             icon: formData.icon || null,
             description: formData.description || null,
-            site_code: formData.site_code,
+            site_code: siteCode,
             sort_order: maxOrder + 1,
             is_active: true,
           });
@@ -246,10 +267,11 @@ export default function ProductCategoriesPage() {
       }
 
       setShowModal(false);
-      loadCategories();
+      loadCategories(true);
     } catch (error) {
       console.error('Failed to save category:', error);
-      alert('保存失败');
+      const msg = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
+      alert('保存失败：' + msg);
     } finally {
       setSaving(false);
     }
@@ -377,7 +399,11 @@ export default function ProductCategoriesPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">产品分类管理</h1>
+            <h1 className="text-2xl font-bold text-slate-900">
+              产品分类管理
+              {isCN && <span className="ml-2 text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">中国站</span>}
+              {isINTL && <span className="ml-2 text-sm font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">国际站</span>}
+            </h1>
             <p className="text-sm text-slate-500 mt-1">支持三级分类结构，可拖拽排序</p>
           </div>
           <button
@@ -495,20 +521,22 @@ export default function ProductCategoriesPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  站点
-                </label>
-                <select
-                  value={formData.site_code}
-                  onChange={e => setFormData({ ...formData, site_code: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                >
-                  <option value="global">全球 (CN + INTL)</option>
-                  <option value="cn">仅中国站</option>
-                  <option value="intl">仅国际站</option>
-                </select>
-              </div>
+              {isGLOBAL && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    站点
+                  </label>
+                  <select
+                    value={formData.site_code}
+                    onChange={e => setFormData({ ...formData, site_code: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  >
+                    <option value="global">全球 (CN + INTL)</option>
+                    <option value="cn">仅中国站</option>
+                    <option value="intl">仅国际站</option>
+                  </select>
+                </div>
+              )}
 
               <div className="flex gap-2 justify-end pt-4">
                 <button

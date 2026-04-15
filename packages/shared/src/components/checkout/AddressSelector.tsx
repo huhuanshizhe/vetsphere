@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { MapPin, Plus, Edit2, Trash2, Check, Building2 } from 'lucide-react';
+import { supabase } from '../../services/supabase';
+
+/** 获取认证 headers */
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      return { 'Authorization': `Bearer ${session.access_token}` };
+    }
+  } catch { /* ignore */ }
+  return {};
+}
 
 export interface Address {
   id: string;
@@ -47,7 +59,8 @@ export default function AddressSelector({
   const loadAddresses = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/addresses');
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch('/api/addresses', { headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
         setAddresses(data.addresses || []);
@@ -72,8 +85,10 @@ export default function AddressSelector({
     }
 
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch(`/api/addresses?id=${id}`, {
         method: 'DELETE',
+        headers: authHeaders,
       });
       if (res.ok) {
         setAddresses(prev => prev.filter(a => a.id !== id));

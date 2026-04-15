@@ -615,39 +615,71 @@ const UserCenterClient: React.FC = () => {
                 </div>
               )}
 
-              {/* Orders Tab - Quick access to recent orders */}
-              {activeTab === 'orders' && (
-                <RecentOrdersWidget
-                  locale={locale || 'en'}
-                  orders={orders.map(order => ({
-                    id: order.id,
-                    order_number: order.id.slice(0, 8),
-                    status: order.status?.toLowerCase() || 'pending',
-                    total: order.totalAmount || 0,
-                    currency: (order.currency as string) || 'USD',
-                    created_at: order.date || new Date().toISOString(),
-                    items_count: order.items?.length || 0,
-                    first_item_image: order.items?.[0]?.imageUrl,
-                    first_item_name: order.items?.[0]?.name,
-                  }))}
-                  loading={loading}
-                  translations={{
-                    title: t.userCenter.orderHistory || 'Order History',
-                    viewAll: t.dashboard?.viewAll || 'View All',
-                    noOrders: t.userCenter.noOrdersYet || 'No orders yet',
-                    browseShop: t.userCenter.browseEquipment || 'Browse Equipment',
-                    statusPending: t.orders?.statusPending || 'Pending',
-                    statusPaid: t.orders?.statusPaid || 'Paid',
-                    statusShipped: t.orders?.statusShipped || 'Shipped',
-                    statusDelivered: t.orders?.statusDelivered || 'Delivered',
-                    statusCancelled: t.orders?.statusCancelled || 'Cancelled',
-                    items: 'items',
-                  }}
-                  ordersUrl={`/${locale}/user/orders`}
-                  shopUrl={`/${locale}/shop`}
-                  maxItems={5}
-                />
-              )}
+              {/* Orders Tab - Product orders and course orders separated */}
+              {activeTab === 'orders' && (() => {
+                const productOrders = orders.filter(o => (o as any).orderType !== 'course');
+                const courseOrders = orders.filter(o => (o as any).orderType === 'course');
+                const mapOrder = (order: any) => ({
+                  id: order.id,
+                  order_number: order.id.slice(0, 8),
+                  status: order.status?.toLowerCase() || 'pending',
+                  total: order.totalAmount || 0,
+                  currency: (order.currency as string) || 'USD',
+                  created_at: order.date || new Date().toISOString(),
+                  items_count: order.items?.length || 0,
+                  first_item_image: order.items?.[0]?.imageUrl,
+                  first_item_name: order.items?.[0]?.name,
+                });
+                return (
+                  <div className="space-y-8">
+                    {/* Product Orders */}
+                    <RecentOrdersWidget
+                      locale={locale || 'en'}
+                      orders={productOrders.map(mapOrder)}
+                      loading={loading}
+                      translations={{
+                        title: t.userCenter.orderHistory || 'Product Orders',
+                        viewAll: t.dashboard?.viewAll || 'View All',
+                        noOrders: t.userCenter.noOrdersYet || 'No product orders yet',
+                        browseShop: t.userCenter.browseEquipment || 'Browse Equipment',
+                        statusPending: t.orders?.statusPending || 'Pending',
+                        statusPaid: t.orders?.statusPaid || 'Paid',
+                        statusShipped: t.orders?.statusShipped || 'Shipped',
+                        statusDelivered: t.orders?.statusDelivered || 'Delivered',
+                        statusCancelled: t.orders?.statusCancelled || 'Cancelled',
+                        items: 'items',
+                      }}
+                      ordersUrl={`/${locale}/user/orders`}
+                      shopUrl={`/${locale}/shop`}
+                      maxItems={5}
+                    />
+
+                    {/* Course Orders */}
+                    {(courseOrders.length > 0 || loading) && (
+                      <RecentOrdersWidget
+                        locale={locale || 'en'}
+                        orders={courseOrders.map(mapOrder)}
+                        loading={loading}
+                        translations={{
+                          title: locale === 'zh' ? '课程订单' : 'Course Orders',
+                          viewAll: t.dashboard?.viewAll || 'View All',
+                          noOrders: locale === 'zh' ? '暂无课程订单' : 'No course orders yet',
+                          browseShop: locale === 'zh' ? '浏览课程' : 'Browse Courses',
+                          statusPending: t.orders?.statusPending || 'Pending',
+                          statusPaid: t.orders?.statusPaid || 'Paid',
+                          statusShipped: t.orders?.statusShipped || 'Shipped',
+                          statusDelivered: t.orders?.statusDelivered || 'Delivered',
+                          statusCancelled: t.orders?.statusCancelled || 'Cancelled',
+                          items: locale === 'zh' ? '门课程' : 'courses',
+                        }}
+                        ordersUrl={`/${locale}/user/orders`}
+                        shopUrl={`/${locale}/courses`}
+                        maxItems={5}
+                      />
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Courses Tab */}
               {activeTab === 'courses' && (

@@ -161,7 +161,10 @@ export const CartProvider: React.FC<{ children: ReactNode; siteCode?: string }> 
         const minQty = updatedCart[existingIndex].minOrderQuantity || 1;
         updatedCart[existingIndex] = {
           ...updatedCart[existingIndex],
-          quantity: Math.max(minQty, newQty)
+          quantity: Math.max(minQty, newQty),
+          // 合并最新的 weight 数据（修复从 localStorage 加载的旧数据缺失 weight 的问题）
+          ...(newItem.weight != null && { weight: newItem.weight }),
+          ...(newItem.weightUnit && { weightUnit: newItem.weightUnit }),
         };
         return updatedCart;
       }

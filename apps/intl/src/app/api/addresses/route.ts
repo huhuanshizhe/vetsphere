@@ -1,7 +1,4 @@
-
 import { NextRequest, NextResponse } from 'next/server';
-
-
 
 async function getSupabaseAdmin() {
   const { getSupabaseAdmin } = await import('@vetsphere/shared/lib/supabase-admin');
@@ -9,15 +6,29 @@ async function getSupabaseAdmin() {
 }
 
 export const dynamic = 'force-dynamic';
+
+/** 从 Authorization header 获取用户 */
+async function getAuthUser(request: NextRequest) {
+  const supabase = await getSupabaseAdmin();
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { user: null, supabase };
+  }
+  const token = authHeader.substring(7);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return { user: null, supabase };
+  }
+  return { user, supabase };
+}
+
 /**
  * GET /api/addresses - 获取用户所有地址
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await getSupabaseAdmin();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { user, supabase } = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -45,10 +56,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await getSupabaseAdmin();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { user, supabase } = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -121,10 +130,8 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await getSupabaseAdmin();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { user, supabase } = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -186,10 +193,8 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await getSupabaseAdmin();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { user, supabase } = await getAuthUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

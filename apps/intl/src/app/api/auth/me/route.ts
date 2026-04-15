@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
     // Get user profile from profiles table (may fail without service role key)
     let profile = null;
     let identity = null;
+    let userProfile: any = null;
     
     if (await hasServiceRoleKey()) {
       // Only query these tables with service role key (bypasses RLS)
@@ -50,6 +51,14 @@ export async function GET(request: NextRequest) {
         .eq('user_id', user.id)
         .single();
       identity = identityData;
+
+      // Fetch phone from user_profiles table (profiles table doesn't have phone)
+      const { data: userProfileData } = await supabaseAdmin
+        .from('user_profiles')
+        .select('phone')
+        .eq('id', user.id)
+        .single();
+      userProfile = userProfileData;
     }
 
     // Calculate permissions based on identity
@@ -78,7 +87,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         displayName: profile?.display_name || user.user_metadata?.name || user.email?.split('@')[0],
         avatarUrl: profile?.avatar_url || user.user_metadata?.avatar_url,
-        mobile: profile?.mobile || user.user_metadata?.phone,
+        mobile: userProfile?.phone || user.user_metadata?.phone,
       },
       identity: identity ? {
         identityGroupV2: identity.identity_group_v2,

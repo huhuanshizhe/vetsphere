@@ -518,6 +518,7 @@ export interface CartItem {
 
 export interface Order {
   id: string;
+  orderType?: 'product' | 'course';
   customerName: string;
   customerEmail: string;
   items: CartItem[];

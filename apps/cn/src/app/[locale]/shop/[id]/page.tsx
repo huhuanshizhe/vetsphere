@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import JsonLd, { productSchema, breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
 import CnProductDetailClient from '@vetsphere/shared/pages/cn/CnProductDetailClient';
 import { PRODUCTS_CN } from '@vetsphere/shared';
@@ -10,15 +9,24 @@ import { siteConfig } from '@/config/site.config';
 const locales = siteConfig.locales;
 type Locale = (typeof locales)[number];
 
-// 获取商品数据 - 优先数据库，回退常量
+// 获取商品数据 - 通过 product_site_views 获取 CN 站已发布产品
 async function getProductById(id: string): Promise<Product | undefined> {
   try {
-    const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+    const { data, error } = await supabase
+      .from('product_site_views')
+      .select('*, products!inner(*)')
+      .eq('product_id', id)
+      .eq('site_code', 'cn')
+      .single();
     if (!error && data) {
-      const p = data as any;
+      const sv = data as any;
+      const p = sv.products;
       return {
-        id: p.id, name: p.name, brand: p.brand, price: p.price, specialty: p.specialty,
-        group: p.group_category, imageUrl: p.image_url, description: p.description,
+        id: p.id, name: sv.display_name || p.name, brand: p.brand,
+        price: sv.pricing_mode === 'custom' && sv.display_price ? sv.display_price : p.price,
+        specialty: p.specialty,
+        group: p.group_category, imageUrl: p.image_url || p.cover_image_url,
+        description: p.description,
         longDescription: p.long_description || p.description,
         specs: p.specs || {}, compareData: p.compare_data,
         stockStatus: p.stock_status || 'In Stock',
@@ -29,23 +37,21 @@ async function getProductById(id: string): Promise<Product | undefined> {
   return PRODUCTS_CN.find(p => p.id === id);
 }
 
-// 生成静态参数
+// 生成静态参数 - 只为 CN 站已发布的产品生成
 export async function generateStaticParams() {
   const params: { locale: string; id: string }[] = [];
   
-  // Mock 商品 ID
-  const mockIds = ['suture-kit-basic', 'tplo-saw-blade-set', 'ultrasound-system-pro'];
-  
   try {
-    const { data } = await supabase.from('products').select('id');
+    const { data } = await supabase
+      .from('product_site_views')
+      .select('product_id')
+      .eq('site_code', 'cn')
+      .eq('publish_status', 'published')
+      .eq('is_enabled', true);
     if (data && data.length > 0) {
       for (const locale of locales) {
         for (const row of data) {
-          params.push({ locale, id: (row as any).id });
-        }
-        // 添加 Mock 商品
-        for (const mockId of mockIds) {
-          params.push({ locale, id: mockId });
+          params.push({ locale, id: (row as any).product_id });
         }
       }
       return params;
@@ -55,10 +61,6 @@ export async function generateStaticParams() {
   for (const locale of locales) {
     for (const product of PRODUCTS_CN) {
       params.push({ locale, id: product.id });
-    }
-    // 添加 Mock 商品
-    for (const mockId of mockIds) {
-      params.push({ locale, id: mockId });
     }
   }
   
@@ -133,14 +135,7 @@ export default async function ProductDetailPage({
   const { locale, id } = await params;
   const product = await getProductById(id);
 
-  // 检查是否为 Mock 商品
-  const mockIds = ['suture-kit-basic', 'tplo-saw-blade-set', 'ultrasound-system-pro'];
-  const isMockProduct = mockIds.includes(id);
-
-  if (!product && !isMockProduct) {
-    notFound();
-  }
-
+  // 不在服务端 404 —— 客户端组件 CnProductDetailClient 会自行获取数据并处理未找到的情况
   return (
     <>
       {/* 面包屑 Schema */}

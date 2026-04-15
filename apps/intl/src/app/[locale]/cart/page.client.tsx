@@ -46,33 +46,25 @@ export default function CartPageClient({ locale }: CartPageClientProps) {
   }
 
   const handleCheckout = () => {
-    // If not authenticated, redirect to login with cart page as redirect target
-    if (!isAuthenticated) {
-      router.push(`/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/cart`)}`);
-      return;
-    }
-    // If authenticated, proceed to checkout
+    // Guest checkout: go directly to checkout page (one-page checkout)
     router.push(`/${locale}/checkout`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Login Prompt Banner for Guest Users */}
+        {/* Optional login suggestion for guest users */}
         {!isAuthenticated && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-            <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-amber-900 mb-1">
-                {c.loginRequired}
-              </p>
-              <p className="text-sm text-amber-700">
-                {c.loginToCheckout}{' '}
+              <p className="text-sm text-blue-700">
+                Have an account? Log in to use saved addresses and track orders.{' '}
                 <button
                   onClick={() => router.push(`/${locale}/auth?redirect=${encodeURIComponent(`/${locale}/cart`)}`)}
-                  className="text-amber-900 font-semibold underline hover:no-underline"
+                  className="text-blue-900 font-semibold underline hover:no-underline"
                 >
-                  {c.loginNow}
+                  {c.loginNow || 'Log in'}
                 </button>
               </p>
             </div>

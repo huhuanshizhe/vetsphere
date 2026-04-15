@@ -182,8 +182,13 @@ export function RecentOrdersWidget({
                   {formatDateShort(order.created_at)}
                 </span>
               </div>
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-sm text-slate-600">
+              {order.first_item_name && (
+                <p className="text-sm text-slate-800 font-medium truncate mt-0.5">
+                  {order.first_item_name}
+                </p>
+              )}
+              <div className="flex items-center justify-between mt-0.5">
+                <p className="text-xs text-slate-500">
                   {order.items_count} {translations.items}
                 </p>
                 <p className="text-sm font-semibold text-slate-900">

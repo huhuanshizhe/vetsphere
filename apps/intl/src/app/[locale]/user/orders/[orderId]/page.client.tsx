@@ -14,6 +14,7 @@ import { OrderStatusBadge, ORDER_STATUS_CONFIG } from '@vetsphere/shared/compone
 import { OrderTimeline, generateTimelineSteps } from '@vetsphere/shared/components/orders/OrderTimeline';
 import { RefundRequestModal } from '@vetsphere/shared/components/RefundRequestModal';
 import { formatPrice, Currency } from '@vetsphere/shared/lib/currency';
+import { getSessionSafe } from '@vetsphere/shared/services/supabase';
 
 interface OrderDetailClientProps {
   locale: string;
@@ -100,7 +101,15 @@ export default function OrderDetailPageClient({ locale, orderId }: OrderDetailCl
     setError(null);
 
     try {
-      const response = await fetch(`/api/orders/${orderId}`);
+      const headers: Record<string, string> = {};
+      try {
+        const { data: { session } } = await getSessionSafe();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      } catch { /* continue without auth */ }
+
+      const response = await fetch(`/api/orders/${orderId}`, { headers });
       if (!response.ok) {
         throw new Error('Failed to fetch order');
       }
@@ -322,7 +331,12 @@ export default function OrderDetailPageClient({ locale, orderId }: OrderDetailCl
                 <h2 className="text-lg font-bold text-slate-900">{o.items}</h2>
               </div>
               <div className="p-5 space-y-4">
-                {order.order_items.map((item) => (
+                {(!order.order_items || order.order_items.length === 0) ? (
+                  <div className="text-center py-6 text-slate-400">
+                    <Package className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                    <p className="text-sm">Item details unavailable</p>
+                  </div>
+                ) : order.order_items.map((item) => (
                   <div key={item.id} className="flex gap-4">
                     {/* Item Image */}
                     <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden flex-shrink-0 relative border border-slate-200">

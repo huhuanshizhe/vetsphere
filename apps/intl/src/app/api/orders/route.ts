@@ -161,9 +161,23 @@ export async function POST(request: NextRequest) {
     }
 
     // 创建订单项
+    // 先验证 product_id 是否存在于 products 表中，不存在则置为 null 以避免 FK 约束失败
+    const productIds = items
+      .map((item: any) => item.productId)
+      .filter((id: any) => id);
+
+    let validProductIds = new Set<string>();
+    if (productIds.length > 0) {
+      const { data: validProducts } = await supabaseAdmin
+        .from('products')
+        .select('id')
+        .in('id', productIds);
+      validProductIds = new Set((validProducts || []).map((p: any) => p.id));
+    }
+
     const orderItems = items.map((item: any) => ({
       order_id: order.id,
-      product_id: item.productId || null,
+      product_id: (item.productId && validProductIds.has(item.productId)) ? item.productId : null,
       product_name: item.name,
       product_sku: item.skuCode || '',
       product_image: item.imageUrl || '',
@@ -199,6 +213,45 @@ export async function POST(request: NextRequest) {
       try {
         await supabaseAdmin.rpc('update_user_order_stats', { user_id: userId });
       } catch { /* ignore errors */ }
+    }
+
+    // 自动保存收货地址（如果是登录用户且使用手动输入的地址）
+    if (userId && formData.addressLine1 && !formData.savedAddressId) {
+      try {
+        // 查询用户已有地址，检测重复
+        const { data: existingAddresses } = await supabaseAdmin
+          .from('addresses')
+          .select('id, address_line1, city, country, postal_code')
+          .eq('user_id', userId);
+
+        const normalize = (s: string) => (s || '').trim().toLowerCase();
+        const isDuplicate = (existingAddresses || []).some(a =>
+          normalize(a.address_line1) === normalize(formData.addressLine1) &&
+          normalize(a.city) === normalize(formData.city) &&
+          normalize(a.country) === normalize(formData.country) &&
+          normalize(a.postal_code || '') === normalize(formData.postalCode || '')
+        );
+
+        if (!isDuplicate) {
+          const isFirst = !existingAddresses || existingAddresses.length === 0;
+          await supabaseAdmin.from('addresses').insert({
+            user_id: userId,
+            name: formData.name,
+            company: formData.company || null,
+            email: formData.email,
+            phone: formData.phone || null,
+            country: formData.country,
+            state: formData.state || null,
+            city: formData.city,
+            address_line1: formData.addressLine1,
+            address_line2: formData.addressLine2 || null,
+            postal_code: formData.postalCode || null,
+            is_default: isFirst,
+          });
+        }
+      } catch (addrErr) {
+        console.error('[Orders] Failed to auto-save address:', addrErr);
+      }
     }
 
     // Send localized order confirmation email (non-blocking)

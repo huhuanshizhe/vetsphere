@@ -207,18 +207,12 @@ export default function WishlistPageClient({ locale }: WishlistPageClientProps) 
     }
   };
 
-  // Get localized slug
+  // Get product link identifier
+  // 产品详情页 getIntlProductBySlug 支持 slug_override、product_id、products.slug 查找
+  // 直接使用 product_id 最可靠，因为 slug_en 不在其查找路径中
   const getProductSlug = (item: WishlistItem): string => {
-    if (!item.product) return '';
-    const p = item.product;
-    switch (locale) {
-      case 'ja':
-        return p.slug_ja || p.slug_en || p.slug || '';
-      case 'th':
-        return p.slug_th || p.slug_en || p.slug || '';
-      default:
-        return p.slug_en || p.slug || '';
-    }
+    if (!item.product) return item.product_id || '';
+    return item.product.id || item.product_id || '';
   };
 
   // Get product image URL

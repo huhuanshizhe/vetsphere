@@ -83,7 +83,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, sidebarItem
 };
 
 const Dashboard: React.FC = () => {
-  const { user, logout, login } = useAuth();
+  const { user, logout, login, loading: authLoading } = useAuth();
   const { t, locale } = useLanguage();  const router = useRouter();  const pathname = usePathname();
   const { addNotification } = useNotification();
   const { isCN } = useSiteConfig();
@@ -144,6 +144,7 @@ const Dashboard: React.FC = () => {
 
   // Load active tab from session storage whenever user changes
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
         router.push(`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`);
         return;
@@ -494,253 +495,13 @@ const Dashboard: React.FC = () => {
   if (!user) return null;
 
   // --- ROLE: DOCTOR (Consumer) ---
-  if (user.role === 'Doctor') {
-     const paidEnrollments = enrollments.filter(e => e.paymentStatus === 'paid');
-     const completedCourses = enrollments.filter(e => e.completionStatus === 'completed').length;
-     
-     return (
-        <DashboardLayout
-            sidebarItems={[t.dashboard.myDashboard, t.dashboard.myCourses, t.dashboard.myOrders, t.dashboard.myWishlist, t.dashboard.rewardsHub]}
-            user={user}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            logout={logout}
-        >
-             {activeTab === t.dashboard.myDashboard && (
-                 <div className="grid lg:grid-cols-3 gap-8">
-                     <div className="lg:col-span-2 space-y-8">
-                         <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-10">
-                             <div className="w-24 h-24 bg-vs/10 rounded-full flex items-center justify-center text-4xl shadow-inner">👨‍⚕️</div>
-                             <div className="flex-1 text-center md:text-left">
-                                 <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
-                                     <h2 className="text-3xl font-black text-slate-900">{user.name}</h2>
-                                     <span className="px-3 py-1 bg-vs text-white text-xs font-black uppercase rounded-full tracking-widest">{user.level}</span>
-                                 </div>
-                                 <p className="text-slate-400 font-bold text-sm mb-6">{user.email}</p>
-                                 <div className="grid grid-cols-3 gap-8 border-t border-slate-50 pt-6">
-                                     <div><p className="text-xs font-black text-slate-400 uppercase mb-1">{t.dashboard.enrolled}</p><p className="text-xl font-black">{enrollments.length}</p></div>
-                                     <div><p className="text-xs font-black text-slate-400 uppercase mb-1">{t.dashboard.completed}</p><p className="text-xl font-black">{completedCourses}</p></div>
-                                     <div><p className="text-xs font-black text-vs uppercase mb-1">{t.dashboard.points}</p><p className="text-xl font-black text-vs">{userPoints}</p></div>
-                                 </div>
-                             </div>
-                         </div>
-                         
-                         {/* Recent Enrollments Preview */}
-                         {enrollments.length > 0 && (
-                           <div className="bg-white p-8 rounded-[32px] border border-slate-100">
-                             <div className="flex justify-between items-center mb-6">
-                               <h3 className="font-black text-slate-900">{t.dashboard.myCourses}</h3>
-                               <button onClick={() => setActiveTab(t.dashboard.myCourses)} className="text-vs text-xs font-bold hover:underline">{t.dashboard.viewAll} →</button>
-                             </div>
-                             <div className="space-y-4">
-                               {enrollments.slice(0, 3).map(enrollment => (
-                                 <div key={enrollment.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl">
-                                   <div className="w-16 h-16 bg-slate-200 rounded-xl overflow-hidden">
-                                     {enrollment.course?.imageUrl && <img src={enrollment.course.imageUrl} className="w-full h-full object-cover" alt="" />}
-                                   </div>
-                                   <div className="flex-1">
-                                     <p className="font-bold text-slate-900">{enrollment.course?.title || 'Course'}</p>
-                                     <p className="text-xs text-slate-400">{enrollment.course?.startDate} • {enrollment.course?.location?.city}</p>
-                                   </div>
-                                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                     enrollment.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                                   }`}>
-                                   {enrollment.paymentStatus === 'paid' ? t.dashboard.enrolled : t.dashboard.noOrdersYet.split('.')[0]}
-                                   </span>
-                                 </div>
-                               ))}
-                             </div>
-                           </div>
-                         )}
-                     </div>
-                 </div>
-             )}
-             
-             {activeTab === t.dashboard.myCourses && (
-               <div className="space-y-6">
-                 <h3 className="font-black text-xl text-slate-900">{t.dashboard.myCourses}</h3>
-                 {loading ? (
-                   <div className="text-center py-12 text-slate-400">Loading...</div>
-                 ) : enrollments.length === 0 ? (
-                   <div className="bg-white p-12 rounded-[32px] border border-slate-100 text-center">
-                     <p className="text-slate-400 mb-4">{t.dashboard.noCoursesYet}</p>
-                     <button onClick={() => router.push(`/${locale}/courses`)} className="bg-vs text-white px-6 py-3 rounded-xl font-bold text-sm">
-                       {t.dashboard.browseCourses}
-                     </button>
-                   </div>
-                 ) : (
-                   <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                     {enrollments.map(enrollment => (
-                       <div key={enrollment.id} className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm">
-                         <div className="h-40 bg-slate-100 rounded-2xl mb-4 overflow-hidden">
-                           {enrollment.course?.imageUrl && (
-                             <img src={enrollment.course.imageUrl} className="w-full h-full object-cover" alt={enrollment.course.title} />
-                           )}
-                         </div>
-                         <div className="flex justify-between items-start mb-2">
-                           <span className="text-xs font-bold text-slate-400 uppercase">{enrollment.course?.specialty}</span>
-                           <span className={`px-2 py-1 rounded text-xs font-bold ${
-                             enrollment.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                           }`}>
-                             {enrollment.paymentStatus === 'paid' ? t.dashboard.enrolled : 'Pending'}
-                           </span>
-                         </div>
-                         <h4 className="font-black text-slate-900 mb-1">{enrollment.course?.title}</h4>
-                         <p className="text-xs text-slate-500 mb-4">
-                           {enrollment.course?.startDate} • {enrollment.course?.location?.city || 'TBD'}
-                         </p>
-                         <div className="pt-4 border-t border-slate-50 flex justify-between items-center">
-                           <span className="text-xs text-slate-400">
-                             {t.dashboard.enrolled}: {enrollment.enrollmentDate?.split('T')[0] || ''}
-                           </span>
-                           <span className={`text-xs font-bold ${
-                             enrollment.completionStatus === 'completed' ? 'text-emerald-600' : 'text-slate-400'
-                           }`}>
-                             {enrollment.completionStatus === 'completed' ? `✓ ${t.dashboard.completed}` : enrollment.completionStatus}
-                           </span>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 )}
-               </div>
-             )}
-             
-             {activeTab === t.dashboard.myOrders && (
-               <div className="space-y-6">
-                 <h3 className="font-black text-xl text-slate-900">{t.dashboard.myOrders}</h3>
-                 {orders.length === 0 ? (
-                   <div className="bg-white p-12 rounded-[32px] border border-slate-100 text-center">
-                     <p className="text-slate-400">{t.dashboard.noOrdersYet}</p>
-                   </div>
-                 ) : (
-                   <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden">
-                     <table className="w-full text-left text-sm">
-                       <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
-                         <tr>
-                           <th className="p-6">ID</th>
-                           <th className="p-6">{t.common.items}</th>
-                           <th className="p-6">{t.common.total}</th>
-                           <th className="p-6">{t.common.date}</th>
-                           <th className="p-6">{t.common.status}</th>
-                         </tr>
-                       </thead>
-                       <tbody className="divide-y divide-slate-100">
-                         {orders.map(order => (
-                           <tr key={order.id} className="hover:bg-slate-50">
-                             <td className="p-6 font-bold text-slate-900">{order.id}</td>
-                             <td className="p-6">{order.items.length} item(s)</td>
-                             <td className="p-6">¥{order.totalAmount.toLocaleString()}</td>
-                             <td className="p-6">{order.date}</td>
-                             <td className="p-6">
-                               <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                 order.status === 'Paid' || order.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' :
-                                 order.status === 'Shipped' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
-                               }`}>
-                                 {order.status}
-                               </span>
-                             </td>
-                           </tr>
-                         ))}
-                       </tbody>
-                     </table>
-                   </div>
-                 )}
-               </div>
-             )}
-             
-             {activeTab === t.dashboard.myWishlist && (
-               <div className="space-y-6">
-                 <h3 className="font-black text-xl text-slate-900">{t.dashboard.myWishlist}</h3>
-                 {wishlistLoading ? (
-                   <div className="text-center py-12 text-slate-400">Loading...</div>
-                 ) : wishlist.length === 0 ? (
-                   <div className="bg-white p-12 rounded-[32px] border border-slate-100 text-center">
-                     <div className="text-6xl mb-4">💝</div>
-                     <p className="text-slate-400 mb-4">{t.wishlist.empty}</p>
-                     <button onClick={() => router.push(`/${locale}/shop`)} className="bg-vs text-white px-6 py-3 rounded-xl font-bold text-sm">
-                       {t.shop.browseProducts || 'Browse Products'}
-                     </button>
-                   </div>
-                 ) : (
-                   <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                     {wishlist.map((item: any) => (
-                       <div key={item.id} className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm">
-                         <div className="aspect-square bg-slate-100 rounded-xl mb-4 overflow-hidden">
-                           {item.product?.image_url || item.products?.cover_image_url ? (
-                             <img
-                               src={item.product?.image_url || item.products?.cover_image_url}
-                               alt={item.product?.name || item.products?.display_name || 'Product'}
-                               className="w-full h-full object-cover"
-                             />
-                           ) : (
-                             <div className="w-full h-full flex items-center justify-center text-slate-300">
-                               <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                               </svg>
-                             </div>
-                           )}
-                         </div>
-                         <h4 className="font-bold text-slate-900 mb-1 line-clamp-1">
-                           {item.product?.name || item.products?.display_name || 'Product'}
-                         </h4>
-                         <p className="text-sm text-slate-500 mb-3">
-                           {item.product?.brand || item.products?.brand || ''}
-                         </p>
-                         <div className="flex items-center justify-between">
-                           <span className="font-bold text-vs">
-                             ${item.product?.selling_price_usd || item.products?.display_price || '---'}
-                           </span>
-                           <div className="flex gap-2">
-                             <button
-                               onClick={() => router.push(`/${locale}/shop/${item.product?.slug || item.products?.slug || item.product_id}`)}
-                               className="px-3 py-2 bg-vs text-white text-xs font-bold rounded-lg hover:bg-vs-dark transition-colors"
-                             >
-                               {t.common.view || 'View'}
-                             </button>
-                             <button
-                               onClick={() => handleRemoveFromWishlist(item.product_id)}
-                               className="px-3 py-2 bg-red-50 text-red-500 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
-                             >
-                               {t.wishlist.remove}
-                             </button>
-                           </div>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 )}
-               </div>
-             )}
-
-             {activeTab === t.dashboard.rewardsHub && (
-               <div className="bg-white p-10 rounded-[32px] border border-slate-100">
-                 <h3 className="font-black text-xl text-slate-900 mb-6">{t.dashboard.pointsRewards}</h3>
-                 <div className="text-center py-8">
-                   <p className="text-6xl font-black text-vs mb-2">{userPoints}</p>
-                   <p className="text-slate-400 font-bold">{t.dashboard.totalPoints}</p>
-                 </div>
-                 <div className="grid grid-cols-3 gap-4 mt-8">
-                   <div className="p-4 bg-slate-50 rounded-xl text-center">
-                     <p className="text-2xl mb-1">📝</p>
-                     <p className="text-xs font-bold text-slate-600">Post Case</p>
-                     <p className="text-vs font-black">+200 pts</p>
-                   </div>
-                   <div className="p-4 bg-slate-50 rounded-xl text-center">
-                     <p className="text-2xl mb-1">💬</p>
-                     <p className="text-xs font-bold text-slate-600">Comment</p>
-                     <p className="text-vs font-black">+20 pts</p>
-                   </div>
-                   <div className="p-4 bg-slate-50 rounded-xl text-center">
-                     <p className="text-2xl mb-1">🔗</p>
-                     <p className="text-xs font-bold text-slate-600">Share</p>
-                     <p className="text-vs font-black">+50 pts</p>
-                   </div>
-                 </div>
-               </div>
-             )}
-        </DashboardLayout>
-     );
+  // Doctor 用户已在 useEffect 中重定向到 /user，显示加载中防止闪烁
+  if (authLoading || !user || user.role === 'Doctor') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
   // --- ROLE: SHOP SUPPLIER ---
