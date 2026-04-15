@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Package, Star, MessageSquareQuote, ShoppingCart, ArrowRight, Heart } from 'lucide-react';
 import { getImageUrl, getAccessTokenSafe } from '../../services/supabase';
 import { useLanguage } from '../../context/LanguageContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { useCart } from '../../context/CartContext';
 
 // Product type from intl-api
 interface IntlProductCard {
@@ -123,12 +124,20 @@ export function getPriceRangeForProduct(product: IntlProductCard, locale: string
 }
 
 export default function ProductCardMobile({ product, locale, onAddToCart, onAddToWishlist, isInWishlist: propIsInWishlist }: ProductCardMobileProps) {
-  const [added, setAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Use global wishlist context for persistent state
   const { isInWishlist: globalIsInWishlist, toggleWishlist: globalToggleWishlist } = useWishlist();
+
+  // Use cart context to check if product is already in cart
+  const { cart } = useCart();
+  const isInCart = cart.some(item =>
+    item.productId === product.product_id ||
+    item.id === product.product_id ||
+    item.productId === product.id ||
+    item.id === product.id
+  );
 
   // Get translations
   const { t } = useLanguage();
@@ -248,9 +257,7 @@ export default function ProductCardMobile({ product, locale, onAddToCart, onAddT
       return;
     }
 
-    // Trigger cart add animation
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+    // Add to cart - the button state will update automatically via cart context
     onAddToCart?.(product);
   };
 
@@ -404,13 +411,13 @@ export default function ProductCardMobile({ product, locale, onAddToCart, onAddT
                   onClick={handleAddToCart}
                   className={`
                     flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200 active:scale-95
-                    ${added
+                    ${isInCart
                       ? 'bg-slate-900 text-white'
                       : 'bg-[#00A884] text-white hover:bg-[#008F70] shadow-sm hover:shadow-md'
                     }
                   `}
                 >
-                  {added ? (
+                  {isInCart ? (
                     <>
                       <ShoppingCart className="w-3 h-3" />
                       <span>{s.added}</span>

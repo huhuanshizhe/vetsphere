@@ -205,15 +205,30 @@ export function IntlNavbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button - Touch optimized */}
-          <button
-            type="button"
-            className="lg:hidden min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 active:bg-white/20 transition-all touch-manipulation"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6 text-white" /> : <Menu className="w-6 h-6 text-white" />}
-          </button>
+          {/* Right side actions - Mobile: cart icon + hamburger */}
+          <div className="flex items-center gap-1 lg:hidden">
+            {/* Mobile Cart Icon */}
+            <Link
+              href={`/${language}/cart`}
+              className="relative min-h-[44px] min-w-[44px] p-2 rounded-lg text-white hover:bg-white/10 active:bg-white/20 transition-all touch-manipulation flex items-center justify-center"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              {itemCount > 0 && (
+                <span className="absolute top-0 right-0 bg-white text-emerald-600 text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
+                  {itemCount > 99 ? '99+' : itemCount}
+                </span>
+              )}
+            </Link>
+            {/* Mobile Menu Button - Touch optimized */}
+            <button
+              type="button"
+              className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 active:bg-white/20 transition-all touch-manipulation"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6 text-white" /> : <Menu className="w-6 h-6 text-white" />}
+            </button>
+          </div>
         </nav>
 
         {/* Mobile Menu - Enhanced with animations */}

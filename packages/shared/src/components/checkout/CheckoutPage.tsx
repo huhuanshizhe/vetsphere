@@ -30,6 +30,7 @@ interface ShippingMethod {
   name: string;
   description: string;
   price: number;
+  priceUsd?: number;
   priceFormula?: string;
   estimatedDays: string;
   billingType?: string;
@@ -81,6 +82,12 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
   const [bankTransferInfo, setBankTransferInfo] = useState<any>(null);
   const [loadingBankInfo, setLoadingBankInfo] = useState(false);
 
+  // Exchange rates for shipping currency conversion (initialized with hardcoded fallback)
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 1, CNY: 7.2, JPY: 150, THB: 35 });
+
+  // Refreshed locale-specific prices for cart items
+  const [refreshedPrices, setRefreshedPrices] = useState<Record<string, { price: number; currency: string }>>({});
+
   // 一页结账账户状态机
   type AccountStep = 'email' | 'checking' | 'login' | 'register' | 'complete';
   const [accountStep, setAccountStep] = useState<AccountStep>(isAuthenticated ? 'complete' : 'email');
@@ -127,6 +134,37 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
       }));
     }
   }, [isAuthenticated, user]);
+
+  // Fetch exchange rates on mount (for shipping currency conversion)
+  useEffect(() => {
+    fetch('/api/exchange-rates')
+      .then(res => res.json())
+      .then(data => {
+        if (data.rates) {
+          const rateMap: Record<string, number> = { USD: 1 };
+          Object.entries(data.rates).forEach(([cur, info]: [string, any]) => {
+            rateMap[cur] = info.rate;
+          });
+          setExchangeRates(rateMap);
+        }
+      })
+      .catch(() => {}); // Keep hardcoded fallback
+  }, []);
+
+  // Fetch locale-specific SKU prices when locale or cart changes
+  useEffect(() => {
+    const items = cart.map(item => ({ skuId: item.skuId, productId: item.productId, quantity: item.quantity }));
+    if (items.length === 0) return;
+
+    fetch('/api/cart-prices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, locale }),
+    })
+      .then(res => res.json())
+      .then(data => { if (data.prices) setRefreshedPrices(data.prices); })
+      .catch(() => {});
+  }, [locale, cart]);
 
   // 选择已保存地址时填充 formData
   const handleAddressSelect = (address: Address) => {
@@ -285,6 +323,25 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
     }, 0);
   }, [cart, refreshedWeights, totalWeight]);
 
+  // Convert amount from one currency to another using fetched exchange rates
+  const convertAmount = (amount: number, from: string, to: string): number => {
+    if (!amount || from === to) return amount;
+    const fromRate = exchangeRates[from] || 1;
+    const toRate = exchangeRates[to] || 1;
+    const converted = (amount / fromRate) * toRate;
+    return to === 'JPY' ? Math.round(converted) : Math.round(converted * 100) / 100;
+  };
+
+  // Calculate subtotal using refreshed locale-specific prices
+  const convertedSubtotal = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const key = item.skuId || item.id;
+      const refreshed = refreshedPrices[key];
+      const price = refreshed ? refreshed.price : item.price;
+      return sum + price * item.quantity;
+    }, 0);
+  }, [cart, refreshedPrices]);
+
   // 获取运费方法
   useEffect(() => {
     if (!formData.country) {
@@ -308,6 +365,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
             name: m.method_name?.en || m.method_code,
             description: m.price_formula || m.method_description?.en || '',
             price: m.price || 0,
+            priceUsd: m.price_usd || m.price || 0,
             priceFormula: m.price_formula,
             estimatedDays: m.estimated_days_min && m.estimated_days_max
               ? `${m.estimated_days_min}-${m.estimated_days_max}`
@@ -341,12 +399,17 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
       .finally(() => setLoadingShipping(false));
   }, [formData.country, effectiveTotalWeight, c.standardShipping, c.standardShippingDesc, c.expressShipping, c.expressShippingDesc]);
 
-  // 计算运费
+  // 计算运费（转换为显示币种）
   const selectedShipping = shippingMethods.find(s => s.code === formData.shippingMethod);
-  const shippingFee = selectedShipping?.price || 0;
+  const convertedShippingFee = useMemo(() => {
+    if (!selectedShipping) return 0;
+    const displayCurrency = getLocaleCurrency(locale);
+    const usdPrice = selectedShipping.priceUsd ?? selectedShipping.price;
+    return convertAmount(usdPrice, 'USD', displayCurrency);
+  }, [selectedShipping, locale, exchangeRates]);
 
-  // 订单总额
-  const orderTotal = totalAmount + shippingFee;
+  // 订单总额（使用转换后的金额）
+  const convertedOrderTotal = convertedSubtotal + convertedShippingFee;
 
   // 获取银行转账信息
   useEffect(() => {
@@ -409,11 +472,11 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
               Order: <span className="font-mono font-bold">{orderNumber}</span>
             </p>
             <p className="text-gray-600 mb-6">
-              Total: <span className="font-bold">{formatPrice(orderTotal, currency)}</span>
+              Total: <span className="font-bold">{formatPrice(convertedOrderTotal, currency)}</span>
             </p>
             <StripePaymentElement
               orderId={orderId}
-              amount={orderTotal}
+              amount={convertedOrderTotal}
               currency={currency}
               onSuccess={() => {
                 setOrderCreated(true);
@@ -523,9 +586,9 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
           items: cart,
           formData,
           currency,
-          subtotal: totalAmount,
-          shippingFee,
-          total: orderTotal,
+          subtotal: convertedSubtotal,
+          shippingFee: convertedShippingFee,
+          total: convertedOrderTotal,
           locale,
         }),
       });
@@ -564,7 +627,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderId: data.orderId,
-            amount: orderTotal,
+            amount: convertedOrderTotal,
             currency,
           }),
         });
@@ -618,17 +681,19 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                 {/* 已登录状态 */}
                 {accountStep === 'complete' && (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                      <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                        <Check className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">
-                          {c.loggedInAs || 'Logged in as'} <span className="font-bold">{formData.email || user?.email}</span>
-                        </p>
-                        {(formData.name || (user as any)?.name) && (
-                          <p className="text-xs text-gray-500">{formData.name || (user as any)?.name}</p>
-                        )}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Check className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {c.loggedInAs || 'Logged in as'} <span className="font-bold">{formData.email || user?.email}</span>
+                          </p>
+                          {(formData.name || (user as any)?.name) && (
+                            <p className="text-xs text-gray-500 truncate">{formData.name || (user as any)?.name}</p>
+                          )}
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -642,7 +707,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                           setSelectedAddress(null);
                           setFormData(prev => ({ ...prev, savedAddressId: '' }));
                         }}
-                        className="text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap"
+                        className="text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap sm:self-center"
                       >
                         {c.changeAccount || 'Use a different account'}
                       </button>
@@ -1051,7 +1116,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                             </p>
                           </div>
                         </div>
-                        <p className="font-medium text-gray-900">{formatPrice(method.price, currency)}</p>
+                        <p className="font-medium text-gray-900">{formatPrice(convertAmount(method.priceUsd || method.price, 'USD', currency), currency)}</p>
                       </label>
                     ))}
                   </div>
@@ -1222,7 +1287,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                           )}
                         </div>
                         <p className={`text-sm font-medium ${hasIssue ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                          {formatPrice(item.price * item.quantity, currency)}
+                          {formatPrice((refreshedPrices[item.skuId || item.id]?.price || item.price) * item.quantity, currency)}
                         </p>
                       </div>
                     );
@@ -1233,14 +1298,14 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                 <div className="border-t border-gray-200 pt-4 space-y-2">
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>{c.subtotalItems.replace('{count}', String(itemCount))}</span>
-                    <span>{formatPrice(totalAmount, currency)}</span>
+                    <span>{formatPrice(convertedSubtotal, currency)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>{c.shippingFee}</span>
                     {!formData.country ? (
                       <span className="text-amber-600">{c.selectCountryFirst || 'Select country first'}</span>
                     ) : (
-                      <span>{formatPrice(shippingFee, currency)}</span>
+                      <span>{formatPrice(convertedShippingFee, currency)}</span>
                     )}
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
@@ -1253,7 +1318,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
                 <div className="border-t border-gray-200 pt-4 mt-4">
                   <div className="flex justify-between text-lg font-medium text-gray-900">
                     <span>{c.total}</span>
-                    <span>{formatPrice(orderTotal, currency)}</span>
+                    <span>{formatPrice(convertedOrderTotal, currency)}</span>
                   </div>
                 </div>
 
