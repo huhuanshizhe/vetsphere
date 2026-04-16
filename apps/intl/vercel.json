@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
-  "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm run build:intl"
+  "installCommand": "cd ../.. && pnpm install --filter=vetsphere-intl",
+  "buildCommand": "cd ../.. && pnpm run build:intl",
+  "outputDirectory": ".next"
 }
