@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 import {

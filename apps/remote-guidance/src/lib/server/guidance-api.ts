@@ -1,10 +1,37 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+let supabaseAdminInstance: any = null;
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+function getRequiredEnv(name: "NEXT_PUBLIC_SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KEY") {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required.`);
+  }
+  return value;
+}
+
+export function getSupabaseAdmin(): any {
+  if (!supabaseAdminInstance) {
+    supabaseAdminInstance = createClient(
+      getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
+      getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY")
+    );
+  }
+
+  return supabaseAdminInstance;
+}
+
+export const supabaseAdmin: any = new Proxy({} as Record<string, unknown>, {
+  get(_target, prop) {
+    const client = getSupabaseAdmin();
+    const value = (client as any)[prop];
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
 
 const DEFAULT_PERMISSIONS = {
   can_access_user_center: false,
@@ -67,6 +94,7 @@ function getBearerToken(request: NextRequest) {
 }
 
 export async function getGuidanceActor(request: NextRequest): Promise<GuidanceActor | null> {
+  const supabaseAdmin = getSupabaseAdmin();
   const token = getBearerToken(request);
   if (!token) {
     return null;
@@ -229,6 +257,7 @@ export function buildParticipantPermissions(participantRole: string) {
 }
 
 export async function getSessionAccess(sessionId: string, actor: GuidanceActor) {
+  const supabaseAdmin = getSupabaseAdmin();
   const { data: session, error } = await supabaseAdmin
     .from("guidance_sessions")
     .select("*")
@@ -293,6 +322,7 @@ export async function recordGuidanceEvent(
   actorRole: string | null,
   payload: Record<string, unknown> = {}
 ) {
+  const supabaseAdmin = getSupabaseAdmin();
   await supabaseAdmin.from("guidance_events").insert({
     session_id: sessionId,
     event_type: eventType,
@@ -309,6 +339,7 @@ export async function auditGuidanceAccess(
   action: "view_live" | "view_recording" | "download_recording" | "export_summary",
   metadata: Record<string, unknown> = {}
 ) {
+  const supabaseAdmin = getSupabaseAdmin();
   const forwardedFor = request.headers.get("x-forwarded-for");
   const ipAddress = forwardedFor?.split(",")[0]?.trim() || null;
   const userAgent = request.headers.get("user-agent");

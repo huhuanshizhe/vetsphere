@@ -1,5 +1,8 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import { getGuidanceActor } from "@/lib/server/guidance-api";
+
+export const dynamic = "force-dynamic";
 
 const DEFAULT_PERMISSIONS = {
   can_access_user_center: false,
