@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@vetsphere/shared/context/AuthContext";
+import { useGuidanceSessionBridge } from "@/components/guidance/GuidanceSessionBridge";
 
 export default function GuidanceTopbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, user, logout, doctorPrivilegeStatus } = useAuth();
+  const { isSyncing } = useGuidanceSessionBridge();
 
   const authHref = `/auth?redirect=${encodeURIComponent(pathname || "/guidance")}`;
   const hideNav = pathname?.startsWith("/join/");
@@ -55,6 +57,8 @@ export default function GuidanceTopbar() {
               退出登录
             </button>
           </div>
+        ) : isSyncing ? (
+          <div className="text-sm font-medium text-slate-500">正在同步主站登录态…</div>
         ) : (
           <div className="flex items-center gap-3">
             <a

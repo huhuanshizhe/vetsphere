@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@vetsphere/shared/context/AuthContext";
 import { getAccessTokenSafe } from "@vetsphere/shared/services/supabase";
+import { useGuidanceSessionBridge } from "@/components/guidance/GuidanceSessionBridge";
 
 type GuidanceSession = {
   id: string;
@@ -32,12 +33,13 @@ const statusLabelMap: Record<string, string> = {
 
 export default function GuidanceDashboard() {
   const { loading, isAuthenticated, user, canAccessDoctorWorkspace, doctorPrivilegeStatus } = useAuth();
+  const { isSyncing } = useGuidanceSessionBridge();
   const [sessions, setSessions] = useState<GuidanceSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (loading || !isAuthenticated || !canAccessDoctorWorkspace) {
+    if (loading || isSyncing || !isAuthenticated || !canAccessDoctorWorkspace) {
       return;
     }
 
@@ -50,7 +52,7 @@ export default function GuidanceDashboard() {
       try {
         const token = await getAccessTokenSafe();
         if (!token) {
-          throw new Error("当前域名还没有有效登录态，请先在这里登录医生账号。");
+          throw new Error("当前没有有效医生会话。");
         }
 
         const response = await fetch("/api/guidance/sessions", {
@@ -81,7 +83,7 @@ export default function GuidanceDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [loading, isAuthenticated, canAccessDoctorWorkspace]);
+  }, [loading, isSyncing, isAuthenticated, canAccessDoctorWorkspace]);
 
   const stats = useMemo(() => {
     return sessions.reduce(
@@ -108,7 +110,7 @@ export default function GuidanceDashboard() {
                   手术实时远程指导已经独立成应用，当前重点是把登录、会话、入房和留痕跑稳。
                 </h1>
                 <p className="max-w-3xl text-base leading-7 text-slate-600">
-                  这套应用复用中国站医生认证和账号体系，但会在 `guidance.vetsphere.cn` 当前域名下自己建立登录态，避免主站登录后这里仍然未登录。
+                  只要你已经在 vetsphere.cn 登录，guidance.vetsphere.cn 会优先自动继承这份医生会话，不再要求用户重复登录。
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -122,7 +124,7 @@ export default function GuidanceDashboard() {
                   href="/auth?redirect=/guidance"
                   className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
                 >
-                  登录医生账号
+                  打开登录页
                 </Link>
               </div>
             </div>
@@ -133,52 +135,43 @@ export default function GuidanceDashboard() {
                 <div className="mt-2 text-sm text-slate-300">医生状态：{doctorPrivilegeStatus}</div>
               </div>
               <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-5 text-amber-950">
-                <div className="text-sm font-semibold">当前阶段</div>
+                <div className="text-sm font-semibold">登录策略</div>
                 <div className="mt-2 text-sm leading-6">
-                  已打通会话、详情、应急邀请、房间准备和 LiveKit token。现在最关键的是用真实医生账号在当前域名完成登录并联调。
+                  先自动同步主站登录态，只有在主站当前没有会话时，才会退回到手动登录。
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {!isAuthenticated ? (
+        {loading || isSyncing ? (
           <section className="guidance-card rounded-[1.75rem] px-6 py-8">
-            <h2 className="text-xl font-semibold text-slate-950">需要先登录</h2>
+            <h2 className="text-xl font-semibold text-slate-950">正在同步登录状态</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              当前页面没有拿到有效医生会话，所以还不能发起远程指导。请直接在本域名登录已有的医生账号。
+              如果你已经在 vetsphere.cn 登录，远程指导会自动接管这份医生会话，不需要再次输入账号密码。
+            </p>
+          </section>
+        ) : !isAuthenticated ? (
+          <section className="guidance-card rounded-[1.75rem] px-6 py-8">
+            <h2 className="text-xl font-semibold text-slate-950">主站当前没有可继承的登录态</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              系统已经尝试自动从主站接管登录，但当前浏览器没有拿到可用的医生会话。只有这时才需要手动登录。
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href="/auth?redirect=/guidance"
                 className="rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-700"
               >
-                现在登录医生账号
+                手动登录医生账号
               </Link>
-              <a
-                href="https://vetsphere.cn/zh/auth"
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
-              >
-                打开主站登录页
-              </a>
             </div>
           </section>
         ) : !canAccessDoctorWorkspace ? (
           <section className="guidance-card rounded-[1.75rem] px-6 py-8">
             <h2 className="text-xl font-semibold text-slate-950">当前账号暂时没有医生工作台权限</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              远程指导当前只对 `doctor_privilege_status = approved` 的医生账号开放。如果你手里有已审核通过的医生账号，请切换后重新登录测试。
+              当前账号已经登录成功，但它没有医生工作台权限，不能发起远程指导。请切换到已审核通过的医生账号。
             </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/auth?redirect=/guidance"
-                className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
-              >
-                切换测试账号
-              </Link>
-            </div>
           </section>
         ) : (
           <>
@@ -206,7 +199,7 @@ export default function GuidanceDashboard() {
                 <div>
                   <h2 className="text-2xl font-semibold text-slate-950">我的指导会话</h2>
                   <p className="mt-2 text-sm text-slate-500">
-                    当前列表来自真实的 `guidance_sessions` 与 `guidance_participants`，不是演示数据。
+                    当前列表来自真实的 guidance 数据表，不是演示内容。
                   </p>
                 </div>
                 <Link href="/guidance/new" className="text-sm font-semibold text-teal-700">
