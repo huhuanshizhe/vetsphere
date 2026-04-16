@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@vetsphere/shared/context/AuthContext";
 import { supabase } from "@vetsphere/shared/services/supabase";
@@ -10,19 +10,47 @@ type BridgeStatus = "idle" | "syncing" | "resolved";
 type GuidanceSessionBridgeContextValue = {
   bridgeStatus: BridgeStatus;
   isSyncing: boolean;
+  recheckMainSession: () => void;
 };
 
 const GuidanceSessionBridgeContext = createContext<GuidanceSessionBridgeContextValue>({
   bridgeStatus: "idle",
   isSyncing: false,
+  recheckMainSession: () => {},
 });
 
 export function GuidanceSessionBridgeProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { loading, isAuthenticated, refreshSession } = useAuth();
+  const { loading, refreshSession } = useAuth();
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus>("idle");
   const [bridgeUrl, setBridgeUrl] = useState<string | null>(null);
-  const attemptKeyRef = useRef<string | null>(null);
+  const [syncVersion, setSyncVersion] = useState(0);
+  const isSyncingRef = useRef(false);
+  const lastAttemptKeyRef = useRef<string | null>(null);
+
+  const recheckMainSession = useCallback(() => {
+    setSyncVersion((current) => current + 1);
+  }, []);
+
+  useEffect(() => {
+    function handleFocus() {
+      setSyncVersion((current) => current + 1);
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        setSyncVersion((current) => current + 1);
+      }
+    }
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (pathname?.startsWith("/join/")) {
@@ -31,27 +59,32 @@ export function GuidanceSessionBridgeProvider({ children }: { children: React.Re
       return;
     }
 
-    if (loading) {
+    if (loading || isSyncingRef.current) {
       return;
     }
 
-    if (isAuthenticated) {
-      setBridgeStatus("resolved");
-      setBridgeUrl(null);
+    const attemptKey = `${window.location.origin}:${pathname || "/"}:${syncVersion}`;
+    if (lastAttemptKeyRef.current === attemptKey) {
       return;
     }
 
-    const attemptKey = `${window.location.origin}:${pathname || "/"}`;
-    if (attemptKeyRef.current === attemptKey) {
-      return;
-    }
-
-    attemptKeyRef.current = attemptKey;
+    lastAttemptKeyRef.current = attemptKey;
+    isSyncingRef.current = true;
     setBridgeStatus("syncing");
-    setBridgeUrl(`https://vetsphere.cn/zh/auth/bridge?origin=${encodeURIComponent(window.location.origin)}`);
+    setBridgeUrl(
+      `https://vetsphere.cn/zh/auth/bridge?origin=${encodeURIComponent(window.location.origin)}&ts=${Date.now()}`
+    );
 
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    async function finishSync() {
+      if (!cancelled) {
+        setBridgeStatus("resolved");
+        setBridgeUrl(null);
+      }
+      isSyncingRef.current = false;
+    }
 
     async function handleSessionMessage(event: MessageEvent) {
       if (event.origin !== "https://vetsphere.cn") {
@@ -60,9 +93,10 @@ export function GuidanceSessionBridgeProvider({ children }: { children: React.Re
 
       const messageType = event.data?.type;
       if (messageType === "vetsphere-auth-bridge-none") {
-        if (!cancelled) {
-          setBridgeStatus("resolved");
-          setBridgeUrl(null);
+        try {
+          await supabase.auth.signOut();
+        } finally {
+          await finishSync();
         }
         return;
       }
@@ -84,36 +118,32 @@ export function GuidanceSessionBridgeProvider({ children }: { children: React.Re
         });
         await refreshSession();
       } finally {
-        if (!cancelled) {
-          setBridgeStatus("resolved");
-          setBridgeUrl(null);
-        }
+        await finishSync();
       }
     }
 
     window.addEventListener("message", handleSessionMessage);
     timeoutId = setTimeout(() => {
-      if (!cancelled) {
-        setBridgeStatus("resolved");
-        setBridgeUrl(null);
-      }
+      void finishSync();
     }, 5000);
 
     return () => {
       cancelled = true;
+      isSyncingRef.current = false;
       window.removeEventListener("message", handleSessionMessage);
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
     };
-  }, [loading, isAuthenticated, pathname, refreshSession]);
+  }, [loading, pathname, refreshSession, syncVersion]);
 
   const value = useMemo(
     () => ({
       bridgeStatus,
       isSyncing: bridgeStatus === "syncing",
+      recheckMainSession,
     }),
-    [bridgeStatus]
+    [bridgeStatus, recheckMainSession]
   );
 
   return (
