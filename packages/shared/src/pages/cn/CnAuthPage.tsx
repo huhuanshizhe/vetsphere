@@ -8,6 +8,7 @@ import {
   Sparkles, GraduationCap, Users, Award, Shield, Phone, MessageSquare
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../services/supabase';
 
 // Types for user state from /api/auth/me
@@ -51,6 +52,7 @@ type SmsButtonState = 'idle' | 'sending' | 'countdown' | 'resend';
 
 const CnAuthPage: React.FC = () => {
   const { locale } = useLanguage();
+  const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -122,7 +124,7 @@ const CnAuthPage: React.FC = () => {
   }, [locale, router, searchParams]);
 
   // Fetch user state after successful login
-  const fetchUserState = async (): Promise<UserState | null> => {
+  const fetchUserState = useCallback(async (): Promise<UserState | null> => {
     try {
       const res = await fetch('/api/auth/me', {
         method: 'GET',
@@ -138,7 +140,41 @@ const CnAuthPage: React.FC = () => {
     } catch {
       return null;
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (loading || !isAuthenticated) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function redirectLoggedInUser() {
+      const userState = await fetchUserState();
+      if (cancelled) {
+        return;
+      }
+
+      if (userState?.isLoggedIn) {
+        handleRedirect(userState);
+        return;
+      }
+
+      const redirectParam = searchParams.get('redirect');
+      if (redirectParam && redirectParam.startsWith('/')) {
+        router.push(redirectParam);
+        return;
+      }
+
+      router.push(`/${locale}`);
+    }
+
+    void redirectLoggedInUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, isAuthenticated, fetchUserState, handleRedirect, locale, router, searchParams]);
 
   // Send SMS code
   const handleSendSmsCode = async () => {
@@ -329,6 +365,19 @@ const CnAuthPage: React.FC = () => {
     { icon: <Award className="w-5 h-5" />, text: '成长档案记录' },
     { icon: <Shield className="w-5 h-5" />, text: '职业机会推荐' },
   ];
+
+  if (loading || isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center py-24 px-4">
+        <div className="w-full max-w-xl rounded-3xl border border-slate-100 bg-white p-10 text-center shadow-2xl">
+          <h1 className="text-3xl font-black text-slate-900">正在进入 VetSphere</h1>
+          <p className="mt-4 text-base leading-7 text-slate-600">
+            当前已检测到登录状态，正在为你跳转到合适的页面，不再展示登录表单。
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center py-24 px-4">
