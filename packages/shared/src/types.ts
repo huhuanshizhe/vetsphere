@@ -200,6 +200,7 @@ export interface User {
   avatarUrl?: string;
   // 双轨制新字段
   mobile?: string;
+  organizationName?: string;
   identityGroupV2?: 'doctor' | 'vet_related_staff' | 'student_academic' | 'other_related';
   doctorSubtype?: 'veterinarian' | 'assistant_doctor' | 'rural_veterinarian';
   doctorPrivilegeStatus?: 'not_applicable' | 'not_started' | 'pending_review' | 'approved' | 'rejected';

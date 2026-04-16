@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@source "../../**/*.{js,ts,jsx,tsx}";
+@source "../../../../packages/shared/src/**/*.{js,ts,jsx,tsx}";
+
+@theme {
+  --color-guidance-ink: #102033;
+  --color-guidance-mint: #0d9488;
+  --color-guidance-gold: #f59e0b;
+}
+
+@theme inline {
+  --font-sans: var(--font-guidance-sans);
+  --font-serif: var(--font-guidance-serif);
+  --color-background: #f5f7f3;
+  --color-foreground: var(--color-guidance-ink);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(13, 148, 136, 0.12), transparent 30%),
+    linear-gradient(180deg, #f7fbf8 0%, #eef3ee 100%);
+  color: var(--color-guidance-ink);
+  font-family: var(--font-guidance-sans), sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.guidance-shell {
+  min-height: 100vh;
+  background-image:
+    linear-gradient(rgba(16, 32, 51, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 32, 51, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.guidance-card {
+  border: 1px solid rgba(16, 32, 51, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 60px rgba(16, 32, 51, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.guidance-pill {
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
