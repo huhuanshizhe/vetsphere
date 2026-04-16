@@ -22,7 +22,7 @@ const statusLabelMap: Record<string, string> = {
   triaged: "已分诊",
   expert_assigned: "已指派专家",
   scheduled: "已排期",
-  ready: "待进入",
+  ready: "待入会",
   live: "进行中",
   paused: "暂停中",
   ended: "已结束",
@@ -50,7 +50,7 @@ export default function GuidanceDashboard() {
       try {
         const token = await getAccessTokenSafe();
         if (!token) {
-          throw new Error("未获取到登录态，请先完成中国站登录。");
+          throw new Error("当前域名还没有有效登录态，请先在这里登录医生账号。");
         }
 
         const response = await fetch("/api/guidance/sessions", {
@@ -102,13 +102,13 @@ export default function GuidanceDashboard() {
         <section className="guidance-card overflow-hidden rounded-[2rem]">
           <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.7fr_0.9fr] lg:px-10">
             <div className="space-y-5">
-              <span className="guidance-pill inline-flex bg-teal-50 text-teal-700">Remote Guidance MVP</span>
+              <span className="guidance-pill inline-flex bg-teal-50 text-teal-700">Remote Guidance</span>
               <div className="space-y-3">
                 <h1 className="max-w-3xl font-serif text-4xl leading-tight text-slate-950 lg:text-5xl">
-                  手术实时远程指导已经拆成独立应用，先把会话流、权限和留痕跑稳。
+                  手术实时远程指导已经独立成应用，当前重点是把登录、会话、入房和留痕跑稳。
                 </h1>
                 <p className="max-w-3xl text-base leading-7 text-slate-600">
-                  这一版优先承接会话申请、会话协同、事件留痕和后续 RTC 接入点，不和中国站已有医生认证体系脱节。
+                  这套应用复用中国站医生认证和账号体系，但会在 `guidance.vetsphere.cn` 当前域名下自己建立登录态，避免主站登录后这里仍然未登录。
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -119,10 +119,10 @@ export default function GuidanceDashboard() {
                   发起远程指导
                 </Link>
                 <Link
-                  href="/guidance"
+                  href="/auth?redirect=/guidance"
                   className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
                 >
-                  查看我的会话
+                  登录医生账号
                 </Link>
               </div>
             </div>
@@ -130,14 +130,12 @@ export default function GuidanceDashboard() {
               <div className="rounded-[1.5rem] bg-slate-950 px-5 py-5 text-white">
                 <div className="text-sm text-slate-300">当前登录</div>
                 <div className="mt-3 text-xl font-semibold">{user?.name || "未登录"}</div>
-                <div className="mt-2 text-sm text-slate-300">
-                  医生工作台状态：{doctorPrivilegeStatus}
-                </div>
+                <div className="mt-2 text-sm text-slate-300">医生状态：{doctorPrivilegeStatus}</div>
               </div>
               <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-5 text-amber-950">
                 <div className="text-sm font-semibold">当前阶段</div>
                 <div className="mt-2 text-sm leading-6">
-                  已完成数据层、会话 API 和独立应用入口，LiveKit token 与录制联调放到下一步接入。
+                  已打通会话、详情、应急邀请、房间准备和 LiveKit token。现在最关键的是用真实医生账号在当前域名完成登录并联调。
                 </div>
               </div>
             </div>
@@ -148,15 +146,39 @@ export default function GuidanceDashboard() {
           <section className="guidance-card rounded-[1.75rem] px-6 py-8">
             <h2 className="text-xl font-semibold text-slate-950">需要先登录</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              远程指导应用复用了现有账号体系。请先在中国站完成登录，再回到这里读取同一套会话与权限状态。
+              当前页面没有拿到有效医生会话，所以还不能发起远程指导。请直接在本域名登录已有的医生账号。
             </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                href="/auth?redirect=/guidance"
+                className="rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-700"
+              >
+                现在登录医生账号
+              </Link>
+              <a
+                href="https://vetsphere.cn/zh/auth"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+              >
+                打开主站登录页
+              </a>
+            </div>
           </section>
         ) : !canAccessDoctorWorkspace ? (
           <section className="guidance-card rounded-[1.75rem] px-6 py-8">
-            <h2 className="text-xl font-semibold text-slate-950">当前账号还不能进入远程指导</h2>
+            <h2 className="text-xl font-semibold text-slate-950">当前账号暂时没有医生工作台权限</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              这一阶段沿用了中国站医生审核结果。只有 `doctor_privilege_status = approved` 且具备医生工作台权限的账号才能发起手术远程指导。
+              远程指导当前只对 `doctor_privilege_status = approved` 的医生账号开放。如果你手里有已审核通过的医生账号，请切换后重新登录测试。
             </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                href="/auth?redirect=/guidance"
+                className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+              >
+                切换测试账号
+              </Link>
+            </div>
           </section>
         ) : (
           <>
@@ -184,11 +206,11 @@ export default function GuidanceDashboard() {
                 <div>
                   <h2 className="text-2xl font-semibold text-slate-950">我的指导会话</h2>
                   <p className="mt-2 text-sm text-slate-500">
-                    当前列表来自新建的 `guidance_sessions` 与 `guidance_participants`，不是演示数据。
+                    当前列表来自真实的 `guidance_sessions` 与 `guidance_participants`，不是演示数据。
                   </p>
                 </div>
                 <Link href="/guidance/new" className="text-sm font-semibold text-teal-700">
-                  继续完善发起流程
+                  继续发起会话
                 </Link>
               </div>
 
@@ -204,7 +226,7 @@ export default function GuidanceDashboard() {
                 </div>
               ) : sessions.length === 0 ? (
                 <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 px-6 py-10 text-sm leading-6 text-slate-500">
-                  还没有会话数据。下一步可以直接对 `POST /api/guidance/sessions` 接入真实发起表单。
+                  当前还没有会话数据。下一步可以直接进入“发起远程指导”，用真实医生账号创建一场测试会话。
                 </div>
               ) : (
                 <div className="mt-6 grid gap-4">
@@ -216,9 +238,7 @@ export default function GuidanceDashboard() {
                             <span className="guidance-pill bg-slate-100 text-slate-700">
                               {statusLabelMap[session.status] || session.status}
                             </span>
-                            <span className="guidance-pill bg-amber-50 text-amber-700">
-                              {session.priority}
-                            </span>
+                            <span className="guidance-pill bg-amber-50 text-amber-700">{session.priority}</span>
                           </div>
                           <h3 className="text-xl font-semibold text-slate-950">{session.title}</h3>
                           <p className="text-sm text-slate-500">

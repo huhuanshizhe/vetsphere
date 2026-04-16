@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans_SC, Source_Serif_4 } from "next/font/google";
 import "@livekit/components-styles";
 import Providers from "@vetsphere/shared/components/Providers";
+import GuidanceTopbar from "@/components/guidance/GuidanceTopbar";
 import { siteConfig } from "@/config/site.config";
 import "./globals.css";
 
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           defaultLocale={siteConfig.defaultLocale}
           siteConfig={siteConfig}
         >
+          <GuidanceTopbar />
           {children}
         </Providers>
       </body>
