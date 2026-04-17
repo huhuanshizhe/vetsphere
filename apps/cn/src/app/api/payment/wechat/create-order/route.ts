@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
 /**
  * 微信支付 API - 使用原生 crypto 实现 (V3 API)
@@ -65,6 +66,10 @@ function buildAuthHeader(
 // Native 支付（扫码支付）
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = rateLimiters.payment(request);
+    if (rateLimitResult) return rateLimitResult;
+
     // Verify user authentication
     const auth = await verifyAuth(request);
     if (!auth) {
@@ -84,15 +89,22 @@ export async function POST(request: NextRequest) {
     // Verify order exists and belongs to the authenticated user
     const { data: order } = await supabaseAdmin
       .from('orders')
-      .select('id, user_id, status')
+      .select('id, user_id, status, total_amount')
       .eq('id', orderId)
       .single();
 
-    if (order?.user_id && order.user_id !== auth.userId) {
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    if (order.user_id && order.user_id !== auth.userId) {
       return NextResponse.json({ error: 'Order does not belong to authenticated user' }, { status: 403 });
     }
-    if (order?.status === 'Paid' || order?.status === 'Completed') {
+    if (order.status === 'Paid' || order.status === 'Completed') {
       return NextResponse.json({ error: 'Order already paid' }, { status: 400 });
+    }
+    // Validate amount matches database
+    if (Math.abs(Number(order.total_amount) - Number(amount)) > 0.01) {
+      return NextResponse.json({ error: 'Amount does not match order total' }, { status: 400 });
     }
 
     const mchid = process.env.WECHAT_MCH_ID || '';
@@ -116,7 +128,7 @@ export async function POST(request: NextRequest) {
       out_trade_no: outTradeNo,
       notify_url: notifyUrl,
       amount: {
-        total: Math.round(amount * 100), // 微信支付金额单位是分
+        total: Math.round(Number(order.total_amount) * 100), // Use DB amount, not frontend
         currency: 'CNY',
       },
     });
@@ -157,6 +169,10 @@ export async function POST(request: NextRequest) {
 // JSAPI 支付（公众号/小程序支付）
 export async function PUT(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = rateLimiters.payment(request);
+    if (rateLimitResult) return rateLimitResult;
+
     // Verify user authentication
     const auth = await verifyAuth(request);
     if (!auth) {
@@ -176,15 +192,22 @@ export async function PUT(request: NextRequest) {
     // Verify order exists and belongs to the authenticated user
     const { data: order } = await supabaseAdmin
       .from('orders')
-      .select('id, user_id, status')
+      .select('id, user_id, status, total_amount')
       .eq('id', orderId)
       .single();
 
-    if (order?.user_id && order.user_id !== auth.userId) {
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    if (order.user_id && order.user_id !== auth.userId) {
       return NextResponse.json({ error: 'Order does not belong to authenticated user' }, { status: 403 });
     }
-    if (order?.status === 'Paid' || order?.status === 'Completed') {
+    if (order.status === 'Paid' || order.status === 'Completed') {
       return NextResponse.json({ error: 'Order already paid' }, { status: 400 });
+    }
+    // Validate amount matches database
+    if (Math.abs(Number(order.total_amount) - Number(amount)) > 0.01) {
+      return NextResponse.json({ error: 'Amount does not match order total' }, { status: 400 });
     }
 
     const mchid = process.env.WECHAT_MCH_ID || '';
@@ -208,7 +231,7 @@ export async function PUT(request: NextRequest) {
       out_trade_no: outTradeNo,
       notify_url: notifyUrl,
       amount: {
-        total: Math.round(amount * 100),
+        total: Math.round(Number(order.total_amount) * 100), // Use DB amount, not frontend
         currency: 'CNY',
       },
       payer: {

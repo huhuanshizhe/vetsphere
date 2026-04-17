@@ -3,6 +3,7 @@
 import React from 'react';
 import AdminShell from '@/components/AdminShell';
 import { SiteProvider } from '@/context/SiteContext';
+import { AuthGuard } from '@vetsphere/shared/components/AuthGuard';
 
 export default function AdminLayout({
   children,
@@ -10,8 +11,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SiteProvider>
-      <AdminShell>{children}</AdminShell>
-    </SiteProvider>
+    <AuthGuard loginPath="/" requiredRole="Admin">
+      <SiteProvider>
+        <AdminShell>{children}</AdminShell>
+      </SiteProvider>
+    </AuthGuard>
   );
 }

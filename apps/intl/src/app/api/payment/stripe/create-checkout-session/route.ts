@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
+import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,10 @@ async function verifyAuth(request: NextRequest): Promise<{ userId: string } | nu
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = rateLimiters.payment(request);
+    if (rateLimitResult) return rateLimitResult;
+
     const secretKey = process.env.STRIPE_SECRET_KEY;
     if (!secretKey || secretKey.includes('placeholder')) {
       return NextResponse.json(
@@ -40,19 +45,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { items, orderId, amount, currency, returnUrl } = body;
 
-    console.log('[Stripe] Received orderId:', orderId, 'type:', typeof orderId);
-
     // Verify order exists (optional user authentication for guest checkout)
     const auth = await verifyAuth(request);
+    let dbAmount: number | null = null;
     if (orderId) {
-      console.log('[Stripe] Querying order with id:', orderId);
       const { data: order, error: orderError } = await supabaseAdmin
         .from('orders')
         .select('id, user_id, status, total_amount')
         .eq('id', orderId)
         .single();
-
-      console.log('[Stripe] Order query result:', order, 'error:', orderError);
 
       if (orderError || !order) {
         return NextResponse.json({ error: 'Order not found', details: orderError?.message }, { status: 404 });
@@ -65,11 +66,29 @@ export async function POST(request: NextRequest) {
       if (order.status === 'paid' || order.status === 'completed') {
         return NextResponse.json({ error: 'Order already paid' }, { status: 400 });
       }
+      dbAmount = Number(order.total_amount);
+      // Validate submitted amount matches DB if provided
+      if (amount && Math.abs(dbAmount - Number(amount)) > 0.01) {
+        return NextResponse.json({ error: 'Amount does not match order total' }, { status: 400 });
+      }
     }
 
     // 支持两种方式：传入items或amount
+    // When orderId exists, always use DB amount as the source of truth
     let lineItems;
-    if (items && Array.isArray(items)) {
+    if (dbAmount !== null) {
+      // Use verified DB amount for the order
+      lineItems = [{
+        price_data: {
+          currency: currency || 'usd',
+          product_data: {
+            name: 'VetSphere Order',
+          },
+          unit_amount: Math.round(dbAmount * 100),
+        },
+        quantity: 1,
+      }];
+    } else if (items && Array.isArray(items)) {
       lineItems = items.map((item: any) => ({
         price_data: {
           currency: currency || 'usd',

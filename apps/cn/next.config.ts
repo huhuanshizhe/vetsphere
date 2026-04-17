@@ -1,32 +1,6 @@
-import type { NextConfig } from "next";
-import path from "path";
+import { createNextConfig } from '@vetsphere/shared/lib/next-config';
 
-const monorepoRoot = path.join(__dirname, '../..');
-
-const nextConfig: NextConfig = {
-  turbopack: {
-    root: monorepoRoot,
-  },
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: '*.supabase.co' },
-      { protocol: 'https', hostname: 'placehold.co' },
-      { protocol: 'https', hostname: '*.aliyuncs.com' },
-    ],
-    formats: ['image/avif', 'image/webp'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60 * 60 * 24 * 7,
-  },
-  experimental: {
-    optimizePackageImports: ['@supabase/supabase-js', 'uuid'],
-  },
-  transpilePackages: ['@vetsphere/shared'],
-  allowedDevOrigins: [
-    'vetsphere.cn',
-    'www.vetsphere.cn',
-  ],
-};
-
-export default nextConfig;
+export default createNextConfig({
+  dirname: __dirname,
+  allowedDevOrigins: ['vetsphere.cn', 'www.vetsphere.cn'],
+});

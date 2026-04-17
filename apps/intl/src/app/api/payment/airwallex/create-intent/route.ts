@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
 
 
@@ -44,6 +45,10 @@ async function getAirwallexToken() {
 export async function POST(request: NextRequest) {
   const supabaseAdmin = await getSupabaseAdmin();
   try {
+    // Rate limiting
+    const rateLimitResult = rateLimiters.payment(request);
+    if (rateLimitResult) return rateLimitResult;
+
     // Verify user authentication
     const auth = await verifyAuth(request);
     if (!auth) {
@@ -53,26 +58,35 @@ export async function POST(request: NextRequest) {
     const { orderId, amount, currency, description, customer } = await request.json();
 
     // Verify order exists and belongs to the authenticated user
-    if (orderId) {
-      const { data: order } = await supabaseAdmin
-        .from('orders')
-        .select('id, user_id, status')
-        .eq('id', orderId)
-        .single();
+    if (!orderId) {
+      return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
+    }
 
-      if (order?.user_id && order.user_id !== auth.userId) {
-        return NextResponse.json({ error: 'Order does not belong to authenticated user' }, { status: 403 });
-      }
-      if (order?.status === 'Paid' || order?.status === 'Completed') {
-        return NextResponse.json({ error: 'Order already paid' }, { status: 400 });
-      }
+    const { data: order } = await supabaseAdmin
+      .from('orders')
+      .select('id, user_id, status, total_amount')
+      .eq('id', orderId)
+      .single();
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    if (order.user_id && order.user_id !== auth.userId) {
+      return NextResponse.json({ error: 'Order does not belong to authenticated user' }, { status: 403 });
+    }
+    if (order.status === 'Paid' || order.status === 'Completed') {
+      return NextResponse.json({ error: 'Order already paid' }, { status: 400 });
+    }
+    // Validate amount matches database
+    if (Math.abs(Number(order.total_amount) - Number(amount)) > 0.01) {
+      return NextResponse.json({ error: 'Amount does not match order total' }, { status: 400 });
     }
 
     const token = await getAirwallexToken();
 
     const payload = {
       request_id: uuidv4(),
-      amount,
+      amount: Number(order.total_amount), // Use DB amount, not frontend
       currency: currency || 'CNY',
       merchant_order_id: orderId,
       description: description || `VetSphere Order ${orderId}`,

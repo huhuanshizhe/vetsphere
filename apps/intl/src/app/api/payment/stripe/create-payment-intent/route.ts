@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
+import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-// CORS headers
+// CORS headers - restrict to known origins
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_SITE_URL || 'https://vetsphere.net',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 async function getStripe(secretKey: string) {
@@ -26,6 +27,10 @@ async function getSupabaseAdmin() {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = rateLimiters.payment(request);
+    if (rateLimitResult) return rateLimitResult;
+
     const secretKey = process.env.STRIPE_SECRET_KEY;
     if (!secretKey || secretKey.includes('placeholder')) {
       return NextResponse.json(
@@ -44,31 +49,44 @@ export async function POST(request: NextRequest) {
     const { orderId, amount, currency = 'usd' } = body;
 
     // 验证订单存在
-    if (orderId) {
-      const { data: order, error: orderError } = await supabaseAdmin
-        .from('orders')
-        .select('id, status, total_amount')
-        .eq('id', orderId)
-        .single();
-
-      if (orderError || !order) {
-        return NextResponse.json({ error: 'Order not found' }, { 
-          status: 404,
-          headers: corsHeaders
-        });
-      }
-
-      if (order.status === 'paid' || order.status === 'completed') {
-        return NextResponse.json({ error: 'Order already paid' }, { 
-          status: 400,
-          headers: corsHeaders
-        });
-      }
+    if (!orderId) {
+      return NextResponse.json({ error: 'orderId is required' }, { 
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
-    // 创建 PaymentIntent
+    const { data: order, error: orderError } = await supabaseAdmin
+      .from('orders')
+      .select('id, status, total_amount')
+      .eq('id', orderId)
+      .single();
+
+    if (orderError || !order) {
+      return NextResponse.json({ error: 'Order not found' }, { 
+        status: 404,
+        headers: corsHeaders
+      });
+    }
+
+    if (order.status === 'paid' || order.status === 'completed') {
+      return NextResponse.json({ error: 'Order already paid' }, { 
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+
+    // Validate amount matches database
+    if (Math.abs(Number(order.total_amount) - Number(amount)) > 0.01) {
+      return NextResponse.json({ error: 'Amount does not match order total' }, {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+
+    // 创建 PaymentIntent — use DB amount, not frontend
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // 转换为分
+      amount: Math.round(Number(order.total_amount) * 100), // 转换为分
       currency: currency.toLowerCase(),
       automatic_payment_methods: {
         enabled: true,

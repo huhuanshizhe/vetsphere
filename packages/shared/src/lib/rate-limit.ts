@@ -174,4 +174,12 @@ export const rateLimiters = {
       windowMs: 60 * 1000, // 1 minute
       message: 'Rate limit exceeded. Please slow down.',
     }),
+
+  /** Payment creation rate limit (10 per 5 minutes per IP) */
+  payment: (request: NextRequest) =>
+    rateLimit(request, {
+      maxRequests: 10,
+      windowMs: 5 * 60 * 1000, // 5 minutes
+      message: 'Too many payment requests. Please try again later.',
+    }),
 };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
 /**
  * 支付宝支付 API - 使用原生 crypto 实现
@@ -59,6 +60,10 @@ function buildAlipayParams(bizContent: object, method: string): Record<string, s
 // 电脑网站支付
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = rateLimiters.payment(request);
+    if (rateLimitResult) return rateLimitResult;
+
     // Verify user authentication
     const auth = await verifyAuth(request);
     if (!auth) {
@@ -78,15 +83,22 @@ export async function POST(request: NextRequest) {
     // Verify order exists and belongs to the authenticated user
     const { data: order } = await supabaseAdmin
       .from('orders')
-      .select('id, user_id, status')
+      .select('id, user_id, status, total_amount')
       .eq('id', orderId)
       .single();
 
-    if (order?.user_id && order.user_id !== auth.userId) {
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    if (order.user_id && order.user_id !== auth.userId) {
       return NextResponse.json({ error: 'Order does not belong to authenticated user' }, { status: 403 });
     }
-    if (order?.status === 'Paid' || order?.status === 'Completed') {
+    if (order.status === 'Paid' || order.status === 'Completed') {
       return NextResponse.json({ error: 'Order already paid' }, { status: 400 });
+    }
+    // Validate amount matches database
+    if (Math.abs(Number(order.total_amount) - Number(amount)) > 0.01) {
+      return NextResponse.json({ error: 'Amount does not match order total' }, { status: 400 });
     }
 
     const outTradeNo = `VS${orderId}_${Date.now()}`;
@@ -95,7 +107,7 @@ export async function POST(request: NextRequest) {
     const bizContent = {
       out_trade_no: outTradeNo,
       product_code: 'FAST_INSTANT_TRADE_PAY',
-      total_amount: amount.toFixed(2),
+      total_amount: Number(order.total_amount).toFixed(2), // Use DB amount
       subject: subject,
       body: description || subject,
     };
@@ -137,6 +149,10 @@ export async function POST(request: NextRequest) {
 // 手机网站支付
 export async function PUT(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = rateLimiters.payment(request);
+    if (rateLimitResult) return rateLimitResult;
+
     // Verify user authentication
     const auth = await verifyAuth(request);
     if (!auth) {
@@ -156,15 +172,22 @@ export async function PUT(request: NextRequest) {
     // Verify order exists and belongs to the authenticated user
     const { data: order } = await supabaseAdmin
       .from('orders')
-      .select('id, user_id, status')
+      .select('id, user_id, status, total_amount')
       .eq('id', orderId)
       .single();
 
-    if (order?.user_id && order.user_id !== auth.userId) {
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    if (order.user_id && order.user_id !== auth.userId) {
       return NextResponse.json({ error: 'Order does not belong to authenticated user' }, { status: 403 });
     }
-    if (order?.status === 'Paid' || order?.status === 'Completed') {
+    if (order.status === 'Paid' || order.status === 'Completed') {
       return NextResponse.json({ error: 'Order already paid' }, { status: 400 });
+    }
+    // Validate amount matches database
+    if (Math.abs(Number(order.total_amount) - Number(amount)) > 0.01) {
+      return NextResponse.json({ error: 'Amount does not match order total' }, { status: 400 });
     }
 
     const outTradeNo = `VS${orderId}_${Date.now()}`;
@@ -174,7 +197,7 @@ export async function PUT(request: NextRequest) {
     const bizContent = {
       out_trade_no: outTradeNo,
       product_code: 'QUICK_WAP_WAY',
-      total_amount: amount.toFixed(2),
+      total_amount: Number(order.total_amount).toFixed(2), // Use DB amount
       subject: subject,
       body: description || subject,
       quit_url: quitUrl,

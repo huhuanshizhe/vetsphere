@@ -1,17 +1,5 @@
-import type { NextConfig } from "next";
+import { createNextConfig } from '@vetsphere/shared/lib/next-config';
 
-const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: '*.supabase.co' },
-    ],
-    formats: ['image/avif', 'image/webp'],
-  },
-  transpilePackages: ['@vetsphere/shared'],
-  allowedDevOrigins: [
-    'admin.vetsphere.cn',
-  ],
-};
-
-export default nextConfig;
+export default createNextConfig({
+  allowedDevOrigins: ['admin.vetsphere.cn'],
+});

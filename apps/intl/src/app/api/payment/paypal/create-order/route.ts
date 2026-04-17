@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
 
 
 
@@ -17,10 +18,6 @@ async function getPayPalAccessToken(): Promise<string> {
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
   const isProduction = process.env.PAYPAL_MODE === 'live';
 
-  console.log('[PayPal] Client ID:', clientId ? clientId.substring(0, 10) + '...' : 'NOT SET');
-  console.log('[PayPal] Client Secret:', clientSecret ? 'SET' : 'NOT SET');
-  console.log('[PayPal] Mode:', isProduction ? 'production' : 'sandbox');
-
   if (!clientId || !clientSecret) {
     throw new Error('PayPal credentials not configured');
   }
@@ -28,8 +25,6 @@ async function getPayPalAccessToken(): Promise<string> {
   const baseUrl = isProduction
     ? 'https://api-m.paypal.com'
     : 'https://api-m.sandbox.paypal.com';
-
-  console.log('[PayPal] Base URL:', baseUrl);
 
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
@@ -58,6 +53,10 @@ async function getPayPalAccessToken(): Promise<string> {
 export async function POST(request: NextRequest) {
   const supabaseAdmin = await getSupabaseAdmin();
   try {
+    // Rate limiting
+    const rateLimitResult = rateLimiters.payment(request);
+    if (rateLimitResult) return rateLimitResult;
+
     const clientId = process.env.PAYPAL_CLIENT_ID;
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
 
@@ -77,20 +76,27 @@ export async function POST(request: NextRequest) {
     const { orderId, amount, currency = 'USD', items } = body;
 
     // 验证订单存在
-    if (orderId) {
-      const { data: order, error } = await supabaseAdmin
-        .from('orders')
-        .select('id, status, total_amount')
-        .eq('id', orderId)
-        .single();
+    if (!orderId) {
+      return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
+    }
 
-      if (error || !order) {
-        return NextResponse.json({ error: 'Order not found', details: error?.message }, { status: 404 });
-      }
+    const { data: order, error } = await supabaseAdmin
+      .from('orders')
+      .select('id, status, total_amount')
+      .eq('id', orderId)
+      .single();
 
-      if (order.status !== 'pending') {
-        return NextResponse.json({ error: 'Order is not in pending status' }, { status: 400 });
-      }
+    if (error || !order) {
+      return NextResponse.json({ error: 'Order not found', details: error?.message }, { status: 404 });
+    }
+
+    if (order.status !== 'pending') {
+      return NextResponse.json({ error: 'Order is not in pending status' }, { status: 400 });
+    }
+
+    // Validate amount matches database
+    if (Math.abs(Number(order.total_amount) - Number(amount)) > 0.01) {
+      return NextResponse.json({ error: 'Amount does not match order total' }, { status: 400 });
     }
 
     // 获取Access Token
@@ -105,7 +111,7 @@ export async function POST(request: NextRequest) {
           description: 'VetSphere Order',
           amount: {
             currency_code: currency.toUpperCase(),
-            value: amount.toFixed(2),
+            value: Number(order.total_amount).toFixed(2), // Use DB amount
           },
         },
       ],

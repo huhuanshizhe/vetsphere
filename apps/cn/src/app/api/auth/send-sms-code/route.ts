@@ -48,8 +48,11 @@ export async function POST(request: NextRequest) {
     const forwardedFor = request.headers.get('x-forwarded-for');
     const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : 'unknown';
     
-    // 演示测试账号：跳过频控，使用固定验证码
+    // 演示测试账号：仅非生产环境可用
     if (mobile === DEMO_MOBILE) {
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ error: '该手机号不可用' }, { status: 400 });
+      }
       const expiresAt = new Date(Date.now() + SMS_CODE_EXPIRES_MINUTES * 60 * 1000).toISOString();
       await supabaseAdmin
         .from('sms_verification_codes')
@@ -141,11 +144,11 @@ export async function POST(request: NextRequest) {
     }
     
     // TODO: 调用实际短信服务发送验证码
-    // 目前先在开发环境打印验证码
-    console.log(`[SMS] Mobile: ${mobile}, Code: ${code}, Purpose: ${purpose}`);
-    
-    // 生产环境应该调用短信服务
     // await sendSMS(mobile, `您的验证码是${code}，${SMS_CODE_EXPIRES_MINUTES}分钟内有效。`);
+    if (process.env.NODE_ENV !== 'production') {
+      // 仅开发环境打印，不含完整验证码
+      console.warn(`[SMS-DEV] Code sent to ${mobile.slice(0, 3)}****${mobile.slice(-4)}`);
+    }
     
     return NextResponse.json({
       success: true,
