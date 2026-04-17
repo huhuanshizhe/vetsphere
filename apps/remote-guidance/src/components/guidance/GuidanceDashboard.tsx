@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@vetsphere/shared/context/AuthContext";
-import { getAccessTokenSafe } from "@vetsphere/shared/services/supabase";
+import { getAccessTokenSafe, getSessionSafe } from "@vetsphere/shared/services/supabase";
 import { useGuidanceSessionBridge } from "@/components/guidance/GuidanceSessionBridge";
 
 type GuidanceSession = {
@@ -34,9 +35,13 @@ const statusLabelMap: Record<string, string> = {
 export default function GuidanceDashboard() {
   const { loading, isAuthenticated, user, canAccessDoctorWorkspace, doctorPrivilegeStatus } = useAuth();
   const { isSyncing } = useGuidanceSessionBridge();
+  const searchParams = useSearchParams();
   const [sessions, setSessions] = useState<GuidanceSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
+
+  const debugMode = searchParams.get("debugAuth") === "1";
 
   useEffect(() => {
     if (loading || isSyncing || !isAuthenticated || !canAccessDoctorWorkspace) {
@@ -84,6 +89,83 @@ export default function GuidanceDashboard() {
       cancelled = true;
     };
   }, [loading, isSyncing, isAuthenticated, canAccessDoctorWorkspace]);
+
+  useEffect(() => {
+    if (!debugMode) {
+      setDebugInfo(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadDebugInfo() {
+      try {
+        const sessionResult = await getSessionSafe();
+        const token = sessionResult.data.session?.access_token || null;
+        let authMePayload: unknown = null;
+
+        if (token) {
+          const response = await fetch("/api/auth/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          authMePayload = await response.json();
+        }
+
+        if (!cancelled) {
+          setDebugInfo({
+            authContext: {
+              loading,
+              isAuthenticated,
+              userId: user?.id || null,
+              mobile: user?.mobile || null,
+              name: user?.name || null,
+              doctorPrivilegeStatus,
+              canAccessDoctorWorkspace,
+              isSyncing,
+            },
+            session: {
+              hasSession: Boolean(sessionResult.data.session),
+              userId: sessionResult.data.session?.user?.id || null,
+              email: sessionResult.data.session?.user?.email || null,
+              hasAccessToken: Boolean(token),
+            },
+            authMe: authMePayload,
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setDebugInfo({
+            error: error instanceof Error ? error.message : "debug load failed",
+            authContext: {
+              loading,
+              isAuthenticated,
+              userId: user?.id || null,
+              mobile: user?.mobile || null,
+              doctorPrivilegeStatus,
+              canAccessDoctorWorkspace,
+              isSyncing,
+            },
+          });
+        }
+      }
+    }
+
+    void loadDebugInfo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    debugMode,
+    loading,
+    isAuthenticated,
+    user?.id,
+    user?.mobile,
+    user?.name,
+    doctorPrivilegeStatus,
+    canAccessDoctorWorkspace,
+    isSyncing,
+  ]);
 
   const stats = useMemo(() => {
     return sessions.reduce(
@@ -143,6 +225,22 @@ export default function GuidanceDashboard() {
             </div>
           </div>
         </section>
+
+        {debugMode ? (
+          <section className="guidance-card rounded-[1.75rem] px-6 py-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-950">Auth Debug</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  这里会显示当前 guidance 实际识别到的用户、session 和 `/api/auth/me` 返回。
+                </p>
+              </div>
+            </div>
+            <pre className="mt-5 overflow-auto rounded-[1.25rem] bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
+          </section>
+        ) : null}
 
         {loading || isSyncing ? (
           <section className="guidance-card rounded-[1.75rem] px-6 py-8">

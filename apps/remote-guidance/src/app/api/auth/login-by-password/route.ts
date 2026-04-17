@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
       identity_group_v2: null,
       doctor_subtype: null,
       doctor_privilege_status: "not_applicable",
+      permission_flags: {},
     };
 
     const identityGroupV2 = state.identity_group_v2;
@@ -102,16 +103,22 @@ export async function POST(request: NextRequest) {
     }
 
     const isDoctorApproved = identityGroupV2 === "doctor" && realDoctorPrivilegeStatus === "approved";
+    const rawPermissionFlags = state.permission_flags || {};
+    const canAccessDoctorWorkspace =
+      Boolean(rawPermissionFlags.can_access_doctor_workspace) || isDoctorApproved;
     const permissions = {
       can_access_user_center: true,
       can_purchase_courses: true,
       can_purchase_products: true,
       can_manage_orders: true,
       can_access_growth_system: true,
-      can_access_doctor_workspace: isDoctorApproved,
-      can_access_medical_features: isDoctorApproved,
-      can_access_professional_courses: isDoctorApproved,
-      can_view_restricted_product_info: isDoctorApproved,
+      can_access_doctor_workspace: canAccessDoctorWorkspace,
+      can_access_medical_features:
+        Boolean(rawPermissionFlags.can_access_medical_features) || canAccessDoctorWorkspace,
+      can_access_professional_courses:
+        Boolean(rawPermissionFlags.can_access_professional_courses) || canAccessDoctorWorkspace,
+      can_view_restricted_product_info:
+        Boolean(rawPermissionFlags.can_view_restricted_product_info) || canAccessDoctorWorkspace,
     };
 
     return NextResponse.json({
@@ -143,7 +150,7 @@ export async function POST(request: NextRequest) {
             : null,
       },
       permissions,
-      redirectHint: isDoctorApproved ? "go_home" : "go_doctor_verification",
+      redirectHint: canAccessDoctorWorkspace ? "go_home" : "go_doctor_verification",
       session: {
         accessToken: signInData.session.access_token,
         refreshToken: signInData.session.refresh_token,

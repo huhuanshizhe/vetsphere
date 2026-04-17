@@ -45,6 +45,65 @@ const DEFAULT_PERMISSIONS = {
   can_view_restricted_product_info: false,
 };
 
+function mapIdentityTypeToGroupV2(identityType: string | null | undefined) {
+  if (!identityType) return null;
+
+  const map: Record<string, string> = {
+    veterinarian: "doctor",
+    assistant_doctor: "doctor",
+    rural_veterinarian: "doctor",
+    nurse_care: "vet_related_staff",
+    researcher_teacher: "vet_related_staff",
+    pet_service_staff: "vet_related_staff",
+    student: "student_academic",
+    industry_practitioner: "other_related",
+    enthusiast: "other_related",
+    other: "other_related",
+  };
+
+  return map[identityType] || "other_related";
+}
+
+function mapIdentityTypeToDoctorSubtype(identityType: string | null | undefined) {
+  if (!identityType) return null;
+  if (["veterinarian", "assistant_doctor", "rural_veterinarian"].includes(identityType)) {
+    return identityType;
+  }
+  return null;
+}
+
+function deriveDoctorPrivilegeStatus(identityGroupV2: string | null, verificationStatus: string) {
+  if (identityGroupV2 !== "doctor") {
+    return "not_applicable";
+  }
+
+  if (verificationStatus === "approved") return "approved";
+  if (["submitted", "under_review"].includes(verificationStatus)) return "pending_review";
+  if (verificationStatus === "rejected") return "rejected";
+  return "not_started";
+}
+
+function buildGuidancePermissions(rawPermissionFlags: Record<string, boolean> | null | undefined, doctorPrivilegeStatus: string) {
+  const doctorAccessGranted =
+    Boolean(rawPermissionFlags?.can_access_doctor_workspace) || doctorPrivilegeStatus === "approved";
+
+  return {
+    ...DEFAULT_PERMISSIONS,
+    can_access_user_center: true,
+    can_purchase_courses: true,
+    can_purchase_products: true,
+    can_manage_orders: true,
+    can_access_growth_system: true,
+    can_access_doctor_workspace: doctorAccessGranted,
+    can_access_medical_features:
+      Boolean(rawPermissionFlags?.can_access_medical_features) || doctorAccessGranted,
+    can_access_professional_courses:
+      Boolean(rawPermissionFlags?.can_access_professional_courses) || doctorAccessGranted,
+    can_view_restricted_product_info:
+      Boolean(rawPermissionFlags?.can_view_restricted_product_info) || doctorAccessGranted,
+  };
+}
+
 export type GuidanceActor = {
   userId: string;
   email: string | null;
@@ -109,7 +168,7 @@ export async function getGuidanceActor(request: NextRequest): Promise<GuidanceAc
     return null;
   }
 
-  const [profileRes, cnProfileRes, snapshotRes, cnUserRes] = await Promise.all([
+  const [profileRes, cnProfileRes, stateViewRes, snapshotRes, latestVerificationRes, cnUserRes] = await Promise.all([
     supabaseAdmin.from("profiles").select("role, full_name").eq("id", user.id).maybeSingle(),
     supabaseAdmin
       .from("cn_user_profiles")
@@ -117,31 +176,65 @@ export async function getGuidanceActor(request: NextRequest): Promise<GuidanceAc
       .eq("user_id", user.id)
       .eq("site_code", "cn")
       .maybeSingle(),
+    supabaseAdmin.from("v_cn_user_full_state").select("*").eq("user_id", user.id).maybeSingle(),
     supabaseAdmin
       .from("cn_user_state_snapshots")
-      .select("doctor_privilege_status, permission_flags, identity_group_v2, doctor_subtype, verification_status, verification_required, verification_reject_reason, access_level, onboarding_status")
+      .select("doctor_privilege_status, permission_flags, identity_group_v2, doctor_subtype, verification_status, verification_required, verification_reject_reason, access_level, onboarding_status, identity_type")
       .eq("user_id", user.id)
       .eq("site_code", "cn")
+      .maybeSingle(),
+    supabaseAdmin
+      .from("cn_verification_requests")
+      .select("status, reject_reason")
+      .eq("user_id", user.id)
+      .eq("site_code", "cn")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle(),
     supabaseAdmin.from("cn_users").select("mobile, status").eq("id", user.id).maybeSingle(),
   ]);
 
-  const permissions = {
-    ...DEFAULT_PERMISSIONS,
-    ...(snapshotRes.data?.permission_flags || {}),
-  };
-  const doctorPrivilegeStatus = snapshotRes.data?.doctor_privilege_status || "not_applicable";
+  const stateSource = stateViewRes.data || snapshotRes.data || null;
+  const identityType = stateSource?.identity_type || null;
+  const identityGroupV2 = stateSource?.identity_group_v2 || mapIdentityTypeToGroupV2(identityType);
+  const doctorSubtype = stateSource?.doctor_subtype || mapIdentityTypeToDoctorSubtype(identityType);
+  const verificationStatus = latestVerificationRes.data?.status || stateSource?.verification_status || "not_started";
+  const doctorPrivilegeStatus = deriveDoctorPrivilegeStatus(identityGroupV2, verificationStatus);
+  const permissions = buildGuidancePermissions(stateSource?.permission_flags, doctorPrivilegeStatus);
   const profileRole = profileRes.data?.role || null;
   const isAdmin = ["Admin", "admin", "super_admin"].includes(profileRole || "");
   const canAccessDoctorWorkspace = Boolean(permissions.can_access_doctor_workspace);
 
+  const derivedSnapshot = stateSource
+    ? {
+        ...stateSource,
+        identity_group_v2: identityGroupV2,
+        doctor_subtype: doctorSubtype,
+        verification_status: verificationStatus,
+        verification_required: identityGroupV2 === "doctor",
+        verification_reject_reason:
+          latestVerificationRes.data?.reject_reason || stateSource?.verification_reject_reason || null,
+        doctor_privilege_status: doctorPrivilegeStatus,
+        permission_flags: permissions,
+      }
+    : null;
+
+  const derivedCnProfile = {
+    ...(cnProfileRes.data || {}),
+    display_name: cnProfileRes.data?.display_name || stateViewRes.data?.display_name || null,
+    organization_name:
+      cnProfileRes.data?.organization_name || stateViewRes.data?.organization_name || null,
+    profile_completion_percent:
+      cnProfileRes.data?.profile_completion_percent || stateViewRes.data?.profile_completion_percent || 0,
+  };
+
   return {
     userId: user.id,
     email: user.email || null,
-    fullName: cnProfileRes.data?.display_name || profileRes.data?.full_name || null,
+    fullName: derivedCnProfile.display_name || profileRes.data?.full_name || null,
     profileRole,
-    snapshot: snapshotRes.data || null,
-    cnProfile: cnProfileRes.data || null,
+    snapshot: derivedSnapshot,
+    cnProfile: derivedCnProfile,
     cnUser: cnUserRes.data || null,
     permissions,
     doctorPrivilegeStatus,

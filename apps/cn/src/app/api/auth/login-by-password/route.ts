@@ -66,33 +66,34 @@ export async function POST(request: NextRequest) {
     const forwardedFor = request.headers.get('x-forwarded-for');
     const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : 'unknown';
     
-    // 更新登录信息
-    await supabaseAdmin
-      .from('cn_users')
-      .update({
-        last_login_at: new Date().toISOString(),
-        last_login_ip: ipAddress,
-        login_count: (cnUser as any).login_count + 1 || 1,
-      })
-      .eq('id', cnUser.id);
+    // 并行执行: 更新登录信息 + 获取用户状态 + 查询认证请求
+    const loginCount = (cnUser as any).login_count + 1 || 1;
+    const [updateResult, stateResult, verificationResult] = await Promise.all([
+      supabaseAdmin
+        .from('cn_users')
+        .update({
+          last_login_at: new Date().toISOString(),
+          last_login_ip: ipAddress,
+          login_count: loginCount,
+        })
+        .eq('id', cnUser.id),
+      supabaseAdmin
+        .from('v_cn_user_full_state')
+        .select('*')
+        .eq('user_id', cnUser.id)
+        .single(),
+      supabaseAdmin
+        .from('cn_verification_requests')
+        .select('status, reject_reason')
+        .eq('user_id', cnUser.id)
+        .eq('site_code', 'cn')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
+    ]);
     
-    // 获取用户完整状态
-    const { data: userState } = await supabaseAdmin
-      .from('v_cn_user_full_state')
-      .select('*')
-      .eq('user_id', cnUser.id)
-      .single();
-    
-    // 始终查询真实的认证请求状态（不依赖快照/触发器）
-    const { data: latestVerification } = await supabaseAdmin
-      .from('cn_verification_requests')
-      .select('status, reject_reason')
-      .eq('user_id', cnUser.id)
-      .eq('site_code', 'cn')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    
+    const userState = stateResult.data;
+    const latestVerification = verificationResult.data;
     const realVerificationStatus = latestVerification?.status || 'not_started';
     
     // 默认状态 - 身份选择是可选的，老用户也默认跳转首页

@@ -42,7 +42,11 @@
     "BANK_SWIFT",
     "BANK_ACCOUNT_NAME",
     "BANK_ACCOUNT_NUMBER",
-    "BANK_ROUTING_NUMBER"
+    "BANK_ROUTING_NUMBER",
+    "LIVEKIT_URL",
+    "LIVEKIT_API_KEY",
+    "LIVEKIT_API_SECRET",
+    "GUIDANCE_PUBLIC_URL"
   ],
   "tasks": {
     "build": {
