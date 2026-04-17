@@ -65,6 +65,7 @@ type GuidanceSessionDetail = {
     actual_ended_at?: string | null;
     rtc_provider?: string | null;
     rtc_room_name?: string | null;
+    room_status?: string | null;
     consent_confirmed?: boolean | null;
     assigned_expert_user_id?: string | null;
   };
@@ -374,17 +375,30 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
               </div>
 
               <div className="mt-6 grid gap-3 md:grid-cols-3">
-                <button
-                  type="button"
-                  disabled={busyAction !== null}
-                  onClick={() =>
-                    void runAction(`/api/guidance/sessions/${sessionId}/room/open`, undefined, "房间已打开，可以继续接 RTC token。")
-                  }
-                  className="rounded-[1.35rem] bg-slate-950 px-4 py-4 text-left text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
-                >
-                  <div>打开会话房间</div>
-                  <div className="mt-2 text-xs font-normal text-slate-300">生成房间名并把会话状态推进到可进入阶段</div>
-                </button>
+                {detail.session.rtc_room_name ? (
+                  <div className="rounded-[1.35rem] bg-teal-600 px-4 py-4 text-left text-sm font-semibold text-white">
+                    <div>房间已打开</div>
+                    <div className="mt-2 text-xs font-normal text-teal-100">房间名: {detail.session.rtc_room_name}</div>
+                    <Link
+                      href={`/guidance/${sessionId}/room`}
+                      className="mt-3 inline-block rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-teal-700"
+                    >
+                      进入房间
+                    </Link>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busyAction !== null}
+                    onClick={() =>
+                      void runAction(`/api/guidance/sessions/${sessionId}/room/open`, undefined, "房间已打开，可以继续接 RTC token。")
+                    }
+                    className="rounded-[1.35rem] bg-slate-950 px-4 py-4 text-left text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    <div>打开会话房间</div>
+                    <div className="mt-2 text-xs font-normal text-slate-300">生成房间名并把会话状态推进到可进入阶段</div>
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={busyAction !== null}
