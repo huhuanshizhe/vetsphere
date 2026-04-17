@@ -43,9 +43,18 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
 
   const roomName = access.session.rtc_room_name || createRoomName(id);
   const provider = access.session.rtc_provider || "livekit";
-  const nextStatus = ["requested", "triaged", "expert_assigned", "scheduled"].includes(access.session.status)
-    ? "ready"
-    : access.session.status;
+  
+  // 状态更新逻辑 - 使用简化状态
+  const currentStatus = access.session.status;
+  const currentStateV2 = access.session.session_state_v2;
+  
+  // 如果房间已打开，直接返回
+  if (access.session.rtc_room_name && access.session.room_status === "open") {
+    return apiSuccess(
+      { session: access.session, room: { provider, room_name: roomName } }, 
+      "房间已打开，可直接进入。"
+    );
+  }
 
   const roomService = new RoomServiceClient(
     getLiveKitHostForServer(),
@@ -66,6 +75,15 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
     }
   }
 
+  // 更新状态：房间打开后状态变为 waiting（等待入房）
+  const newStateV2 = currentStateV2 === 'cancelled' || currentStateV2 === 'ended' 
+    ? currentStateV2 
+    : 'waiting';
+  
+  const nextStatus = ["requested", "triaged", "expert_assigned", "scheduled"].includes(currentStatus)
+    ? "ready"
+    : currentStatus;
+
   const { data: updated, error } = await supabaseAdmin
     .from("guidance_sessions")
     .update({
@@ -73,6 +91,7 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
       rtc_room_name: roomName,
       room_status: "open",
       status: nextStatus,
+      session_state_v2: newStateV2,
     })
     .eq("id", id)
     .select("*")

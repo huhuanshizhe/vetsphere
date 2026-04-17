@@ -1,11 +1,12 @@
-import GuidanceGuestJoinClient from "@/components/guidance/GuidanceGuestJoinClient";
+import ObserverRoomClient from "@/components/guidance/ObserverRoomClient";
 
 type Props = {
   params: Promise<{ inviteToken: string }>;
 };
 
-export default async function GuidanceJoinPage({ params }: Props) {
+export default async function ObserverJoinPage({ params }: Props) {
   const { inviteToken } = await params;
 
-  return <GuidanceGuestJoinClient inviteToken={inviteToken} />;
+  // 观察员入口：无需登录，只需输入显示名称即可入房观看
+  return <ObserverRoomClient inviteToken={inviteToken} />;
 }

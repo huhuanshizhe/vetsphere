@@ -76,6 +76,7 @@ export async function POST(request: NextRequest, { params }: RouteProps) {
       room_name: access.session.rtc_room_name,
       participant_identity: identity,
       participant_name: participantName,
+      actor_role: access.actorRole,
       token: jwt,
       server_url: getLiveKitUrl(),
       integration_status: "ready",

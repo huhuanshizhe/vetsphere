@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Computed: 是否医生已认证
   const isDoctorApproved = doctorPrivilegeStatus === 'approved';
-  const canAccessDoctorWorkspace = isDoctorApproved;
+  const canAccessDoctorWorkspace = permissionFlags.can_access_doctor_workspace || isDoctorApproved;
 
   // Convert Supabase user to app User type
   const mapSupabaseUser = useCallback((supaUser: any): User => {

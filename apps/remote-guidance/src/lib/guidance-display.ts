@@ -1,3 +1,14 @@
+// 新简化状态系统 (V2)
+export const guidanceStateV2Labels: Record<string, string> = {
+  waiting: "等待中",
+  live: "进行中",
+  paused: "暂停中",
+  ended: "已结束",
+  archived: "已归档",
+  cancelled: "已取消",
+};
+
+// 旧状态标签（兼容）
 export const guidanceStatusLabels: Record<string, string> = {
   draft: "草稿",
   requested: "待分诊",
@@ -11,6 +22,34 @@ export const guidanceStatusLabels: Record<string, string> = {
   archived: "已归档",
   cancelled: "已取消",
 };
+
+// 旧状态到新状态的映射
+export function mapToStateV2(oldStatus: string): string {
+  const map: Record<string, string> = {
+    draft: "waiting",
+    requested: "waiting",
+    triaged: "waiting",
+    expert_assigned: "waiting",
+    scheduled: "waiting",
+    ready: "waiting",
+    live: "live",
+    paused: "paused",
+    ended: "ended",
+    archived: "archived",
+    cancelled: "cancelled",
+  };
+  return map[oldStatus] || oldStatus;
+}
+
+// 获取显示标签（优先使用V2状态）
+export function getStateLabel(status: string, stateV2?: string | null): string {
+  if (stateV2 && guidanceStateV2Labels[stateV2]) {
+    return guidanceStateV2Labels[stateV2];
+  }
+  // 兼容旧状态
+  const mappedState = mapToStateV2(status);
+  return guidanceStateV2Labels[mappedState] || guidanceStatusLabels[status] || status;
+}
 
 export const guidancePriorityLabels: Record<string, string> = {
   routine: "常规",
@@ -51,10 +90,13 @@ export function formatGuidanceDate(value?: string | null) {
   }
 }
 
-export function getStatusTone(status: string) {
-  if (status === "live") return "bg-teal-600/10 text-teal-700";
-  if (status === "cancelled") return "bg-rose-500/10 text-rose-700";
-  if (status === "ended" || status === "archived") return "bg-slate-200 text-slate-700";
-  if (status === "ready" || status === "scheduled" || status === "expert_assigned") return "bg-amber-400/15 text-amber-700";
+// 获取状态颜色样式（支持V2状态）
+export function getStatusTone(status: string, stateV2?: string | null): string {
+  const effectiveState = stateV2 || mapToStateV2(status);
+  
+  if (effectiveState === "live") return "bg-teal-600/10 text-teal-700";
+  if (effectiveState === "cancelled") return "bg-rose-500/10 text-rose-700";
+  if (effectiveState === "ended" || effectiveState === "archived") return "bg-slate-200 text-slate-700";
+  if (effectiveState === "waiting" || effectiveState === "paused") return "bg-amber-400/15 text-amber-700";
   return "bg-slate-100 text-slate-700";
 }

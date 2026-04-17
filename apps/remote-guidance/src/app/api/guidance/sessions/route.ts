@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
     title,
     session_type: sessionType,
     status: "requested",
+    session_state_v2: "waiting", // 新简化状态
     priority,
     surgeon_user_id: surgeonUserId,
     assistant_user_id: body.assistant_user_id || null,

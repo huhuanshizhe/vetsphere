@@ -4,9 +4,22 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getSessionSafe } from '@vetsphere/shared/services/supabase';
 
-const ALLOWED_TARGET_ORIGINS = new Set([
+const DEFAULT_ALLOWED_TARGET_ORIGINS = [
   'https://guidance.vetsphere.cn',
   'http://localhost:3006',
+  'http://127.0.0.1:3006',
+];
+
+const EXTRA_ALLOWED_TARGET_ORIGINS = (
+  process.env.NEXT_PUBLIC_GUIDANCE_BRIDGE_ALLOWED_ORIGINS || ''
+)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const ALLOWED_TARGET_ORIGINS = new Set([
+  ...DEFAULT_ALLOWED_TARGET_ORIGINS,
+  ...EXTRA_ALLOWED_TARGET_ORIGINS,
 ]);
 
 export default function AuthBridgePage() {
