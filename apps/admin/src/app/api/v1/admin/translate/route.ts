@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 // POST /api/v1/admin/translate - AI translation
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
   try {
     const body = await req.json();
     const { text, sourceLang, targetLang, field } = body;

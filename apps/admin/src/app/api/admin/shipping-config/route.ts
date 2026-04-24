@@ -1,16 +1,16 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 /**
  * GET /api/admin/shipping-config
  * 获取完整的运费配置：zones + methods + rates 全部关联
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
+
+  const supabase = getSupabaseAdmin();
   try {
     // 获取所有区域
     const { data: zones, error: zonesError } = await supabase
@@ -59,7 +59,11 @@ export async function GET() {
  * 创建新的配送区域或运输方式
  * Body: { type: 'zone' | 'method', data: {...} }
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
+  const supabase = getSupabaseAdmin();
   try {
     const body = await request.json();
     const { type, data } = body;
@@ -152,7 +156,11 @@ export async function POST(request: Request) {
  * 更新配送区域、运输方式或费率
  * Body: { type: 'zone' | 'method' | 'rate', id, data: {...} }
  */
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
+  const supabase = getSupabaseAdmin();
   try {
     const body = await request.json();
     const { type, id, data } = body;
@@ -213,7 +221,11 @@ export async function PUT(request: Request) {
  * 删除配送区域、运输方式或费率
  * Query: ?type=zone|method|rate&id=xxx
  */
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
+  const supabase = getSupabaseAdmin();
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');

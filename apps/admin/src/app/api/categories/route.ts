@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = getSupabaseAdmin();
 
 // GET /api/categories - Get category tree
 export async function GET(request: NextRequest) {
@@ -70,6 +68,8 @@ function buildTree(flatList: any[]) {
 
 // POST /api/categories - Create category
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
   try {
     const body = await request.json();
     const { name, slug, parent_id, level, icon, description, site_code } = body;

@@ -1,29 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-// 验证Admin权限，返回用户信息
-async function verifyAdmin(token: string) {
-  try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) return null;
-    
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('role, full_name')
-      .eq('id', user.id)
-      .single();
-    
-    if (!profile || profile.role !== 'Admin') return null;
-    return { user, profile };
-  } catch {
-    return null;
-  }
-}
+const supabaseAdmin = getSupabaseAdmin();
 
 // 从数据库字段转换为前端字段命名
 function mapDbToClient(row: any) {
@@ -61,18 +40,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
   try {
     const { id } = await params;
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
-    }
-    
-    const token = authHeader.replace('Bearer ', '');
-    const admin = await verifyAdmin(token);
-    if (!admin) {
-      return NextResponse.json({ error: '权限不足' }, { status: 403 });
-    }
     
     const { data, error } = await supabaseAdmin
       .from('doctor_applications')
@@ -99,20 +71,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
   try {
     const { id } = await params;
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
-    }
-    
-    const token = authHeader.replace('Bearer ', '');
-    const admin = await verifyAdmin(token);
-    if (!admin) {
-      return NextResponse.json({ error: '权限不足' }, { status: 403 });
-    }
-    
-    const { user: adminUser, profile: adminProfile } = admin;
+    const adminUser = { id: auth.admin.id };
+    const adminProfile = { full_name: auth.admin.fullName };
     
     const body = await request.json();
     const { action, reason } = body;

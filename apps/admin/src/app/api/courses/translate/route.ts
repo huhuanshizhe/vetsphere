@@ -6,7 +6,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 import {
   translateCourse,
@@ -15,14 +14,15 @@ import {
   type SupportedLanguage,
 } from '@vetsphere/shared/services/translation';
 import type { Course } from '@vetsphere/shared/types';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 // 初始化 Supabase Admin Client
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabaseAdmin = getSupabaseAdmin();
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
   try {
     const { courseId, preview } = await request.json();
 

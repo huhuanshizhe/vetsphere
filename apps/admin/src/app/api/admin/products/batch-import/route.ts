@@ -6,14 +6,12 @@
  */
 
 import { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { uploadMultipleImages } from '@/lib/oss';
 import OpenAI from 'openai';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = getSupabaseAdmin();
 
 interface ImportRow {
   _rowIndex: number;
@@ -666,6 +664,9 @@ Return EXACT JSON array [{"question":"...","answer":"..."},...], no extra text.`
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
   try {
     const { rows, translateAfterImport } = await request.json();
 

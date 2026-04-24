@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { parseViewMode, parseSiteCode, siteCodeErrorResponse } from '@/lib/site-resolver';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = getSupabaseAdmin();
 
 // DB snake_case -> frontend camelCase mapping
 // Only map fields that actually exist in the DB row to avoid phantom defaults
@@ -102,6 +100,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
   try {
     const { id } = await params;
     const view = parseViewMode(req);
@@ -151,6 +151,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
   try {
     const { id } = await params;
     const body = await req.json();

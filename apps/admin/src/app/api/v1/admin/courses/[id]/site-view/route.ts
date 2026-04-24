@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = getSupabaseAdmin();
 
 // POST /api/v1/admin/courses/[id]/site-view
 // 创建或更新课程的站点视图（绕过RLS，使用service role）
@@ -12,6 +10,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
   try {
     const { id } = await params;
     const body = await req.json();
@@ -60,6 +60,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
   try {
     const { id } = await params;
     const siteCode = req.nextUrl.searchParams.get('site_code');

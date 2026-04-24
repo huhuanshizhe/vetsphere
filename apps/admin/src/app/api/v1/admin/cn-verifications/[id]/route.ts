@@ -1,30 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-// 验证Admin权限
-async function verifyAdmin(token: string) {
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-  
-  if (authError || !user) {
-    return { error: '无效的认证令牌', status: 401 };
-  }
-  
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('role, full_name')
-    .eq('id', user.id)
-    .single();
-  
-  if (!profile || profile.role !== 'Admin') {
-    return { error: '无权限访问', status: 403 };
-  }
-  
-  return { user, profile };
-}
+const supabaseAdmin = getSupabaseAdmin();
 
 /**
  * GET /api/v1/admin/cn-verifications/[id]
@@ -34,18 +12,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
-    }
-    
-    const token = authHeader.replace('Bearer ', '');
-    const adminCheck = await verifyAdmin(token);
-    if ('error' in adminCheck) {
-      return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
-    }
-    
     const { id } = await params;
     
     // 获取认证详情 - 不使用 join，因为外键关系可能不存在
@@ -162,19 +131,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
-    }
-    
-    const token = authHeader.replace('Bearer ', '');
-    const adminCheck = await verifyAdmin(token);
-    if ('error' in adminCheck) {
-      return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status });
-    }
-    
-    const { user: adminUser, profile: adminProfile } = adminCheck;
+    const adminUser = { id: auth.admin.id, email: auth.admin.email };
+    const adminProfile = { full_name: auth.admin.fullName };
     const { id } = await params;
     const body = await request.json();
     const { action, rejectReason, reviewNote, approvedLevel } = body;

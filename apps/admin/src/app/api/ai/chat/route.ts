@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
   try {
     const apiKey = process.env.AI_API_KEY;
     const rawBaseURL = process.env.AI_BASE_URL || '';

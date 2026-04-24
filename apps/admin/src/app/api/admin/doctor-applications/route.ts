@@ -1,28 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-// 检查是否为管理员
-async function isAdmin(token: string): Promise<boolean> {
-  try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) return false;
-    
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    
-    return profile?.role === 'Admin';
-  } catch {
-    return false;
-  }
-}
+const supabaseAdmin = getSupabaseAdmin();
 
 // 从数据库字段转换为前端字段命名
 function mapDbToClient(row: any) {
@@ -57,17 +37,10 @@ function mapDbToClient(row: any) {
 
 // GET: 获取申请列表
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
-    }
-    
-    const token = authHeader.replace('Bearer ', '');
-    if (!await isAdmin(token)) {
-      return NextResponse.json({ error: '权限不足' }, { status: 403 });
-    }
-    
     // 获取查询参数
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');

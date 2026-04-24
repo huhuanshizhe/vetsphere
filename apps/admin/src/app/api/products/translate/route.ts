@@ -7,16 +7,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 // 允许较长执行时间（逐语言翻译，每种语言约 30-60 秒）
 export const maxDuration = 300; // 5 分钟
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = getSupabaseAdmin();
 
 // 支持的语言
 type SupportedLanguage = 'en' | 'zh' | 'th' | 'ja';
@@ -220,6 +218,8 @@ function generateSlug(text: string, lang: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
   try {
     const { productId } = await request.json();
 

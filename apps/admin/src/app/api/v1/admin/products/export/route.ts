@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 interface ExportProduct {
   id: string;
@@ -14,14 +15,13 @@ interface ExportProduct {
   supplier: { company_name: string } | { company_name: string }[] | null;
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = getSupabaseAdmin();
 
 // GET /api/v1/admin/products/export
 // Query params: status, search, supplier_id
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');

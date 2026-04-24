@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 // GET - Fetch all inquiries for admin
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
+  const supabase = getSupabaseAdmin();
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -91,6 +91,10 @@ export async function GET(request: NextRequest) {
 
 // PUT - Update inquiry status, priority, assignment, etc.
 export async function PUT(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
+  const supabase = getSupabaseAdmin();
   try {
     const body = await request.json();
     const { id, status, priority, assignedTo, internalNotes, followUpDate } = body;

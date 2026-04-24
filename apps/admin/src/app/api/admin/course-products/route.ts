@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 // GET - Fetch course-product relations for a specific course
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
+  const supabase = getSupabaseAdmin();
   try {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('courseId');
@@ -92,6 +92,10 @@ export async function GET(request: NextRequest) {
 
 // POST - Add, update, or remove course-product relations
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
+  const supabase = getSupabaseAdmin();
   try {
     const body = await request.json();
     const { action, courseId, productId, relationId, relationshipType, instructorNoteEn, instructorNoteTh, instructorNoteJa, dayIndex, relationType } = body;

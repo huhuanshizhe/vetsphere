@@ -1,23 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
 export async function POST(req: NextRequest) {
+  // 仅管理员可创建用户
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
+
   try {
     const { email, password, role, fullName, license, clinic, company, discipline } = await req.json();
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tvxrgbntiksskywsroax.supabase.co';
-
-    if (!serviceRoleKey) {
-      return NextResponse.json({ error: 'Service role key not configured' }, { status: 500 });
-    }
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
+    const adminClient = getSupabaseAdmin();
 
     const { data, error } = await adminClient.auth.admin.createUser({
       email,

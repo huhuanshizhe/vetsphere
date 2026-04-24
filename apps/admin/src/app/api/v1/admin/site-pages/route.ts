@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { parseSiteCode, siteCodeErrorResponse } from '@/lib/site-resolver';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = getSupabaseAdmin();
 
 // GET /api/v1/admin/site-pages?site_code=cn
 export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
   try {
     const siteCode = parseSiteCode(req);
     let query = supabase.from('site_pages').select('*');
@@ -26,6 +26,8 @@ export async function GET(req: NextRequest) {
 
 // POST /api/v1/admin/site-pages
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if ('response' in auth) return auth.response;
   try {
     const body = await req.json();
     const { data, error } = await supabase
