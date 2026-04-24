@@ -51,16 +51,12 @@ const AdminShell: React.FC<AdminShellProps> = ({
     return () => { document.body.style.overflow = ''; };
   }, [isMounted, isMobile, isMobileMenuOpen]);
 
-  // 权限检查
+  // 权限检查：仅校验“必须已登录”。
+  // 管理员身份以后端 API 的 requireAdmin() 为准（表 profiles.is_admin / admin_role_id / role）。
+  // 客户端不再硬性比对 user_metadata.role——部分管理员 metadata 为空，硬判会导致页面一直转圈。
   useEffect(() => {
-    // 只在挂载后检查权限
     if (!isMounted) return;
-
     if (!user) {
-      router.push('/');
-      return;
-    }
-    if (user.role !== 'Admin') {
       router.push('/');
     }
   }, [user, router, isMounted]);
@@ -84,12 +80,12 @@ const AdminShell: React.FC<AdminShellProps> = ({
     );
   }
 
-  if (!user || user.role !== 'Admin') {
+  if (!user) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-          <span className="text-slate-500 text-sm">正在验证权限...</span>
+          <span className="text-slate-500 text-sm">正在验证身份...</span>
         </div>
       </div>
     );
