@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { getAccessTokenLocal } from '@/lib/supabase/client';
 import { Card, StatCard, LoadingState, Tabs, QuickActionCard, ActivityItem } from '@/components/ui';
 import { useSite } from '@/context/SiteContext';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
@@ -30,7 +30,6 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const supabase = createClient();
   const { user } = useAuth();
   const { currentSite, siteLabel } = useSite();
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -45,52 +44,22 @@ export default function DashboardPage() {
   async function loadDashboardData() {
     setLoading(true);
     try {
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      
-      const [
-        { count: totalUsers },
-        { count: totalDoctors },
-        { count: pendingVerifications },
-        { count: totalCourses },
-        { count: publishedCourses },
-        { count: totalProducts },
-        { count: publishedProducts },
-        { count: newLeads },
-        { count: totalLeads },
-        { count: todayUsers },
-        { count: todayLeads },
-        { data: logs },
-      ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_doctor', true),
-        supabase.from('doctor_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending_review'),
-        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-        supabase.from('courses').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'published'),
-        supabase.from('products').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-        supabase.from('products').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'published'),
-        supabase.from('purchase_leads').select('*', { count: 'exact', head: true }).eq('status', 'new'),
-        supabase.from('purchase_leads').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', todayStart),
-        supabase.from('purchase_leads').select('*', { count: 'exact', head: true }).gte('created_at', todayStart),
-        supabase.from('admin_audit_logs').select('*').order('created_at', { ascending: false }).limit(8),
-      ]);
-      
-      setStats({
-        totalUsers: totalUsers || 0,
-        totalDoctors: totalDoctors || 0,
-        pendingVerifications: pendingVerifications || 0,
-        totalCourses: totalCourses || 0,
-        publishedCourses: publishedCourses || 0,
-        totalProducts: totalProducts || 0,
-        publishedProducts: publishedProducts || 0,
-        newLeads: newLeads || 0,
-        totalLeads: totalLeads || 0,
-        todayUsers: todayUsers || 0,
-        todayLeads: todayLeads || 0,
+      const token = await getAccessTokenLocal();
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      const res = await fetch(`/api/admin/dashboard-stats?site_code=${currentSite}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
       });
-      
-      setRecentLogs(logs || []);
+      if (!res.ok) {
+        console.error('加载仪表盘数据失败:', res.status, await res.text());
+        return;
+      }
+      const data = await res.json();
+      setStats(data.stats);
+      setRecentLogs(data.recentLogs || []);
     } catch (error) {
       console.error('加载仪表盘数据失败:', error);
     } finally {

@@ -48,13 +48,16 @@ const SiteSwitcher: React.FC<SiteSwitcherProps> = ({
   permissions = ['*'],
   size = 'md',
 }) => {
-  const { currentSite, setCurrentSite } = useSite();
+  const { currentSite, setCurrentSite, authorizedSites, authorizedSitesLoaded } = useSite();
   const isSuperAdmin = permissions.includes('*');
 
-  // Super admins see all 3 options; regular admins see CN & INTL only
-  const visibleCodes: SiteCode[] = isSuperAdmin
+  // 优先使用后端授权列表；未加载完成时按权限 fallback
+  const baseCodes: SiteCode[] = isSuperAdmin
     ? ['global', 'cn', 'intl']
     : ['cn', 'intl'];
+  const visibleCodes: SiteCode[] = authorizedSitesLoaded
+    ? baseCodes.filter((c) => authorizedSites.includes(c))
+    : baseCodes;
 
   const sizeClasses = size === 'sm' 
     ? 'px-2.5 py-1.5 text-[11px] gap-1'
