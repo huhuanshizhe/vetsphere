@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminShell from '@/components/AdminShell';
 import { SiteProvider } from '@/context/SiteContext';
+import { ToastProvider } from '@/context/ToastContext';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -34,7 +35,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <SiteProvider>
-      <AdminShell>{children}</AdminShell>
+      <ToastProvider>
+        <AdminShell>{children}</AdminShell>
+      </ToastProvider>
     </SiteProvider>
   );
 }

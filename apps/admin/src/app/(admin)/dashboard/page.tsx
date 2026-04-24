@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getAccessTokenLocal } from '@/lib/supabase/client';
-import { Card, StatCard, LoadingState, Tabs, QuickActionCard, ActivityItem } from '@/components/ui';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
+import { Card, StatCard, Tabs, QuickActionCard, ActivityItem } from '@/components/ui';
 import { useSite } from '@/context/SiteContext';
+import { useGlobalToast } from '@/context/ToastContext';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import {
   ClipboardCheck,
@@ -32,40 +33,34 @@ interface DashboardStats {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { currentSite, siteLabel } = useSite();
+  const toast = useGlobalToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    loadDashboardData();
-  }, [currentSite]);
-
-  async function loadDashboardData() {
-    setLoading(true);
-    try {
-      const token = await getAccessTokenLocal();
-      if (!token) {
-        setLoading(false);
-        return;
+    let aborted = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await apiFetch<{ stats: DashboardStats; recentLogs: any[] }>(
+          `/api/admin/dashboard-stats?site_code=${currentSite}`
+        );
+        if (aborted) return;
+        setStats(data.stats);
+        setRecentLogs(data.recentLogs || []);
+      } catch (err) {
+        if (aborted) return;
+        toast.error(`加载仪表盘数据失败：${getErrorMessage(err)}`);
+      } finally {
+        if (!aborted) setLoading(false);
       }
-      const res = await fetch(`/api/admin/dashboard-stats?site_code=${currentSite}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      });
-      if (!res.ok) {
-        console.error('加载仪表盘数据失败:', res.status, await res.text());
-        return;
-      }
-      const data = await res.json();
-      setStats(data.stats);
-      setRecentLogs(data.recentLogs || []);
-    } catch (error) {
-      console.error('加载仪表盘数据失败:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+    })();
+    return () => {
+      aborted = true;
+    };
+  }, [currentSite, toast]);
 
   const actionLabels: Record<string, string> = {
     create: '创建', update: '更新', delete: '删除', publish: '发布',
@@ -78,7 +73,32 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return <div className="p-8"><LoadingState /></div>;
+    return (
+      <div className="space-y-6" aria-busy="true" aria-live="polite">
+        {/* skeleton: 欢迎区 */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-1 space-y-2">
+            <div className="h-7 w-64 rounded-md bg-slate-200 animate-pulse" />
+            <div className="h-4 w-80 rounded bg-slate-100 animate-pulse" />
+          </div>
+          <div className="lg:w-80 h-24 rounded-xl bg-slate-100 animate-pulse" />
+        </div>
+        {/* skeleton: 4个 KPI */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-28 rounded-xl bg-white border border-slate-200 p-4 flex flex-col gap-3"
+            >
+              <div className="h-4 w-20 bg-slate-100 rounded animate-pulse" />
+              <div className="h-8 w-16 bg-slate-200 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+        {/* skeleton: 主区 */}
+        <div className="h-64 rounded-xl bg-white border border-slate-200 animate-pulse" />
+      </div>
+    );
   }
 
   const greeting = () => {

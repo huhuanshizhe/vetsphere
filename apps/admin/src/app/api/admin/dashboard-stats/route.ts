@@ -8,7 +8,13 @@ import { requireAdmin } from '@/lib/auth-middleware';
  * 仪表盘聚合接口：一次返回所有 KPI，按站点过滤。
  * - global：不过滤站点，看全量数据
  * - cn / intl：通过 *_site_views 表过滤
+ *
+ * 内存级缓存：5 分钟，按 site_code 分键
  */
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const cache = new Map<string, { ts: number; payload: unknown }>();
+
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
@@ -16,7 +22,15 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabaseAdmin();
   const url = new URL(req.url);
   const siteCode = url.searchParams.get('site_code') || 'global';
+  const forceRefresh = url.searchParams.get('refresh') === '1';
   const filterSite = siteCode === 'cn' || siteCode === 'intl';
+
+  const cached = cache.get(siteCode);
+  if (!forceRefresh && cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    return NextResponse.json(cached.payload, {
+      headers: { 'X-Cache': 'HIT', 'X-Cache-Age': String(Date.now() - cached.ts) },
+    });
+  }
 
   try {
     const now = new Date();
@@ -107,7 +121,7 @@ export async function GET(req: NextRequest) {
         .limit(8),
     ]);
 
-    return NextResponse.json({
+    const payload = {
       site_code: siteCode,
       stats: {
         totalUsers: totalUsersR.count || 0,
@@ -123,6 +137,12 @@ export async function GET(req: NextRequest) {
         todayLeads: todayLeadsR.count || 0,
       },
       recentLogs: logsR.data || [],
+    };
+
+    cache.set(siteCode, { ts: Date.now(), payload });
+
+    return NextResponse.json(payload, {
+      headers: { 'X-Cache': 'MISS' },
     });
   } catch (error) {
     console.error('Failed to fetch dashboard stats:', error);
