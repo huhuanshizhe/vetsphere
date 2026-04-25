@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { writeAuditLog } from '@/lib/audit';
 
 /**
  * GET /api/admin/shipping-config
@@ -141,6 +142,14 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) throw error;
+      writeAuditLog(request, auth.admin, {
+        module: 'shipping',
+        action: 'create',
+        targetType: 'shipping_rate',
+        targetId: (rate as { id?: string } | null)?.id ?? null,
+        newValue: data,
+        changesSummary: '创建运费费率',
+      });
       return NextResponse.json({ success: true, type: 'rate', data: rate });
     }
 
@@ -178,6 +187,14 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (error) throw error;
+      writeAuditLog(request, auth.admin, {
+        module: 'shipping',
+        action: 'update',
+        targetType: 'shipping_zone',
+        targetId: id,
+        newValue: data,
+        changesSummary: '更新配送区域',
+      });
       return NextResponse.json({ success: true, type: 'zone', data: zone });
     }
 
@@ -190,6 +207,14 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (error) throw error;
+      writeAuditLog(request, auth.admin, {
+        module: 'shipping',
+        action: 'update',
+        targetType: 'shipping_method',
+        targetId: id,
+        newValue: data,
+        changesSummary: '更新运输方式',
+      });
       return NextResponse.json({ success: true, type: 'method', data: method });
     }
 
@@ -206,6 +231,14 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (error) throw error;
+      writeAuditLog(request, auth.admin, {
+        module: 'shipping',
+        action: 'update',
+        targetType: 'shipping_rate',
+        targetId: id,
+        newValue: data,
+        changesSummary: '更新运费费率',
+      });
       return NextResponse.json({ success: true, type: 'rate', data: rate });
     }
 
@@ -254,6 +287,14 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase.from(table).delete().eq('id', id);
 
     if (error) throw error;
+
+    writeAuditLog(request, auth.admin, {
+      module: 'shipping',
+      action: 'delete',
+      targetType: `shipping_${type}`,
+      targetId: id,
+      changesSummary: `删除运费配置：${type}`,
+    });
 
     return NextResponse.json({ success: true, type });
   } catch (error) {

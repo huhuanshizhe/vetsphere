@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseViewMode, parseSiteCode, siteCodeErrorResponse } from '@/lib/site-resolver';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { writeAuditLog } from '@/lib/audit';
 
 const supabase = getSupabaseAdmin();
 
@@ -91,6 +92,16 @@ export async function PATCH(
       throw error;
     }
 
+    writeAuditLog(req, auth.admin, {
+      module: 'product',
+      action: 'update',
+      targetType: 'product',
+      targetId: id,
+      targetName: (data as { name?: string } | null)?.name ?? null,
+      newValue: updateData,
+      changesSummary: `更新商品字段：${Object.keys(updateData).join(', ')}`,
+    });
+
     console.log('[Product PATCH] Success');
     return NextResponse.json(data);
   } catch (error) {
@@ -146,6 +157,16 @@ export async function DELETE(
       throw deleteError;
     }
 
+    writeAuditLog(req, auth.admin, {
+      module: 'product',
+      action: 'delete',
+      targetType: 'product',
+      targetId: id,
+      targetName: product.name,
+      oldValue: { status: product.status },
+      changesSummary: `软删除商品：${product.name}`,
+    });
+
     console.log(`[Product DELETE] Successfully deleted: ${product.name}`);
     return NextResponse.json({ success: true, message: `产品 "${product.name}" 已删除` });
   } catch (error) {
@@ -179,6 +200,17 @@ export async function POST(
         .single();
       
       if (error) throw error;
+
+      writeAuditLog(req, auth.admin, {
+        module: 'product',
+        action: 'approve',
+        targetType: 'product',
+        targetId: id,
+        targetName: (data as { name?: string } | null)?.name ?? null,
+        newValue: { status: 'approved' },
+        changesSummary: '通过商品审核',
+      });
+
       return NextResponse.json({ success: true, data });
     }
     
@@ -202,6 +234,17 @@ export async function POST(
         .single();
       
       if (error) throw error;
+
+      writeAuditLog(req, auth.admin, {
+        module: 'product',
+        action: 'reject',
+        targetType: 'product',
+        targetId: id,
+        targetName: (data as { name?: string } | null)?.name ?? null,
+        newValue: { status: 'rejected', rejection_reason: reason },
+        changesSummary: `驳回商品：${reason}`,
+      });
+
       return NextResponse.json({ success: true, data });
     }
     

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseViewMode, parseSiteCode, siteCodeErrorResponse } from '@/lib/site-resolver';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { writeAuditLog } from '@/lib/audit';
 
 const supabase = getSupabaseAdmin();
 
@@ -168,6 +169,17 @@ export async function PATCH(
       .single();
 
     if (error) throw error;
+
+    writeAuditLog(req, auth.admin, {
+      module: 'course',
+      action: 'update',
+      targetType: 'course',
+      targetId: id,
+      targetName: (data as { title?: string } | null)?.title ?? null,
+      newValue: dbPayload,
+      changesSummary: `更新课程字段：${Object.keys(dbPayload).join(', ')}`,
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Failed to update course:', error);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { writeAuditLog } from '@/lib/audit';
 
 const supabase = getSupabaseAdmin();
 
@@ -35,6 +36,19 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    writeAuditLog(req, auth.admin, {
+      module: 'clinic_program',
+      action: 'create',
+      targetType: 'clinic_program',
+      targetId: (data as { id?: string } | null)?.id ?? null,
+      targetName: (data as { title?: string; name?: string } | null)?.title
+        || (data as { title?: string; name?: string } | null)?.name
+        || null,
+      newValue: body,
+      changesSummary: '创建诊所项目',
+    });
+
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Failed to create clinic program:', error);

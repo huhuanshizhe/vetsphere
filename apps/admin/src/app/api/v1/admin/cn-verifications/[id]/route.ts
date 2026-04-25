@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { writeAuditLog } from '@/lib/audit';
 
 const supabaseAdmin = getSupabaseAdmin();
 
@@ -222,6 +223,20 @@ export async function POST(
         reject_reason: action === 'reject' ? rejectReason : null,
         review_note: reviewNote || null,
       });
+
+    // 跨模块审计日志（admin_audit_logs）
+    writeAuditLog(request, auth.admin, {
+      module: 'doctor_verify',
+      action,
+      targetType: 'cn_verification_request',
+      targetId: id,
+      oldValue: { status: verification.status },
+      newValue: { status: newStatus, reject_reason: rejectReason || null },
+      changesSummary:
+        action === 'approve'
+          ? `通过 CN 认证（${approvedLevel || 'professional_verified'}）`
+          : `驳回 CN 认证：${rejectReason || ''}`,
+    });
     
     // 更新用户状态快照
     if (action === 'approve' || action === 'reject') {

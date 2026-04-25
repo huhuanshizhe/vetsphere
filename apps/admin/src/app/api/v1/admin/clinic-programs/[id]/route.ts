@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { writeAuditLog } from '@/lib/audit';
 
 const supabase = getSupabaseAdmin();
 
@@ -45,6 +46,19 @@ export async function PATCH(
       .single();
 
     if (error) throw error;
+
+    writeAuditLog(req, auth.admin, {
+      module: 'clinic_program',
+      action: 'update',
+      targetType: 'clinic_program',
+      targetId: id,
+      targetName: (data as { title?: string; name?: string } | null)?.title
+        || (data as { title?: string; name?: string } | null)?.name
+        || null,
+      newValue: body,
+      changesSummary: `更新诊所项目字段：${Object.keys(body).join(', ')}`,
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Failed to update clinic program:', error);
@@ -67,6 +81,15 @@ export async function DELETE(
       .eq('id', id);
 
     if (error) throw error;
+
+    writeAuditLog(req, auth.admin, {
+      module: 'clinic_program',
+      action: 'delete',
+      targetType: 'clinic_program',
+      targetId: id,
+      changesSummary: '删除诊所项目',
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete clinic program:', error);

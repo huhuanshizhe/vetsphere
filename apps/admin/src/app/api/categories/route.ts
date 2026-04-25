@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { writeAuditLog } from '@/lib/audit';
 
 const supabase = getSupabaseAdmin();
 
@@ -93,6 +94,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    writeAuditLog(request, auth.admin, {
+      module: 'category',
+      action: 'create',
+      targetType: 'product_category',
+      targetId: id,
+      targetName: name,
+      newValue: { name, slug, parent_id, level, site_code },
+      changesSummary: `创建商品分类：${name}`,
+    });
+
     return NextResponse.json({ category: data });
   } catch (error) {
     console.error('Failed to create category:', error);
