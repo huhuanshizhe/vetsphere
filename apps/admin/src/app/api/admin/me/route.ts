@@ -17,7 +17,9 @@ export const GET = withAdminAuth(async (_req, { admin }) => {
     email: admin.email,
     fullName: admin.fullName,
     role: admin.role,
+    roleCode: admin.roleCode,
     adminRoleId: admin.adminRoleId,
     authorizedSites: admin.authorizedSites,
+    permissions: admin.permissions,
   });
 });

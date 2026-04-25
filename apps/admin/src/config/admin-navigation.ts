@@ -50,7 +50,7 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
   },
 
   // ============================================
-  // 2. 用户与审核 - 用户管理 + 医生审核 + 医生端业务
+  // 2. 用户与审核 - 用户管理 + 医生审核 + 角色权限
   // ============================================
   {
     key: 'users-audit',
@@ -65,6 +65,20 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         permission: 'user.view',
       },
       {
+        key: 'doctor-verifications',
+        label: '医生认证',
+        icon: 'ClipboardCheck',
+        href: '/verifications',
+        permission: 'doctor_verify.view',
+      },
+      {
+        key: 'verified-doctors',
+        label: '已认证医生',
+        icon: 'Stethoscope',
+        href: '/verified-doctors',
+        permission: 'doctor_verify.view',
+      },
+      {
         key: 'roles',
         label: '角色权限',
         icon: 'Shield',
@@ -72,21 +86,24 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         permission: 'role.view',
       },
       {
-        key: 'doctor-verifications',
-        label: '医生审核',
-        icon: 'ClipboardCheck',
-        href: '/cn-verifications',
-        permission: 'doctor_verify.view',
-        siteScope: 'cn',
+        key: 'system-admins',
+        label: '管理员管理',
+        icon: 'UserCog',
+        href: '/system/admins',
+        permission: 'system.view',
       },
-      {
-        key: 'doctors',
-        label: '医生列表',
-        icon: 'Stethoscope',
-        href: '/doctors',
-        permission: 'doctor_verify.view',
-        siteScope: 'cn',
-      },
+    ],
+  },
+
+  // ============================================
+  // 2.5 医生业务数据 - 仅 CN 站
+  // ============================================
+  {
+    key: 'doctor-business',
+    label: '医生业务数据',
+    icon: 'Stethoscope',
+    siteScope: 'cn',
+    items: [
       {
         key: 'doctor-clients',
         label: '客户数据',
@@ -395,13 +412,6 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
     icon: 'Settings',
     items: [
       {
-        key: 'system-admins',
-        label: '管理员管理',
-        icon: 'UserCog',
-        href: '/system/admins',
-        permission: 'system.view',
-      },
-      {
         key: 'dictionaries',
         label: '字典配置',
         icon: 'BookOpen',
@@ -434,13 +444,6 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         label: '操作日志',
         icon: 'ScrollText',
         href: '/operation-logs',
-        permission: 'system.view',
-      },
-      {
-        key: 'audit-logs',
-        label: '审计日志',
-        icon: 'Search',
-        href: '/system/audit-logs',
         permission: 'system.view',
       },
       {

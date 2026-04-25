@@ -7,10 +7,17 @@ export interface AdminProfile {
   fullName: string | null;
   isAdmin: boolean;
   adminRoleId: string | null;
+  /** 角色 code（admin_roles.code）。用于前端展示与判超管 */
+  roleCode: string | null;
   /** 兼容字段：旧库使用 profiles.role = 'Admin' */
   role: string | null;
   /** 该管理员被授权访问的站点（cn / intl / global） */
   authorizedSites: string[];
+  /**
+   * 权限码列表（如 ['user.view','doctor_verify.approve']）。
+   * super_admin / 旧 is_admin 用户返回 ['*']（全权限）。
+   */
+  permissions: string[];
 }
 
 export class AdminAuthError extends Error {
@@ -85,14 +92,50 @@ export async function authenticateAdmin(req: NextRequest): Promise<AdminProfile>
   // 未来可在 admin_roles 表加 authorized_sites jsonb 字段
   const authorizedSites = ['cn', 'intl', 'global'];
 
+  // 4. 解析角色 code + 权限列表（RBAC）
+  let roleCode: string | null = null;
+  let permissions: string[] = [];
+
+  if (profile.admin_role_id) {
+    const { data: roleRow } = await supabase
+      .from('admin_roles')
+      .select('code')
+      .eq('id', profile.admin_role_id)
+      .maybeSingle();
+    roleCode = roleRow?.code ?? null;
+
+    if (roleCode === 'super_admin') {
+      permissions = ['*'];
+    } else {
+      const { data: rps } = await supabase
+        .from('role_permissions')
+        .select('permission:permissions(code)')
+        .eq('role_id', profile.admin_role_id);
+      permissions = (rps || [])
+        .map((r: { permission: { code: string } | { code: string }[] | null }) => {
+          const p = r.permission;
+          if (!p) return null;
+          if (Array.isArray(p)) return p[0]?.code ?? null;
+          return p.code;
+        })
+        .filter((c): c is string => !!c);
+    }
+  } else {
+    // 兼容：旧 is_admin / role='Admin' 用户视为超管
+    permissions = ['*'];
+    roleCode = 'super_admin';
+  }
+
   return {
     id: profile.id,
     email: profile.email ?? user.email ?? '',
     fullName: profile.full_name ?? null,
     isAdmin: true,
     adminRoleId: profile.admin_role_id ?? null,
+    roleCode,
     role: profile.role ?? null,
     authorizedSites,
+    permissions,
   };
 }
 
@@ -162,4 +205,36 @@ export function assertSiteAuthorized(admin: AdminProfile, site: string): void {
   if (!admin.authorizedSites.includes(site)) {
     throw new AdminAuthError(`无权访问站点：${site}`, 403);
   }
+}
+
+/**
+ * 判断 admin 是否拥有指定权限码。
+ * - permissions 包含 '*' → 全权限通过
+ * - 否则需要精确包含 code
+ */
+export function adminHasPermission(admin: AdminProfile, code: string): boolean {
+  if (!admin.permissions || admin.permissions.length === 0) return false;
+  if (admin.permissions.includes('*')) return true;
+  return admin.permissions.includes(code);
+}
+
+/**
+ * 同时校验「是管理员」+「拥有指定权限码」。
+ * 失败时返回 NextResponse；成功时返回 admin profile。
+ */
+export async function requirePermission(
+  req: NextRequest,
+  code: string
+): Promise<{ admin: AdminProfile } | { response: NextResponse }> {
+  const result = await requireAdmin(req);
+  if ('response' in result) return result;
+  if (!adminHasPermission(result.admin, code)) {
+    return {
+      response: NextResponse.json(
+        { error: `权限不足：缺少 ${code}` },
+        { status: 403 }
+      ),
+    };
+  }
+  return result;
 }

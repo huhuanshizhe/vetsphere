@@ -6,6 +6,7 @@ import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import AdminSidebarNew from './AdminSidebarNew';
 import SiteSwitcher from './SiteSwitcher';
 import { getBreadcrumbs } from '@/config/admin-navigation';
+import { useAdminMe } from '@/hooks/usePermission';
 import { Menu, X, ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -27,6 +28,7 @@ const AdminShell: React.FC<AdminShellProps> = ({
   actions,
 }) => {
   const { user, logout } = useAuth();
+  const { me: adminMe } = useAdminMe();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -119,7 +121,7 @@ const AdminShell: React.FC<AdminShellProps> = ({
       {/* Sidebar */}
       <AdminSidebarNew
         user={{ name: user.name, email: user.email, role: user.role }}
-        permissions={['*']} // TODO: 从数据库获取真实权限
+        permissions={adminMe?.permissions ?? ['*']}
         onLogout={handleLogout}
         isMobile={isMobile}
         isOpen={isMobileMenuOpen}
@@ -156,7 +158,7 @@ const AdminShell: React.FC<AdminShellProps> = ({
                 </nav>
 
                 {/* Site Switcher */}
-                <SiteSwitcher permissions={['*']} size="sm" />
+                <SiteSwitcher permissions={adminMe?.permissions ?? ['*']} size="sm" />
               </div>
 
               {/* Title & actions */}
