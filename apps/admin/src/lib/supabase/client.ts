@@ -1,32 +1,13 @@
-import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let client: SupabaseClient<any, 'public', any> | null = null;
+// 复用 packages/shared 的全局 supabase 单例，避免 admin 应用同时初始化
+// 两个 SupabaseClient 共用同一个 storage key（sb-*-auth-token）抢 Web Lock，
+// 导致 getSession() / 鉴权请求出现 "Lock was released because another request stole it"。
+import { getSupabaseClient, getAccessTokenSafe } from '@vetsphere/shared/services/supabase';
 
 export function createClient() {
-  if (client) return client;
-  
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client = createSupabaseClient<any>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  
-  return client;
+  return getSupabaseClient();
 }
-
-// Deduplication wrapper for getSession() - prevents Web Locks contention
-let _localSessionPromise: ReturnType<SupabaseClient['auth']['getSession']> | null = null;
 
 export async function getAccessTokenLocal(): Promise<string | null> {
-  const supabase = createClient();
-  if (_localSessionPromise) {
-    const { data: { session } } = await _localSessionPromise;
-    return session?.access_token || null;
-  }
-  _localSessionPromise = supabase.auth.getSession().finally(() => {
-    _localSessionPromise = null;
-  });
-  const { data: { session } } = await _localSessionPromise;
-  return session?.access_token || null;
+  return getAccessTokenSafe();
 }
+

@@ -1,4 +1,39 @@
-import { getAccessTokenLocal } from '@/lib/supabase/client';
+import { getAccessTokenSafe } from '@vetsphere/shared/services/supabase';
+
+/**
+ * 直接从 localStorage 读取 supabase 缓存的 access_token，绕过
+ * `supabase.auth.getSession()` 在 Next.js dev 环境下偶发的 Web Lock
+ * "Lock was released because another request stole it" 死锁。
+ * 失败时回退到 supabase SDK，并加 1.5s 超时兜底。
+ */
+async function readAccessTokenFast(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (!k || !k.includes('-auth-token')) continue;
+      const raw = window.localStorage.getItem(k);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.access_token) return parsed.access_token as string;
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  // Fallback with timeout
+  try {
+    return await Promise.race<string | null>([
+      getAccessTokenSafe(),
+      new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 1500)),
+    ]);
+  } catch {
+    return null;
+  }
+}
 
 export class ApiError extends Error {
   status: number;
@@ -41,7 +76,7 @@ export async function apiFetch<T = unknown>(
   }
 
   if (withAuth) {
-    const token = await getAccessTokenLocal();
+    const token = await readAccessTokenFast();
     if (token) {
       finalHeaders.Authorization = `Bearer ${token}`;
     }

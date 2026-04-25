@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import { api } from '@vetsphere/shared/services/api';
@@ -12,11 +12,13 @@ export default function AdminLoginPage() {
   const { user, login } = useAuth();
   const router = useRouter();
 
-  // If already logged in as admin, redirect
-  if (user && user.role === 'Admin') {
-    router.push('/dashboard');
-    return null;
-  }
+  // 已登录则跳转到 dashboard。放进 useEffect 避免渲染期 setState 警告。
+  // 管理员身份由后端 API 强制校验，前端不再硬性比对 user.role。
+  useEffect(() => {
+    if (user) {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
 
   const handleLogin = async (email: string, password: string) => {
     setLoading(true);
@@ -24,13 +26,9 @@ export default function AdminLoginPage() {
 
     try {
       const { user: authUser } = await api.login(email, password);
-
-      if (authUser.role !== 'Admin') {
-        throw new Error('权限不足：仅限系统管理员登录');
-      }
-
+      // 不再前端硬比对 role，登录后由 (admin)/layout 与后端 requireAdmin 共同决定
       login(authUser);
-      router.push('/dashboard');
+      router.replace('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || '登录失败，请检查账号密码');
