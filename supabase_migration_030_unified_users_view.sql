@@ -47,7 +47,7 @@ UNION ALL
 SELECT
   pf.id                                         AS user_id,
   'intl'::text                                  AS source_site,
-  pf.phone                                      AS contact,
+  NULL::text                                    AS contact,
   pf.email                                      AS email,
   pf.full_name                                  AS display_name,
   pf.avatar_url                                 AS avatar_url,

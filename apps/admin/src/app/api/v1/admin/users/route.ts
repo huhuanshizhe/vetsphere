@@ -118,13 +118,13 @@ export async function GET(request: NextRequest) {
     // intl → profiles 表（排除管理员）
     let q = supabase
       .from('profiles')
-      .select('id, email, full_name, phone, avatar_url, is_admin, created_at, last_login_at, deleted_at', { count: 'exact' })
+      .select('id, email, full_name, avatar_url, is_admin, created_at, last_login_at, deleted_at', { count: 'exact' })
       .or('is_admin.is.null,is_admin.eq.false')
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (keyword) {
-      q = q.or(`email.ilike.%${keyword}%,full_name.ilike.%${keyword}%,phone.ilike.%${keyword}%`);
+      q = q.or(`email.ilike.%${keyword}%,full_name.ilike.%${keyword}%`);
     }
     q = q.range(from, to);
 
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
       return {
         user_id: u.id,
         source_site: 'intl',
-        contact: u.email || u.phone,
+        contact: u.email,
         email: u.email,
         display_name: u.full_name,
         avatar_url: u.avatar_url,
