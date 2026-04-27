@@ -22,6 +22,14 @@ export function getSupabaseClient(): SupabaseClient {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
+        // Disable Web Locks API. supabase-js 默认用 navigator.locks 做 token
+        // 刷新互斥, 但在 Next.js dev (HMR / Strict Mode / 多个 client 实例) 下
+        // 偶发 "Lock was released because another request stole it" 死锁,
+        // 导致 .from(...).select(...) 这类 PostgREST 调用永久 pending,
+        // 表现为 admin 各列表页 "加载中..." 转圈不消失。
+        // 用 no-op lock 直接放行 (单标签场景无竞态, 跨标签虽可能短暂冲突
+        // 但不会卡死页面, 取舍之下选可用性)。
+        lock: async (_name, _acquireTimeout, fn) => fn(),
       },
     });
   }
