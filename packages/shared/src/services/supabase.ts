@@ -74,15 +74,57 @@ export function getSessionSafe() {
   return _sessionPromise;
 }
 
-export async function getAccessTokenSafe(): Promise<string | null> {
+/**
+ * 直接从 localStorage 读取 supabase 缓存的 access_token，绕过
+ * `supabase.auth.getSession()` 在 Next.js dev 环境下偶发的 Web Lock
+ * "Lock was released because another request stole it" 死锁。
+ * 仅在浏览器环境可用。
+ */
+function readAccessTokenFromStorage(): string | null {
+  if (typeof window === 'undefined') return null;
   try {
-    const { data: { session }, error } = await getSessionSafe();
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (!k || !k.includes('-auth-token')) continue;
+      const raw = window.localStorage.getItem(k);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        const token = parsed?.access_token;
+        if (typeof token === 'string' && token.length > 0) return token;
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export async function getAccessTokenSafe(): Promise<string | null> {
+  // 优先走 localStorage 同步快路径，规避 Web Lock 死锁导致的页面"一直加载中"
+  const fast = readAccessTokenFromStorage();
+  if (fast) return fast;
+
+  // 回退到 SDK，叠加 1.5s 超时兜底，避免 getSession() 永远 pending
+  try {
+    const result = await Promise.race<
+      Awaited<ReturnType<typeof getSessionSafe>> | null
+    >([
+      getSessionSafe(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+    ]);
+    if (!result) {
+      console.warn('[getAccessTokenSafe] getSession timed out (1.5s)');
+      return null;
+    }
+    const { data: { session }, error } = result;
     if (error) {
       console.error('[getAccessTokenSafe] Session error:', error);
       return null;
     }
     if (!session) {
-      console.log('[getAccessTokenSafe] No session found');
       return null;
     }
     return session.access_token || null;
