@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
 import { api } from '@vetsphere/shared/services/api';
@@ -19,6 +19,10 @@ export default function AdminLoginPage() {
       router.replace('/dashboard');
     }
   }, [user, router]);
+
+  if (user) {
+    return null;
+  }
 
   const handleLogin = async (email: string, password: string) => {
     setLoading(true);

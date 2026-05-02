@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body>
-        <Providers locale="zh" locales={siteConfig.locales} defaultLocale={siteConfig.defaultLocale} siteConfig={siteConfig}>
+        <Providers locale="zh" locales={siteConfig.locales} defaultLocale={siteConfig.defaultLocale} siteConfig={siteConfig} disableWishlist>
           {children}
         </Providers>
       </body>

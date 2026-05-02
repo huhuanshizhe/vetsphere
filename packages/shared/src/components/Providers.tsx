@@ -15,6 +15,7 @@ interface ProvidersProps {
   locales?: readonly SupportedLocale[];
   defaultLocale?: SupportedLocale;
   siteConfig?: SiteConfig;
+  disableWishlist?: boolean;
 }
 
 export default function Providers({ 
@@ -22,7 +23,8 @@ export default function Providers({
   locale = 'zh',
   locales = ['zh', 'en', 'th'] as const,
   defaultLocale = 'zh',
-  siteConfig
+  siteConfig,
+  disableWishlist = false,
 }: ProvidersProps) {
   // Default config for backwards compatibility
   const config: SiteConfig = siteConfig || {
@@ -45,7 +47,7 @@ export default function Providers({
   return (
     <SiteConfigProvider config={config}>
       <AuthProvider>
-        <WishlistProvider>
+        {disableWishlist ? (
           <Suspense fallback={null}>
             <LanguageProvider 
               initialLocale={locale}
@@ -59,7 +61,23 @@ export default function Providers({
               </CartProvider>
             </LanguageProvider>
           </Suspense>
-        </WishlistProvider>
+        ) : (
+          <WishlistProvider>
+            <Suspense fallback={null}>
+              <LanguageProvider 
+                initialLocale={locale}
+                locales={locales}
+                defaultLocale={defaultLocale}
+              >
+                <CartProvider>
+                  <NotificationProvider>
+                    {children}
+                  </NotificationProvider>
+                </CartProvider>
+              </LanguageProvider>
+            </Suspense>
+          </WishlistProvider>
+        )}
       </AuthProvider>
     </SiteConfigProvider>
   );

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { getSessionSafe } from '../services/supabase';
+import { useSiteConfig } from './SiteConfigContext';
 
 interface WishlistProduct {
   id: string;
@@ -43,6 +44,7 @@ interface WishlistContextType {
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
+  const { isAdmin } = useSiteConfig();
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
@@ -61,6 +63,13 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   // Load wishlist from API
   const refreshWishlist = useCallback(async () => {
+    if (isAdmin) {
+      setWishlist([]);
+      setWishlistProductIds(new Set());
+      setIsLoading(false);
+      return;
+    }
+
     const token = await getToken();
     if (!token) {
       setWishlist([]);
@@ -93,7 +102,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, isAdmin]);
 
   // Check if product is in wishlist
   const isInWishlist = useCallback((productId: string): boolean => {
@@ -105,6 +114,10 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     productId: string,
     productType: string = 'product'
   ): Promise<{ success: boolean; alreadyExists?: boolean }> => {
+    if (isAdmin) {
+      return { success: false };
+    }
+
     const token = await getToken();
     if (!token) {
       // Not logged in, redirect to login
@@ -138,10 +151,12 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       console.error('[WishlistContext] Error adding to wishlist:', error);
       return { success: false };
     }
-  }, [getToken, refreshWishlist]);
+  }, [getToken, isAdmin, refreshWishlist]);
 
   // Remove from wishlist
   const removeFromWishlist = useCallback(async (productId: string): Promise<boolean> => {
+    if (isAdmin) return false;
+
     const token = await getToken();
     if (!token) return false;
 
@@ -172,7 +187,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       console.error('[WishlistContext] Error removing from wishlist:', error);
       return false;
     }
-  }, [getToken]);
+  }, [getToken, isAdmin]);
 
   // Toggle wishlist (add if not exists, remove if exists)
   const toggleWishlist = useCallback(async (productId: string, productType?: string): Promise<boolean> => {

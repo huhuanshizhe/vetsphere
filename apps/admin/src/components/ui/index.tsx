@@ -426,9 +426,7 @@ interface TableContainerProps {
 export const TableContainer: React.FC<TableContainerProps> = ({ children }) => {
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-slate-200">
-        {children}
-      </table>
+      {children}
     </div>
   );
 };
