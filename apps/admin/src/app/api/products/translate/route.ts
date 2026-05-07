@@ -41,7 +41,7 @@ function getAIClient(apiKey: string) {
     baseURL,
     fetch,
     timeout: 180000, // 3 分钟超时（网络到中国大陆服务器可能较慢）
-    maxRetries: 3,   // 3 次重试（含指数退避），应对间歇性连接失败
+    maxRetries: 3, // 3 次重试（含指数退避），应对间歇性连接失败
   });
 }
 
@@ -52,7 +52,7 @@ async function translateToOneLang(
   content: Record<string, string>,
   targetLang: SupportedLanguage,
   sourceLang: SupportedLanguage,
-  client: OpenAI
+  client: OpenAI,
 ): Promise<Record<string, string>> {
   const sourceLanguageName = LANGUAGE_NAMES[sourceLang];
   const targetLanguageName = LANGUAGE_NAMES[targetLang];
@@ -75,14 +75,19 @@ SOURCE CONTENT (${sourceLanguageName}):
 ${contentEntries}
 
 Return format (EXACT JSON, no extra text):
-{ ${Object.keys(content).map(k => `"${k}": "translated value"`).join(', ')} }`;
+{ ${Object.keys(content)
+    .map((k) => `"${k}": "translated value"`)
+    .join(', ')} }`;
 
   console.log(`[Product Translation] Translating to ${targetLanguageName} (${targetLang})...`);
 
   const completion = await client.chat.completions.create({
     model,
     messages: [
-      { role: 'system', content: 'You are a professional e-commerce translator. Return only valid JSON. /no_think' },
+      {
+        role: 'system',
+        content: 'You are a professional e-commerce translator. Return only valid JSON. /no_think',
+      },
       { role: 'user', content: prompt },
     ],
     temperature: 0.3,
@@ -109,7 +114,10 @@ Return format (EXACT JSON, no extra text):
   }
 
   const result = JSON.parse(cleanText.trim());
-  console.log(`[Product Translation] ${targetLanguageName} done, fields:`, Object.keys(result).length);
+  console.log(
+    `[Product Translation] ${targetLanguageName} done, fields:`,
+    Object.keys(result).length,
+  );
   return result;
 }
 
@@ -120,7 +128,7 @@ async function translateSpecifications(
   specs: Record<string, string>,
   targetLang: SupportedLanguage,
   sourceLang: SupportedLanguage,
-  client: OpenAI
+  client: OpenAI,
 ): Promise<Record<string, string>> {
   const sourceLanguageName = LANGUAGE_NAMES[sourceLang];
   const targetLanguageName = LANGUAGE_NAMES[targetLang];
@@ -142,7 +150,11 @@ Return EXACT JSON object with translated keys and values, no extra text.`;
   const completion = await client.chat.completions.create({
     model,
     messages: [
-      { role: 'system', content: 'You are a professional product specification translator. Return only valid JSON. /no_think' },
+      {
+        role: 'system',
+        content:
+          'You are a professional product specification translator. Return only valid JSON. /no_think',
+      },
       { role: 'user', content: prompt },
     ],
     temperature: 0.2,
@@ -163,11 +175,11 @@ Return EXACT JSON object with translated keys and values, no extra text.`;
  * 翻译 FAQ (JSONB)
  */
 async function translateFaq(
-  faq: Array<{question: string; answer: string}>,
+  faq: Array<{ question: string; answer: string }>,
   targetLang: SupportedLanguage,
   sourceLang: SupportedLanguage,
-  client: OpenAI
-): Promise<Array<{question: string; answer: string}>> {
+  client: OpenAI,
+): Promise<Array<{ question: string; answer: string }>> {
   const sourceLanguageName = LANGUAGE_NAMES[sourceLang];
   const targetLanguageName = LANGUAGE_NAMES[targetLang];
   const model = process.env.AI_MODEL || 'qwen3-coder-plus';
@@ -188,7 +200,10 @@ Return EXACT JSON array with structure [{"question": "...", "answer": "..."}, ..
   const completion = await client.chat.completions.create({
     model,
     messages: [
-      { role: 'system', content: 'You are a professional FAQ translator. Return only valid JSON array. /no_think' },
+      {
+        role: 'system',
+        content: 'You are a professional FAQ translator. Return only valid JSON array. /no_think',
+      },
       { role: 'user', content: prompt },
     ],
     temperature: 0.3,
@@ -224,19 +239,13 @@ export async function POST(request: NextRequest) {
     const { productId } = await request.json();
 
     if (!productId) {
-      return NextResponse.json(
-        { error: '缺少产品ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '缺少产品ID' }, { status: 400 });
     }
 
     // 获取 API Key
     const apiKey = process.env.AI_API_KEY || process.env.DASHSCOPE_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'AI API Key 未配置' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'AI API Key 未配置' }, { status: 500 });
     }
 
     // 获取产品数据
@@ -247,15 +256,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (fetchError || !product) {
-      return NextResponse.json(
-        { error: '产品不存在' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: '产品不存在' }, { status: 404 });
     }
 
     // 确定源语言和目标语言
     const sourceLang = (product.publish_language || 'zh') as SupportedLanguage;
-    const targetLangs = ALL_LANGS.filter(l => l !== sourceLang);
+    const targetLangs = ALL_LANGS.filter((l) => l !== sourceLang);
 
     console.log('[Product Translation] Source:', sourceLang, 'Targets:', targetLangs);
 
@@ -278,28 +284,33 @@ export async function POST(request: NextRequest) {
     for (const field of translatableFields) {
       // 根据源语言读取正确的字段：中文→基础字段，其他→后缀字段
       const readKey = sourceLang === 'zh' ? field : `${field}_${sourceLang}`;
-      const value = (product as Record<string, unknown>)[readKey];
+      const fallbackKey = field;
+      const value =
+        (product as Record<string, unknown>)[readKey] ??
+        (sourceLang === 'zh' ? undefined : (product as Record<string, unknown>)[fallbackKey]);
       if (typeof value === 'string' && value.trim()) {
         content[field] = value;
       }
     }
 
     if (Object.keys(content).length === 0) {
-      return NextResponse.json(
-        { error: '没有可翻译的内容' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '没有可翻译的内容' }, { status: 400 });
     }
 
     console.log('[Product Translation] Fields to translate:', Object.keys(content));
 
     // 提取 specifications 和 faq（JSONB 字段）
     const specsReadKey = sourceLang === 'zh' ? 'specifications' : `specifications_${sourceLang}`;
-    const sourceSpecs = (product as Record<string, unknown>)[specsReadKey];
-    const hasSpecs = sourceSpecs && typeof sourceSpecs === 'object' && Object.keys(sourceSpecs).length > 0;
+    const sourceSpecs =
+      (product as Record<string, unknown>)[specsReadKey] ??
+      (sourceLang === 'zh' ? undefined : (product as Record<string, unknown>)['specifications']);
+    const hasSpecs =
+      sourceSpecs && typeof sourceSpecs === 'object' && Object.keys(sourceSpecs).length > 0;
 
     const faqReadKey = sourceLang === 'zh' ? 'faq' : `faq_${sourceLang}`;
-    const sourceFaq = (product as Record<string, unknown>)[faqReadKey];
+    const sourceFaq =
+      (product as Record<string, unknown>)[faqReadKey] ??
+      (sourceLang === 'zh' ? undefined : (product as Record<string, unknown>)['faq']);
     const hasFaq = Array.isArray(sourceFaq) && sourceFaq.length > 0;
 
     console.log('[Product Translation] Has specs:', hasSpecs, 'Has FAQ:', hasFaq);
@@ -340,31 +351,53 @@ export async function POST(request: NextRequest) {
         // 翻译规格参数（JSONB）
         if (hasSpecs) {
           try {
-            const translatedSpecs = await translateSpecifications(sourceSpecs as Record<string, string>, targetLang, sourceLang, client);
-            const specsWriteKey = targetLang === 'zh' ? 'specifications' : `specifications_${targetLang}`;
+            const translatedSpecs = await translateSpecifications(
+              sourceSpecs as Record<string, string>,
+              targetLang,
+              sourceLang,
+              client,
+            );
+            const specsWriteKey =
+              targetLang === 'zh' ? 'specifications' : `specifications_${targetLang}`;
             updatePayload[specsWriteKey] = translatedSpecs;
             console.log(`[Product Translation] Specs to ${LANGUAGE_NAMES[targetLang]} done`);
           } catch (specsError) {
-            console.error(`[Product Translation] Specs translation failed for ${targetLang}:`, specsError instanceof Error ? specsError.message : specsError);
+            console.error(
+              `[Product Translation] Specs translation failed for ${targetLang}:`,
+              specsError instanceof Error ? specsError.message : specsError,
+            );
           }
         }
 
         // 翻译 FAQ（JSONB）
         if (hasFaq) {
           try {
-            const translatedFaq = await translateFaq(sourceFaq as Array<{question: string; answer: string}>, targetLang, sourceLang, client);
+            const translatedFaq = await translateFaq(
+              sourceFaq as Array<{ question: string; answer: string }>,
+              targetLang,
+              sourceLang,
+              client,
+            );
             const faqWriteKey = targetLang === 'zh' ? 'faq' : `faq_${targetLang}`;
             updatePayload[faqWriteKey] = translatedFaq;
             console.log(`[Product Translation] FAQ to ${LANGUAGE_NAMES[targetLang]} done`);
           } catch (faqError) {
-            console.error(`[Product Translation] FAQ translation failed for ${targetLang}:`, faqError instanceof Error ? faqError.message : faqError);
+            console.error(
+              `[Product Translation] FAQ translation failed for ${targetLang}:`,
+              faqError instanceof Error ? faqError.message : faqError,
+            );
           }
         }
 
         completedLangs.push(targetLang);
-        console.log(`[Product Translation] ${LANGUAGE_NAMES[targetLang]} completed (${completedLangs.length}/${targetLangs.length})`);
+        console.log(
+          `[Product Translation] ${LANGUAGE_NAMES[targetLang]} completed (${completedLangs.length}/${targetLangs.length})`,
+        );
       } catch (langError) {
-        console.error(`[Product Translation] Failed for ${LANGUAGE_NAMES[targetLang]}:`, langError instanceof Error ? langError.message : langError);
+        console.error(
+          `[Product Translation] Failed for ${LANGUAGE_NAMES[targetLang]}:`,
+          langError instanceof Error ? langError.message : langError,
+        );
         failedLangs.push(targetLang);
       }
     }
@@ -373,7 +406,7 @@ export async function POST(request: NextRequest) {
     if (completedLangs.length === 0) {
       return NextResponse.json(
         { error: '所有语言翻译失败，请检查网络连接后重试' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -390,29 +423,26 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('[Product Translation] Update failed:', updateError.message);
-      return NextResponse.json(
-        { error: '保存翻译失败: ' + updateError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: '保存翻译失败: ' + updateError.message }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      message: failedLangs.length > 0
-        ? `部分翻译完成（${failedLangs.map(l => LANGUAGE_NAMES[l as SupportedLanguage]).join('、')}翻译失败）`
-        : '翻译完成',
+      message:
+        failedLangs.length > 0
+          ? `部分翻译完成（${failedLangs.map((l) => LANGUAGE_NAMES[l as SupportedLanguage]).join('、')}翻译失败）`
+          : '翻译完成',
       sourceLang,
       targetLangs,
       completedLangs,
       failedLangs,
       translatedAt: updatePayload.translated_at,
     });
-
   } catch (error) {
     console.error('[Product Translation] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : '翻译服务异常' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

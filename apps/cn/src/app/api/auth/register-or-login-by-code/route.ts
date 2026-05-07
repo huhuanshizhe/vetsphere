@@ -6,6 +6,100 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 const SMS_MAX_ERRORS = 5;
+const DEMO_MOBILE = process.env.DEMO_TEST_MOBILE || '13800000000';
+
+async function ensureDemoDoctorAccount(userId: string, mobile: string) {
+  if (mobile !== DEMO_MOBILE) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+
+  await Promise.all([
+    supabaseAdmin.from('cn_user_identity_profiles').upsert(
+      {
+        user_id: userId,
+        site_code: 'cn',
+        identity_type: 'veterinarian',
+        identity_group: 'professional',
+        identity_group_v2: 'doctor',
+        doctor_subtype: 'veterinarian',
+        identity_selected_at: now,
+        identity_selection_source: 'profile_edit',
+        updated_at: now,
+      },
+      { onConflict: 'user_id,site_code' },
+    ),
+    supabaseAdmin.from('cn_user_profiles').upsert(
+      {
+        user_id: userId,
+        site_code: 'cn',
+        display_name: '医生测试账号',
+        real_name: '医生测试账号',
+        organization_name: 'VetSphere Demo Clinic',
+        job_title: '执业兽医师',
+        profile_completion_percent: 100,
+        profile_completion_status: 'complete',
+        updated_at: now,
+      },
+      { onConflict: 'user_id,site_code' },
+    ),
+    supabaseAdmin.from('profiles').upsert({
+      id: userId,
+      role: 'Doctor',
+      full_name: '医生测试账号',
+      updated_at: now,
+    }),
+  ]);
+
+  await supabaseAdmin.from('cn_verification_requests').insert({
+    user_id: userId,
+    site_code: 'cn',
+    verification_type: 'veterinarian',
+    status: 'approved',
+    real_name: '医生测试账号',
+    organization_name: 'VetSphere Demo Clinic',
+    position_title: '执业兽医师',
+    specialty_tags: ['demo'],
+    agree_verification_statement: true,
+    submitted_at: now,
+    reviewed_at: now,
+    approved_level: 'demo_doctor',
+    updated_at: now,
+  });
+
+  await supabaseAdmin.from('cn_user_state_snapshots').upsert(
+    {
+      user_id: userId,
+      site_code: 'cn',
+      onboarding_status: 'completed',
+      identity_type: 'veterinarian',
+      identity_group: 'professional',
+      identity_group_v2: 'doctor',
+      doctor_subtype: 'veterinarian',
+      identity_verified_flag: true,
+      verification_status: 'approved',
+      verification_required: true,
+      verification_reject_reason: null,
+      access_level: 'verified_professional',
+      permission_flags: {
+        can_access_user_center: true,
+        can_purchase_courses: true,
+        can_purchase_products: true,
+        can_manage_orders: true,
+        can_access_growth_system: true,
+        can_access_doctor_workspace: true,
+        can_access_medical_features: true,
+        can_access_professional_courses: true,
+        can_view_restricted_product_info: true,
+      },
+      redirect_hint: 'go_home',
+      doctor_privilege_status: 'approved',
+      updated_at: now,
+    },
+    { onConflict: 'user_id,site_code' },
+  );
+}
 
 // 验证手机号格式
 function isValidMobile(mobile: string): boolean {
@@ -16,24 +110,24 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { mobile, code, agreeTerms } = body;
-    
+
     // 参数校验
     if (!mobile || !code) {
       return NextResponse.json({ error: '请输入手机号和验证码' }, { status: 400 });
     }
-    
+
     if (!isValidMobile(mobile)) {
       return NextResponse.json({ error: '请输入正确的手机号' }, { status: 400 });
     }
-    
+
     if (!/^\d{6}$/.test(code)) {
       return NextResponse.json({ error: '验证码格式不正确' }, { status: 400 });
     }
-    
+
     if (!agreeTerms) {
       return NextResponse.json({ error: '请先阅读并同意用户协议和隐私政策' }, { status: 400 });
     }
-    
+
     // 查找最新的有效验证码
     const { data: smsRecord, error: smsError } = await supabaseAdmin
       .from('sms_verification_codes')
@@ -45,16 +139,16 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
-    
+
     if (smsError || !smsRecord) {
       return NextResponse.json({ error: '验证码无效或已过期' }, { status: 400 });
     }
-    
+
     // 检查错误次数
     if (smsRecord.error_count >= SMS_MAX_ERRORS) {
       return NextResponse.json({ error: '验证码错误次数过多，请重新获取' }, { status: 400 });
     }
-    
+
     // 验证验证码
     if (smsRecord.code !== code) {
       // 增加错误计数
@@ -62,50 +156,50 @@ export async function POST(request: NextRequest) {
         .from('sms_verification_codes')
         .update({ error_count: smsRecord.error_count + 1 })
         .eq('id', smsRecord.id);
-      
+
       return NextResponse.json({ error: '验证码错误' }, { status: 400 });
     }
-    
+
     // 标记验证码已使用
     await supabaseAdmin
       .from('sms_verification_codes')
       .update({ is_used: true, used_at: new Date().toISOString() })
       .eq('id', smsRecord.id);
-    
+
     // 获取客户端IP
     const forwardedFor = request.headers.get('x-forwarded-for');
     const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : 'unknown';
-    
+
     // 检查用户是否已存在（通过cn_users表）
     const { data: existingCnUser } = await supabaseAdmin
       .from('cn_users')
       .select('id, status')
       .eq('mobile', mobile)
       .single();
-    
+
     let userId: string;
     let isNewUser = false;
-    let session: any;
-    
+
     if (existingCnUser) {
       // 已有用户 - 检查状态
       if (existingCnUser.status === 'disabled' || existingCnUser.status === 'banned') {
         return NextResponse.json(
           { error: '账号已被限制使用，请联系客服', accountStatus: existingCnUser.status },
-          { status: 403 }
+          { status: 403 },
         );
       }
-      
+
       userId = existingCnUser.id;
-      
+
       // 生成登录会话
       // 使用Supabase的signInWithPassword或自定义token
       // 这里我们使用admin API生成会话
-      const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'magiclink',
-        email: `${mobile}@vetsphere.cn`, // 使用手机号生成虚拟邮箱
-      });
-      
+      const { data: sessionData, error: sessionError } =
+        await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email: `${mobile}@vetsphere.cn`, // 使用手机号生成虚拟邮箱
+        });
+
       if (sessionError) {
         console.error('Error generating session:', sessionError);
         // 回退方案：直接用admin获取用户
@@ -122,7 +216,7 @@ export async function POST(request: NextRequest) {
             .eq('id', userId);
         }
       }
-      
+
       // 更新登录信息
       await supabaseAdmin
         .from('cn_users')
@@ -132,15 +226,14 @@ export async function POST(request: NextRequest) {
           mobile_verified: true,
         })
         .eq('id', userId);
-      
     } else {
       // 新用户 - 创建账号
       isNewUser = true;
-      
+
       // 使用虚拟邮箱创建Supabase用户
       const virtualEmail = `${mobile}@vetsphere.cn`;
       const tempPassword = `VS_${mobile}_${Date.now()}`; // 临时密码，用户可后续设置
-      
+
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: virtualEmail,
         password: tempPassword,
@@ -153,55 +246,51 @@ export async function POST(request: NextRequest) {
           site: 'cn',
         },
       });
-      
+
       if (createError) {
         console.error('Error creating user:', createError);
         return NextResponse.json({ error: '注册失败，请稍后重试' }, { status: 500 });
       }
-      
+
       userId = newUser.user.id;
-      
+
       // 创建cn_users记录
-      const { error: cnUserError } = await supabaseAdmin
-        .from('cn_users')
-        .insert({
-          id: userId,
-          mobile,
-          mobile_verified: true,
-          status: 'active',
-          registered_at: new Date().toISOString(),
-          last_login_at: new Date().toISOString(),
-          last_login_ip: ipAddress,
-          login_count: 1,
-        });
-      
+      const { error: cnUserError } = await supabaseAdmin.from('cn_users').insert({
+        id: userId,
+        mobile,
+        mobile_verified: true,
+        status: 'active',
+        registered_at: new Date().toISOString(),
+        last_login_at: new Date().toISOString(),
+        last_login_ip: ipAddress,
+        login_count: 1,
+      });
+
       if (cnUserError) {
         console.error('Error creating cn_user:', cnUserError);
         // 不阻止登录，后续可修复
       }
-      
+
       // 创建初始状态快照 - 新用户直接可用，无需强制身份选择
-      await supabaseAdmin
-        .from('cn_user_state_snapshots')
-        .insert({
-          user_id: userId,
-          site_code: 'cn',
-          onboarding_status: 'completed',
-          verification_status: 'not_started',
-          access_level: 'registered_basic',
-          redirect_hint: 'go_home',
-        });
-      
+      await supabaseAdmin.from('cn_user_state_snapshots').insert({
+        user_id: userId,
+        site_code: 'cn',
+        onboarding_status: 'completed',
+        verification_status: 'not_started',
+        access_level: 'registered_basic',
+        redirect_hint: 'go_home',
+      });
+
       // 创建profiles记录（兼容现有系统）
-      await supabaseAdmin
-        .from('profiles')
-        .upsert({
-          id: userId,
-          role: 'User',
-          created_at: new Date().toISOString(),
-        });
+      await supabaseAdmin.from('profiles').upsert({
+        id: userId,
+        role: 'User',
+        created_at: new Date().toISOString(),
+      });
     }
-    
+
+    await ensureDemoDoctorAccount(userId, mobile);
+
     // 使用admin API直接为用户创建session token
     // 注意：这是一个简化实现，生产环境可能需要更安全的方案
     const { data: signInData, error: signInError } = await supabaseAdmin.auth.admin.generateLink({
@@ -211,14 +300,14 @@ export async function POST(request: NextRequest) {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
       },
     });
-    
+
     // 获取用户完整状态
     const { data: userState } = await supabaseAdmin
       .from('v_cn_user_full_state')
       .select('*')
       .eq('user_id', userId)
       .single();
-    
+
     // 始终查询真实的认证请求状态（不依赖快照/触发器）
     const { data: latestVerification } = await supabaseAdmin
       .from('cn_verification_requests')
@@ -228,9 +317,9 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
-    
+
     const realVerificationStatus = latestVerification?.status || 'not_started';
-    
+
     // 如果视图查询失败，返回基础状态
     const state = userState || {
       user_id: userId,
@@ -244,17 +333,18 @@ export async function POST(request: NextRequest) {
       doctor_subtype: null,
       doctor_privilege_status: 'not_applicable',
     };
-    
+
     // 用真实的认证状态覆盖快照中可能过时的值
     const identityGroupV2 = state.identity_group_v2;
     let realDoctorPrivilegeStatus = 'not_applicable';
     if (identityGroupV2 === 'doctor') {
       if (realVerificationStatus === 'approved') realDoctorPrivilegeStatus = 'approved';
-      else if (['submitted', 'under_review'].includes(realVerificationStatus)) realDoctorPrivilegeStatus = 'pending_review';
+      else if (['submitted', 'under_review'].includes(realVerificationStatus))
+        realDoctorPrivilegeStatus = 'pending_review';
       else if (realVerificationStatus === 'rejected') realDoctorPrivilegeStatus = 'rejected';
       else realDoctorPrivilegeStatus = 'not_started';
     }
-    
+
     // 计算跳转提示 - 仅阻塞性条件才特殊跳转，其余一律首页
     let finalRedirectHint = 'go_home';
     if (!isNewUser) {
@@ -264,7 +354,7 @@ export async function POST(request: NextRequest) {
         finalRedirectHint = 'go_identity_select';
       }
     }
-    
+
     // 计算双轨权限
     const doctorPrivilegeStatus = realDoctorPrivilegeStatus;
     const isDoctorApproved = identityGroupV2 === 'doctor' && doctorPrivilegeStatus === 'approved';
@@ -279,7 +369,7 @@ export async function POST(request: NextRequest) {
       can_access_professional_courses: isDoctorApproved,
       can_view_restricted_product_info: isDoctorApproved,
     };
-    
+
     return NextResponse.json({
       success: true,
       isNewUser,
@@ -298,7 +388,7 @@ export async function POST(request: NextRequest) {
         identityVerifiedFlag: state.identity_verified_flag,
       },
       onboarding: {
-        status: isNewUser ? 'completed' : (state.onboarding_status || 'completed'),
+        status: isNewUser ? 'completed' : state.onboarding_status || 'completed',
         profileCompletionPercent: state.profile_completion_percent || 0,
       },
       verification: {
@@ -308,7 +398,10 @@ export async function POST(request: NextRequest) {
       },
       doctorAccess: {
         status: doctorPrivilegeStatus,
-        rejectReason: doctorPrivilegeStatus === 'rejected' ? (latestVerification?.reject_reason || state.verification_reject_reason) : null,
+        rejectReason:
+          doctorPrivilegeStatus === 'rejected'
+            ? latestVerification?.reject_reason || state.verification_reject_reason
+            : null,
       },
       permissions,
       access: {
@@ -320,7 +413,6 @@ export async function POST(request: NextRequest) {
       // 注意：实际生产环境应该使用更安全的session管理
       authToken: signInData?.properties?.hashed_token,
     });
-    
   } catch (err) {
     console.error('register-or-login-by-code error:', err);
     return NextResponse.json({ error: '服务器错误' }, { status: 500 });

@@ -1,9 +1,9 @@
 'use client';
 
-import Link from "next/link";
-import { startTransition, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAccessTokenSafe } from "@vetsphere/shared/services/supabase";
+import Link from 'next/link';
+import { startTransition, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getAccessTokenSafe } from '@vetsphere/shared/services/supabase';
 import {
   formatGuidanceDate,
   getStatusTone,
@@ -11,7 +11,7 @@ import {
   guidancePriorityLabels,
   guidanceSessionTypeLabels,
   guidanceStatusLabels,
-} from "@/lib/guidance-display";
+} from '@/lib/guidance-display';
 
 type GuidanceParticipant = {
   id: string;
@@ -70,6 +70,16 @@ type GuidanceSessionDetail = {
     assigned_expert_user_id?: string | null;
   };
   actorRole: string | null;
+  relatedConsultation: {
+    id: string;
+    order_no: string;
+    title: string;
+    order_status: string;
+    pricing_mode: string;
+    quoted_price_amount?: number | null;
+    currency_code?: string | null;
+    created_at: string;
+  } | null;
   participants: GuidanceParticipant[];
   devices: GuidanceDevice[];
   recordings: GuidanceRecording[];
@@ -88,23 +98,40 @@ type EmergencyLinkState = {
 };
 
 const eventLabelMap: Record<string, string> = {
-  session_requested: "发起会话",
-  session_updated: "更新会话",
-  session_cancelled: "取消会话",
-  expert_assigned: "指派专家",
-  participant_invited: "邀请参与者",
-  room_opened: "打开房间",
-  room_token_requested: "申请房间凭证",
-  participant_joined: "成员加入",
-  participant_left: "成员离开",
-  network_warning: "网络告警",
-  snapshot_taken: "截图",
-  annotation_added: "添加标注",
-  recording_started: "开始录制",
-  recording_stopped: "停止录制",
-  session_paused: "暂停会话",
-  session_resumed: "恢复会话",
-  session_ended: "结束会话",
+  session_requested: '发起会话',
+  session_updated: '更新会话',
+  session_cancelled: '取消会话',
+  expert_assigned: '指派专家',
+  participant_invited: '邀请参与者',
+  room_opened: '打开房间',
+  room_token_requested: '申请房间凭证',
+  participant_joined: '成员加入',
+  participant_left: '成员离开',
+  network_warning: '网络告警',
+  snapshot_taken: '截图',
+  annotation_added: '添加标注',
+  recording_started: '开始录制',
+  recording_stopped: '停止录制',
+  session_paused: '暂停会话',
+  session_resumed: '恢复会话',
+  session_ended: '结束会话',
+};
+
+const consultationStatusLabels: Record<string, string> = {
+  submitted: '待处理',
+  quoted: '待支付',
+  paid: '已支付',
+  in_progress: '处理中',
+  delivered: '已交付',
+  completed: '已完成',
+  cancelled: '已取消',
+};
+
+const consultationPricingModeLabels: Record<string, string> = {
+  fixed_price: '固定报价',
+  tiered_package: '套餐报价',
+  subscription_entitlement: '订阅权益',
+  overage: '超额计费',
 };
 
 export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: string }) {
@@ -117,9 +144,9 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [emergencyLinks, setEmergencyLinks] = useState<EmergencyLinkState>({});
   const [annotationDraft, setAnnotationDraft] = useState<AnnotationDraft>({
-    title: "",
-    content: "",
-    annotation_type: "text_note",
+    title: '',
+    content: '',
+    annotation_type: 'text_note',
   });
 
   async function fetchDetail() {
@@ -129,22 +156,22 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
     try {
       const token = await getAccessTokenSafe();
       if (!token) {
-        throw new Error("未获取到登录态，请先完成中国站登录。");
+        throw new Error('未获取到登录态，请先完成中国站登录。');
       }
 
       const response = await fetch(`/api/guidance/sessions/${sessionId}`, {
         headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
+        cache: 'no-store',
       });
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload?.message || "加载会话详情失败。");
+        throw new Error(payload?.message || '加载会话详情失败。');
       }
 
       setDetail(payload?.data || null);
     } catch (fetchError) {
-      setError(fetchError instanceof Error ? fetchError.message : "加载会话详情失败。");
+      setError(fetchError instanceof Error ? fetchError.message : '加载会话详情失败。');
     } finally {
       setLoading(false);
     }
@@ -160,8 +187,8 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
     return [
       `${guidanceSessionTypeLabels[detail.session.session_type] || detail.session.session_type}`,
       `${guidancePriorityLabels[detail.session.priority] || detail.session.priority}`,
-      detail.session.procedure_name || "未填写术式",
-      detail.session.hospital_name || "未填写机构",
+      detail.session.procedure_name || '未填写术式',
+      detail.session.hospital_name || '未填写机构',
     ];
   }, [detail]);
 
@@ -173,27 +200,27 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
     try {
       const token = await getAccessTokenSafe();
       if (!token) {
-        throw new Error("未获取到登录态，请先完成中国站登录。");
+        throw new Error('未获取到登录态，请先完成中国站登录。');
       }
 
       const response = await fetch(path, {
-        method: "POST",
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          ...(options?.body ? { "Content-Type": "application/json" } : {}),
+          ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
         },
         ...options,
       });
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload?.message || "操作失败。");
+        throw new Error(payload?.message || '操作失败。');
       }
 
-      setActionMessage(successMessage || payload?.message || "操作成功。");
+      setActionMessage(successMessage || payload?.message || '操作成功。');
       await fetchDetail();
     } catch (requestError) {
-      setActionError(requestError instanceof Error ? requestError.message : "操作失败。");
+      setActionError(requestError instanceof Error ? requestError.message : '操作失败。');
     } finally {
       setBusyAction(null);
     }
@@ -201,7 +228,7 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
 
   async function createAnnotation() {
     if (!annotationDraft.title.trim() && !annotationDraft.content.trim()) {
-      setActionError("请至少填写一个标注标题或内容。");
+      setActionError('请至少填写一个标注标题或内容。');
       return;
     }
 
@@ -210,17 +237,17 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
       {
         body: JSON.stringify(annotationDraft),
       },
-      "标注已写入会话时间轴。"
+      '标注已写入会话时间轴。',
     );
 
     setAnnotationDraft({
-      title: "",
-      content: "",
-      annotation_type: "text_note",
+      title: '',
+      content: '',
+      annotation_type: 'text_note',
     });
   }
 
-  async function generateEmergencyLink(role: "expert" | "observer") {
+  async function generateEmergencyLink(role: 'expert' | 'observer') {
     setBusyAction(`emergency:${role}`);
     setActionError(null);
     setActionMessage(null);
@@ -228,13 +255,13 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
     try {
       const token = await getAccessTokenSafe();
       if (!token) {
-        throw new Error("未获取到登录态，请先完成中国站登录。");
+        throw new Error('未获取到登录态，请先完成中国站登录。');
       }
 
       const response = await fetch(`/api/guidance/sessions/${sessionId}/emergency-link`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ role }),
@@ -242,7 +269,7 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload?.message || "生成应急入会链接失败。");
+        throw new Error(payload?.message || '生成应急入会链接失败。');
       }
 
       const joinUrl = payload?.data?.join_url as string | undefined;
@@ -251,10 +278,16 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
         await navigator.clipboard.writeText(joinUrl);
       }
 
-      setActionMessage(joinUrl ? `已生成并复制${role === "expert" ? "专家" : "观察员"}应急入会链接。` : "应急入会链接已生成。");
+      setActionMessage(
+        joinUrl
+          ? `已生成并复制${role === 'expert' ? '专家' : '观察员'}应急入会链接。`
+          : '应急入会链接已生成。',
+      );
       await fetchDetail();
     } catch (requestError) {
-      setActionError(requestError instanceof Error ? requestError.message : "生成应急入会链接失败。");
+      setActionError(
+        requestError instanceof Error ? requestError.message : '生成应急入会链接失败。',
+      );
     } finally {
       setBusyAction(null);
     }
@@ -279,9 +312,11 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
       <main className="guidance-shell">
         <div className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-5 py-10 lg:px-8">
           <section className="guidance-card rounded-[2rem] px-7 py-8">
-            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-rose-600">Load Failed</div>
+            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-rose-600">
+              Load Failed
+            </div>
             <h1 className="mt-4 text-3xl font-semibold text-slate-950">会话详情暂时无法读取</h1>
-            <p className="mt-4 text-sm leading-7 text-slate-600">{error || "未找到会话数据。"}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-600">{error || '未找到会话数据。'}</p>
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
@@ -310,14 +345,19 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
           <div className="grid gap-0 lg:grid-cols-[1.25fr_0.75fr]">
             <div className="border-b border-slate-200 px-7 py-8 lg:border-b-0 lg:border-r">
               <div className="flex flex-wrap items-center gap-3">
-                <span className={`guidance-pill inline-flex ${getStatusTone(detail.session.status)}`}>
+                <span
+                  className={`guidance-pill inline-flex ${getStatusTone(detail.session.status)}`}
+                >
                   {guidanceStatusLabels[detail.session.status] || detail.session.status}
                 </span>
                 <span className="guidance-pill inline-flex bg-amber-500/10 text-amber-700">
                   {guidancePriorityLabels[detail.session.priority] || detail.session.priority}
                 </span>
                 <span className="guidance-pill inline-flex bg-slate-100 text-slate-700">
-                  角色：{detail.actorRole ? guidanceParticipantRoleLabels[detail.actorRole] || detail.actorRole : "未知"}
+                  角色：
+                  {detail.actorRole
+                    ? guidanceParticipantRoleLabels[detail.actorRole] || detail.actorRole
+                    : '未知'}
                 </span>
               </div>
               <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-tight text-slate-950">
@@ -331,7 +371,8 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                 ))}
               </div>
               <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-600">
-                {detail.session.clinical_summary || "尚未填写术前摘要。这里会逐步承接术前重点、专家关注点和后续 AI 总结来源。"}
+                {detail.session.clinical_summary ||
+                  '尚未填写术前摘要。这里会逐步承接术前重点、专家关注点和后续 AI 总结来源。'}
               </p>
             </div>
 
@@ -346,10 +387,10 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                 <div className="rounded-[1.4rem] border border-white/70 bg-white/85 px-5 py-4">
                   <div className="text-sm text-slate-500">RTC 房间</div>
                   <div className="mt-2 text-lg font-semibold text-slate-900">
-                    {detail.session.rtc_room_name || "尚未打开房间"}
+                    {detail.session.rtc_room_name || '尚未打开房间'}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    Provider: {detail.session.rtc_provider || "livekit"}
+                    Provider: {detail.session.rtc_provider || 'livekit'}
                   </div>
                 </div>
               </div>
@@ -362,7 +403,9 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
             <section className="guidance-card rounded-[2rem] px-7 py-7">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5">
                 <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Operations</div>
+                  <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+                    Operations
+                  </div>
                   <h2 className="mt-3 text-2xl font-semibold text-slate-950">会话操作</h2>
                 </div>
                 <button
@@ -378,7 +421,9 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                 {detail.session.rtc_room_name ? (
                   <div className="rounded-[1.35rem] bg-teal-600 px-4 py-4 text-left text-sm font-semibold text-white">
                     <div>房间已打开</div>
-                    <div className="mt-2 text-xs font-normal text-teal-100">房间名: {detail.session.rtc_room_name}</div>
+                    <div className="mt-2 text-xs font-normal text-teal-100">
+                      房间名: {detail.session.rtc_room_name}
+                    </div>
                     <Link
                       href={`/guidance/${sessionId}/room`}
                       className="mt-3 inline-block rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-teal-700"
@@ -391,35 +436,53 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                     type="button"
                     disabled={busyAction !== null}
                     onClick={() =>
-                      void runAction(`/api/guidance/sessions/${sessionId}/room/open`, undefined, "房间已打开，可以继续接 RTC token。")
+                      void runAction(
+                        `/api/guidance/sessions/${sessionId}/room/open`,
+                        undefined,
+                        '房间已打开，可以继续接 RTC token。',
+                      )
                     }
                     className="rounded-[1.35rem] bg-slate-950 px-4 py-4 text-left text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
                   >
                     <div>打开会话房间</div>
-                    <div className="mt-2 text-xs font-normal text-slate-300">生成房间名并把会话状态推进到可进入阶段</div>
+                    <div className="mt-2 text-xs font-normal text-slate-300">
+                      生成房间名并把会话状态推进到可进入阶段
+                    </div>
                   </button>
                 )}
                 <button
                   type="button"
                   disabled={busyAction !== null}
                   onClick={() =>
-                    void runAction(`/api/guidance/sessions/${sessionId}/end`, undefined, "会话已结束。")
+                    void runAction(
+                      `/api/guidance/sessions/${sessionId}/end`,
+                      undefined,
+                      '会话已结束。',
+                    )
                   }
                   className="rounded-[1.35rem] border border-slate-300 px-4 py-4 text-left text-sm font-semibold text-slate-800 transition hover:border-slate-400 disabled:opacity-60"
                 >
                   <div>结束会话</div>
-                  <div className="mt-2 text-xs font-normal text-slate-500">写入结束时间并同步状态</div>
+                  <div className="mt-2 text-xs font-normal text-slate-500">
+                    写入结束时间并同步状态
+                  </div>
                 </button>
                 <button
                   type="button"
                   disabled={busyAction !== null}
                   onClick={() =>
-                    void runAction(`/api/guidance/sessions/${sessionId}/cancel`, undefined, "会话已取消。")
+                    void runAction(
+                      `/api/guidance/sessions/${sessionId}/cancel`,
+                      undefined,
+                      '会话已取消。',
+                    )
                   }
                   className="rounded-[1.35rem] border border-rose-200 bg-rose-50 px-4 py-4 text-left text-sm font-semibold text-rose-700 transition hover:border-rose-300 disabled:opacity-60"
                 >
                   <div>取消会话</div>
-                  <div className="mt-2 text-xs font-normal text-rose-500">保留留痕，适合预约取消或计划变更</div>
+                  <div className="mt-2 text-xs font-normal text-rose-500">
+                    保留留痕，适合预约取消或计划变更
+                  </div>
                 </button>
               </div>
 
@@ -438,20 +501,24 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                 <button
                   type="button"
                   disabled={busyAction !== null}
-                  onClick={() => void generateEmergencyLink("expert")}
+                  onClick={() => void generateEmergencyLink('expert')}
                   className="rounded-[1.35rem] border border-teal-200 bg-teal-50 px-4 py-4 text-left text-sm font-semibold text-teal-800 transition hover:border-teal-300 disabled:opacity-60"
                 >
                   <div>生成专家应急链接</div>
-                  <div className="mt-2 text-xs font-normal text-teal-700">自动开房并复制一个免登录的海外专家入会地址</div>
+                  <div className="mt-2 text-xs font-normal text-teal-700">
+                    自动开房并复制一个免登录的海外专家入会地址
+                  </div>
                 </button>
                 <button
                   type="button"
                   disabled={busyAction !== null}
-                  onClick={() => void generateEmergencyLink("observer")}
+                  onClick={() => void generateEmergencyLink('observer')}
                   className="rounded-[1.35rem] border border-slate-300 bg-white px-4 py-4 text-left text-sm font-semibold text-slate-800 transition hover:border-slate-400 disabled:opacity-60"
                 >
                   <div>生成观察员应急链接</div>
-                  <div className="mt-2 text-xs font-normal text-slate-500">适合只看不发言的外部旁观者</div>
+                  <div className="mt-2 text-xs font-normal text-slate-500">
+                    适合只看不发言的外部旁观者
+                  </div>
                 </button>
               </div>
 
@@ -471,22 +538,79 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
 
             <section className="guidance-card rounded-[2rem] px-7 py-7">
               <div className="border-b border-slate-200 pb-5">
-                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Session Snapshot</div>
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+                  Source Consultation
+                </div>
+                <h2 className="mt-3 text-2xl font-semibold text-slate-950">来源咨询</h2>
+              </div>
+              {detail.relatedConsultation ? (
+                <div className="mt-6 rounded-[1.4rem] border border-slate-200 bg-white px-5 py-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="guidance-pill bg-amber-50 text-amber-700">
+                      {consultationStatusLabels[detail.relatedConsultation.order_status] ||
+                        detail.relatedConsultation.order_status}
+                    </span>
+                    <span className="guidance-pill bg-slate-100 text-slate-700">
+                      {consultationPricingModeLabels[detail.relatedConsultation.pricing_mode] ||
+                        detail.relatedConsultation.pricing_mode}
+                    </span>
+                    <span className="guidance-pill bg-teal-50 text-teal-700">
+                      {detail.relatedConsultation.order_no}
+                    </span>
+                  </div>
+                  <div className="mt-4 text-lg font-semibold text-slate-950">
+                    {detail.relatedConsultation.title}
+                  </div>
+                  <div className="mt-2 text-sm leading-7 text-slate-500">
+                    创建时间：{formatGuidanceDate(detail.relatedConsultation.created_at)}
+                  </div>
+                  <div className="mt-2 text-sm leading-7 text-slate-500">
+                    当前报价：
+                    {typeof detail.relatedConsultation.quoted_price_amount === 'number'
+                      ? `${detail.relatedConsultation.currency_code || 'CNY'} ${detail.relatedConsultation.quoted_price_amount}`
+                      : '尚未报价'}
+                  </div>
+                  <div className="mt-4">
+                    <Link
+                      href={`/consultations/${detail.relatedConsultation.id}`}
+                      className="text-sm font-semibold text-teal-700"
+                    >
+                      查看咨询详情
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-6 rounded-[1.4rem] border border-dashed border-slate-300 px-5 py-8 text-sm text-slate-500">
+                  当前会话不是从付费咨询升级而来，或来源咨询单已不可访问。
+                </div>
+              )}
+            </section>
+
+            <section className="guidance-card rounded-[2rem] px-7 py-7">
+              <div className="border-b border-slate-200 pb-5">
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+                  Session Snapshot
+                </div>
                 <h2 className="mt-3 text-2xl font-semibold text-slate-950">会话主数据</h2>
               </div>
               <dl className="mt-6 grid gap-4 md:grid-cols-2">
-                <InfoRow label="机构" value={detail.session.hospital_name || "未填写"} />
-                <InfoRow label="科室" value={detail.session.department_name || "未填写"} />
-                <InfoRow label="手术间" value={detail.session.operating_room_name || "未填写"} />
-                <InfoRow label="患者物种" value={detail.session.patient_species || "未填写"} />
-                <InfoRow label="患者标识" value={detail.session.patient_identifier || "未填写"} />
-                <InfoRow label="知情同意" value={detail.session.consent_confirmed ? "已确认" : "未确认"} />
+                <InfoRow label="机构" value={detail.session.hospital_name || '未填写'} />
+                <InfoRow label="科室" value={detail.session.department_name || '未填写'} />
+                <InfoRow label="手术间" value={detail.session.operating_room_name || '未填写'} />
+                <InfoRow label="患者物种" value={detail.session.patient_species || '未填写'} />
+                <InfoRow label="患者标识" value={detail.session.patient_identifier || '未填写'} />
+                <InfoRow
+                  label="知情同意"
+                  value={detail.session.consent_confirmed ? '已确认' : '未确认'}
+                />
               </dl>
             </section>
 
             <section className="guidance-card rounded-[2rem] px-7 py-7">
               <div className="border-b border-slate-200 pb-5">
-                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Timeline</div>
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+                  Timeline
+                </div>
                 <h2 className="mt-3 text-2xl font-semibold text-slate-950">最近事件</h2>
               </div>
               <div className="mt-6 grid gap-4">
@@ -496,14 +620,19 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                   </div>
                 ) : (
                   detail.recentEvents.map((event) => (
-                    <article key={event.id} className="rounded-[1.4rem] border border-slate-200 bg-white px-5 py-4">
+                    <article
+                      key={event.id}
+                      className="rounded-[1.4rem] border border-slate-200 bg-white px-5 py-4"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <div className="text-sm font-semibold text-slate-900">
                             {eventLabelMap[event.event_type] || event.event_type}
                           </div>
                           <div className="mt-1 text-xs text-slate-500">
-                            {event.actor_role ? `${guidanceParticipantRoleLabels[event.actor_role] || event.actor_role} · ` : ""}
+                            {event.actor_role
+                              ? `${guidanceParticipantRoleLabels[event.actor_role] || event.actor_role} · `
+                              : ''}
                             {formatGuidanceDate(event.event_at)}
                           </div>
                         </div>
@@ -518,7 +647,9 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
           <div className="flex flex-col gap-6">
             <section className="guidance-card rounded-[2rem] px-7 py-7">
               <div className="border-b border-slate-200 pb-5">
-                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Participants</div>
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+                  Participants
+                </div>
                 <h2 className="mt-3 text-2xl font-semibold text-slate-950">参与者</h2>
               </div>
               <div className="mt-6 grid gap-3">
@@ -528,15 +659,21 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                   </div>
                 ) : (
                   detail.participants.map((participant) => (
-                    <article key={participant.id} className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4">
+                    <article
+                      key={participant.id}
+                      className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <div className="font-semibold text-slate-900">
-                            {guidanceParticipantRoleLabels[participant.participant_role] || participant.participant_role}
+                            {guidanceParticipantRoleLabels[participant.participant_role] ||
+                              participant.participant_role}
                           </div>
                           <div className="mt-1 text-xs text-slate-500">{participant.user_id}</div>
                         </div>
-                        <div className="guidance-pill bg-slate-100 text-slate-700">{participant.invite_status}</div>
+                        <div className="guidance-pill bg-slate-100 text-slate-700">
+                          {participant.invite_status}
+                        </div>
                       </div>
                     </article>
                   ))
@@ -546,18 +683,30 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
 
             <section className="guidance-card rounded-[2rem] px-7 py-7">
               <div className="border-b border-slate-200 pb-5">
-                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Assets</div>
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+                  Assets
+                </div>
                 <h2 className="mt-3 text-2xl font-semibold text-slate-950">设备与录制</h2>
               </div>
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <MetricCard label="设备数" value={String(detail.devices.length)} hint="后续接术野、全景、内窥镜等视频源" />
-                <MetricCard label="录制数" value={String(detail.recordings.length)} hint="后续接录制开始/停止与回放" />
+                <MetricCard
+                  label="设备数"
+                  value={String(detail.devices.length)}
+                  hint="后续接术野、全景、内窥镜等视频源"
+                />
+                <MetricCard
+                  label="录制数"
+                  value={String(detail.recordings.length)}
+                  hint="后续接录制开始/停止与回放"
+                />
               </div>
             </section>
 
             <section className="guidance-card rounded-[2rem] px-7 py-7">
               <div className="border-b border-slate-200 pb-5">
-                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">Annotation</div>
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+                  Annotation
+                </div>
                 <h2 className="mt-3 text-2xl font-semibold text-slate-950">快速标注</h2>
               </div>
               <div className="mt-6 grid gap-4">
@@ -566,7 +715,10 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                   <select
                     value={annotationDraft.annotation_type}
                     onChange={(event) =>
-                      setAnnotationDraft((current) => ({ ...current, annotation_type: event.target.value }))
+                      setAnnotationDraft((current) => ({
+                        ...current,
+                        annotation_type: event.target.value,
+                      }))
                     }
                     className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500"
                   >
@@ -580,7 +732,9 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                   <span className="text-sm font-medium text-slate-700">标题</span>
                   <input
                     value={annotationDraft.title}
-                    onChange={(event) => setAnnotationDraft((current) => ({ ...current, title: event.target.value }))}
+                    onChange={(event) =>
+                      setAnnotationDraft((current) => ({ ...current, title: event.target.value }))
+                    }
                     placeholder="例如：切口暴露阶段提醒"
                     className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500"
                   />
@@ -590,7 +744,9 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
                   <textarea
                     rows={5}
                     value={annotationDraft.content}
-                    onChange={(event) => setAnnotationDraft((current) => ({ ...current, content: event.target.value }))}
+                    onChange={(event) =>
+                      setAnnotationDraft((current) => ({ ...current, content: event.target.value }))
+                    }
                     placeholder="记录关键判断、专家提醒或术中时间点。"
                     className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3 text-sm leading-7 outline-none transition focus:border-teal-500"
                   />
@@ -623,7 +779,7 @@ export default function GuidanceSessionDetailClient({ sessionId }: { sessionId: 
           </Link>
           <button
             type="button"
-            onClick={() => startTransition(() => router.push("/guidance/new"))}
+            onClick={() => startTransition(() => router.push('/guidance/new'))}
             className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
           >
             再发起一个会话

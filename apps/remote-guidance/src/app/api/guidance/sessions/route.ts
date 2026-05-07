@@ -1,35 +1,72 @@
-// @ts-nocheck
-import { NextRequest } from "next/server";
-import {
-  apiError,
-  apiSuccess,
-  buildParticipantPermissions,
-  createSessionNo,
-  getGuidanceActor,
-  recordGuidanceEvent,
-  supabaseAdmin,
-} from "@/lib/server/guidance-api";
+import { NextRequest } from 'next/server';
+import { apiError, apiSuccess, getGuidanceActor, supabaseAdmin } from '@/lib/server/guidance-api';
+import { createGuidanceSession } from '@/lib/server/guidance-sessions';
+
+type GuidanceSessionRecord = {
+  id: string;
+  created_at: string;
+  title: string;
+  priority: string;
+  session_no: string;
+  [key: string]: unknown;
+};
+
+type GuidanceParticipantSessionRef = {
+  session_id: string;
+};
+
+type CreateGuidanceSessionBody = {
+  case_title?: string;
+  title?: string;
+  session_type?: string;
+  priority?: string;
+  site_code?: string;
+  metadata?: Record<string, unknown>;
+  surgeon_user_id?: string;
+  assistant_user_id?: string;
+  requested_expert_user_id?: string;
+  assigned_expert_user_id?: string;
+  moderator_user_id?: string;
+  hospital_name?: string;
+  department_name?: string;
+  operating_room_name?: string;
+  patient_species?: string;
+  patient_identifier?: string;
+  procedure_name?: string;
+  clinical_summary?: string;
+  scheduled_start_at?: string;
+  scheduled_end_at?: string;
+  rtc_provider?: string;
+  consent_confirmed?: boolean;
+  confidentiality_level?: string;
+};
 
 export async function GET(request: NextRequest) {
   const actor = await getGuidanceActor(request);
   if (!actor) {
-    return apiError(401, "请先登录后再访问远程指导。");
+    return apiError(401, '请先登录后再访问远程指导。');
   }
 
   if (!actor.canAccessRemoteGuidance) {
-    return apiError(403, "当前账号没有远程指导访问权限。");
+    return apiError(403, '当前账号没有远程指导访问权限。');
   }
 
   const participantRes = await supabaseAdmin
-    .from("guidance_participants")
-    .select("session_id")
-    .eq("user_id", actor.userId);
+    .from('guidance_participants')
+    .select('session_id')
+    .eq('user_id', actor.userId);
 
-  const participantIds = [...new Set((participantRes.data || []).map((item) => item.session_id))];
+  const participantIds = [
+    ...new Set(
+      ((participantRes.data || []) as GuidanceParticipantSessionRef[]).map(
+        (item) => item.session_id,
+      ),
+    ),
+  ];
 
   const directRes = await supabaseAdmin
-    .from("guidance_sessions")
-    .select("*")
+    .from('guidance_sessions')
+    .select('*')
     .or(
       [
         `surgeon_user_id.eq.${actor.userId}`,
@@ -38,28 +75,31 @@ export async function GET(request: NextRequest) {
         `assigned_expert_user_id.eq.${actor.userId}`,
         `moderator_user_id.eq.${actor.userId}`,
         `created_by.eq.${actor.userId}`,
-      ].join(",")
+      ].join(','),
     )
-    .order("created_at", { ascending: false });
+    .order('created_at', { ascending: false });
 
   const participantSessionRes =
     participantIds.length > 0
       ? await supabaseAdmin
-          .from("guidance_sessions")
-          .select("*")
-          .in("id", participantIds)
-          .order("created_at", { ascending: false })
+          .from('guidance_sessions')
+          .select('*')
+          .in('id', participantIds)
+          .order('created_at', { ascending: false })
       : { data: [], error: null };
 
   if (directRes.error || participantSessionRes.error) {
-    return apiError(500, "加载远程指导会话失败。", {
+    return apiError(500, '加载远程指导会话失败。', {
       directError: directRes.error?.message,
       participantError: participantSessionRes.error?.message,
     });
   }
 
-  const sessionMap = new Map<string, any>();
-  for (const session of [...(directRes.data || []), ...(participantSessionRes.data || [])]) {
+  const sessionMap = new Map<string, GuidanceSessionRecord>();
+  for (const session of [
+    ...((directRes.data || []) as GuidanceSessionRecord[]),
+    ...((participantSessionRes.data || []) as GuidanceSessionRecord[]),
+  ]) {
     sessionMap.set(session.id, session);
   }
 
@@ -67,125 +107,71 @@ export async function GET(request: NextRequest) {
     return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
   });
 
-  return apiSuccess({ sessions }, "远程指导会话加载成功。");
+  return apiSuccess({ sessions }, '远程指导会话加载成功。');
 }
 
 export async function POST(request: NextRequest) {
   const actor = await getGuidanceActor(request);
   if (!actor) {
-    return apiError(401, "请先登录后再发起远程指导。");
+    return apiError(401, '请先登录后再发起远程指导。');
   }
 
   if (!actor.canAccessRemoteGuidance) {
-    return apiError(403, "当前账号没有发起远程指导的权限。");
+    return apiError(403, '当前账号没有发起远程指导的权限。');
   }
 
-  const body = await request.json();
-  const title = String(body.title || "").trim();
-  const sessionType = body.session_type || "live_guidance";
-  const priority = body.priority || "routine";
+  const body = (await request.json()) as CreateGuidanceSessionBody;
+  const title = String(body.title || '').trim();
+  const sessionType = body.session_type || 'live_guidance';
+  const priority = body.priority || 'routine';
+  const siteCode = body.site_code || 'cn';
+  const metadata =
+    body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
+      ? body.metadata
+      : {};
 
   if (!title) {
-    return apiError(400, "请填写会话标题。");
+    return apiError(400, '请填写会话标题。');
   }
 
   const surgeonUserId = actor.isAdmin && body.surgeon_user_id ? body.surgeon_user_id : actor.userId;
-  const sessionNo = createSessionNo();
+  const hospitalName = body.hospital_name || actor.cnProfile?.organization_name || null;
+  const departmentName = body.department_name || null;
+  const patientSpecies = body.patient_species || null;
+  const patientIdentifier = body.patient_identifier || null;
+  const procedureName = body.procedure_name || null;
+  const clinicalSummary = body.clinical_summary || null;
+  const confidentialityLevel = body.confidentiality_level || 'restricted';
 
-  const insertPayload = {
-    session_no: sessionNo,
-    site_code: "cn",
-    title,
-    session_type: sessionType,
-    status: "requested",
-    session_state_v2: "waiting", // 新简化状态
-    priority,
-    surgeon_user_id: surgeonUserId,
-    assistant_user_id: body.assistant_user_id || null,
-    requested_expert_user_id: body.requested_expert_user_id || null,
-    assigned_expert_user_id: body.assigned_expert_user_id || null,
-    moderator_user_id: body.moderator_user_id || null,
-    hospital_name: body.hospital_name || actor.cnProfile?.organization_name || null,
-    department_name: body.department_name || null,
-    operating_room_name: body.operating_room_name || null,
-    patient_species: body.patient_species || null,
-    patient_identifier: body.patient_identifier || null,
-    procedure_name: body.procedure_name || null,
-    clinical_summary: body.clinical_summary || null,
-    scheduled_start_at: body.scheduled_start_at || null,
-    scheduled_end_at: body.scheduled_end_at || null,
-    rtc_provider: body.rtc_provider || "livekit",
-    consent_confirmed: Boolean(body.consent_confirmed),
-    confidentiality_level: body.confidentiality_level || "restricted",
-    metadata: body.metadata || {},
-    created_by: actor.userId,
-  };
-
-  const { data: created, error } = await supabaseAdmin
-    .from("guidance_sessions")
-    .insert(insertPayload)
-    .select("*")
-    .single();
-
-  if (error || !created) {
-    return apiError(500, "创建远程指导会话失败。", error?.message);
-  }
-
-  const participants = [
-    {
-      session_id: created.id,
-      user_id: surgeonUserId,
-      participant_role: "surgeon",
-      invite_status: "accepted",
-      join_permission: true,
-      ...buildParticipantPermissions("surgeon"),
-    },
-  ];
-
-  if (body.assistant_user_id) {
-    participants.push({
-      session_id: created.id,
-      user_id: body.assistant_user_id,
-      participant_role: "assistant",
-      invite_status: "accepted",
-      join_permission: true,
-      ...buildParticipantPermissions("assistant"),
+  try {
+    const created = await createGuidanceSession(actor, {
+      siteCode,
+      caseTitle: body.case_title || null,
+      title,
+      sessionType,
+      priority,
+      metadata,
+      surgeonUserId,
+      assistantUserId: body.assistant_user_id || null,
+      requestedExpertUserId: body.requested_expert_user_id || null,
+      assignedExpertUserId: body.assigned_expert_user_id || null,
+      moderatorUserId: body.moderator_user_id || null,
+      patientSpecies,
+      patientIdentifier,
+      procedureName,
+      hospitalName,
+      departmentName,
+      operatingRoomName: body.operating_room_name || null,
+      clinicalSummary,
+      scheduledStartAt: body.scheduled_start_at || null,
+      scheduledEndAt: body.scheduled_end_at || null,
+      rtcProvider: body.rtc_provider || 'livekit',
+      confidentialityLevel,
+      consentConfirmed: Boolean(body.consent_confirmed),
     });
+
+    return apiSuccess(created, '远程指导会话创建成功。', 201);
+  } catch (error) {
+    return apiError(500, error instanceof Error ? error.message : '创建远程指导会话失败。');
   }
-
-  if (body.requested_expert_user_id) {
-    participants.push({
-      session_id: created.id,
-      user_id: body.requested_expert_user_id,
-      participant_role: "expert",
-      invite_status: "pending",
-      join_permission: true,
-      ...buildParticipantPermissions("expert"),
-    });
-  }
-
-  if (body.assigned_expert_user_id) {
-    participants.push({
-      session_id: created.id,
-      user_id: body.assigned_expert_user_id,
-      participant_role: "expert",
-      invite_status: "accepted",
-      join_permission: true,
-      ...buildParticipantPermissions("expert"),
-    });
-  }
-
-  if (participants.length > 0) {
-    await supabaseAdmin.from("guidance_participants").upsert(participants, {
-      onConflict: "session_id,user_id",
-    });
-  }
-
-  await recordGuidanceEvent(created.id, "session_requested", actor, "surgeon", {
-    title: created.title,
-    priority: created.priority,
-    session_no: created.session_no,
-  });
-
-  return apiSuccess({ session: created }, "远程指导会话创建成功。", 201);
 }

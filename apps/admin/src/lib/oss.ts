@@ -22,16 +22,52 @@ function getOSSClient(): OSS {
 
 const OSS_PREFIX = 'vetsphere/products';
 
+function getExtensionFromContentType(contentType: string): string {
+  if (contentType.includes('png')) return '.png';
+  if (contentType.includes('gif')) return '.gif';
+  if (contentType.includes('webp')) return '.webp';
+  if (contentType.includes('svg')) return '.svg';
+  return '.jpg';
+}
+
+function buildObjectPath(prefix: string, entityId: string, extension: string): string {
+  const timestamp = Date.now();
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  const safeExtension = extension.startsWith('.') ? extension : `.${extension}`;
+  return `${prefix}/${entityId}_${timestamp}_${randomStr}${safeExtension}`;
+}
+
+export async function uploadBufferToOSS(
+  buffer: Buffer,
+  options: {
+    entityId: string;
+    contentType?: string;
+    extension?: string;
+    prefix?: string;
+  },
+): Promise<string> {
+  const contentType = options.contentType || 'image/jpeg';
+  const extension = options.extension || getExtensionFromContentType(contentType);
+  const prefix = options.prefix || OSS_PREFIX;
+  const ossPath = buildObjectPath(prefix, options.entityId, extension);
+
+  const result = await getOSSClient().put(ossPath, buffer, {
+    headers: {
+      'Content-Type': contentType,
+    },
+  });
+
+  console.log(`[OSS] Uploaded buffer: ${ossPath}`);
+  return result.url;
+}
+
 /**
  * Download image from URL and upload to OSS
  * @param imageUrl Source image URL
  * @param productId Product ID for organizing files
  * @returns OSS URL of uploaded image
  */
-export async function uploadImageToOSS(
-  imageUrl: string,
-  productId: string
-): Promise<string> {
+export async function uploadImageToOSS(imageUrl: string, productId: string): Promise<string> {
   try {
     // Fetch image from source URL
     const response = await fetch(imageUrl);
@@ -45,10 +81,7 @@ export async function uploadImageToOSS(
 
     // Determine file extension from URL or content-type
     const contentType = response.headers.get('content-type') || 'image/jpeg';
-    let extension = '.jpg';
-    if (contentType.includes('png')) extension = '.png';
-    else if (contentType.includes('gif')) extension = '.gif';
-    else if (contentType.includes('webp')) extension = '.webp';
+    let extension = getExtensionFromContentType(contentType);
 
     // Also try to get extension from URL
     const urlPath = imageUrl.split('?')[0];
@@ -58,22 +91,12 @@ export async function uploadImageToOSS(
     }
 
     // Generate OSS path
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const filename = `${productId}_${timestamp}_${randomStr}${extension}`;
-    const ossPath = `${OSS_PREFIX}/${filename}`;
-
-    // Upload to OSS
-    const result = await getOSSClient().put(ossPath, buffer, {
-      headers: {
-        'Content-Type': contentType,
-      },
+    return uploadBufferToOSS(buffer, {
+      entityId: productId,
+      contentType,
+      extension,
+      prefix: OSS_PREFIX,
     });
-
-    console.log(`[OSS] Uploaded image: ${ossPath}`);
-
-    // Return public URL
-    return result.url;
   } catch (error) {
     console.error(`[OSS] Upload failed for ${imageUrl}:`, error);
     throw error;
@@ -88,7 +111,7 @@ export async function uploadImageToOSS(
  */
 export async function uploadMultipleImages(
   imageUrls: string[],
-  productId: string
+  productId: string,
 ): Promise<string[]> {
   const results: string[] = [];
 

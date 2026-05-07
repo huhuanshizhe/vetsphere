@@ -1,12 +1,12 @@
 'use client';
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useAuth } from "@vetsphere/shared/context/AuthContext";
-import { getAccessTokenSafe, getSessionSafe } from "@vetsphere/shared/services/supabase";
-import { useGuidanceSessionBridge } from "@/components/guidance/GuidanceSessionBridge";
-import { mapToStateV2 } from "@/lib/guidance-display";
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useAuth } from '@vetsphere/shared/context/AuthContext';
+import { getAccessTokenSafe, getSessionSafe } from '@vetsphere/shared/services/supabase';
+import { useGuidanceSessionBridge } from '@/components/guidance/GuidanceSessionBridge';
+import { mapToStateV2 } from '@/lib/guidance-display';
 
 type GuidanceSession = {
   id: string;
@@ -14,46 +14,66 @@ type GuidanceSession = {
   status: string;
   session_state_v2?: string | null;
   priority: string;
+  related_record_id?: string | null;
   procedure_name?: string | null;
   scheduled_start_at?: string | null;
   hospital_name?: string | null;
   assigned_expert_user_id?: string | null;
   rtc_room_name?: string | null;
   room_status?: string | null;
+  metadata?: {
+    case_no?: string;
+    case_id?: string;
+  } | null;
 };
 
 // 新状态标签
 const stateV2LabelMap: Record<string, string> = {
-  waiting: "等待中",
-  live: "进行中",
-  paused: "暂停中",
-  ended: "已结束",
-  archived: "已归档",
-  cancelled: "已取消",
+  waiting: '等待中',
+  live: '进行中',
+  paused: '暂停中',
+  ended: '已结束',
+  archived: '已归档',
+  cancelled: '已取消',
 };
 
 export default function GuidanceDashboard() {
   const router = useRouter();
-  const { loading, isAuthenticated, user, canAccessDoctorWorkspace, doctorPrivilegeStatus } = useAuth();
+  const { loading, isAuthenticated, user, canAccessDoctorWorkspace, doctorPrivilegeStatus } =
+    useAuth();
   const { isSyncing } = useGuidanceSessionBridge();
   const searchParams = useSearchParams();
   const [sessions, setSessions] = useState<GuidanceSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
 
-  const debugMode = searchParams.get("debugAuth") === "1";
-  const skipRedirect = searchParams.get("skipRedirect") === "1";
+  const debugMode = searchParams.get('debugAuth') === '1';
+  const skipRedirect = searchParams.get('skipRedirect') === '1';
+
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
+
+  const showSyncState = !hasHydrated || loading || isSyncing;
 
   // 角色定向：自动跳转到最近进行中的会话
   useEffect(() => {
-    if (loading || isSyncing || !isAuthenticated || !canAccessDoctorWorkspace || skipRedirect) {
+    if (
+      !hasHydrated ||
+      loading ||
+      isSyncing ||
+      !isAuthenticated ||
+      !canAccessDoctorWorkspace ||
+      skipRedirect
+    ) {
       return;
     }
 
     // 如果已经有会话数据，检查是否有进行中的会话
     if (sessions.length > 0 && !sessionsLoading) {
-      const liveSession = sessions.find(s => {
+      const liveSession = sessions.find((s) => {
         const state = s.session_state_v2 || mapToStateV2(s.status);
         return state === 'live' || (state === 'waiting' && s.rtc_room_name);
       });
@@ -64,10 +84,20 @@ export default function GuidanceDashboard() {
         return;
       }
     }
-  }, [loading, isSyncing, isAuthenticated, canAccessDoctorWorkspace, sessions, sessionsLoading, skipRedirect, router]);
+  }, [
+    hasHydrated,
+    loading,
+    isSyncing,
+    isAuthenticated,
+    canAccessDoctorWorkspace,
+    sessions,
+    sessionsLoading,
+    skipRedirect,
+    router,
+  ]);
 
   useEffect(() => {
-    if (loading || isSyncing || !isAuthenticated || !canAccessDoctorWorkspace) {
+    if (!hasHydrated || loading || isSyncing || !isAuthenticated || !canAccessDoctorWorkspace) {
       return;
     }
 
@@ -80,16 +110,16 @@ export default function GuidanceDashboard() {
       try {
         const token = await getAccessTokenSafe();
         if (!token) {
-          throw new Error("当前没有有效医生会话。");
+          throw new Error('当前没有有效医生会话。');
         }
 
-        const response = await fetch("/api/guidance/sessions", {
+        const response = await fetch('/api/guidance/sessions', {
           headers: { Authorization: `Bearer ${token}` },
         });
         const payload = await response.json();
 
         if (!response.ok) {
-          throw new Error(payload?.message || "加载远程指导会话失败。");
+          throw new Error(payload?.message || '加载远程指导会话失败。');
         }
 
         if (!cancelled) {
@@ -97,7 +127,7 @@ export default function GuidanceDashboard() {
         }
       } catch (error) {
         if (!cancelled) {
-          setFetchError(error instanceof Error ? error.message : "加载会话失败。");
+          setFetchError(error instanceof Error ? error.message : '加载会话失败。');
         }
       } finally {
         if (!cancelled) {
@@ -111,7 +141,7 @@ export default function GuidanceDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [loading, isSyncing, isAuthenticated, canAccessDoctorWorkspace]);
+  }, [hasHydrated, loading, isSyncing, isAuthenticated, canAccessDoctorWorkspace]);
 
   useEffect(() => {
     if (!debugMode) {
@@ -128,7 +158,7 @@ export default function GuidanceDashboard() {
         let authMePayload: unknown = null;
 
         if (token) {
-          const response = await fetch("/api/auth/me", {
+          const response = await fetch('/api/auth/me', {
             headers: { Authorization: `Bearer ${token}` },
           });
           authMePayload = await response.json();
@@ -158,7 +188,7 @@ export default function GuidanceDashboard() {
       } catch (error) {
         if (!cancelled) {
           setDebugInfo({
-            error: error instanceof Error ? error.message : "debug load failed",
+            error: error instanceof Error ? error.message : 'debug load failed',
             authContext: {
               loading,
               isAuthenticated,
@@ -195,12 +225,12 @@ export default function GuidanceDashboard() {
       (acc, session) => {
         acc.total += 1;
         const state = session.session_state_v2 || mapToStateV2(session.status);
-        if (state === "live") acc.live += 1;
-        if (state === "waiting") acc.upcoming += 1;
+        if (state === 'live') acc.live += 1;
+        if (state === 'waiting') acc.upcoming += 1;
         if (!session.assigned_expert_user_id) acc.unassigned += 1;
         return acc;
       },
-      { total: 0, live: 0, upcoming: 0, unassigned: 0 }
+      { total: 0, live: 0, upcoming: 0, unassigned: 0 },
     );
   }, [sessions]);
 
@@ -210,7 +240,9 @@ export default function GuidanceDashboard() {
         <section className="guidance-card overflow-hidden rounded-[2rem]">
           <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.7fr_0.9fr] lg:px-10">
             <div className="space-y-5">
-              <span className="guidance-pill inline-flex bg-teal-50 text-teal-700">Remote Guidance</span>
+              <span className="guidance-pill inline-flex bg-teal-50 text-teal-700">
+                Remote Guidance
+              </span>
               <div className="space-y-3">
                 <h1 className="max-w-3xl font-serif text-4xl leading-tight text-slate-950 lg:text-5xl">
                   远程手术指导平台
@@ -220,6 +252,12 @@ export default function GuidanceDashboard() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/consultations/new"
+                  className="rounded-full border border-amber-300 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                >
+                  发起付费咨询
+                </Link>
                 <Link
                   href="/guidance/new"
                   className="rounded-full bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-700"
@@ -231,7 +269,7 @@ export default function GuidanceDashboard() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <div className="rounded-[1.5rem] bg-slate-950 px-5 py-5 text-white">
                 <div className="text-sm text-slate-300">当前登录</div>
-                <div className="mt-3 text-xl font-semibold">{user?.name || "未登录"}</div>
+                <div className="mt-3 text-xl font-semibold">{user?.name || '未登录'}</div>
                 <div className="mt-2 text-sm text-slate-300">医生状态：{doctorPrivilegeStatus}</div>
               </div>
               <div className="rounded-[1.5rem] border border-teal-200 bg-teal-50 px-5 py-5 text-teal-950">
@@ -260,11 +298,12 @@ export default function GuidanceDashboard() {
           </section>
         ) : null}
 
-        {loading || isSyncing ? (
+        {showSyncState ? (
           <section className="guidance-card rounded-[1.75rem] px-6 py-8">
             <h2 className="text-xl font-semibold text-slate-950">正在同步登录状态</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              如果你已经在 vetsphere.cn 登录，远程指导会自动接管这份医生会话，不需要再次输入账号密码。
+              如果你已经在 vetsphere.cn
+              登录，远程指导会自动接管这份医生会话，不需要再次输入账号密码。
             </p>
           </section>
         ) : !isAuthenticated ? (
@@ -342,34 +381,58 @@ export default function GuidanceDashboard() {
                   {sessions.map((session) => {
                     const state = session.session_state_v2 || mapToStateV2(session.status);
                     const stateLabel = stateV2LabelMap[state] || session.status;
-                    const isActive = state === 'live' || (state === 'waiting' && session.rtc_room_name);
-                    
+                    const isActive =
+                      state === 'live' || (state === 'waiting' && session.rtc_room_name);
+                    const caseNo = session.metadata?.case_no;
+
                     return (
-                      <article key={session.id} className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-5">
+                      <article
+                        key={session.id}
+                        className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-5"
+                      >
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                           <div className="space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className={`guidance-pill ${isActive ? 'bg-teal-600/10 text-teal-700' : 'bg-slate-100 text-slate-700'}`}>
+                              <span
+                                className={`guidance-pill ${isActive ? 'bg-teal-600/10 text-teal-700' : 'bg-slate-100 text-slate-700'}`}
+                              >
                                 {stateLabel}
                               </span>
-                              <span className="guidance-pill bg-amber-50 text-amber-700">{session.priority}</span>
+                              <span className="guidance-pill bg-amber-50 text-amber-700">
+                                {session.priority}
+                              </span>
+                              {caseNo ? (
+                                <span className="guidance-pill bg-sky-50 text-sky-700">
+                                  {caseNo}
+                                </span>
+                              ) : null}
                               {session.rtc_room_name && (
-                                <span className="guidance-pill bg-teal-50 text-teal-600">房间已开</span>
+                                <span className="guidance-pill bg-teal-50 text-teal-600">
+                                  房间已开
+                                </span>
                               )}
                             </div>
-                            <h3 className="text-xl font-semibold text-slate-950">{session.title}</h3>
+                            <h3 className="text-xl font-semibold text-slate-950">
+                              {session.title}
+                            </h3>
                             <p className="text-sm text-slate-500">
-                              {session.procedure_name || "未填写术式"} · {session.hospital_name || "未填写机构"}
+                              {session.procedure_name || '未填写术式'} ·{' '}
+                              {session.hospital_name || '未填写机构'}
                             </p>
+                            {session.related_record_id ? (
+                              <p className="text-xs text-slate-400">
+                                已绑定病例主档{caseNo ? '，可作为后续咨询与复盘的统一入口' : ''}
+                              </p>
+                            ) : null}
                           </div>
                           <div className="flex flex-col gap-3 text-sm text-slate-500 lg:items-end">
                             <div>
                               {session.scheduled_start_at
-                                ? new Date(session.scheduled_start_at).toLocaleString("zh-CN")
-                                : "待排期"}
+                                ? new Date(session.scheduled_start_at).toLocaleString('zh-CN')
+                                : '待排期'}
                             </div>
-                            <Link 
-                              href={`/guidance/${session.id}`} 
+                            <Link
+                              href={`/guidance/${session.id}`}
                               className={`font-semibold ${isActive ? 'text-teal-700' : 'text-slate-700'}`}
                             >
                               {isActive ? '进入手术室' : '进入候诊室'}

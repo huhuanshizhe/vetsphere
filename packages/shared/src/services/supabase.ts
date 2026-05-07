@@ -2,8 +2,11 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Use environment variables with fallbacks for build time
 // IMPORTANT: Empty string is treated as "not set", so we use || instead of ??
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tvxrgbntiksskywsroax.supabase.co';
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2eHJnYm50aWtzc2t5d3Nyb2F4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDU3MTIsImV4cCI6MjA4NjQyMTcxMn0.xM7u06mRQSCKCoNQwYa2_wEw4he4ZM11iDfyhjfQtDc';
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tvxrgbntiksskywsroax.supabase.co';
+const SUPABASE_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2eHJnYm50aWtzc2t5d3Nyb2F4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDU3MTIsImV4cCI6MjA4NjQyMTcxMn0.xM7u06mRQSCKCoNQwYa2_wEw4he4ZM11iDfyhjfQtDc';
 
 // Lazy-initialized Supabase client
 let _supabaseClient: SupabaseClient | null = null;
@@ -50,7 +53,7 @@ export const supabase = new Proxy({} as SupabaseClient, {
       return value.bind(client);
     }
     return value;
-  }
+  },
 });
 
 // Storage URL for images
@@ -88,8 +91,17 @@ export function getSessionSafe() {
  * "Lock was released because another request stole it" 死锁。
  * 仅在浏览器环境可用。
  */
+export const SESSION_TOKEN_KEY = 'vetsphere_access_token';
+
 function readAccessTokenFromStorage(): string | null {
   if (typeof window === 'undefined') return null;
+  try {
+    // 优先读自定义 sessionStorage key（规避 Supabase SDK Web Lock 超时问题）
+    const direct = window.sessionStorage.getItem(SESSION_TOKEN_KEY);
+    if (direct) return direct;
+  } catch {
+    /* ignore */
+  }
   try {
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i);
@@ -117,9 +129,7 @@ export async function getAccessTokenSafe(): Promise<string | null> {
 
   // 回退到 SDK，叠加 1.5s 超时兜底，避免 getSession() 永远 pending
   try {
-    const result = await Promise.race<
-      Awaited<ReturnType<typeof getSessionSafe>> | null
-    >([
+    const result = await Promise.race<Awaited<ReturnType<typeof getSessionSafe>> | null>([
       getSessionSafe(),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
     ]);
@@ -127,7 +137,10 @@ export async function getAccessTokenSafe(): Promise<string | null> {
       console.warn('[getAccessTokenSafe] getSession timed out (1.5s)');
       return null;
     }
-    const { data: { session }, error } = result;
+    const {
+      data: { session },
+      error,
+    } = result;
     if (error) {
       console.error('[getAccessTokenSafe] Session error:', error);
       return null;

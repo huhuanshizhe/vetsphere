@@ -1,9 +1,9 @@
 'use client';
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@vetsphere/shared/context/AuthContext";
-import { useGuidanceSessionBridge } from "@/components/guidance/GuidanceSessionBridge";
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@vetsphere/shared/context/AuthContext';
+import { useGuidanceSessionBridge } from '@/components/guidance/GuidanceSessionBridge';
 
 export default function GuidanceTopbar() {
   const pathname = usePathname();
@@ -11,8 +11,8 @@ export default function GuidanceTopbar() {
   const { isAuthenticated, user, logout, doctorPrivilegeStatus } = useAuth();
   const { isSyncing } = useGuidanceSessionBridge();
 
-  const authHref = `/auth?redirect=${encodeURIComponent(pathname || "/guidance")}`;
-  const hideNav = pathname?.startsWith("/join/");
+  const authHref = `/auth?redirect=${encodeURIComponent(pathname || '/guidance')}`;
+  const hideNav = pathname?.startsWith('/join/');
 
   if (hideNav) {
     return null;
@@ -26,6 +26,9 @@ export default function GuidanceTopbar() {
             VetSphere Remote Guidance
           </Link>
           <nav className="hidden items-center gap-4 text-sm text-slate-600 md:flex">
+            <Link href="/consultations" className="transition hover:text-amber-700">
+              付费咨询台
+            </Link>
             <Link href="/guidance" className="transition hover:text-teal-700">
               远程指导台
             </Link>
@@ -43,7 +46,9 @@ export default function GuidanceTopbar() {
         {isAuthenticated && user ? (
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
-              <div className="text-sm font-medium text-slate-900">{user.name || user.mobile || "已登录用户"}</div>
+              <div className="text-sm font-medium text-slate-900">
+                {user.name || user.mobile || '已登录用户'}
+              </div>
               <div className="text-xs text-slate-500">医生状态：{doctorPrivilegeStatus}</div>
             </div>
             <button

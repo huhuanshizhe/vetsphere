@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { NextRequest } from "next/server";
+import { NextRequest } from 'next/server';
 import {
   apiError,
   apiSuccess,
@@ -8,7 +7,7 @@ import {
   getSessionAccess,
   recordGuidanceEvent,
   supabaseAdmin,
-} from "@/lib/server/guidance-api";
+} from '@/lib/server/guidance-api';
 
 type RouteProps = {
   params: Promise<{ id: string }>;
@@ -17,22 +16,49 @@ type RouteProps = {
 export async function GET(request: NextRequest, { params }: RouteProps) {
   const actor = await getGuidanceActor(request);
   if (!actor) {
-    return apiError(401, "请先登录后再查看会话详情。");
+    return apiError(401, '请先登录后再查看会话详情。');
   }
 
   const { id } = await params;
   const access = await getSessionAccess(id, actor);
 
   if (!access) {
-    return apiError(404, "未找到该远程指导会话，或当前账号无权访问。");
+    return apiError(404, '未找到该远程指导会话，或当前账号无权访问。');
   }
 
-  const [participantsRes, devicesRes, recordingsRes, recentEventsRes] = await Promise.all([
-    supabaseAdmin.from("guidance_participants").select("*").eq("session_id", id).order("created_at", { ascending: true }),
-    supabaseAdmin.from("guidance_devices").select("*").eq("session_id", id).order("created_at", { ascending: false }),
-    supabaseAdmin.from("guidance_recordings").select("*").eq("session_id", id).order("created_at", { ascending: false }),
-    supabaseAdmin.from("guidance_events").select("*").eq("session_id", id).order("event_at", { ascending: false }).limit(20),
-  ]);
+  const [participantsRes, devicesRes, recordingsRes, recentEventsRes, relatedConsultationRes] =
+    await Promise.all([
+      supabaseAdmin
+        .from('guidance_participants')
+        .select('*')
+        .eq('session_id', id)
+        .order('created_at', { ascending: true }),
+      supabaseAdmin
+        .from('guidance_devices')
+        .select('*')
+        .eq('session_id', id)
+        .order('created_at', { ascending: false }),
+      supabaseAdmin
+        .from('guidance_recordings')
+        .select('*')
+        .eq('session_id', id)
+        .order('created_at', { ascending: false }),
+      supabaseAdmin
+        .from('guidance_events')
+        .select('*')
+        .eq('session_id', id)
+        .order('event_at', { ascending: false })
+        .limit(20),
+      access.session.related_consultation_id
+        ? supabaseAdmin
+            .from('consultation_orders')
+            .select(
+              'id, order_no, title, order_status, pricing_mode, quoted_price_amount, currency_code, created_at',
+            )
+            .eq('id', access.session.related_consultation_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
 
   return apiSuccess({
     session: access.session,
@@ -42,49 +68,50 @@ export async function GET(request: NextRequest, { params }: RouteProps) {
     devices: devicesRes.data || [],
     recordings: recordingsRes.data || [],
     recentEvents: recentEventsRes.data || [],
+    relatedConsultation: relatedConsultationRes.data || null,
   });
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteProps) {
   const actor = await getGuidanceActor(request);
   if (!actor) {
-    return apiError(401, "请先登录后再更新会话。");
+    return apiError(401, '请先登录后再更新会话。');
   }
 
   const { id } = await params;
   const access = await getSessionAccess(id, actor);
 
   if (!access) {
-    return apiError(404, "未找到该远程指导会话。");
+    return apiError(404, '未找到该远程指导会话。');
   }
 
   if (!canManageSession(actor, access.session)) {
-    return apiError(403, "当前账号不能修改该会话。");
+    return apiError(403, '当前账号不能修改该会话。');
   }
 
   const body = await request.json();
   const updatePayload: Record<string, unknown> = {};
   const assignableFields = [
-    "title",
-    "session_type",
-    "priority",
-    "status",
-    "assistant_user_id",
-    "requested_expert_user_id",
-    "assigned_expert_user_id",
-    "moderator_user_id",
-    "hospital_name",
-    "department_name",
-    "operating_room_name",
-    "patient_species",
-    "patient_identifier",
-    "procedure_name",
-    "clinical_summary",
-    "scheduled_start_at",
-    "scheduled_end_at",
-    "consent_confirmed",
-    "confidentiality_level",
-    "metadata",
+    'title',
+    'session_type',
+    'priority',
+    'status',
+    'assistant_user_id',
+    'requested_expert_user_id',
+    'assigned_expert_user_id',
+    'moderator_user_id',
+    'hospital_name',
+    'department_name',
+    'operating_room_name',
+    'patient_species',
+    'patient_identifier',
+    'procedure_name',
+    'clinical_summary',
+    'scheduled_start_at',
+    'scheduled_end_at',
+    'consent_confirmed',
+    'confidentiality_level',
+    'metadata',
   ];
 
   for (const field of assignableFields) {
@@ -94,23 +121,23 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
   }
 
   if (Object.keys(updatePayload).length === 0) {
-    return apiError(400, "没有可更新的字段。");
+    return apiError(400, '没有可更新的字段。');
   }
 
   const { data: updated, error } = await supabaseAdmin
-    .from("guidance_sessions")
+    .from('guidance_sessions')
     .update(updatePayload)
-    .eq("id", id)
-    .select("*")
+    .eq('id', id)
+    .select('*')
     .single();
 
   if (error || !updated) {
-    return apiError(500, "更新会话失败。", error?.message);
+    return apiError(500, '更新会话失败。', error?.message);
   }
 
-  await recordGuidanceEvent(id, "session_updated", actor, access.actorRole, {
+  await recordGuidanceEvent(id, 'session_updated', actor, access.actorRole, {
     updated_fields: Object.keys(updatePayload),
   });
 
-  return apiSuccess({ session: updated }, "远程指导会话已更新。");
+  return apiSuccess({ session: updated }, '远程指导会话已更新。');
 }

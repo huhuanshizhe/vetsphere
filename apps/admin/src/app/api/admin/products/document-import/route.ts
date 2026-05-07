@@ -1,0 +1,491 @@
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
+import { requireAdmin } from '@/lib/auth-middleware';
+import { isOSSConfigured, uploadBufferToOSS } from '@/lib/oss';
+import { writeAuditLog } from '@/lib/audit';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+type SupportedLanguage = 'zh' | 'en' | 'th' | 'ja';
+type SourceKind = 'image' | 'pdf';
+
+interface ExtractedProductData {
+  sourceLanguage: SupportedLanguage;
+  name: string;
+  brand?: string;
+  subtitle?: string;
+  description?: string;
+  richDescription?: string;
+  price?: number | null;
+  currency?: string;
+  hasPrice?: boolean;
+  minOrderQuantity?: number | null;
+  packageQty?: number | null;
+  packageUnit?: string;
+  leadTime?: string;
+  unit?: string;
+  skuCode?: string;
+  focusKeyword?: string;
+  specifications?: Record<string, string>;
+  faq?: Array<{ question: string; answer: string }>;
+  suggestedCategory?: string;
+  rawText?: string;
+  confidence?: number;
+}
+
+interface PreparedSource {
+  kind: SourceKind;
+  visionUrl?: string;
+  extractedText?: string;
+  coverImageUrl: string | null;
+  sourceUrl: string | null;
+  warnings: string[];
+}
+
+function normalizeBaseUrl(rawBaseUrl: string): string {
+  if (!rawBaseUrl) return rawBaseUrl;
+  if (rawBaseUrl.includes('/v1')) return rawBaseUrl;
+  return rawBaseUrl.endsWith('/') ? `${rawBaseUrl}v1` : `${rawBaseUrl}/v1`;
+}
+
+function generateEntityId(prefix: string): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).slice(2, 8);
+  return `${prefix}-${timestamp}-${random}`;
+}
+
+function normalizeSupportedLanguage(value: unknown): SupportedLanguage {
+  if (value === 'zh' || value === 'en' || value === 'th' || value === 'ja') {
+    return value;
+  }
+  return 'zh';
+}
+
+function normalizeString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed.replace(/,/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeFaq(value: unknown): Array<{ question: string; answer: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const question = normalizeString((item as Record<string, unknown>).question);
+      const answer = normalizeString((item as Record<string, unknown>).answer);
+      if (!question && !answer) return null;
+      return { question, answer };
+    })
+    .filter(Boolean) as Array<{ question: string; answer: string }>;
+}
+
+function normalizeSpecs(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const output: Record<string, string> = {};
+  for (const [key, itemValue] of Object.entries(value as Record<string, unknown>)) {
+    const normalizedKey = normalizeString(key);
+    const normalizedValue = normalizeString(itemValue);
+    if (normalizedKey && normalizedValue) {
+      output[normalizedKey] = normalizedValue;
+    }
+  }
+  return output;
+}
+
+function stripCodeFence(value: string): string {
+  let text = value.trim();
+  if (text.startsWith('```json')) text = text.slice(7);
+  else if (text.startsWith('```')) text = text.slice(3);
+  if (text.endsWith('```')) text = text.slice(0, -3);
+  return text.trim();
+}
+
+function isPdfType(nameOrUrl: string, contentType?: string | null): boolean {
+  const lower = nameOrUrl.toLowerCase();
+  return lower.endsWith('.pdf') || (contentType || '').toLowerCase().includes('application/pdf');
+}
+
+async function parsePdfText(buffer: Buffer): Promise<string> {
+  const pdfParseModule = await import('pdf-parse');
+  const pdfParse = (pdfParseModule.default || pdfParseModule) as unknown as (
+    data: Buffer,
+  ) => Promise<{ text?: string }>;
+  const parsed = await pdfParse(buffer);
+  return normalizeString(parsed?.text);
+}
+
+async function prepareSource(formData: FormData): Promise<PreparedSource> {
+  const warnings: string[] = [];
+  const file = formData.get('file');
+  const imageOrPdfUrl = normalizeString(
+    formData.get('sourceUrl') || formData.get('imageUrl') || formData.get('pdfUrl'),
+  );
+  const entityId = generateEntityId('product-source');
+
+  if (file instanceof File && file.size > 0) {
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = file.type || 'application/octet-stream';
+
+    if (isPdfType(file.name, contentType)) {
+      const extractedText = await parsePdfText(buffer);
+      if (!extractedText) {
+        throw new Error('当前仅支持可提取文本的 PDF。纯扫描 PDF 请先转成图片后再导入。');
+      }
+      return {
+        kind: 'pdf',
+        extractedText,
+        coverImageUrl: null,
+        sourceUrl: null,
+        warnings,
+      };
+    }
+
+    const dataUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
+    let coverImageUrl: string | null = null;
+    if (isOSSConfigured()) {
+      try {
+        coverImageUrl = await uploadBufferToOSS(buffer, {
+          entityId,
+          contentType,
+          prefix: 'vetsphere/products',
+        });
+      } catch (error) {
+        warnings.push(
+          error instanceof Error
+            ? `产品主图上传到 OSS 失败：${error.message}`
+            : '产品主图上传到 OSS 失败',
+        );
+      }
+    } else {
+      warnings.push('OSS 未配置，图片仅用于解析，未持久化到对象存储。');
+    }
+
+    return {
+      kind: 'image',
+      visionUrl: dataUrl,
+      coverImageUrl,
+      sourceUrl: null,
+      warnings,
+    };
+  }
+
+  if (!imageOrPdfUrl) {
+    throw new Error('请提供图片/PDF 文件，或提供可访问的资料 URL');
+  }
+
+  const response = await fetch(imageOrPdfUrl);
+  if (!response.ok) {
+    throw new Error(`下载资料失败：${response.status}`);
+  }
+
+  const contentType = response.headers.get('content-type') || 'application/octet-stream';
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  if (isPdfType(imageOrPdfUrl, contentType)) {
+    const extractedText = await parsePdfText(buffer);
+    if (!extractedText) {
+      throw new Error('当前仅支持可提取文本的 PDF。纯扫描 PDF 请先转成图片后再导入。');
+    }
+    return {
+      kind: 'pdf',
+      extractedText,
+      coverImageUrl: null,
+      sourceUrl: imageOrPdfUrl,
+      warnings,
+    };
+  }
+
+  let coverImageUrl: string | null = imageOrPdfUrl;
+  if (isOSSConfigured()) {
+    try {
+      coverImageUrl = await uploadBufferToOSS(buffer, {
+        entityId,
+        contentType,
+        prefix: 'vetsphere/products',
+      });
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `产品主图抓取后上传失败，保留原 URL：${error.message}`
+          : '产品主图抓取后上传失败，保留原 URL',
+      );
+      coverImageUrl = imageOrPdfUrl;
+    }
+  }
+
+  return {
+    kind: 'image',
+    visionUrl: imageOrPdfUrl,
+    coverImageUrl,
+    sourceUrl: imageOrPdfUrl,
+    warnings,
+  };
+}
+
+function getOpenAIClient(): OpenAI {
+  const apiKey = process.env.AI_API_KEY;
+  if (!apiKey) {
+    throw new Error('AI service not configured');
+  }
+
+  return new OpenAI({
+    apiKey,
+    baseURL: normalizeBaseUrl(process.env.AI_BASE_URL || '') || undefined,
+  });
+}
+
+async function extractFromImage(visionUrl: string): Promise<ExtractedProductData> {
+  const client = getOpenAIClient();
+  const model = process.env.AI_VISION_MODEL || process.env.AI_MODEL || 'qwen-vl-max-latest';
+  const prompt = [
+    'Extract structured product listing data from a medical device product image or poster.',
+    'Do not translate. Keep the original source language.',
+    'If a field is missing, return empty string, null, empty object, or empty array.',
+    'Return JSON only with the following shape:',
+    '{',
+    '  "sourceLanguage": "zh|en|th|ja",',
+    '  "name": "",',
+    '  "brand": "",',
+    '  "subtitle": "",',
+    '  "description": "",',
+    '  "richDescription": "",',
+    '  "price": null,',
+    '  "currency": "USD|CNY|JPY|THB",',
+    '  "hasPrice": true,',
+    '  "minOrderQuantity": null,',
+    '  "packageQty": null,',
+    '  "packageUnit": "",',
+    '  "leadTime": "",',
+    '  "unit": "",',
+    '  "skuCode": "",',
+    '  "focusKeyword": "",',
+    '  "specifications": {"key":"value"},',
+    '  "faq": [{"question":"","answer":""}],',
+    '  "suggestedCategory": "",',
+    '  "rawText": "",',
+    '  "confidence": 0.0',
+    '}',
+  ].join('\n');
+
+  const completion = await client.chat.completions.create({
+    model,
+    temperature: 0.1,
+    messages: [
+      {
+        role: 'system',
+        content: 'Extract product data from posters and images. Return only valid JSON. /no_think',
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: visionUrl } },
+        ] as any,
+      },
+    ],
+  });
+
+  const text = completion.choices[0]?.message?.content;
+  if (!text) throw new Error('AI 未返回产品解析结果');
+  return normalizeExtractedProduct(
+    JSON.parse(stripCodeFence(text)) as Partial<ExtractedProductData>,
+  );
+}
+
+async function extractFromPdfText(text: string): Promise<ExtractedProductData> {
+  const client = getOpenAIClient();
+  const model = process.env.AI_MODEL || 'qwen3-coder-plus';
+  const excerpt = text.slice(0, 24000);
+  const prompt = [
+    'Extract structured product listing data from the following medical device product document text.',
+    'Do not translate. Keep the original source language.',
+    'If a field is missing, return empty string, null, empty object, or empty array.',
+    'Return JSON only with the following shape:',
+    '{',
+    '  "sourceLanguage": "zh|en|th|ja",',
+    '  "name": "",',
+    '  "brand": "",',
+    '  "subtitle": "",',
+    '  "description": "",',
+    '  "richDescription": "",',
+    '  "price": null,',
+    '  "currency": "USD|CNY|JPY|THB",',
+    '  "hasPrice": true,',
+    '  "minOrderQuantity": null,',
+    '  "packageQty": null,',
+    '  "packageUnit": "",',
+    '  "leadTime": "",',
+    '  "unit": "",',
+    '  "skuCode": "",',
+    '  "focusKeyword": "",',
+    '  "specifications": {"key":"value"},',
+    '  "faq": [{"question":"","answer":""}],',
+    '  "suggestedCategory": "",',
+    '  "rawText": "",',
+    '  "confidence": 0.0',
+    '}',
+    '',
+    'DOCUMENT TEXT:',
+    excerpt,
+  ].join('\n');
+
+  const completion = await client.chat.completions.create({
+    model,
+    temperature: 0.1,
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Extract structured product data from technical documents. Return only valid JSON. /no_think',
+      },
+      { role: 'user', content: prompt },
+    ],
+  });
+
+  const result = completion.choices[0]?.message?.content;
+  if (!result) throw new Error('AI 未返回 PDF 解析结果');
+  return normalizeExtractedProduct(
+    JSON.parse(stripCodeFence(result)) as Partial<ExtractedProductData>,
+    text,
+  );
+}
+
+function normalizeExtractedProduct(
+  parsed: Partial<ExtractedProductData>,
+  rawTextFallback = '',
+): ExtractedProductData {
+  const name = normalizeString(parsed.name);
+  if (!name) {
+    throw new Error('AI 未能识别产品名称');
+  }
+
+  return {
+    sourceLanguage: normalizeSupportedLanguage(parsed.sourceLanguage),
+    name,
+    brand: normalizeString(parsed.brand),
+    subtitle: normalizeString(parsed.subtitle),
+    description: normalizeString(parsed.description),
+    richDescription: normalizeString(parsed.richDescription),
+    price: normalizeNumber(parsed.price),
+    currency: normalizeString(parsed.currency).toUpperCase() || 'USD',
+    hasPrice: typeof parsed.hasPrice === 'boolean' ? parsed.hasPrice : true,
+    minOrderQuantity: normalizeNumber(parsed.minOrderQuantity),
+    packageQty: normalizeNumber(parsed.packageQty),
+    packageUnit: normalizeString(parsed.packageUnit),
+    leadTime: normalizeString(parsed.leadTime),
+    unit: normalizeString(parsed.unit),
+    skuCode: normalizeString(parsed.skuCode),
+    focusKeyword: normalizeString(parsed.focusKeyword),
+    specifications: normalizeSpecs(parsed.specifications),
+    faq: normalizeFaq(parsed.faq),
+    suggestedCategory: normalizeString(parsed.suggestedCategory),
+    rawText: normalizeString(parsed.rawText) || rawTextFallback,
+    confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
+  };
+}
+
+function buildProductPayload(
+  extracted: ExtractedProductData,
+  source: PreparedSource,
+  siteCode: string,
+) {
+  return {
+    name: extracted.name,
+    brand: extracted.brand || '',
+    subtitle: extracted.subtitle || '',
+    description: extracted.description || extracted.rawText || '',
+    rich_description: extracted.richDescription || extracted.description || extracted.rawText || '',
+    price: extracted.price,
+    currency: extracted.currency || 'USD',
+    has_price: extracted.hasPrice ?? true,
+    min_order_quantity: extracted.minOrderQuantity,
+    package_qty: extracted.packageQty,
+    package_unit: extracted.packageUnit || '',
+    lead_time: extracted.leadTime || '',
+    unit: extracted.unit || '',
+    sku_code: extracted.skuCode || '',
+    focus_keyword: extracted.focusKeyword || '',
+    specifications: extracted.specifications || {},
+    faq: extracted.faq || [],
+    image_url: source.coverImageUrl,
+    cover_image_url: source.coverImageUrl,
+    publish_language: extracted.sourceLanguage,
+    status: 'draft',
+    audit_status: 'draft',
+    source_url: source.sourceUrl,
+    siteCode,
+  };
+}
+
+export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ('response' in auth) return auth.response;
+
+  try {
+    const formData = await request.formData();
+    const siteCode = normalizeString(formData.get('siteCode')).toLowerCase() || 'cn';
+    const source = await prepareSource(formData);
+    const extracted =
+      source.kind === 'image'
+        ? await extractFromImage(source.visionUrl || '')
+        : await extractFromPdfText(source.extractedText || '');
+
+    const payload = buildProductPayload(extracted, source, siteCode);
+    const createResponse = await fetch(`${request.nextUrl.origin}/api/v1/admin/products`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: request.headers.get('cookie') || '',
+      },
+      cache: 'no-store',
+      body: JSON.stringify(payload),
+    });
+
+    const createJson = await createResponse.json().catch(() => ({}));
+    if (!createResponse.ok) {
+      throw new Error(
+        typeof createJson?.error === 'string' ? createJson.error : '创建产品草稿失败',
+      );
+    }
+
+    writeAuditLog(request, auth.admin, {
+      module: 'product',
+      action: 'document_import',
+      targetType: 'product',
+      targetId: createJson?.id ?? null,
+      targetName: extracted.name,
+      newValue: {
+        siteCode,
+        sourceKind: source.kind,
+        extracted,
+      },
+      changesSummary: `通过资料导入创建产品草稿：${extracted.name}`,
+    });
+
+    return NextResponse.json({
+      data: createJson,
+      extracted,
+      warnings: source.warnings,
+      sourceKind: source.kind,
+    });
+  } catch (error) {
+    console.error('Product document import failed:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : '产品资料导入失败' },
+      { status: 500 },
+    );
+  }
+}
