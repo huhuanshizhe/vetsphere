@@ -22,6 +22,7 @@ interface ProductSku {
 }
 
 interface ProductCategory {
+  id: string;
   name: string | null;
   name_en: string;
   level: number;
