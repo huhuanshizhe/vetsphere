@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendWelcomeEmail } from '@vetsphere/shared/lib/email';
+import { safeUpsertUserSiteMembership, upsertBaseProfile } from '@vetsphere/shared/services/user-site-provenance';
 
 export async function POST(req: NextRequest) {
   try {
     const { email, password, role, fullName, license, clinic, company, discipline } = await req.json();
+    const finalRole = role || 'Doctor';
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
@@ -21,6 +23,7 @@ export async function POST(req: NextRequest) {
     });
 
     const userName = fullName || email.split('@')[0];
+  const now = new Date().toISOString();
 
     // Create user via admin API: bypasses rate limits and auto-confirms email
     const { data, error } = await adminClient.auth.admin.createUser({
@@ -28,7 +31,7 @@ export async function POST(req: NextRequest) {
       password,
       email_confirm: true,
       user_metadata: { 
-        role: role || 'Doctor',
+        role: finalRole,
         name: userName,
         license: license || null,
         clinic: clinic || null,
@@ -39,6 +42,30 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    try {
+      await upsertBaseProfile(adminClient, {
+        userId: data.user.id,
+        email,
+        fullName: userName,
+        role: finalRole,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await safeUpsertUserSiteMembership(adminClient, {
+        userId: data.user.id,
+        siteCode: 'cn',
+        originSite: 'cn',
+        createdVia: 'cn_email_register',
+        createdAt: now,
+        updatedAt: now,
+        metadata: { app: 'cn', role: finalRole },
+      });
+    } catch (bootstrapError) {
+      console.error('[CN Register] Failed to bootstrap user directory:', bootstrapError);
+      await adminClient.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+      return NextResponse.json({ error: 'User bootstrap failed' }, { status: 500 });
     }
 
     // Send welcome email (non-blocking)

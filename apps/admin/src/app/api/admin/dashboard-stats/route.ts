@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { getAdminUserKpis } from '@/lib/user-directory';
 
 /**
  * GET /api/admin/dashboard-stats?site_code=cn|intl|global
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
   try {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const normalizedSiteCode = siteCode === 'cn' || siteCode === 'intl' ? siteCode : 'global';
 
     // ---- 课程：按站点过滤通过 course_site_views ----
     const coursesTotalQ = filterSite
@@ -78,38 +80,26 @@ export async function GET(req: NextRequest) {
           .is('deleted_at', null)
           .eq('status', 'published');
 
-    // ---- 用户 / 医生申请 / 采购线索：暂不按站点过滤（schema 无 site_code）----
-    // TODO(后续): purchase_leads 表可加 site_code 后再按站点过滤
+    const userKpisPromise = getAdminUserKpis(normalizedSiteCode, todayStart);
+
     const [
-      totalUsersR,
-      totalDoctorsR,
-      pendingVerificationsR,
+      userKpis,
       totalCoursesR,
       publishedCoursesR,
       totalProductsR,
       publishedProductsR,
       newLeadsR,
       totalLeadsR,
-      todayUsersR,
       todayLeadsR,
       logsR,
     ] = await Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_doctor', true),
-      supabase
-        .from('doctor_applications')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending_review'),
+      userKpisPromise,
       coursesTotalQ,
       coursesPublishedQ,
       productsTotalQ,
       productsPublishedQ,
       supabase.from('purchase_leads').select('id', { count: 'exact', head: true }).eq('status', 'new'),
       supabase.from('purchase_leads').select('id', { count: 'exact', head: true }),
-      supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', todayStart),
       supabase
         .from('purchase_leads')
         .select('id', { count: 'exact', head: true })
@@ -124,16 +114,16 @@ export async function GET(req: NextRequest) {
     const payload = {
       site_code: siteCode,
       stats: {
-        totalUsers: totalUsersR.count || 0,
-        totalDoctors: totalDoctorsR.count || 0,
-        pendingVerifications: pendingVerificationsR.count || 0,
+        totalUsers: userKpis.totalUsers,
+        totalDoctors: userKpis.approvedUsers,
+        pendingVerifications: userKpis.pendingUsers,
         totalCourses: totalCoursesR.count || 0,
         publishedCourses: publishedCoursesR.count || 0,
         totalProducts: totalProductsR.count || 0,
         publishedProducts: publishedProductsR.count || 0,
         newLeads: newLeadsR.count || 0,
         totalLeads: totalLeadsR.count || 0,
-        todayUsers: todayUsersR.count || 0,
+        todayUsers: userKpis.todayUsers,
         todayLeads: todayLeadsR.count || 0,
       },
       recentLogs: logsR.data || [],

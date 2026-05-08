@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { safeUpsertUserSiteMembership } from '@vetsphere/shared/services/user-site-provenance';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -288,6 +289,14 @@ export async function POST(request: NextRequest) {
         created_at: new Date().toISOString(),
       });
     }
+
+    await safeUpsertUserSiteMembership(supabaseAdmin, {
+      userId,
+      siteCode: 'cn',
+      originSite: 'cn',
+      createdVia: 'cn_sms_code',
+      metadata: { app: 'cn', mobile },
+    });
 
     await ensureDemoDoctorAccount(userId, mobile);
 

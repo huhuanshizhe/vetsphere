@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/server/guidance-api';
+import { safeUpsertUserSiteMembership } from '@vetsphere/shared/services/user-site-provenance';
 
 const SMS_MAX_ERRORS = 5;
 const DEMO_MOBILE = process.env.DEMO_TEST_MOBILE || '13800000000';
@@ -378,6 +379,14 @@ export async function POST(request: NextRequest) {
         created_at: new Date().toISOString(),
       });
     }
+
+    await safeUpsertUserSiteMembership(supabaseAdmin, {
+      userId,
+      siteCode: 'cn',
+      originSite: 'cn',
+      createdVia: 'remote_guidance_sms_code',
+      metadata: { app: 'remote-guidance', mobile },
+    });
 
     await ensureDemoDoctorAccount(userId, mobile);
 

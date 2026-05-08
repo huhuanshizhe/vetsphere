@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { countAdminUsers } from '@/lib/user-directory';
 
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
@@ -13,10 +14,14 @@ export async function GET(req: NextRequest) {
     const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
+    const totalUsersPromise = countAdminUsers({ siteCode: 'global' });
+    const todayUsersPromise = countAdminUsers({ siteCode: 'global', createdAfter: todayStart });
+    const weekUsersPromise = countAdminUsers({ siteCode: 'global', createdAfter: weekStart });
+
     const [
-      usersResult,
-      usersTodayResult,
-      usersWeekResult,
+      totalUsers,
+      usersToday,
+      usersThisWeek,
       ordersResult,
       ordersPendingResult,
       ordersPaidResult,
@@ -35,9 +40,9 @@ export async function GET(req: NextRequest) {
       postsWeekResult,
       moderationResult
     ] = await Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', weekStart),
+      totalUsersPromise,
+      todayUsersPromise,
+      weekUsersPromise,
       supabase.from('orders').select('id', { count: 'exact', head: true }),
       supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'Pending'),
       supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'Paid'),
@@ -62,10 +67,10 @@ export async function GET(req: NextRequest) {
 
     const stats = {
       users: {
-        total: usersResult.count || 0,
-        newToday: usersTodayResult.count || 0,
-        newThisWeek: usersWeekResult.count || 0,
-        activeToday: Math.floor((usersResult.count || 0) * 0.3)
+        total: totalUsers,
+        newToday: usersToday,
+        newThisWeek: usersThisWeek,
+        activeToday: Math.floor(totalUsers * 0.3)
       },
       orders: {
         total: ordersResult.count || 0,

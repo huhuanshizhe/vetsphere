@@ -11,7 +11,7 @@ import {
   StatCard,
   Pagination,
 } from '@/components/ui';
-import { getAccessTokenSafe } from '@vetsphere/shared/services/supabase';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { useSite } from '@/context/SiteContext';
 
 interface UnifiedUser {
@@ -30,6 +30,19 @@ interface UnifiedUser {
   isDoctor?: boolean;
   createdAt: string | null;
   lastLoginAt?: string | null;
+}
+
+interface UsersApiResponse {
+  items: UnifiedUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  siteCode: 'cn' | 'intl' | 'global';
+  stats?: {
+    total: number;
+    verified: number;
+    pending: number;
+  };
 }
 
 const PAGE_SIZE = 20;
@@ -55,9 +68,6 @@ export default function UsersPage() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const token = await getAccessTokenSafe();
-      if (!token) return;
-
       const params = new URLSearchParams();
       params.set('site_code', currentSite || 'global');
       if (searchKeyword) params.set('keyword', searchKeyword);
@@ -65,25 +75,19 @@ export default function UsersPage() {
       params.set('page', String(page));
       params.set('pageSize', String(PAGE_SIZE));
 
-      const res = await fetch(`/api/v1/admin/users?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('加载用户失败');
-      const data = await res.json();
+      const data = await apiFetch<UsersApiResponse>(`/api/v1/admin/users?${params.toString()}`);
 
       const items: UnifiedUser[] = data.items || [];
       setUsers(items);
       setTotal(data.total || 0);
 
       setStats({
-        total: data.total || 0,
-        verified: items.filter((u) => u.verificationStatus === 'approved').length,
-        pending: items.filter(
-          (u) => u.verificationStatus === 'submitted' || u.verificationStatus === 'under_review',
-        ).length,
+        total: data.stats?.total ?? data.total ?? 0,
+        verified: data.stats?.verified ?? 0,
+        pending: data.stats?.pending ?? 0,
       });
     } catch (e) {
-      console.error('加载用户失败:', e);
+      console.error('加载用户失败:', getErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -232,7 +236,7 @@ export default function UsersPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => (window.location.href = `/users/${user.id}`)}
+                            onClick={() => (window.location.href = `/users/${user.id}?site=${user.sourceSite}`)}
                           >
                             查看
                           </Button>

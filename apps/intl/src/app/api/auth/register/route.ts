@@ -7,6 +7,7 @@ import {
   type SupportedLocale 
 } from '@vetsphere/shared/lib/email/localized-email';
 import { rateLimiters } from '@vetsphere/shared/lib/rate-limit';
+import { safeUpsertUserSiteMembership, upsertBaseProfile } from '@vetsphere/shared/services/user-site-provenance';
 
 
 async function getSupabaseAdmin() {
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { email, password, role, fullName, locale = 'en' } = await req.json();
+    const finalRole = role || 'Doctor';
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -40,6 +42,7 @@ export async function POST(req: NextRequest) {
     const adminClient = await getSupabaseAdmin();
 
     const userName = fullName || email.split('@')[0];
+    const now = new Date().toISOString();
 
     // Create user via admin API: bypasses rate limits and auto-confirms email
     const { data, error } = await adminClient.auth.admin.createUser({
@@ -47,13 +50,37 @@ export async function POST(req: NextRequest) {
       password,
       email_confirm: true,
       user_metadata: {
-        role: role || 'Doctor',
+        role: finalRole,
         name: userName,
       }
     });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    try {
+      await upsertBaseProfile(adminClient, {
+        userId: data.user.id,
+        email,
+        fullName: userName,
+        role: finalRole,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await safeUpsertUserSiteMembership(adminClient, {
+        userId: data.user.id,
+        siteCode: 'intl',
+        originSite: 'intl',
+        createdVia: 'intl_email_register',
+        createdAt: now,
+        updatedAt: now,
+        metadata: { app: 'intl', role: finalRole },
+      });
+    } catch (bootstrapError) {
+      console.error('[Register] Failed to bootstrap user directory:', bootstrapError);
+      await adminClient.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+      return NextResponse.json({ error: 'User bootstrap failed' }, { status: 500 });
     }
 
     // Send localized welcome email (non-blocking)
