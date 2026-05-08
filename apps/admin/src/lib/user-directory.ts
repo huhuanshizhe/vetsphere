@@ -25,6 +25,15 @@ export interface AdminUserRecord {
   isAdmin: boolean;
   createdVia: string | null;
   isShadowProfile: boolean;
+  verificationRequestId: string | null;
+  verificationRealName: string | null;
+  verificationOrganizationName: string | null;
+  verificationPositionTitle: string | null;
+  verificationSpecialtyTags: string[];
+  verificationApprovedLevel: string | null;
+  verificationSubmittedAt: string | null;
+  verificationReviewedAt: string | null;
+  verificationRejectReason: string | null;
 }
 
 export interface AdminUserStats {
@@ -62,9 +71,32 @@ export interface AdminUserListFilters extends AdminUserQueryFilters {
   pageSize: number;
 }
 
+export interface AdminVerifiedDoctorListFilters {
+  siteCode: AdminUserSiteCode;
+  keyword?: string;
+  verificationType?: string | null;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminVerifiedDoctorListResult {
+  items: AdminUserRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  siteCode: AdminUserSiteCode;
+  source: 'admin_user_directory_view' | 'unified_users_view';
+}
+
 const DIRECTORY_VIEW = 'admin_user_directory_view';
 const LEGACY_VIEW = 'unified_users_view';
 const PENDING_STATUSES = ['submitted', 'under_review'] as const;
+const DEFAULT_KEYWORD_FIELDS = ['contact', 'display_name', 'full_name', 'email'] as const;
+const VERIFIED_DOCTOR_KEYWORD_FIELDS = [
+  ...DEFAULT_KEYWORD_FIELDS,
+  'verification_real_name',
+  'verification_organization_name',
+] as const;
 
 function normalizeSiteCode(value: string | null | undefined): AdminUserSiteCode {
   return value === 'cn' || value === 'intl' ? value : 'global';
@@ -73,6 +105,11 @@ function normalizeSiteCode(value: string | null | undefined): AdminUserSiteCode 
 function normalizeVerificationStatus(value: string | null | undefined): string | null {
   if (!value) return null;
   return value.trim() || null;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string');
 }
 
 function normalizeDirectoryRow(row: Record<string, unknown>): AdminUserRecord {
@@ -108,6 +145,25 @@ function normalizeDirectoryRow(row: Record<string, unknown>): AdminUserRecord {
     isAdmin: Boolean(row.is_admin),
     createdVia: typeof row.created_via === 'string' ? row.created_via : null,
     isShadowProfile: Boolean(row.is_shadow_profile),
+    verificationRequestId:
+      typeof row.verification_request_id === 'string' ? row.verification_request_id : null,
+    verificationRealName:
+      typeof row.verification_real_name === 'string' ? row.verification_real_name : null,
+    verificationOrganizationName:
+      typeof row.verification_organization_name === 'string'
+        ? row.verification_organization_name
+        : null,
+    verificationPositionTitle:
+      typeof row.verification_position_title === 'string' ? row.verification_position_title : null,
+    verificationSpecialtyTags: normalizeStringArray(row.verification_specialty_tags),
+    verificationApprovedLevel:
+      typeof row.verification_approved_level === 'string' ? row.verification_approved_level : null,
+    verificationSubmittedAt:
+      typeof row.verification_submitted_at === 'string' ? row.verification_submitted_at : null,
+    verificationReviewedAt:
+      typeof row.verification_reviewed_at === 'string' ? row.verification_reviewed_at : null,
+    verificationRejectReason:
+      typeof row.verification_reject_reason === 'string' ? row.verification_reject_reason : null,
   };
 }
 
@@ -118,13 +174,15 @@ function applySiteFilter(query: any, filters: AdminUserQueryFilters, siteField: 
   return query;
 }
 
-function applyKeywordFilter(query: any, keyword: string | undefined): any {
+function applyKeywordFilter(
+  query: any,
+  keyword: string | undefined,
+  fields: readonly string[] = DEFAULT_KEYWORD_FIELDS,
+): any {
   const trimmed = keyword?.trim();
   if (!trimmed) return query;
 
-  return query.or(
-    `contact.ilike.%${trimmed}%,display_name.ilike.%${trimmed}%,full_name.ilike.%${trimmed}%,email.ilike.%${trimmed}%`,
-  );
+  return query.or(fields.map((field) => `${field}.ilike.%${trimmed}%`).join(','));
 }
 
 function applyCreatedAfterFilter(query: any, createdAfter: string | undefined): any {
@@ -142,17 +200,24 @@ function applyVerificationFilter(
   return query.eq('verification_status', normalized);
 }
 
+function applyVerificationTypeFilter(query: any, verificationType: string | null | undefined): any {
+  const normalized = verificationType?.trim();
+  if (!normalized) return query;
+  return query.eq('verification_type', normalized);
+}
+
 function buildViewQuery(
   viewName: string,
   siteField: string,
   filters: AdminUserQueryFilters,
   selectClause: string,
   options?: Record<string, unknown>,
+  keywordFields: readonly string[] = DEFAULT_KEYWORD_FIELDS,
 ) {
   const supabase = getSupabaseAdmin();
   let query = supabase.from(viewName).select(selectClause, options);
   query = applySiteFilter(query, filters, siteField);
-  query = applyKeywordFilter(query, filters.keyword);
+  query = applyKeywordFilter(query, filters.keyword, keywordFields);
   query = applyCreatedAfterFilter(query, filters.createdAfter);
   query = applyVerificationFilter(query, filters.verificationStatus);
   return query;
@@ -163,11 +228,12 @@ async function countFromView(
   siteField: string,
   filters: AdminUserQueryFilters,
   verificationOverride?: string | readonly string[] | null,
+  keywordFields: readonly string[] = DEFAULT_KEYWORD_FIELDS,
 ): Promise<number> {
   const supabase = getSupabaseAdmin();
   let query = supabase.from(viewName).select('user_id', { count: 'exact', head: true });
   query = applySiteFilter(query, filters, siteField);
-  query = applyKeywordFilter(query, filters.keyword);
+  query = applyKeywordFilter(query, filters.keyword, keywordFields);
   query = applyCreatedAfterFilter(query, filters.createdAfter);
 
   if (verificationOverride === null) {
@@ -377,6 +443,15 @@ async function fetchLegacyUserDetail(
           isAdmin: false,
           createdVia: null,
           isShadowProfile: false,
+          verificationRequestId: null,
+          verificationRealName: null,
+          verificationOrganizationName: null,
+          verificationPositionTitle: null,
+          verificationSpecialtyTags: [],
+          verificationApprovedLevel: null,
+          verificationSubmittedAt: null,
+          verificationReviewedAt: null,
+          verificationRejectReason: null,
         },
         source: 'legacy',
       };
@@ -431,6 +506,15 @@ async function fetchLegacyUserDetail(
             isAdmin: false,
             createdVia: null,
             isShadowProfile: false,
+            verificationRequestId: null,
+            verificationRealName: null,
+            verificationOrganizationName: null,
+            verificationPositionTitle: null,
+            verificationSpecialtyTags: [],
+            verificationApprovedLevel: null,
+            verificationSubmittedAt: null,
+            verificationReviewedAt: null,
+            verificationRejectReason: null,
           },
           source: 'legacy',
         };
@@ -511,4 +595,58 @@ export async function getAdminUserKpis(
     approvedUsers,
     pendingUsers,
   };
+}
+
+async function fetchVerifiedDoctorsFromView(
+  viewName: string,
+  siteField: string,
+  source: AdminVerifiedDoctorListResult['source'],
+  filters: AdminVerifiedDoctorListFilters,
+): Promise<AdminVerifiedDoctorListResult> {
+  const supabase = getSupabaseAdmin();
+  const from = (filters.page - 1) * filters.pageSize;
+  const to = from + filters.pageSize - 1;
+
+  let query = supabase.from(viewName).select('*', { count: 'exact' });
+  query = applySiteFilter(query, filters, siteField);
+  query = applyKeywordFilter(query, filters.keyword, VERIFIED_DOCTOR_KEYWORD_FIELDS);
+  query = applyVerificationTypeFilter(query, filters.verificationType);
+  query = query
+    .eq('verification_status', 'approved')
+    .order('verification_reviewed_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+
+  return {
+    items: (data || []).map((row) => normalizeDirectoryRow(row as unknown as Record<string, unknown>)),
+    total: count || 0,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    siteCode: normalizeSiteCode(filters.siteCode),
+    source,
+  };
+}
+
+export async function listVerifiedDoctors(
+  filters: AdminVerifiedDoctorListFilters,
+): Promise<AdminVerifiedDoctorListResult> {
+  try {
+    return await fetchVerifiedDoctorsFromView(
+      DIRECTORY_VIEW,
+      'site_code',
+      'admin_user_directory_view',
+      filters,
+    );
+  } catch (directoryError) {
+    console.warn('[user-directory] verified doctors fallback to unified_users_view:', directoryError);
+    return fetchVerifiedDoctorsFromView(
+      LEGACY_VIEW,
+      'source_site',
+      'unified_users_view',
+      filters,
+    );
+  }
 }

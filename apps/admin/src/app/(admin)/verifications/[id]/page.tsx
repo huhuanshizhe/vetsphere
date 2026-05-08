@@ -37,6 +37,7 @@ interface VerificationData {
   verification: {
     id: string;
     userId: string;
+    siteCode: 'cn' | 'intl';
     verificationType: string;
     status: string;
     realName: string;
@@ -57,7 +58,8 @@ interface VerificationData {
     updatedAt: string;
   };
   user: {
-    mobile: string;
+    mobile: string | null;
+    email: string | null;
     status: string;
     registeredAt: string | null;
     lastLoginAt: string | null;
@@ -222,8 +224,9 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
               <InfoField label="真实姓名" value={v.realName} highlight />
-              <InfoField label="手机号" value={data.user?.mobile} />
+              <InfoField label="联系方式" value={data.user?.mobile || data.user?.email} />
               <InfoField label="认证类型" value={TYPE_LABELS[v.verificationType] || v.verificationType} badge="blue" />
+              <InfoField label="站点" value={v.siteCode.toUpperCase()} />
               <InfoField label="所在单位/机构" value={v.organizationName} />
               <InfoField label="职位/职称" value={v.positionTitle} />
               <InfoField label="昵称" value={data.profile?.displayName} />

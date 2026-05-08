@@ -30,16 +30,44 @@ export async function GET(
       return NextResponse.json({ error: '未找到认证申请' }, { status: 404 });
     }
     
-    // 单独查询用户相关信息
-    const [userRes, profileRes, identityRes] = await Promise.all([
-      supabaseAdmin.from('cn_users').select('mobile, status, registered_at, last_login_at').eq('id', verification.user_id).single(),
-      supabaseAdmin.from('cn_user_profiles').select('display_name, real_name, avatar_file_id, organization_name, job_title, experience_years, interest_tags, bio, identity_fields').eq('user_id', verification.user_id).single(),
-      supabaseAdmin.from('cn_user_identity_profiles').select('identity_type, identity_group, identity_group_v2, doctor_subtype, identity_selected_at').eq('user_id', verification.user_id).single(),
-    ]);
-    
-    const cnUser = userRes.data;
-    const cnProfile = profileRes.data;
-    const cnIdentity = identityRes.data;
+    let cnUser: Record<string, any> | null = null;
+    let cnProfile: Record<string, any> | null = null;
+    let cnIdentity: Record<string, any> | null = null;
+    let intlProfile: Record<string, any> | null = null;
+
+    if (verification.site_code === 'cn') {
+      const [userRes, profileRes, identityRes] = await Promise.all([
+        supabaseAdmin
+          .from('cn_users')
+          .select('mobile, status, registered_at, last_login_at')
+          .eq('id', verification.user_id)
+          .maybeSingle(),
+        supabaseAdmin
+          .from('cn_user_profiles')
+          .select('display_name, real_name, avatar_file_id, organization_name, job_title, experience_years, interest_tags, bio, identity_fields')
+          .eq('user_id', verification.user_id)
+          .eq('site_code', 'cn')
+          .maybeSingle(),
+        supabaseAdmin
+          .from('cn_user_identity_profiles')
+          .select('identity_type, identity_group, identity_group_v2, doctor_subtype, identity_selected_at')
+          .eq('user_id', verification.user_id)
+          .eq('site_code', 'cn')
+          .maybeSingle(),
+      ]);
+
+      cnUser = userRes.data;
+      cnProfile = profileRes.data;
+      cnIdentity = identityRes.data;
+    } else {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('email, full_name, avatar_url, created_at, last_login_at')
+        .eq('id', verification.user_id)
+        .maybeSingle();
+
+      intlProfile = profile;
+    }
     
     // 获取审核日志
     const { data: auditLogs } = await supabaseAdmin
@@ -63,6 +91,7 @@ export async function GET(
       verification: {
         id: verification.id,
         userId: verification.user_id,
+        siteCode: verification.site_code,
         verificationType: verification.verification_type,
         status: verification.status,
         realName: verification.real_name,
@@ -82,24 +111,45 @@ export async function GET(
         createdAt: verification.created_at,
         updatedAt: verification.updated_at,
       },
-      user: cnUser ? {
-        mobile: cnUser.mobile,
-        status: cnUser.status,
-        registeredAt: cnUser.registered_at,
-        lastLoginAt: cnUser.last_login_at,
-      } : null,
-      profile: cnProfile ? {
-        displayName: cnProfile.display_name,
-        realName: cnProfile.real_name,
-        avatarUrl: cnProfile.avatar_file_id,
-        organizationName: cnProfile.organization_name,
-        jobTitle: cnProfile.job_title,
-        experienceYears: cnProfile.experience_years,
-        interestTags: cnProfile.interest_tags || [],
-        bio: cnProfile.bio,
-        identityFields: cnProfile.identity_fields || {},
-      } : null,
-      identity: cnIdentity ? {
+      user: verification.site_code === 'cn'
+        ? cnUser ? {
+            mobile: cnUser.mobile,
+            email: null,
+            status: cnUser.status,
+            registeredAt: cnUser.registered_at,
+            lastLoginAt: cnUser.last_login_at,
+          } : null
+        : intlProfile ? {
+            mobile: null,
+            email: intlProfile.email || null,
+            status: 'active',
+            registeredAt: intlProfile.created_at || null,
+            lastLoginAt: intlProfile.last_login_at || null,
+          } : null,
+      profile: verification.site_code === 'cn'
+        ? cnProfile ? {
+            displayName: cnProfile.display_name,
+            realName: cnProfile.real_name,
+            avatarUrl: cnProfile.avatar_file_id,
+            organizationName: cnProfile.organization_name,
+            jobTitle: cnProfile.job_title,
+            experienceYears: cnProfile.experience_years,
+            interestTags: cnProfile.interest_tags || [],
+            bio: cnProfile.bio,
+            identityFields: cnProfile.identity_fields || {},
+          } : null
+        : intlProfile ? {
+            displayName: intlProfile.full_name || null,
+            realName: intlProfile.full_name || null,
+            avatarUrl: intlProfile.avatar_url || null,
+            organizationName: verification.organization_name,
+            jobTitle: verification.position_title,
+            experienceYears: null,
+            interestTags: [],
+            bio: null,
+            identityFields: {},
+          } : null,
+      identity: verification.site_code === 'cn' && cnIdentity ? {
         identityType: cnIdentity.identity_type,
         identityGroup: cnIdentity.identity_group,
         identityGroupV2: cnIdentity.identity_group_v2,
@@ -149,7 +199,7 @@ export async function POST(
     // 获取当前申请
     const { data: verification, error: queryError } = await supabaseAdmin
       .from('cn_verification_requests')
-      .select('id, user_id, status')
+      .select('id, user_id, site_code, status')
       .eq('id', id)
       .single();
     
@@ -228,18 +278,18 @@ export async function POST(
     writeAuditLog(request, auth.admin, {
       module: 'doctor_verify',
       action,
-      targetType: 'cn_verification_request',
+      targetType: `${verification.site_code}_verification_request`,
       targetId: id,
       oldValue: { status: verification.status },
       newValue: { status: newStatus, reject_reason: rejectReason || null },
       changesSummary:
         action === 'approve'
-          ? `通过 CN 认证（${approvedLevel || 'professional_verified'}）`
-          : `驳回 CN 认证：${rejectReason || ''}`,
+          ? `通过 ${verification.site_code.toUpperCase()} 认证（${approvedLevel || 'professional_verified'}）`
+          : `驳回 ${verification.site_code.toUpperCase()} 认证：${rejectReason || ''}`,
     });
     
     // 更新用户状态快照
-    if (action === 'approve' || action === 'reject') {
+    if ((action === 'approve' || action === 'reject') && verification.site_code === 'cn') {
       const snapshotUpdate: any = {
         verification_status: newStatus,
         updated_at: new Date().toISOString(),

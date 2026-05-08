@@ -79,6 +79,13 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         permission: 'doctor_verify.view',
       },
       {
+        key: 'verification-anomalies',
+        label: '认证异常',
+        icon: 'AlertTriangle',
+        href: '/verification-anomalies',
+        permission: 'doctor_verify.view',
+      },
+      {
         key: 'roles',
         label: '角色权限',
         icon: 'Shield',
