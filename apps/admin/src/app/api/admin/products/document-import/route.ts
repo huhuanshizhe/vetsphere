@@ -117,12 +117,15 @@ function isPdfType(nameOrUrl: string, contentType?: string | null): boolean {
 }
 
 async function parsePdfText(buffer: Buffer): Promise<string> {
-  const pdfParseModule = await import('pdf-parse');
-  const pdfParse = (pdfParseModule.default || pdfParseModule) as unknown as (
-    data: Buffer,
-  ) => Promise<{ text?: string }>;
-  const parsed = await pdfParse(buffer);
-  return normalizeString(parsed?.text);
+  const { PDFParse } = await import('pdf-parse');
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+
+  try {
+    const parsed = await parser.getText();
+    return normalizeString(parsed?.text);
+  } finally {
+    await parser.destroy().catch(() => undefined);
+  }
 }
 
 async function prepareSource(formData: FormData): Promise<PreparedSource> {
