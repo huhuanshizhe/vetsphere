@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { requireAdmin } from '@/lib/auth-middleware';
@@ -36,12 +39,15 @@ interface ExtractedProductData {
 
 interface PreparedSource {
   kind: SourceKind;
+  sourceName?: string;
   visionUrl?: string;
   extractedText?: string;
   coverImageUrl: string | null;
   sourceUrl: string | null;
   warnings: string[];
 }
+
+let pdfWorkerHref: string | null = null;
 
 function normalizeBaseUrl(rawBaseUrl: string): string {
   if (!rawBaseUrl) return rawBaseUrl;
@@ -64,6 +70,13 @@ function normalizeSupportedLanguage(value: unknown): SupportedLanguage {
 
 function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function detectSupportedLanguage(text: string): SupportedLanguage {
+  if (/[\u0E00-\u0E7F]/.test(text)) return 'th';
+  if (/[ぁ-んァ-ン]/.test(text)) return 'ja';
+  if (/[\u4E00-\u9FFF]/.test(text)) return 'zh';
+  return 'en';
 }
 
 function normalizeNumber(value: unknown): number | null {
@@ -116,8 +129,44 @@ function isPdfType(nameOrUrl: string, contentType?: string | null): boolean {
   return lower.endsWith('.pdf') || (contentType || '').toLowerCase().includes('application/pdf');
 }
 
+async function resolvePdfWorkerHref(): Promise<string | null> {
+  if (pdfWorkerHref) return pdfWorkerHref;
+
+  const relativeWorkerPath = path.join(
+    'node_modules',
+    'pdf-parse',
+    'dist',
+    'pdf-parse',
+    'esm',
+    'pdf.worker.mjs',
+  );
+  const candidates = [
+    path.resolve(process.cwd(), relativeWorkerPath),
+    path.resolve(process.cwd(), '..', relativeWorkerPath),
+    path.resolve(process.cwd(), '..', '..', relativeWorkerPath),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      await fs.access(candidate);
+      pdfWorkerHref = pathToFileURL(candidate).href;
+      return pdfWorkerHref;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 async function parsePdfText(buffer: Buffer): Promise<string> {
   const { PDFParse } = await import('pdf-parse');
+  const workerHref = await resolvePdfWorkerHref();
+
+  if (workerHref) {
+    PDFParse.setWorker(workerHref);
+  }
+
   const parser = new PDFParse({ data: new Uint8Array(buffer) });
 
   try {
@@ -142,12 +191,24 @@ async function prepareSource(formData: FormData): Promise<PreparedSource> {
     const contentType = file.type || 'application/octet-stream';
 
     if (isPdfType(file.name, contentType)) {
-      const extractedText = await parsePdfText(buffer);
-      if (!extractedText) {
-        throw new Error('当前仅支持可提取文本的 PDF。纯扫描 PDF 请先转成图片后再导入。');
+      let extractedText = '';
+      try {
+        extractedText = await parsePdfText(buffer);
+      } catch (error) {
+        warnings.push(
+          error instanceof Error
+            ? `PDF 文本提取失败，已回退到基础草稿：${error.message}`
+            : 'PDF 文本提取失败，已回退到基础草稿。',
+        );
       }
+
+      if (!extractedText) {
+        warnings.push('未提取到 PDF 文本内容，将按文件名创建基础草稿。');
+      }
+
       return {
         kind: 'pdf',
+        sourceName: file.name,
         extractedText,
         coverImageUrl: null,
         sourceUrl: null,
@@ -177,6 +238,7 @@ async function prepareSource(formData: FormData): Promise<PreparedSource> {
 
     return {
       kind: 'image',
+      sourceName: file.name,
       visionUrl: dataUrl,
       coverImageUrl,
       sourceUrl: null,
@@ -197,12 +259,30 @@ async function prepareSource(formData: FormData): Promise<PreparedSource> {
   const buffer = Buffer.from(await response.arrayBuffer());
 
   if (isPdfType(imageOrPdfUrl, contentType)) {
-    const extractedText = await parsePdfText(buffer);
-    if (!extractedText) {
-      throw new Error('当前仅支持可提取文本的 PDF。纯扫描 PDF 请先转成图片后再导入。');
+    let extractedText = '';
+    try {
+      extractedText = await parsePdfText(buffer);
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `PDF 文本提取失败，已回退到基础草稿：${error.message}`
+          : 'PDF 文本提取失败，已回退到基础草稿。',
+      );
     }
+
+    if (!extractedText) {
+      warnings.push('未提取到 PDF 文本内容，将按 URL 创建基础草稿。');
+    }
+
     return {
       kind: 'pdf',
+      sourceName: (() => {
+        try {
+          return new URL(imageOrPdfUrl).pathname.split('/').filter(Boolean).pop() || imageOrPdfUrl;
+        } catch {
+          return imageOrPdfUrl;
+        }
+      })(),
       extractedText,
       coverImageUrl: null,
       sourceUrl: imageOrPdfUrl,
@@ -230,11 +310,22 @@ async function prepareSource(formData: FormData): Promise<PreparedSource> {
 
   return {
     kind: 'image',
+    sourceName: (() => {
+      try {
+        return new URL(imageOrPdfUrl).pathname.split('/').filter(Boolean).pop() || imageOrPdfUrl;
+      } catch {
+        return imageOrPdfUrl;
+      }
+    })(),
     visionUrl: imageOrPdfUrl,
     coverImageUrl,
     sourceUrl: imageOrPdfUrl,
     warnings,
   };
+}
+
+function isAIConfigured() {
+  return Boolean(process.env.AI_API_KEY);
 }
 
 function getOpenAIClient(): OpenAI {
@@ -366,6 +457,59 @@ async function extractFromPdfText(text: string): Promise<ExtractedProductData> {
   );
 }
 
+function humanizeSourceName(value: string): string {
+  const normalized = normalizeString(value);
+  if (!normalized) return '';
+
+  const base = normalized.split(/[\\/]/).pop() || normalized;
+  const withoutExtension = base.replace(/\.[^.]+$/, '');
+
+  try {
+    return decodeURIComponent(withoutExtension)
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } catch {
+    return withoutExtension.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+}
+
+function buildFallbackExtractedProduct(source: PreparedSource): ExtractedProductData {
+  const rawText = normalizeString(source.extractedText);
+  const firstMeaningfulLine = rawText
+    .split(/\r?\n/)
+    .map((line) => normalizeString(line))
+    .find((line) => line.length >= 4 && line.length <= 120);
+  const sourceLabel =
+    humanizeSourceName(source.sourceName || '') ||
+    humanizeSourceName(source.sourceUrl || '') ||
+    humanizeSourceName(source.coverImageUrl || '');
+  const name = firstMeaningfulLine || sourceLabel || '导入商品草稿';
+  const summary = rawText
+    ? rawText.replace(/\s+/g, ' ').trim().slice(0, 600)
+    : `基于${source.kind === 'pdf' ? 'PDF' : '图片'}资料创建的草稿，请补充商品详情。`;
+  const specs: Record<string, string> = source.sourceUrl
+    ? { source_reference: source.sourceUrl }
+    : {};
+
+  return normalizeExtractedProduct(
+    {
+      sourceLanguage: detectSupportedLanguage(`${name}\n${summary}`),
+      name,
+      description: summary,
+      richDescription: summary,
+      currency: 'USD',
+      hasPrice: false,
+      focusKeyword: sourceLabel || name,
+      specifications: specs,
+      faq: [],
+      rawText: rawText || sourceLabel,
+      confidence: 0,
+    },
+    rawText || sourceLabel,
+  );
+}
+
 function normalizeExtractedProduct(
   parsed: Partial<ExtractedProductData>,
   rawTextFallback = '',
@@ -441,16 +585,38 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const siteCode = normalizeString(formData.get('siteCode')).toLowerCase() || 'cn';
     const source = await prepareSource(formData);
-    const extracted =
-      source.kind === 'image'
-        ? await extractFromImage(source.visionUrl || '')
-        : await extractFromPdfText(source.extractedText || '');
+    const warnings = [...source.warnings];
+    const canUseAIExtraction =
+      isAIConfigured() && (source.kind === 'image' || normalizeString(source.extractedText).length > 0);
+    let extracted = buildFallbackExtractedProduct(source);
+
+    if (canUseAIExtraction) {
+      try {
+        extracted = source.kind === 'image'
+          ? await extractFromImage(source.visionUrl || '')
+          : await extractFromPdfText(source.extractedText || '');
+      } catch (error) {
+        warnings.push(
+          error instanceof Error
+            ? `AI 解析失败，已回退为基础草稿：${error.message}`
+            : 'AI 解析失败，已回退为基础草稿。',
+        );
+      }
+    }
+
+    if (!isAIConfigured()) {
+      warnings.push('AI 服务未配置，已按资料内容创建基础草稿，请在产品编辑页补全名称、描述、价格与规格。');
+    } else if (source.kind === 'pdf' && !normalizeString(source.extractedText)) {
+      warnings.push('PDF 文本提取不可用，已按文件名或 URL 创建基础草稿。');
+    }
 
     const payload = buildProductPayload(extracted, source, siteCode);
+    const authorization = request.headers.get('authorization');
     const createResponse = await fetch(`${request.nextUrl.origin}/api/v1/admin/products`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(authorization ? { Authorization: authorization } : {}),
         cookie: request.headers.get('cookie') || '',
       },
       cache: 'no-store',
@@ -481,7 +647,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       data: createJson,
       extracted,
-      warnings: source.warnings,
+      warnings,
       sourceKind: source.kind,
     });
   } catch (error) {

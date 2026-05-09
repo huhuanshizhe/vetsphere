@@ -3,18 +3,126 @@
 import React, { useState, useEffect, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { useSite } from '@/context/SiteContext';
 import { Card, Button, LoadingState, ConfirmDialog, Toast, ToastContainer, useToast } from '@/components/ui';
 import RichTextEditor from '@/components/RichTextEditor';
 import { ChevronRight, ChevronUp, Upload, X, Settings2, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 
 type Lang = 'en' | 'zh' | 'th' | 'ja';
+type ProductImageType = 'main' | 'detail';
+
+type ProductImageRecord = {
+  id?: string;
+  url: string;
+  type: ProductImageType;
+  sort_order: number;
+};
 
 // SKU规格参数预设
 const SKU_SPEC_PRESETS = [
   '功率', '电压', '尺寸', '材质', '容量', '精度', '速度', '频率', '温度范围', '压力范围',
   '尺寸(mm)', '重量', '颜色', '型号', '规格', '包装', '认证'
 ];
+
+function normalizeOptionalString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function createTempImageId(prefix = 'temp-image'): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isProductImageType(value: unknown): value is ProductImageType {
+  return value === 'main' || value === 'detail';
+}
+
+function normalizeProductImages(images: unknown[]): ProductImageRecord[] {
+  const normalizedImages = images
+    .map((image, index) => {
+      if (!image || typeof image !== 'object') return null;
+
+      const imageRecord = image as Record<string, unknown>;
+      const url = normalizeOptionalString(imageRecord.url);
+      if (!url) return null;
+
+      return {
+        id: normalizeOptionalString(imageRecord.id) || undefined,
+        url,
+        type: isProductImageType(imageRecord.type) ? imageRecord.type : 'detail',
+        sort_order:
+          typeof imageRecord.sort_order === 'number' && Number.isFinite(imageRecord.sort_order)
+            ? imageRecord.sort_order
+            : index,
+      } satisfies ProductImageRecord;
+    })
+    .filter(Boolean) as ProductImageRecord[];
+
+  if (normalizedImages.length === 0) return [];
+
+  let mainAssigned = false;
+  const dedupedImages = normalizedImages.map((image, index) => {
+    const shouldBeMain = image.type === 'main' && !mainAssigned;
+    if (shouldBeMain) {
+      mainAssigned = true;
+    }
+
+    return {
+      ...image,
+      type: shouldBeMain ? 'main' : 'detail',
+      sort_order: index,
+    } satisfies ProductImageRecord;
+  });
+
+  if (!mainAssigned) {
+    dedupedImages[0] = {
+      ...dedupedImages[0],
+      type: 'main',
+      sort_order: 0,
+    };
+  }
+
+  return dedupedImages.map((image, index) => ({
+    ...image,
+    sort_order: index,
+  }));
+}
+
+function getProductImagesFromFormState(source: {
+  images?: unknown;
+  image_url?: unknown;
+  cover_image_url?: unknown;
+} | null | undefined): ProductImageRecord[] {
+  const normalizedImages = Array.isArray(source?.images)
+    ? normalizeProductImages(source.images)
+    : [];
+
+  if (normalizedImages.length > 0) {
+    return normalizedImages;
+  }
+
+  const fallbackUrl =
+    normalizeOptionalString(source?.image_url) || normalizeOptionalString(source?.cover_image_url);
+
+  return fallbackUrl
+    ? [
+        {
+          id: createTempImageId('temp-main-url'),
+          url: fallbackUrl,
+          type: 'main',
+          sort_order: 0,
+        },
+      ]
+    : [];
+}
+
+function getMainProductImage(images: ProductImageRecord[]): ProductImageRecord | null {
+  return images.find((image) => image.type === 'main') || null;
+}
+
+function getProductImageKey(image: ProductImageRecord, index: number): string {
+  return image.id || `${image.type}-${index}-${image.url}`;
+}
 
 export default function AdminProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: productId } = use(params);
@@ -117,12 +225,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/v1/admin/products/${productId}?view=base`);
-      if (!res.ok) {
-        if (res.status === 404) throw new Error('产品不存在');
-        throw new Error('加载失败');
-      }
-      const json = await res.json();
+      const json = await apiFetch<{ view: 'base'; data: any }>(`/api/v1/admin/products/${productId}?view=base`);
       const data = json.data;
       setProduct(data);
       setEditForm({ ...data });
@@ -133,7 +236,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       // 加载 SKU 变体数据
       await loadVariantData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败');
+      setError(getErrorMessage(err) || '加载失败');
     } finally {
       setLoading(false);
     }
@@ -276,14 +379,10 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       formData.append('file', file);
       formData.append('type', 'product');
 
-      const res = await fetch('/api/upload', {
+      const data = await apiFetch<{ url: string }>('/api/upload', {
         method: 'POST',
         body: formData,
       });
-
-      if (!res.ok) throw new Error('上传失败');
-
-      const data = await res.json();
 
       setProductSkus(prev => prev.map(sku => {
         if (sku.id === skuId) {
@@ -294,9 +393,87 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       setIsDirty(true);
       success('SKU图片上传成功');
     } catch (err) {
-      toastError('图片上传失败，请重试');
+      toastError(getErrorMessage(err) || '图片上传失败，请重试');
     }
   }, [success, toastError]);
+
+  const updateProductImages = useCallback(
+    (updater: (images: ProductImageRecord[]) => ProductImageRecord[]) => {
+      setEditForm((prev: any) => {
+        const currentImages = getProductImagesFromFormState(prev);
+        const nextImages = normalizeProductImages(updater(currentImages));
+        const mainImage = getMainProductImage(nextImages);
+
+        return {
+          ...prev,
+          image_url: mainImage?.url || '',
+          cover_image_url: mainImage?.url || '',
+          images: nextImages,
+        };
+      });
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  // 上传商品图片（首图为主图，其余为详情图）
+  const uploadProductImages = useCallback(async (files: FileList | File[]) => {
+    const fileList = Array.from(files);
+    if (fileList.length === 0) return;
+
+    try {
+      const uploadedImages = await Promise.all(
+        fileList.map(async (file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('type', 'product-gallery');
+
+          const data = await apiFetch<{ url: string }>('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          return {
+            id: createTempImageId('temp-image'),
+            url: data.url,
+            type: 'detail' as const,
+            sort_order: 0,
+          };
+        }),
+      );
+
+      updateProductImages((currentImages) => {
+        const hasMainImage = currentImages.some((image) => image.type === 'main');
+        return [
+          ...currentImages,
+          ...uploadedImages.map((image, index) => ({
+            ...image,
+            type: !hasMainImage && index === 0 ? 'main' : 'detail',
+          })),
+        ];
+      });
+
+      success(fileList.length === 1 ? '商品图片上传成功' : `商品图片上传成功，已新增 ${fileList.length} 张图片`);
+    } catch (err) {
+      toastError(getErrorMessage(err) || '商品图片上传失败');
+    }
+  }, [success, toastError, updateProductImages]);
+
+  const setMainProductImage = useCallback((imageKey: string) => {
+    updateProductImages((images) => {
+      const selectedImage = images.find((image, index) => getProductImageKey(image, index) === imageKey);
+      if (!selectedImage) return images;
+
+      const remainingImages = images.filter((image, index) => getProductImageKey(image, index) !== imageKey);
+      return [{ ...selectedImage, type: 'main' }, ...remainingImages.map((image) => ({ ...image, type: 'detail' as const }))];
+    });
+  }, [updateProductImages]);
+
+  const removeProductImage = useCallback((imageKey: string) => {
+    updateProductImages((images) =>
+      images.filter((image, index) => getProductImageKey(image, index) !== imageKey),
+    );
+  }, [updateProductImages]);
 
   // 更新SKU字段
   const updateSkuField = useCallback((skuId: string, field: string, value: any) => {
@@ -530,33 +707,26 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
       // 1. 保存产品基本信息
       if (isNewProduct) {
+        const { id: _unusedId, ...createPayload } = editForm || {};
         // 新建产品：使用 POST 创建
-        const res = await fetch(`/api/v1/admin/products`, {
+        const newData = await apiFetch<any>(`/api/v1/admin/products`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...editForm,
+            ...createPayload,
             status: 'draft',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }),
         });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || '创建产品失败');
-        }
-        const newData = await res.json();
         newProductId = newData.id;
         // 导航到编辑页面
         router.replace(`/products/${newProductId}`);
       } else {
         // 更新产品：使用 PATCH
-        const res = await fetch(`/api/v1/admin/products/${productId}`, {
+        await apiFetch(`/api/v1/admin/products/${productId}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...editForm, updated_at: new Date().toISOString() }),
         });
-        if (!res.ok) throw new Error('保存失败');
       }
 
       // 2. 保存规格属性（先删除旧的，再插入新的）
@@ -612,12 +782,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
       if (isNewProduct) {
         // 重新加载新产品数据
-        const res = await fetch(`/api/v1/admin/products/${newProductId}?view=base`);
-        if (res.ok) {
-          const json = await res.json();
-          setProduct(json.data);
-          setEditForm({ ...json.data });
-        }
+        const json = await apiFetch<{ view: 'base'; data: any }>(`/api/v1/admin/products/${newProductId}?view=base`);
+        setProduct(json.data);
+        setEditForm({ ...json.data });
       } else {
         await loadProduct(); // 重新加载产品数据
       }
@@ -645,17 +812,11 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     try {
       console.log('[Publish] Step 1: Saving product...');
       // 1. 保存产品基本信息
-      const saveRes = await fetch(`/api/v1/admin/products/${productId}`, {
+      await apiFetch(`/api/v1/admin/products/${productId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...editForm, updated_at: new Date().toISOString() }),
       });
-      console.log('[Publish] Step 1 response:', saveRes.status);
-      if (!saveRes.ok) {
-        const err = await saveRes.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('[Publish] Step 1 failed:', err);
-        throw new Error('保存失败: ' + (err.error || saveRes.statusText));
-      }
+      console.log('[Publish] Step 1 complete');
 
       console.log('[Publish] Step 2: Saving variants...');
       // 2. 保存规格属性
@@ -688,19 +849,15 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       const siteViewErrors: string[] = [];
       for (const site of selectedSites) {
         console.log(`[Publish] Creating site view for site: ${site}, product: ${productId}`);
-        const res = await fetch(`/api/v1/admin/products/${productId}/site-view?site_code=${site}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ site_code: site, publish_status: 'published', is_enabled: true }),
-        });
-        console.log(`[Publish] Site view response status: ${res.status}`);
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-          console.error(`[Publish] Site view error for ${site}:`, err);
-          siteViewErrors.push(`${site}: ${err.error || res.statusText}`);
-        } else {
-          const data = await res.json();
+        try {
+          const data = await apiFetch(`/api/v1/admin/products/${productId}/site-view?site_code=${site}`, {
+            method: 'POST',
+            body: JSON.stringify({ site_code: site, publish_status: 'published', is_enabled: true }),
+          });
           console.log(`[Publish] Site view created successfully for ${site}:`, data);
+        } catch (err) {
+          console.error(`[Publish] Site view error for ${site}:`, err);
+          siteViewErrors.push(`${site}: ${getErrorMessage(err)}`);
         }
       }
       if (siteViewErrors.length > 0) throw new Error(`站点视图创建失败：${siteViewErrors.join(', ')}`);
@@ -815,21 +972,13 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
     try {
       // 调用翻译 API（后端逐语言翻译，总耗时较长）
-      const res = await fetch('/api/products/translate', {
+      const result = await apiFetch<any>('/api/products/translate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId }),
       });
 
       // 清理步骤定时器
       stepTimers.forEach(t => clearTimeout(t));
-
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || '翻译失败');
-      }
-
-      const result = await res.json();
 
       // 保存步骤
       setTranslateStep(dynamicSteps[dynamicSteps.length - 1].step);
@@ -881,12 +1030,11 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     if (!confirm('确定要批准这个产品吗？')) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/v1/admin/products/${productId}?action=approve`, { method: 'POST' });
-      if (!res.ok) throw new Error('批准失败');
+      await apiFetch(`/api/v1/admin/products/${productId}?action=approve`, { method: 'POST' });
       await loadProduct();
       success('产品已通过审核');
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '批准失败';
+      const errorMsg = getErrorMessage(err) || '批准失败';
       setSaveError(errorMsg);
       toastError(errorMsg);
     } finally {
@@ -900,16 +1048,14 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     if (!reason) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/v1/admin/products/${productId}?action=reject`, {
+      await apiFetch(`/api/v1/admin/products/${productId}?action=reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason })
       });
-      if (!res.ok) throw new Error('拒绝失败');
       await loadProduct();
       warning('产品已拒绝');
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '拒绝失败';
+      const errorMsg = getErrorMessage(err) || '拒绝失败';
       setSaveError(errorMsg);
       toastError(errorMsg);
     } finally {
@@ -984,6 +1130,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   }
 
   const publishLang = getPublishLang();
+  const productImages = getProductImagesFromFormState(editForm);
+  const mainProductImage = getMainProductImage(productImages);
 
   return (
     <div className="space-y-6">
@@ -1128,33 +1276,109 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">商品图片</label>
-              {/* 显示 product_images 中的图片 */}
-              {editForm.images && editForm.images.length > 0 ? (
+              {productImages.length > 0 ? (
                 <div className="flex flex-wrap gap-3 mb-3">
-                  {editForm.images.map((img: any, idx: number) => (
-                    <div key={img.id || idx} className="relative group">
+                  {productImages.map((img, idx) => {
+                    const imageKey = getProductImageKey(img, idx);
+
+                    return (
+                    <div key={imageKey} className="w-24">
+                      <div className="relative group">
                       <img
                         src={img.url}
                         alt={img.type || `图片 ${idx + 1}`}
                         className="w-24 h-24 object-cover rounded-lg border border-slate-200/50"
                       />
                       <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded">
-                        {img.type === 'main' ? '主图' : img.type || '图片'}
+                        {img.type === 'main' ? '主图' : '详情图'}
                       </span>
                     </div>
-                  ))}
+                      <div className="mt-2 flex flex-col gap-2">
+                        {img.type === 'main' ? (
+                          <span className="inline-flex items-center justify-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                            当前主图
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setMainProductImage(imageKey)}
+                            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:border-emerald-400 hover:text-emerald-600"
+                          >
+                            设为主图
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeProductImage(imageKey)}
+                          className="inline-flex items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                  )})}
                 </div>
-              ) : editForm.image_url ? (
-                <img src={editForm.image_url} alt="商品" className="w-32 h-32 object-cover rounded-lg mb-2 border border-slate-200/50" />
+              ) : mainProductImage ? (
+                <img src={mainProductImage.url} alt="商品" className="w-32 h-32 object-cover rounded-lg mb-2 border border-slate-200/50" />
               ) : (
                 <div className="w-32 h-32 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-slate-400 text-sm">
                   暂无图片
                 </div>
               )}
-              {editForm.image_url && (
-                <input type="text" value={editForm.image_url} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, image_url: e.target.value })); setIsDirty(true); }}  placeholder="图片 URL"
-                  className="w-full px-4 py-2 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
-              )}
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-emerald-400 hover:text-emerald-600">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files?.length) {
+                        void uploadProductImages(files);
+                      }
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                  <Upload className="h-4 w-4" />
+                  上传商品图片
+                </label>
+                {productImages.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => updateProductImages(() => [])}
+                    className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                  >
+                    <X className="h-4 w-4" />
+                    清空图片
+                  </button>
+                ) : null}
+              </div>
+              <input
+                type="text"
+                value={mainProductImage?.url || ''}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  updateProductImages((images) => {
+                    const detailImages = images.filter((image) => image.type !== 'main');
+                    return nextValue
+                      ? [
+                          {
+                            id: createTempImageId('temp-main-url'),
+                            url: nextValue,
+                            type: 'main',
+                            sort_order: 0,
+                          },
+                          ...detailImages,
+                        ]
+                      : detailImages;
+                  });
+                }}
+                placeholder="主图 URL"
+                className="mt-3 w-full px-4 py-2 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+              />
+              <p className="mt-1 text-xs text-slate-500">支持一次上传多张图片。系统会保留 1 张主图用于列表展示，其余图片保存为详情图；你也可以手动切换主图。</p>
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">专科分类 Specialty</label>

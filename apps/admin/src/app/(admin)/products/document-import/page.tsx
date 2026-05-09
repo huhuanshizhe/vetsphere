@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Input, Select, StatusBadge } from '@/components/ui';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
 
 interface ExtractedProductData {
   sourceLanguage: 'zh' | 'en' | 'th' | 'ja';
@@ -115,19 +116,14 @@ export default function ProductDocumentImportPage() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/products/document-import', {
+      const json = await apiFetch<ImportResult>('/api/admin/products/document-import', {
         method: 'POST',
         body: formData,
       });
 
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(typeof json?.error === 'string' ? json.error : '导入失败');
-      }
-
-      setResult(json as ImportResult);
+      setResult(json);
     } catch (importError) {
-      setError(importError instanceof Error ? importError.message : '导入失败');
+      setError(getErrorMessage(importError) || '导入失败');
     } finally {
       setLoading(false);
     }

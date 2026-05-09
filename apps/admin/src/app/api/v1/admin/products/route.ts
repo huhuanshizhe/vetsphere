@@ -3,10 +3,19 @@ import { parseViewMode, requireSiteCode, siteCodeErrorResponse } from '@/lib/sit
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
-
-const supabase = getSupabaseAdmin();
+import { createProductImageRows, getMainProductImage, normalizeProductImagesInput } from '@/lib/product-images';
 
 type SupportedLanguage = 'zh' | 'en' | 'th' | 'ja';
+
+function extractAccessToken(req: NextRequest): string | undefined {
+  const authorization = req.headers.get('authorization')?.trim();
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
+    return undefined;
+  }
+
+  const token = authorization.slice(7).trim();
+  return token || undefined;
+}
 
 function generateProductId(): string {
   const timestamp = Date.now().toString(36);
@@ -16,6 +25,17 @@ function generateProductId(): string {
 
 function generateSkuCode(productId: string): string {
   return `${productId}-001`;
+}
+
+function resolveProductId(value: unknown): string {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed && /^prod_[a-z0-9_]+$/i.test(trimmed)) {
+      return trimmed;
+    }
+  }
+
+  return generateProductId();
 }
 
 function normalizeSourceLanguage(value: unknown): SupportedLanguage {
@@ -109,8 +129,12 @@ function writeLocalizedField(
 
 function normalizeProductPayload(body: Record<string, any>) {
   const sourceLanguage = normalizeSourceLanguage(body.publish_language || body.publishLanguage);
-  const productId =
-    typeof body.id === 'string' && body.id.trim() ? body.id.trim() : generateProductId();
+  const productId = resolveProductId(body.id);
+  const images = normalizeProductImagesInput(
+    body.images,
+    body.image_url || body.imageUrl || body.cover_image_url || body.coverImageUrl,
+  );
+  const mainImage = getMainProductImage(images);
   const name = normalizeString(
     body.name || body.name_zh || body.name_en || body.name_th || body.name_ja,
   );
@@ -145,14 +169,8 @@ function normalizeProductPayload(body: Record<string, any>) {
     status: normalizeString(body.status) || 'draft',
     audit_status: normalizeString(body.audit_status) || 'draft',
     category_id: normalizeString(body.category_id) || null,
-    image_url:
-      normalizeString(
-        body.image_url || body.imageUrl || body.cover_image_url || body.coverImageUrl,
-      ) || null,
-    cover_image_url:
-      normalizeString(
-        body.cover_image_url || body.coverImageUrl || body.image_url || body.imageUrl,
-      ) || null,
+    image_url: mainImage?.url || null,
+    cover_image_url: mainImage?.url || null,
     has_price: body.has_price ?? true,
     currency: normalizeString(body.currency).toUpperCase() || 'USD',
     publish_language: sourceLanguage,
@@ -245,6 +263,7 @@ function normalizeProductPayload(body: Record<string, any>) {
     skuCode,
     price,
     specifications,
+    images,
   };
 }
 
@@ -253,6 +272,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const view = parseViewMode(req);
 
     if (view === 'site') {
@@ -318,8 +338,9 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const body = await req.json();
-    const { productData, siteCode, skuCode, price, specifications } = normalizeProductPayload(body);
+    const { productData, siteCode, skuCode, price, specifications, images } = normalizeProductPayload(body);
 
     if (!productData.name) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 });
@@ -332,13 +353,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    if (productData.image_url) {
-      await supabase.from('product_images').insert({
-        product_id: productData.id,
-        url: productData.image_url,
-        type: 'main',
-        sort_order: 0,
-      });
+    if (images.length > 0) {
+      const { error: imageError } = await supabase
+        .from('product_images')
+        .insert(createProductImageRows(productData.id, images));
+
+      if (imageError) {
+        console.error('[Product POST] Product image insert error:', imageError);
+        return NextResponse.json({ error: imageError.message }, { status: 400 });
+      }
     }
 
     const { error: skuError } = await supabase.from('product_skus').insert({

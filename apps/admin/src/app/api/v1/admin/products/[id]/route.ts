@@ -3,8 +3,17 @@ import { parseViewMode, parseSiteCode, siteCodeErrorResponse } from '@/lib/site-
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
+import { createProductImageRows, getMainProductImage, normalizeProductImagesInput } from '@/lib/product-images';
 
-const supabase = getSupabaseAdmin();
+function extractAccessToken(req: NextRequest): string | undefined {
+  const authorization = req.headers.get('authorization')?.trim();
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
+    return undefined;
+  }
+
+  const token = authorization.slice(7).trim();
+  return token || undefined;
+}
 
 // GET /api/v1/admin/products/[id]?view=base|site&site_code=cn
 export async function GET(
@@ -14,6 +23,7 @@ export async function GET(
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const { id } = await params;
     const view = parseViewMode(req);
 
@@ -66,8 +76,16 @@ export async function PATCH(
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const { id } = await params;
     const body = await req.json();
+    const hasImagesInBody = 'images' in body;
+    const normalizedImages = hasImagesInBody
+      ? normalizeProductImagesInput(
+          body.images,
+          body.image_url || body.imageUrl || body.cover_image_url || body.coverImageUrl,
+        )
+      : [];
 
     // 过滤掉不应该发送到 products 表的字段
     const excludedFields = ['site_views', 'images', 'skus', 'variants'];
@@ -76,6 +94,12 @@ export async function PATCH(
       if (!excludedFields.includes(key)) {
         updateData[key] = value;
       }
+    }
+
+    if (hasImagesInBody) {
+      const mainImage = getMainProductImage(normalizedImages);
+      updateData.image_url = mainImage?.url || null;
+      updateData.cover_image_url = mainImage?.url || null;
     }
 
     console.log('[Product PATCH] Updating with fields:', Object.keys(updateData));
@@ -90,6 +114,59 @@ export async function PATCH(
     if (error) {
       console.error('[Product PATCH] Update error:', error);
       throw error;
+    }
+
+    if (hasImagesInBody) {
+      const { error: deleteImagesError } = await supabase
+        .from('product_images')
+        .delete()
+        .eq('product_id', id);
+
+      if (deleteImagesError) {
+        console.error('[Product PATCH] Failed to clear product images:', deleteImagesError);
+        throw deleteImagesError;
+      }
+
+      if (normalizedImages.length > 0) {
+        const { error: insertImagesError } = await supabase
+          .from('product_images')
+          .insert(createProductImageRows(id, normalizedImages));
+
+        if (insertImagesError) {
+          console.error('[Product PATCH] Failed to sync product images:', insertImagesError);
+          throw insertImagesError;
+        }
+      }
+    } else if ('image_url' in updateData || 'cover_image_url' in updateData) {
+      const imageUrl =
+        (typeof updateData.image_url === 'string' && updateData.image_url.trim()) ||
+        (typeof updateData.cover_image_url === 'string' && updateData.cover_image_url.trim()) ||
+        '';
+
+      const { error: deleteImageError } = await supabase
+        .from('product_images')
+        .delete()
+        .eq('product_id', id)
+        .eq('type', 'main');
+
+      if (deleteImageError) {
+        console.error('[Product PATCH] Failed to clear main product image:', deleteImageError);
+        throw deleteImageError;
+      }
+
+      if (imageUrl) {
+        const { error: insertImageError } = await supabase.from('product_images').insert({
+          product_id: id,
+          url: imageUrl,
+          type: 'main',
+          sort_order: 0,
+        });
+
+        if (insertImageError) {
+          console.error('[Product PATCH] Failed to sync main product image:', insertImageError);
+          throw insertImageError;
+        }
+      }
     }
 
     writeAuditLog(req, auth.admin, {
@@ -126,6 +203,7 @@ export async function DELETE(
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const { id } = await params;
 
     // Check if product exists and is not already deleted
@@ -183,6 +261,7 @@ export async function POST(
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
