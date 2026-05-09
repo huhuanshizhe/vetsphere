@@ -446,7 +446,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         const hasMainImage = currentImages.some((image) => image.type === 'main');
         return [
           ...currentImages,
-          ...uploadedImages.map((image, index) => ({
+          ...uploadedImages.map((image, index): ProductImageRecord => ({
             ...image,
             type: !hasMainImage && index === 0 ? 'main' : 'detail',
           })),
