@@ -4,10 +4,19 @@ import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
-import { Course, Specialty } from '@vetsphere/shared/types';
+import { Course, CourseStatus, Specialty } from '@vetsphere/shared/types';
 import { Card, Button, LoadingState, ConfirmDialog, ToastContainer, useToast } from '@/components/ui';
 
 type Lang = 'en' | 'zh' | 'th' | 'ja';
+
+const COURSE_STATUSES: CourseStatus[] = ['draft', 'pending', 'published', 'offline'];
+
+function normalizeCourseStatus(status: string): CourseStatus {
+  const normalized = status.toLowerCase();
+  return COURSE_STATUSES.includes(normalized as CourseStatus)
+    ? (normalized as CourseStatus)
+    : 'draft';
+}
 
 export default function CourseEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -61,9 +70,10 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
     setError(null);
     try {
       const json = await apiFetch<{ data: Course }>('/api/v1/admin/courses/' + id + '?view=base');
-      const data = json.data;
-      // 标准化状态值为小写
-      if (data.status) data.status = data.status.toLowerCase();
+      const data = {
+        ...json.data,
+        status: normalizeCourseStatus(json.data.status),
+      };
       setCourse(data);
       setEditForm({ ...data });
       // 默认显示源语言

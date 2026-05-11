@@ -1,14 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 import { ToastContainer, useToast } from '@/components/ui';
 import { Building, Plus, Edit2, Trash2, Check, X, Copy } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface BankAccount {
   id: string;
@@ -28,6 +23,7 @@ const currencies = ['USD', 'CNY', 'JPY', 'THB', 'EUR', 'GBP', 'HKD', 'SGD'];
 const regions = ['international', 'china', 'japan', 'thailand', 'southeast_asia', 'europe', 'america'];
 
 export default function BankAccountsPage() {
+  const supabase = createClient();
   const { toasts, removeToast, success, error: toastError, warning } = useToast();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);

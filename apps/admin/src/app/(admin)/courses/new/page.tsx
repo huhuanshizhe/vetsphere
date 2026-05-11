@@ -180,80 +180,83 @@ export default function NewCoursePage() {
         </Button>
       </div>
 
-      <Card id="manual-create" className="space-y-5 scroll-mt-24" padding="lg">
-        <div className="space-y-1">
+      <div id="manual-create" className="scroll-mt-24">
+        <Card className="space-y-5" padding="lg">
+          <div className="space-y-1">
           <h2 className="text-lg font-semibold text-slate-900">手工创建课程</h2>
           <p className="text-sm text-slate-500">
             先创建一个空白草稿课程，再进入编辑页手工补全内容和站点上架信息。
           </p>
-        </div>
-
-        <form className="space-y-4" onSubmit={handleManualCreate}>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <Input
-              label="课程标题"
-              placeholder="例如：猫专科牙科进阶课程"
-              value={manualTitle}
-              onChange={(event) => {
-                setManualTitle(event.target.value);
-                if (manualError) {
-                  setManualError('');
-                }
-              }}
-            />
-            <Button type="submit" loading={manualCreating}>
-              创建草稿并进入编辑
-            </Button>
           </div>
 
-          {manualError ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {manualError}
+          <form className="space-y-4" onSubmit={handleManualCreate}>
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <Input
+                label="课程标题"
+                placeholder="例如：猫专科牙科进阶课程"
+                value={manualTitle}
+                onChange={(event) => {
+                  setManualTitle(event.target.value);
+                  if (manualError) {
+                    setManualError('');
+                  }
+                }}
+              />
+              <Button type="submit" loading={manualCreating}>
+                创建草稿并进入编辑
+              </Button>
             </div>
-          ) : null}
-        </form>
-      </Card>
+
+            {manualError ? (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {manualError}
+              </div>
+            ) : null}
+          </form>
+        </Card>
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <Card id="poster-import" className="space-y-5 scroll-mt-24" padding="lg">
-          <div className="space-y-1">
+        <div id="poster-import" className="scroll-mt-24">
+          <Card className="space-y-5" padding="lg">
+            <div className="space-y-1">
             <h2 className="text-lg font-semibold text-slate-900">海报导入建课</h2>
             <p className="text-sm text-slate-500">支持本地上传，或直接粘贴可访问的海报图片 URL。</p>
-          </div>
-
-          <form className="space-y-5" onSubmit={handleImport}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Select
-                label="上架站点"
-                options={siteOptions}
-                value={siteCode}
-                onChange={(event) => setSiteCode(event.target.value)}
-              />
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700">发布动作</label>
-                <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={publishNow}
-                    onChange={(event) => setPublishNow(event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  导入后直接上架到所选站点
-                </label>
-              </div>
             </div>
 
-            <Input
-              label="海报图片 URL"
-              placeholder="https://.../poster.jpg"
-              value={imageUrl}
-              onChange={(event) => {
-                setImageUrl(event.target.value);
-                if (!file) {
-                  setPreviewUrl(event.target.value.trim());
-                }
-              }}
-            />
+            <form className="space-y-5" onSubmit={handleImport}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Select
+                  label="上架站点"
+                  options={siteOptions}
+                  value={siteCode}
+                  onChange={(event) => setSiteCode(event.target.value)}
+                />
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-slate-700">发布动作</label>
+                  <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={publishNow}
+                      onChange={(event) => setPublishNow(event.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    导入后直接上架到所选站点
+                  </label>
+                </div>
+              </div>
+
+              <Input
+                label="海报图片 URL"
+                placeholder="https://.../poster.jpg"
+                value={imageUrl}
+                onChange={(event) => {
+                  setImageUrl(event.target.value);
+                  if (!file) {
+                    setPreviewUrl(event.target.value.trim());
+                  }
+                }}
+              />
 
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-slate-700">本地上传</label>
@@ -294,8 +297,9 @@ export default function NewCoursePage() {
                 </Button>
               ) : null}
             </div>
-          </form>
-        </Card>
+            </form>
+          </Card>
+        </div>
 
         <Card className="space-y-5" padding="lg">
           <div className="space-y-1">

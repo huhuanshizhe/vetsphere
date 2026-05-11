@@ -1,15 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { ToastContainer, useToast } from '@/components/ui';
 import { Package, Eye, Building, AlertCircle } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface Order {
   id: string;
@@ -33,6 +28,7 @@ interface Order {
 }
 
 export default function AdminShopOrdersPage() {
+  const supabase = createClient();
   const { toasts, removeToast, success, error: toastError, warning } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);

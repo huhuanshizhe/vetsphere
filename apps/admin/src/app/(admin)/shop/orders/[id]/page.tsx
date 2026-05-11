@@ -1,17 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 import { ToastContainer, useToast } from '@/components/ui';
 import {
   Package, MapPin, CreditCard, Truck, CheckCircle, XCircle, Clock, Phone, Mail,
   Building, Copy, User, ChevronLeft, DollarSign, FileText, AlertCircle
 } from 'lucide-react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface Order {
   id: string;
@@ -91,6 +86,7 @@ const paymentMethodLabels: Record<string, string> = {
 };
 
 export default function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const supabase = createClient();
   const { toasts, removeToast, success, error: toastError, warning } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
