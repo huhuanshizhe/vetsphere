@@ -9,9 +9,17 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
 
-const supabase = getSupabaseAdmin();
-
 type SupportedLanguage = 'zh' | 'en' | 'th' | 'ja';
+
+function extractAccessToken(req: NextRequest): string | undefined {
+  const authorization = req.headers.get('authorization')?.trim();
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
+    return undefined;
+  }
+
+  const token = authorization.slice(7).trim();
+  return token || undefined;
+}
 
 function generateCourseId(): string {
   const timestamp = Date.now().toString(36);
@@ -169,6 +177,7 @@ export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const view = parseViewMode(req);
 
     if (view === 'site') {
@@ -236,6 +245,7 @@ export async function POST(req: NextRequest) {
   if ('response' in auth) return auth.response;
 
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const body = await req.json();
     const { payload, siteCode, publishStatus } = normalizeCoursePayload(body);
 

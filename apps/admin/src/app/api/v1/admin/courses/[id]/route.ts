@@ -4,7 +4,15 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
 
-const supabase = getSupabaseAdmin();
+function extractAccessToken(req: NextRequest): string | undefined {
+  const authorization = req.headers.get('authorization')?.trim();
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
+    return undefined;
+  }
+
+  const token = authorization.slice(7).trim();
+  return token || undefined;
+}
 
 // DB snake_case -> frontend camelCase mapping
 // Only map fields that actually exist in the DB row to avoid phantom defaults
@@ -104,6 +112,7 @@ export async function GET(
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const { id } = await params;
     const view = parseViewMode(req);
 
@@ -155,6 +164,7 @@ export async function PATCH(
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(req));
     const { id } = await params;
     const body = await req.json();
     

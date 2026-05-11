@@ -7,7 +7,7 @@ import AdminSidebarNew from './AdminSidebarNew';
 import SiteSwitcher from './SiteSwitcher';
 import { getBreadcrumbs } from '@/config/admin-navigation';
 import { useAdminMe } from '@/hooks/usePermission';
-import { Menu, X, ChevronRight, Loader2 } from 'lucide-react';
+import { Menu, X, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface AdminShellProps {
@@ -27,7 +27,7 @@ const AdminShell: React.FC<AdminShellProps> = ({
   subtitle,
   actions,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const { me: adminMe } = useAdminMe();
   const router = useRouter();
   const pathname = usePathname();
@@ -58,10 +58,10 @@ const AdminShell: React.FC<AdminShellProps> = ({
   // 客户端不再硬性比对 user_metadata.role——部分管理员 metadata 为空，硬判会导致页面一直转圈。
   useEffect(() => {
     if (!isMounted) return;
-    if (!user) {
+    if (!loading && !user) {
       router.push('/');
     }
-  }, [user, router, isMounted]);
+  }, [loading, user, router, isMounted]);
 
   const handleLogout = async () => {
     await logout();
@@ -70,28 +70,12 @@ const AdminShell: React.FC<AdminShellProps> = ({
 
   const breadcrumbs = getBreadcrumbs(pathname);
 
-  // 服务端渲染时不渲染任何内容，避免 Hydration 不匹配
-  if (!isMounted || isMobile === undefined) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-          <span className="text-slate-500 text-sm">加载中...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-          <span className="text-slate-500 text-sm">正在验证身份...</span>
-        </div>
-      </div>
-    );
-  }
+  const resolvedIsMobile = isMobile ?? false;
+  const shellUser = {
+    name: user?.name || 'admin',
+    email: user?.email || 'admin@vetsphere.pro',
+    role: user?.role || 'Admin',
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -120,10 +104,10 @@ const AdminShell: React.FC<AdminShellProps> = ({
 
       {/* Sidebar */}
       <AdminSidebarNew
-        user={{ name: user.name, email: user.email, role: user.role }}
+        user={shellUser}
         permissions={adminMe?.permissions ?? ['*']}
         onLogout={handleLogout}
-        isMobile={isMobile}
+        isMobile={resolvedIsMobile}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         collapsed={sidebarCollapsed}

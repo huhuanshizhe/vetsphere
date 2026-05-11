@@ -49,7 +49,7 @@ const SiteSwitcher: React.FC<SiteSwitcherProps> = ({
   size = 'md',
 }) => {
   const { currentSite, setCurrentSite, authorizedSites, authorizedSitesLoaded } = useSite();
-  const isSuperAdmin = permissions.includes('*');
+  const isSuperAdmin = permissions.includes('*') || (authorizedSitesLoaded && authorizedSites.includes('global'));
 
   // 优先使用后端授权列表；未加载完成时按权限 fallback
   const baseCodes: SiteCode[] = isSuperAdmin

@@ -356,14 +356,19 @@ export default function CoursesPage() {
   return (
     <div className="space-y-6">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">课程管理</h1>
           <p className="text-slate-500 mt-1">管理平台课程内容</p>
         </div>
-        <Button onClick={() => window.location.href = '/courses/new'}>
-          新建课程
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => window.location.href = '/courses/new#manual-create'}>
+            手工创建课程
+          </Button>
+          <Button variant="secondary" onClick={() => window.location.href = '/courses/new#poster-import'}>
+            海报导入建课
+          </Button>
+        </div>
       </div>
 
       {/* 视图切换 Tab */}

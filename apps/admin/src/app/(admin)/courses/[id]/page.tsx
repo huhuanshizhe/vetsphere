@@ -3,6 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { Course, Specialty } from '@vetsphere/shared/types';
 import { Card, Button, LoadingState, ConfirmDialog, ToastContainer, useToast } from '@/components/ui';
 
@@ -59,12 +60,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/v1/admin/courses/${id}?view=base`);
-      if (!res.ok) {
-        if (res.status === 404) throw new Error('课程不存在');
-        throw new Error('加载失败');
-      }
-      const json = await res.json();
+      const json = await apiFetch<{ data: Course }>('/api/v1/admin/courses/' + id + '?view=base');
       const data = json.data;
       // 标准化状态值为小写
       if (data.status) data.status = data.status.toLowerCase();
@@ -73,7 +69,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
       // 默认显示源语言
       setEditLang((data.publishLanguage || 'zh') as Lang);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败');
+      setError(getErrorMessage(err) || '加载失败');
     } finally {
       setLoading(false);
     }
@@ -131,17 +127,15 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/api/v1/admin/courses/${id}`, {
+      await apiFetch(`/api/v1/admin/courses/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       });
-      if (!res.ok) throw new Error('保存失败');
       setSaveSuccess(true);
       setIsDirty(false);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : '保存失败');
+      setSaveError(getErrorMessage(err) || '保存失败');
     } finally {
       setSaving(false);
     }
@@ -154,12 +148,10 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
     setSaveError(null);
     try {
       // 1. 先保存编辑内容
-      const saveRes = await fetch(`/api/v1/admin/courses/${id}`, {
+      await apiFetch(`/api/v1/admin/courses/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       });
-      if (!saveRes.ok) throw new Error('保存失败');
       
       // 2. 更新课程状态为 published
       const { error: updateError } = await supabase
@@ -176,18 +168,17 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
       // 3. 为每个选中站点创建 course_site_views（使用API绕过RLS）
       const siteViewErrors: string[] = [];
       for (const site of selectedSites) {
-        const res = await fetch(`/api/v1/admin/courses/${id}/site-view`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            site_code: site,
-            publish_status: 'published',
-          }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        try {
+          await apiFetch(`/api/v1/admin/courses/${id}/site-view`, {
+            method: 'POST',
+            body: JSON.stringify({
+              site_code: site,
+              publish_status: 'published',
+            }),
+          });
+        } catch (err) {
           console.error(`创建 ${site} 站点视图失败:`, err);
-          siteViewErrors.push(`${site}: ${err.error || res.statusText}`);
+          siteViewErrors.push(`${site}: ${getErrorMessage(err) || 'Unknown error'}`);
         }
       }
       if (siteViewErrors.length > 0) {

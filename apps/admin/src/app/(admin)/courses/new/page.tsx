@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Input, Select, StatusBadge } from '@/components/ui';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
 
 interface ExtractedCourseData {
   sourceLanguage: 'zh' | 'en' | 'th' | 'ja';
@@ -48,6 +49,14 @@ interface ImportResult {
   warnings: string[];
 }
 
+interface CreateCourseResult {
+  data: {
+    id: string;
+    title: string;
+    status: string;
+  };
+}
+
 const siteOptions = [
   { value: 'cn', label: 'CN 中国站' },
   { value: 'intl', label: 'INTL 国际站' },
@@ -55,11 +64,14 @@ const siteOptions = [
 
 export default function NewCoursePage() {
   const router = useRouter();
+  const [manualTitle, setManualTitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [siteCode, setSiteCode] = useState('cn');
   const [publishNow, setPublishNow] = useState(true);
+  const [manualCreating, setManualCreating] = useState(false);
+  const [manualError, setManualError] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -107,21 +119,48 @@ export default function NewCoursePage() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/courses/poster-import', {
+      const json = await apiFetch<ImportResult>('/api/admin/courses/poster-import', {
         method: 'POST',
         body: formData,
       });
 
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(typeof json?.error === 'string' ? json.error : '导入失败');
-      }
-
-      setResult(json as ImportResult);
+      setResult(json);
     } catch (importError) {
-      setError(importError instanceof Error ? importError.message : '导入失败');
+      setError(getErrorMessage(importError) || '导入失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleManualCreate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setManualError('');
+
+    const title = manualTitle.trim();
+    if (!title) {
+      setManualError('请先填写课程标题');
+      return;
+    }
+
+    setManualCreating(true);
+    try {
+      const json = await apiFetch<CreateCourseResult>('/api/v1/admin/courses', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          description: '',
+          status: 'draft',
+          format: 'offline',
+          currency: 'CNY',
+          publishLanguage: 'zh',
+        }),
+      });
+
+      router.push(`/courses/${json.data.id}`);
+    } catch (createError) {
+      setManualError(getErrorMessage(createError) || '创建课程失败');
+    } finally {
+      setManualCreating(false);
     }
   };
 
@@ -131,9 +170,9 @@ export default function NewCoursePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">海报导入新课程</h1>
+          <h1 className="text-2xl font-bold text-slate-900">新建课程</h1>
           <p className="mt-1 text-sm text-slate-500">
-            上传课程海报后，系统会按海报源语言提取内容，创建课程并可直接上架到站点。
+            支持先手工创建草稿课程继续编辑，也支持通过海报解析快速建课。
           </p>
         </div>
         <Button variant="secondary" onClick={() => router.push('/courses')}>
@@ -141,10 +180,44 @@ export default function NewCoursePage() {
         </Button>
       </div>
 
+      <Card id="manual-create" className="space-y-5 scroll-mt-24" padding="lg">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-slate-900">手工创建课程</h2>
+          <p className="text-sm text-slate-500">
+            先创建一个空白草稿课程，再进入编辑页手工补全内容和站点上架信息。
+          </p>
+        </div>
+
+        <form className="space-y-4" onSubmit={handleManualCreate}>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <Input
+              label="课程标题"
+              placeholder="例如：猫专科牙科进阶课程"
+              value={manualTitle}
+              onChange={(event) => {
+                setManualTitle(event.target.value);
+                if (manualError) {
+                  setManualError('');
+                }
+              }}
+            />
+            <Button type="submit" loading={manualCreating}>
+              创建草稿并进入编辑
+            </Button>
+          </div>
+
+          {manualError ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {manualError}
+            </div>
+          ) : null}
+        </form>
+      </Card>
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <Card className="space-y-5" padding="lg">
+        <Card id="poster-import" className="space-y-5 scroll-mt-24" padding="lg">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-slate-900">导入设置</h2>
+            <h2 className="text-lg font-semibold text-slate-900">海报导入建课</h2>
             <p className="text-sm text-slate-500">支持本地上传，或直接粘贴可访问的海报图片 URL。</p>
           </div>
 

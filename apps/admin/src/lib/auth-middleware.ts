@@ -126,6 +126,13 @@ export async function authenticateAdmin(req: NextRequest): Promise<AdminProfile>
     roleCode = 'super_admin';
   }
 
+  const isLegacyAdminRole =
+    typeof profile.role === 'string' && profile.role.toLowerCase() === 'admin';
+  if (permissions.length === 0 && (profile.is_admin === true || isLegacyAdminRole)) {
+    permissions = ['*'];
+    roleCode = roleCode || 'super_admin';
+  }
+
   return {
     id: profile.id,
     email: profile.email ?? user.email ?? '',

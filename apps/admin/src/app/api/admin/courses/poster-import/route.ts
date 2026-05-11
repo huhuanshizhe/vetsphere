@@ -51,6 +51,34 @@ function normalizeBaseUrl(rawBaseUrl: string): string {
   return rawBaseUrl.endsWith('/') ? `${rawBaseUrl}v1` : `${rawBaseUrl}/v1`;
 }
 
+function normalizeModelName(value: string | undefined | null): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  return normalized || null;
+}
+
+function getVisionModelCandidates(): string[] {
+  const configuredVisionModel = normalizeModelName(process.env.AI_VISION_MODEL);
+  const fallbackModel = normalizeModelName(process.env.AI_MODEL);
+  const fallbackVisionModel =
+    fallbackModel && /(^|-)vl(-|$)/i.test(fallbackModel) ? fallbackModel : null;
+
+  return [
+    configuredVisionModel,
+    configuredVisionModel?.replace(/-latest$/i, ''),
+    fallbackVisionModel,
+    fallbackVisionModel?.replace(/-latest$/i, ''),
+    'qwen-vl-max',
+    'qwen-vl-plus',
+  ].filter((model, index, allModels): model is string => {
+    return Boolean(model) && allModels.indexOf(model) === index;
+  });
+}
+
+function isUnsupportedModelError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return message.includes('model') && message.includes('not supported');
+}
+
 function generateEntityId(prefix: string): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).slice(2, 8);
@@ -63,6 +91,17 @@ function normalizeSupportedLanguage(value: unknown): SupportedLanguage {
   }
 
   return 'zh';
+}
+
+function normalizeString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function detectSupportedLanguage(text: string): SupportedLanguage {
+  if (/[\u0E00-\u0E7F]/.test(text)) return 'th';
+  if (/[ぁ-んァ-ン]/.test(text)) return 'ja';
+  if (/[\u4E00-\u9FFF]/.test(text)) return 'zh';
+  return 'en';
 }
 
 function normalizeStringArray(value: unknown): string[] {
@@ -134,11 +173,15 @@ function applySourceLanguageFields(
   }
 }
 
-async function preparePosterSource(formData: FormData): Promise<{
+interface PreparedPosterSource {
   visionUrl: string;
   coverImageUrl: string | null;
+  sourceName: string | null;
+  sourceUrl: string | null;
   warnings: string[];
-}> {
+}
+
+async function preparePosterSource(formData: FormData): Promise<PreparedPosterSource> {
   const warnings: string[] = [];
   const imageFile = formData.get('file');
   const imageUrl = String(formData.get('imageUrl') || '').trim();
@@ -167,7 +210,13 @@ async function preparePosterSource(formData: FormData): Promise<{
       warnings.push('OSS 未配置，课程封面未持久化，仅使用海报做解析。');
     }
 
-    return { visionUrl: dataUrl, coverImageUrl, warnings };
+    return {
+      visionUrl: dataUrl,
+      coverImageUrl,
+      sourceName: imageFile.name,
+      sourceUrl: null,
+      warnings,
+    };
   }
 
   if (!imageUrl) {
@@ -199,13 +248,72 @@ async function preparePosterSource(formData: FormData): Promise<{
     }
   }
 
-  return { visionUrl: imageUrl, coverImageUrl, warnings };
+  return {
+    visionUrl: imageUrl,
+    coverImageUrl,
+    sourceName: null,
+    sourceUrl: imageUrl,
+    warnings,
+  };
+}
+
+function humanizeSourceName(value: string): string {
+  const normalized = normalizeString(value);
+  if (!normalized) return '';
+
+  const base = normalized.split(/[\\/]/).pop() || normalized;
+  const withoutExtension = base.replace(/\.[^.]+$/, '');
+
+  try {
+    return decodeURIComponent(withoutExtension)
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } catch {
+    return withoutExtension.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+}
+
+function buildFallbackExtractedCourse(source: PreparedPosterSource): ExtractedCourseData {
+  const sourceLabel =
+    humanizeSourceName(source.sourceName || '') ||
+    humanizeSourceName(source.sourceUrl || '') ||
+    humanizeSourceName(source.coverImageUrl || '');
+  const title = sourceLabel || '海报导入课程草稿';
+  const description = source.sourceUrl
+    ? `基于海报链接创建的课程草稿，请补充课程简介、时间地点、讲师与价格信息。\n来源：${source.sourceUrl}`
+    : '基于海报创建的课程草稿，请补充课程简介、时间地点、讲师与价格信息。';
+
+  return {
+    sourceLanguage: detectSupportedLanguage(`${title}\n${description}`),
+    title,
+    subtitle: '',
+    description,
+    targetAudience: '',
+    price: null,
+    currency: 'CNY',
+    format: 'offline',
+    level: undefined,
+    startDate: null,
+    endDate: null,
+    teachingLanguages: [],
+    specialties: [],
+    instructorNames: [],
+    location: {
+      city: '',
+      venue: '',
+      address: '',
+    },
+    agenda: [],
+    rawText: source.sourceUrl || '',
+    confidence: 0,
+  };
 }
 
 async function extractCourseDataFromPoster(visionUrl: string): Promise<ExtractedCourseData> {
   const apiKey = process.env.AI_API_KEY;
   const baseURL = normalizeBaseUrl(process.env.AI_BASE_URL || '');
-  const model = process.env.AI_VISION_MODEL || process.env.AI_MODEL || 'qwen-vl-max-latest';
+  const modelCandidates = getVisionModelCandidates();
 
   if (!apiKey) {
     throw new Error('AI service not configured');
@@ -240,23 +348,41 @@ async function extractCourseDataFromPoster(visionUrl: string): Promise<Extracted
     '}',
   ].join('\n');
 
-  const completion = await openai.chat.completions.create({
-    model,
-    temperature: 0.1,
-    messages: [
-      {
-        role: 'system',
-        content: 'Extract structured data from event posters. Return only valid JSON. /no_think',
-      },
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: visionUrl } },
-        ] as any,
-      },
-    ],
-  });
+  let completion: Awaited<ReturnType<typeof openai.chat.completions.create>> | null = null;
+  let lastError: unknown = null;
+
+  for (const model of modelCandidates) {
+    try {
+      completion = await openai.chat.completions.create({
+        model,
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content: 'Extract structured data from event posters. Return only valid JSON. /no_think',
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: visionUrl } },
+            ] as any,
+          },
+        ],
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+      if (isUnsupportedModelError(error) && model !== modelCandidates[modelCandidates.length - 1]) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (!completion) {
+    throw (lastError instanceof Error ? lastError : new Error('AI 未返回海报解析结果'));
+  }
 
   const content = completion.choices[0]?.message?.content;
   if (!content) {
@@ -364,14 +490,35 @@ export async function POST(request: NextRequest) {
     const publishNow = String(formData.get('publishNow') || 'true').trim() !== 'false';
     const publishStatus = publishNow ? 'published' : 'draft';
 
-    const { visionUrl, coverImageUrl, warnings } = await preparePosterSource(formData);
-    const extracted = await extractCourseDataFromPoster(visionUrl);
-    const payload = buildCoursePayload(extracted, coverImageUrl, publishStatus, siteCode);
+    const source = await preparePosterSource(formData);
+    const warnings = [...source.warnings];
+    let extracted = buildFallbackExtractedCourse(source);
+    let effectivePublishStatus: 'draft' | 'published' = publishStatus;
+
+    try {
+      extracted = await extractCourseDataFromPoster(source.visionUrl);
+    } catch (error) {
+      effectivePublishStatus = 'draft';
+      warnings.push(
+        error instanceof Error
+          ? `AI 解析失败，已回退为课程草稿：${error.message}`
+          : 'AI 解析失败，已回退为课程草稿。',
+      );
+    }
+
+    const payload = buildCoursePayload(
+      extracted,
+      source.coverImageUrl,
+      effectivePublishStatus,
+      siteCode,
+    );
+    const authorization = request.headers.get('authorization');
 
     const createResponse = await fetch(`${request.nextUrl.origin}/api/v1/admin/courses`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(authorization ? { Authorization: authorization } : {}),
         cookie: request.headers.get('cookie') || '',
       },
       body: JSON.stringify(payload),
@@ -392,10 +539,10 @@ export async function POST(request: NextRequest) {
       targetName: extracted.title,
       newValue: {
         siteCode,
-        publishStatus,
+        publishStatus: effectivePublishStatus,
         extracted,
       },
-      changesSummary: `通过海报导入课程并${publishNow ? '上架' : '保存草稿'}：${extracted.title}`,
+      changesSummary: `通过海报导入课程并${effectivePublishStatus === 'published' ? '上架' : '保存草稿'}：${extracted.title}`,
     });
 
     return NextResponse.json({

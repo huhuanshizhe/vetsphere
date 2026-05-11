@@ -55,6 +55,34 @@ function normalizeBaseUrl(rawBaseUrl: string): string {
   return rawBaseUrl.endsWith('/') ? `${rawBaseUrl}v1` : `${rawBaseUrl}/v1`;
 }
 
+function normalizeModelName(value: string | undefined | null): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  return normalized || null;
+}
+
+function getVisionModelCandidates(): string[] {
+  const configuredVisionModel = normalizeModelName(process.env.AI_VISION_MODEL);
+  const fallbackModel = normalizeModelName(process.env.AI_MODEL);
+  const fallbackVisionModel =
+    fallbackModel && /(^|-)vl(-|$)/i.test(fallbackModel) ? fallbackModel : null;
+
+  return [
+    configuredVisionModel,
+    configuredVisionModel?.replace(/-latest$/i, ''),
+    fallbackVisionModel,
+    fallbackVisionModel?.replace(/-latest$/i, ''),
+    'qwen-vl-max',
+    'qwen-vl-plus',
+  ].filter((model, index, allModels): model is string => {
+    return Boolean(model) && allModels.indexOf(model) === index;
+  });
+}
+
+function isUnsupportedModelError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return message.includes('model') && message.includes('not supported');
+}
+
 function generateEntityId(prefix: string): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).slice(2, 8);
@@ -342,7 +370,7 @@ function getOpenAIClient(): OpenAI {
 
 async function extractFromImage(visionUrl: string): Promise<ExtractedProductData> {
   const client = getOpenAIClient();
-  const model = process.env.AI_VISION_MODEL || process.env.AI_MODEL || 'qwen-vl-max-latest';
+  const modelCandidates = getVisionModelCandidates();
   const prompt = [
     'Extract structured product listing data from a medical device product image or poster.',
     'Do not translate. Keep the original source language.',
@@ -373,23 +401,41 @@ async function extractFromImage(visionUrl: string): Promise<ExtractedProductData
     '}',
   ].join('\n');
 
-  const completion = await client.chat.completions.create({
-    model,
-    temperature: 0.1,
-    messages: [
-      {
-        role: 'system',
-        content: 'Extract product data from posters and images. Return only valid JSON. /no_think',
-      },
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: visionUrl } },
-        ] as any,
-      },
-    ],
-  });
+  let completion: Awaited<ReturnType<typeof client.chat.completions.create>> | null = null;
+  let lastError: unknown = null;
+
+  for (const model of modelCandidates) {
+    try {
+      completion = await client.chat.completions.create({
+        model,
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content: 'Extract product data from posters and images. Return only valid JSON. /no_think',
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: visionUrl } },
+            ] as any,
+          },
+        ],
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+      if (isUnsupportedModelError(error) && model !== modelCandidates[modelCandidates.length - 1]) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (!completion) {
+    throw (lastError instanceof Error ? lastError : new Error('AI 未返回产品解析结果'));
+  }
 
   const text = completion.choices[0]?.message?.content;
   if (!text) throw new Error('AI 未返回产品解析结果');
