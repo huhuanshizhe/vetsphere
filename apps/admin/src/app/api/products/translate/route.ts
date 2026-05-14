@@ -13,8 +13,8 @@ import { requireAdmin } from '@/lib/auth-middleware';
 
 // 允许较长执行时间（逐语言翻译，每种语言约 30-60 秒）
 export const maxDuration = 300; // 5 分钟
-
-const supabase = getSupabaseAdmin();
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // 支持的语言
 type SupportedLanguage = 'en' | 'zh' | 'th' | 'ja';
@@ -29,12 +29,75 @@ const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
 
 const ALL_LANGS: SupportedLanguage[] = ['en', 'zh', 'th', 'ja'];
 
+function extractAccessToken(req: NextRequest): string | undefined {
+  const authorization = req.headers.get('authorization')?.trim();
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
+    return undefined;
+  }
+
+  const token = authorization.slice(7).trim();
+  return token || undefined;
+}
+
+function normalizeBaseUrl(rawBaseUrl: string): string {
+  if (!rawBaseUrl) return 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  if (rawBaseUrl.includes('/v1')) return rawBaseUrl;
+  return rawBaseUrl.endsWith('/') ? `${rawBaseUrl}v1` : `${rawBaseUrl}/v1`;
+}
+
+function normalizeModelName(value: string | undefined | null, fallback: string): string {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  return normalized || fallback;
+}
+
+function extractCompletionText(content: unknown): string {
+  if (typeof content === 'string') {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        if (!part || typeof part !== 'object') return '';
+
+        const record = part as Record<string, unknown>;
+        if (typeof record.text === 'string') return record.text;
+        if (typeof record.content === 'string') return record.content;
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  return '';
+}
+
+function parseJsonCompletion(content: unknown, label: string) {
+  const resultText = extractCompletionText(content);
+  if (!resultText) {
+    throw new Error(`${label} 未返回可解析内容`);
+  }
+
+  let cleanText = resultText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  if (cleanText.startsWith('```json')) {
+    cleanText = cleanText.slice(7);
+  } else if (cleanText.startsWith('```')) {
+    cleanText = cleanText.slice(3);
+  }
+  if (cleanText.endsWith('```')) {
+    cleanText = cleanText.slice(0, -3);
+  }
+
+  return JSON.parse(cleanText.trim());
+}
+
 /**
  * 获取 OpenAI 兼容客户端（使用环境变量配置）
  */
 function getAIClient(apiKey: string) {
   const { fetch } = require('undici');
-  const baseURL = process.env.AI_BASE_URL || 'https://coding.dashscope.aliyuncs.com/v1';
+  const baseURL = normalizeBaseUrl(process.env.AI_BASE_URL || '');
 
   return new OpenAI({
     apiKey,
@@ -56,7 +119,7 @@ async function translateToOneLang(
 ): Promise<Record<string, string>> {
   const sourceLanguageName = LANGUAGE_NAMES[sourceLang];
   const targetLanguageName = LANGUAGE_NAMES[targetLang];
-  const model = process.env.AI_MODEL || 'qwen3-coder-plus';
+  const model = normalizeModelName(process.env.AI_MODEL, 'qwen3.5-plus');
 
   const contentEntries = Object.entries(content)
     .map(([key, value]) => `${key}: "${value.replace(/"/g, '\\"')}"`)
@@ -93,27 +156,10 @@ Return format (EXACT JSON, no extra text):
     temperature: 0.3,
   });
 
-  const resultText = completion.choices[0].message.content;
-  if (!resultText) {
-    throw new Error(`No translation result for ${targetLanguageName}`);
-  }
-
-  // 清理可能存在的 markdown 代码块和思考过程
-  let cleanText = resultText;
-
-  // 移除 <think>...</think> 块
-  cleanText = cleanText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-
-  if (cleanText.startsWith('```json')) {
-    cleanText = cleanText.slice(7);
-  } else if (cleanText.startsWith('```')) {
-    cleanText = cleanText.slice(3);
-  }
-  if (cleanText.endsWith('```')) {
-    cleanText = cleanText.slice(0, -3);
-  }
-
-  const result = JSON.parse(cleanText.trim());
+  const result = parseJsonCompletion(
+    completion.choices[0]?.message?.content,
+    `${targetLanguageName} 翻译结果`,
+  );
   console.log(
     `[Product Translation] ${targetLanguageName} done, fields:`,
     Object.keys(result).length,
@@ -132,7 +178,7 @@ async function translateSpecifications(
 ): Promise<Record<string, string>> {
   const sourceLanguageName = LANGUAGE_NAMES[sourceLang];
   const targetLanguageName = LANGUAGE_NAMES[targetLang];
-  const model = process.env.AI_MODEL || 'qwen3-coder-plus';
+  const model = normalizeModelName(process.env.AI_MODEL, 'qwen3.5-plus');
 
   const prompt = `Translate these product specifications from ${sourceLanguageName} to ${targetLanguageName}.
 
@@ -160,15 +206,10 @@ Return EXACT JSON object with translated keys and values, no extra text.`;
     temperature: 0.2,
   });
 
-  const resultText = completion.choices[0].message.content;
-  if (!resultText) throw new Error(`No specs translation for ${targetLanguageName}`);
-
-  let cleanText = resultText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-  if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
-  else if (cleanText.startsWith('```')) cleanText = cleanText.slice(3);
-  if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
-
-  return JSON.parse(cleanText.trim());
+  return parseJsonCompletion(
+    completion.choices[0]?.message?.content,
+    `${targetLanguageName} 规格翻译结果`,
+  );
 }
 
 /**
@@ -182,7 +223,7 @@ async function translateFaq(
 ): Promise<Array<{ question: string; answer: string }>> {
   const sourceLanguageName = LANGUAGE_NAMES[sourceLang];
   const targetLanguageName = LANGUAGE_NAMES[targetLang];
-  const model = process.env.AI_MODEL || 'qwen3-coder-plus';
+  const model = normalizeModelName(process.env.AI_MODEL, 'qwen3.5-plus');
 
   const prompt = `Translate these product FAQ items from ${sourceLanguageName} to ${targetLanguageName}.
 
@@ -209,15 +250,10 @@ Return EXACT JSON array with structure [{"question": "...", "answer": "..."}, ..
     temperature: 0.3,
   });
 
-  const resultText = completion.choices[0].message.content;
-  if (!resultText) throw new Error(`No FAQ translation for ${targetLanguageName}`);
-
-  let cleanText = resultText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-  if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
-  else if (cleanText.startsWith('```')) cleanText = cleanText.slice(3);
-  if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
-
-  return JSON.parse(cleanText.trim());
+  return parseJsonCompletion(
+    completion.choices[0]?.message?.content,
+    `${targetLanguageName} FAQ 翻译结果`,
+  );
 }
 
 /**
@@ -236,6 +272,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdmin(request);
   if ('response' in auth) return auth.response;
   try {
+    const supabase = getSupabaseAdmin(extractAccessToken(request));
     const { productId } = await request.json();
 
     if (!productId) {
@@ -322,6 +359,7 @@ export async function POST(request: NextRequest) {
     const updatePayload: Record<string, any> = {};
     const completedLangs: string[] = [];
     const failedLangs: string[] = [];
+    const failedReasons: string[] = [];
 
     for (const targetLang of targetLangs) {
       try {
@@ -394,18 +432,25 @@ export async function POST(request: NextRequest) {
           `[Product Translation] ${LANGUAGE_NAMES[targetLang]} completed (${completedLangs.length}/${targetLangs.length})`,
         );
       } catch (langError) {
+        const errorMessage = langError instanceof Error ? langError.message : String(langError);
         console.error(
           `[Product Translation] Failed for ${LANGUAGE_NAMES[targetLang]}:`,
-          langError instanceof Error ? langError.message : langError,
+          errorMessage,
         );
         failedLangs.push(targetLang);
+        failedReasons.push(`${LANGUAGE_NAMES[targetLang]}: ${errorMessage}`);
       }
     }
 
     // 如果全部失败
     if (completedLangs.length === 0) {
       return NextResponse.json(
-        { error: '所有语言翻译失败，请检查网络连接后重试' },
+        {
+          error:
+            failedReasons.length > 0
+              ? `所有语言翻译失败：${failedReasons.join('；')}`
+              : '所有语言翻译失败，请检查网络连接后重试',
+        },
         { status: 500 },
       );
     }
@@ -436,6 +481,7 @@ export async function POST(request: NextRequest) {
       targetLangs,
       completedLangs,
       failedLangs,
+      failedReasons,
       translatedAt: updatePayload.translated_at,
     });
   } catch (error) {

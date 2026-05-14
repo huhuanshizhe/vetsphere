@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { createClient } from '@/lib/supabase/client';
 import { useSite } from '@/context/SiteContext';
 import { ToastContainer, useToast } from '@/components/ui';
@@ -909,9 +910,7 @@ export default function AdminProductsPage() {
         : {}),
     }));
     try {
-      const res = await fetch(`/api/v1/admin/products/${deleteConfirm.id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      await apiFetch(`/api/v1/admin/products/${deleteConfirm.id}`, { method: 'DELETE' });
       setDeleteConfirm(null);
       success('产品已删除');
     } catch (err) {
@@ -929,7 +928,7 @@ export default function AdminProductsPage() {
           : {}),
       }));
       setDeleteConfirm(null);
-      showError('删除失败：' + (err as Error).message);
+      showError('删除失败：' + getErrorMessage(err));
     }
   };
 
@@ -970,18 +969,18 @@ export default function AdminProductsPage() {
       return;
     }
     try {
-      const res = await fetch('/api/v1/admin/products/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          product_ids: Array.from(selectedKeys),
-          site_codes: siteCodes,
-          reason,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await apiFetch<{ affected: number; skipped: number }>(
+        '/api/v1/admin/products/bulk',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            action,
+            product_ids: Array.from(selectedKeys),
+            site_codes: siteCodes,
+            reason,
+          }),
+        },
+      );
       setBulkConfirm(null);
       setSelectedKeys(new Set());
       refresh();
@@ -1004,7 +1003,7 @@ export default function AdminProductsPage() {
         success(`成功${actionLabel} ${data.affected} 条产品`);
       }
     } catch (err) {
-      showError('操作失败：' + (err as Error).message);
+      showError('操作失败：' + getErrorMessage(err));
     }
   };
 

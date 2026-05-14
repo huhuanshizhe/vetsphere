@@ -3,7 +3,41 @@ import { parseViewMode, parseSiteCode, siteCodeErrorResponse } from '@/lib/site-
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
-import { createProductImageRows, getMainProductImage, normalizeProductImagesInput } from '@/lib/product-images';
+import {
+  createProductImageRows,
+  getMainProductImage,
+  normalizeProductImagesInput,
+} from '@/lib/product-images';
+
+const PATCH_EXCLUDED_FIELDS = new Set([
+  'site_views',
+  'images',
+  'skus',
+  'variants',
+  'variant_attributes',
+  'product_skus',
+  'category',
+  'supplier',
+  'translationsComplete',
+  'translations_complete',
+]);
+
+const PATCH_IMMUTABLE_FIELDS = new Set(['id', 'created_at', 'updated_at']);
+
+const PATCH_FIELD_ALIASES: Record<string, string> = {
+  coverImageUrl: 'cover_image_url',
+  imageUrl: 'image_url',
+  metaDescription: 'meta_description',
+  metaTitle: 'meta_title',
+  publishLanguage: 'publish_language',
+  sourceUrl: 'source_url',
+  focusKeyword: 'focus_keyword',
+  videoUrl: 'video_url',
+  skuCode: 'sku_code',
+  packageQty: 'package_qty',
+  packageUnit: 'package_unit',
+  minOrderQuantity: 'min_order_quantity',
+};
 
 function extractAccessToken(req: NextRequest): string | undefined {
   const authorization = req.headers.get('authorization')?.trim();
@@ -15,11 +49,33 @@ function extractAccessToken(req: NextRequest): string | undefined {
   return token || undefined;
 }
 
+function buildPatchUpdateData(
+  body: Record<string, unknown>,
+  allowedFields: Set<string>,
+): { updateData: Record<string, unknown>; ignoredKeys: string[] } {
+  const updateData: Record<string, unknown> = {};
+  const ignoredKeys: string[] = [];
+
+  for (const [rawKey, value] of Object.entries(body)) {
+    if (PATCH_EXCLUDED_FIELDS.has(rawKey)) {
+      ignoredKeys.push(rawKey);
+      continue;
+    }
+
+    const targetKey = PATCH_FIELD_ALIASES[rawKey] || rawKey;
+    if (PATCH_IMMUTABLE_FIELDS.has(targetKey) || !allowedFields.has(targetKey)) {
+      ignoredKeys.push(rawKey);
+      continue;
+    }
+
+    updateData[targetKey] = value;
+  }
+
+  return { updateData, ignoredKeys };
+}
+
 // GET /api/v1/admin/products/[id]?view=base|site&site_code=cn
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
@@ -37,7 +93,12 @@ export async function GET(
         .single();
 
       if (error && error.code === 'PGRST116') {
-        return NextResponse.json({ view: 'site', site_code: siteCode, data: null, initialized: false });
+        return NextResponse.json({
+          view: 'site',
+          site_code: siteCode,
+          data: null,
+          initialized: false,
+        });
       }
       if (error) throw error;
       return NextResponse.json({ view: 'site', site_code: siteCode, data, initialized: true });
@@ -45,11 +106,13 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('products')
-      .select(`
+      .select(
+        `
         *,
         images:product_images(id, url, type, sort_order),
         skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, selling_price_usd, selling_price_jpy, selling_price_thb, image_url, barcode, is_active, sort_order, specs)
-      `)
+      `,
+      )
       .eq('id', id)
       .single();
 
@@ -62,23 +125,24 @@ export async function GET(
 
     return NextResponse.json({ view: 'base', data: { ...data, site_views: siteViews || [] } });
   } catch (error) {
-    try { return siteCodeErrorResponse(error); } catch {}
+    try {
+      return siteCodeErrorResponse(error);
+    } catch (siteCodeError) {
+      void siteCodeError;
+    }
     console.error('Failed to fetch product:', error);
     return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 });
   }
 }
 
 // PATCH /api/v1/admin/products/[id] - update base product
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
     const supabase = getSupabaseAdmin(extractAccessToken(req));
     const { id } = await params;
-    const body = await req.json();
+    const body = (await req.json()) as Record<string, unknown>;
     const hasImagesInBody = 'images' in body;
     const normalizedImages = hasImagesInBody
       ? normalizeProductImagesInput(
@@ -87,19 +151,29 @@ export async function PATCH(
         )
       : [];
 
-    // 过滤掉不应该发送到 products 表的字段
-    const excludedFields = ['site_views', 'images', 'skus', 'variants'];
-    const updateData: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(body)) {
-      if (!excludedFields.includes(key)) {
-        updateData[key] = value;
-      }
+    const { data: existingProduct, error: existingProductError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (existingProductError || !existingProduct) {
+      return NextResponse.json({ error: '产品不存在' }, { status: 404 });
     }
+
+    const { updateData, ignoredKeys } = buildPatchUpdateData(
+      body,
+      new Set(Object.keys(existingProduct)),
+    );
 
     if (hasImagesInBody) {
       const mainImage = getMainProductImage(normalizedImages);
       updateData.image_url = mainImage?.url || null;
       updateData.cover_image_url = mainImage?.url || null;
+    }
+
+    if (ignoredKeys.length > 0) {
+      console.log('[Product PATCH] Ignored unsupported fields:', ignoredKeys);
     }
 
     console.log('[Product PATCH] Updating with fields:', Object.keys(updateData));
@@ -183,23 +257,20 @@ export async function PATCH(
     return NextResponse.json(data);
   } catch (error) {
     console.error('Failed to update product:', error);
-    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to update product' },
+      { status: 500 },
+    );
   }
 }
 
 // PUT /api/v1/admin/products/[id] - alias for PATCH
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return PATCH(req, { params });
 }
 
 // DELETE /api/v1/admin/products/[id] - soft delete product
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
@@ -226,7 +297,7 @@ export async function DELETE(
         deleted_at: new Date().toISOString(),
         is_deleted: true,
         status: 'offline',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id);
 
@@ -254,10 +325,7 @@ export async function DELETE(
 }
 
 // POST /api/v1/admin/products/[id]/approve - approve product
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(req);
   if ('response' in auth) return auth.response;
   try {
@@ -265,19 +333,19 @@ export async function POST(
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
-    
+
     if (action === 'approve') {
       const { data, error } = await supabase
         .from('products')
-        .update({ 
+        .update({
           status: 'approved',
           rejection_reason: null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
 
       writeAuditLog(req, auth.admin, {
@@ -292,26 +360,26 @@ export async function POST(
 
       return NextResponse.json({ success: true, data });
     }
-    
+
     if (action === 'reject') {
       const body = await req.json();
       const { reason } = body;
-      
+
       if (!reason) {
         return NextResponse.json({ error: '拒绝原因不能为空' }, { status: 400 });
       }
-      
+
       const { data, error } = await supabase
         .from('products')
-        .update({ 
+        .update({
           status: 'rejected',
           rejection_reason: reason,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
 
       writeAuditLog(req, auth.admin, {
@@ -326,7 +394,7 @@ export async function POST(
 
       return NextResponse.json({ success: true, data });
     }
-    
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
     console.error('Failed to process product:', error);
