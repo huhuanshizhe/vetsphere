@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use, useCallback } from 'react';
+import React, { useState, useEffect, use, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
@@ -35,6 +35,16 @@ type ProductImageRecord = {
   type: ProductImageType;
   sort_order: number;
 };
+
+type PendingLeaveAction =
+  | {
+      type: 'route';
+      href: string;
+    }
+  | {
+      type: 'refresh';
+    }
+  | null;
 
 // SKU规格参数预设
 const SKU_SPEC_PRESETS = [
@@ -211,12 +221,16 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   // UI 状态
   const [activeTab, setActiveTab] = useState('basic');
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [pendingLeaveAction, setPendingLeaveAction] = useState<PendingLeaveAction>(null);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [selectedSites, setSelectedSites] = useState<string[]>([
     currentSite === 'global' ? 'cn' : currentSite,
   ]);
   const [publishing, setPublishing] = useState(false);
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
+  const [uploadingProductImages, setUploadingProductImages] = useState(false);
+  const [uploadingSkuImageIds, setUploadingSkuImageIds] = useState<Set<string>>(new Set());
+  const skipBeforeUnloadRef = useRef(false);
 
   // Toast 通知
   const { toasts, addToast, removeToast, success, error: toastError, warning } = useToast();
@@ -491,6 +505,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   // 上传SKU图片
   const uploadSkuImage = useCallback(
     async (skuId: string, file: File) => {
+      setUploadingSkuImageIds((prev) => new Set(prev).add(skuId));
       try {
         const formData = new FormData();
         formData.append('file', file);
@@ -513,6 +528,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         success('SKU图片上传成功');
       } catch (err) {
         toastError(getErrorMessage(err) || '图片上传失败，请重试');
+      } finally {
+        setUploadingSkuImageIds((prev) => {
+          const next = new Set(prev);
+          next.delete(skuId);
+          return next;
+        });
       }
     },
     [success, toastError],
@@ -543,6 +564,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       const fileList = Array.from(files);
       if (fileList.length === 0) return;
 
+      setUploadingProductImages(true);
       try {
         const uploadedImages: ProductImageRecord[] = [];
 
@@ -584,6 +606,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         );
       } catch (err) {
         toastError(getErrorMessage(err) || '商品图片上传失败');
+      } finally {
+        setUploadingProductImages(false);
       }
     },
     [success, toastError, updateProductImages],
@@ -852,8 +876,10 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   }
 
   // 保存
-  async function performSave() {
-    if (!product) return;
+  async function performSave(options: { skipPostSaveRefresh?: boolean } = {}) {
+    const { skipPostSaveRefresh = false } = options;
+
+    if (!product) return false;
     setShowSaveConfirmDialog(false);
     setSaving(true);
     setSaveError(null);
@@ -884,8 +910,10 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           }),
         });
         newProductId = newData.id;
-        // 导航到编辑页面
-        router.replace(`/products/${newProductId}`);
+        // 常规保存时跳转到新产品编辑页；保存后离开则跳过
+        if (!skipPostSaveRefresh) {
+          router.replace(`/products/${newProductId}`);
+        }
       } else {
         // 更新产品：使用 PATCH
         await apiFetch(`/api/v1/admin/products/${productId}`, {
@@ -946,22 +974,26 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       );
       setTimeout(() => setSaveSuccess(false), 2000);
 
-      if (isNewProduct) {
-        // 重新加载新产品数据
-        const json = await apiFetch<{ view: 'base'; data: any }>(
-          `/api/v1/admin/products/${newProductId}?view=base`,
-        );
-        setProduct(json.data);
-        setEditForm({ ...json.data });
-      } else {
-        await loadProduct(); // 重新加载产品数据
+      if (!skipPostSaveRefresh) {
+        if (isNewProduct) {
+          // 重新加载新产品数据
+          const json = await apiFetch<{ view: 'base'; data: any }>(
+            `/api/v1/admin/products/${newProductId}?view=base`,
+          );
+          setProduct(json.data);
+          setEditForm({ ...json.data });
+        } else {
+          await loadProduct(); // 重新加载产品数据
+        }
       }
 
       console.log('[Product Save] Save completed, reloaded product specs:', product.specs);
+      return true;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : '保存失败';
       setSaveError(errorMsg);
       toastError(errorMsg);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -969,7 +1001,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
   // 兼容旧代码
   async function handleSave() {
-    performSave();
+    await performSave();
   }
 
   // 保存并上架
@@ -1280,19 +1312,67 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     }
   }
 
+  const performLeaveAction = useCallback(
+    (action: Exclude<PendingLeaveAction, null>) => {
+      skipBeforeUnloadRef.current = true;
+      setShowLeaveDialog(false);
+      setPendingLeaveAction(null);
+
+      window.setTimeout(() => {
+        skipBeforeUnloadRef.current = false;
+      }, 1500);
+
+      if (action.type === 'refresh') {
+        window.location.reload();
+        return;
+      }
+
+      router.push(action.href);
+    },
+    [router],
+  );
+
+  const requestLeave = useCallback(
+    (action: Exclude<PendingLeaveAction, null>) => {
+      if (!isDirty) {
+        performLeaveAction(action);
+        return;
+      }
+
+      setPendingLeaveAction(action);
+      setShowLeaveDialog(true);
+    },
+    [isDirty, performLeaveAction],
+  );
+
+  const handleStayOnPage = useCallback(() => {
+    setShowLeaveDialog(false);
+    setPendingLeaveAction(null);
+  }, []);
+
+  const handleLeaveWithoutSave = useCallback(() => {
+    if (!pendingLeaveAction) return;
+    performLeaveAction(pendingLeaveAction);
+  }, [pendingLeaveAction, performLeaveAction]);
+
+  const handleSaveAndLeave = useCallback(async () => {
+    if (!pendingLeaveAction) return;
+
+    const saved = await performSave({ skipPostSaveRefresh: true });
+    if (saved) {
+      performLeaveAction(pendingLeaveAction);
+    }
+  }, [pendingLeaveAction, performLeaveAction]);
+
   // 返回列表
   function handleBack() {
-    if (isDirty) {
-      setShowLeaveDialog(true);
-    } else {
-      router.push('/products');
-    }
+    requestLeave({ type: 'route', href: '/products' });
   }
 
   // 浏览器原生离开确认
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
+      if (isDirty && !skipBeforeUnloadRef.current) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -1300,6 +1380,68 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
+
+  // 刷新快捷键拦截：提供“保存并刷新 / 直接刷新”选择
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isDirty || skipBeforeUnloadRef.current) return;
+
+      const isRefreshShortcut =
+        event.key === 'F5' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'r');
+
+      if (!isRefreshShortcut) return;
+
+      event.preventDefault();
+      requestLeave({ type: 'refresh' });
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDirty, requestLeave]);
+
+  // 页面内跳转拦截：例如侧边栏或其它链接跳转
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (!isDirty || skipBeforeUnloadRef.current) return;
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const anchor = target.closest('a[href]');
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+
+      const rawHref = anchor.getAttribute('href');
+      if (
+        !rawHref ||
+        rawHref.startsWith('#') ||
+        anchor.target === '_blank' ||
+        anchor.hasAttribute('download')
+      ) {
+        return;
+      }
+
+      const nextUrl = new URL(anchor.href, window.location.href);
+      const currentUrl = new URL(window.location.href);
+
+      if (nextUrl.origin !== currentUrl.origin) {
+        return;
+      }
+
+      const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+      const currentPath = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
+      if (nextPath === currentPath) {
+        return;
+      }
+
+      event.preventDefault();
+      requestLeave({ type: 'route', href: nextPath });
+    };
+
+    document.addEventListener('click', handleDocumentClick, true);
+    return () => document.removeEventListener('click', handleDocumentClick, true);
+  }, [isDirty, requestLeave]);
 
   if (loading)
     return (
@@ -1326,6 +1468,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const publishLang = getPublishLang();
   const productImages = getProductImagesFromFormState(editForm);
   const mainProductImage = getMainProductImage(productImages);
+  const leaveTargetLabel = pendingLeaveAction?.type === 'refresh' ? '刷新页面' : '离开当前页面';
 
   return (
     <div className="space-y-6">
@@ -1631,12 +1774,15 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 </div>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-emerald-400 hover:text-emerald-600">
+                <label
+                  className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${uploadingProductImages ? 'cursor-wait border-slate-200 bg-slate-100 text-slate-400' : 'cursor-pointer border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-600'}`}
+                >
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
                     multiple
                     className="hidden"
+                    disabled={uploadingProductImages}
                     onChange={(e) => {
                       const files = e.target.files;
                       if (files?.length) {
@@ -1646,7 +1792,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     }}
                   />
                   <Upload className="h-4 w-4" />
-                  上传商品图片
+                  {uploadingProductImages ? '上传中...' : '上传商品图片'}
                 </label>
                 {productImages.length > 0 ? (
                   <button
@@ -2102,6 +2248,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     <tbody className="divide-y divide-slate-100">
                       {productSkus.map((sku) => {
                         const isExpanded = expandedSkus.has(sku.id);
+                        const isUploadingSkuImage = uploadingSkuImageIds.has(sku.id);
                         return (
                           <React.Fragment key={sku.id}>
                             <tr className="hover:bg-slate-50">
@@ -2278,19 +2425,22 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                             </button>
                                           </>
                                         ) : (
-                                          <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
+                                          <label
+                                            className={`w-full h-full flex flex-col items-center justify-center ${isUploadingSkuImage ? 'cursor-wait text-slate-300' : 'cursor-pointer'}`}
+                                          >
                                             <input
                                               type="file"
                                               accept="image/jpeg,image/png,image/webp"
                                               className="hidden"
+                                              disabled={isUploadingSkuImage}
                                               onChange={(e) => {
                                                 const file = e.target.files?.[0];
-                                                if (file) uploadSkuImage(sku.id, file);
+                                                if (file) void uploadSkuImage(sku.id, file);
                                               }}
                                             />
                                             <Upload className="w-5 h-5 text-slate-400" />
                                             <span className="text-xs text-slate-400 mt-1">
-                                              上传
+                                              {isUploadingSkuImage ? '上传中...' : '上传'}
                                             </span>
                                           </label>
                                         )}
@@ -3057,15 +3207,42 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       )}
 
       {/* 离开确认对话框 */}
-      <ConfirmDialog
-        open={showLeaveDialog}
-        title="确认离开"
-        message="您有未保存的更改，确定要离开吗？所有未保存的更改将丢失。"
-        confirmText="确认离开"
-        onConfirm={() => router.push('/products')}
-        onCancel={() => setShowLeaveDialog(false)}
-        danger
-      />
+      {showLeaveDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={saving ? undefined : handleStayOnPage}
+          />
+          <div className="relative w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="flex items-start gap-4">
+              <span className="text-2xl">⚠️</span>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">当前页面尚未保存</h3>
+                <p className="text-sm text-slate-500">
+                  检测到未保存的修改。您可以先保存再{leaveTargetLabel}，也可以直接
+                  {leaveTargetLabel.toLowerCase()}并放弃这些修改。
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              <Button variant="secondary" onClick={handleStayOnPage} disabled={saving}>
+                取消
+              </Button>
+              <button
+                type="button"
+                onClick={handleLeaveWithoutSave}
+                disabled={saving}
+                className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                直接{pendingLeaveAction?.type === 'refresh' ? '刷新' : '离开'}
+              </button>
+              <Button onClick={handleSaveAndLeave} loading={saving}>
+                保存并{pendingLeaveAction?.type === 'refresh' ? '刷新' : '离开'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 上架站点选择弹窗 */}
       {showPublishDialog && (
