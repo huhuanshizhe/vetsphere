@@ -5,9 +5,26 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { useSite } from '@/context/SiteContext';
-import { Card, Button, LoadingState, ConfirmDialog, Toast, ToastContainer, useToast } from '@/components/ui';
+import {
+  Card,
+  Button,
+  LoadingState,
+  ConfirmDialog,
+  Toast,
+  ToastContainer,
+  useToast,
+} from '@/components/ui';
 import RichTextEditor from '@/components/RichTextEditor';
-import { ChevronRight, ChevronUp, Upload, X, Settings2, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronUp,
+  Upload,
+  X,
+  Settings2,
+  Image as ImageIcon,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 
 type Lang = 'en' | 'zh' | 'th' | 'ja';
 type ProductImageType = 'main' | 'detail';
@@ -21,12 +38,39 @@ type ProductImageRecord = {
 
 // SKU规格参数预设
 const SKU_SPEC_PRESETS = [
-  '功率', '电压', '尺寸', '材质', '容量', '精度', '速度', '频率', '温度范围', '压力范围',
-  '尺寸(mm)', '重量', '颜色', '型号', '规格', '包装', '认证'
+  '功率',
+  '电压',
+  '尺寸',
+  '材质',
+  '容量',
+  '精度',
+  '速度',
+  '频率',
+  '温度范围',
+  '压力范围',
+  '尺寸(mm)',
+  '重量',
+  '颜色',
+  '型号',
+  '规格',
+  '包装',
+  '认证',
 ];
 
 function normalizeOptionalString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeNullableNumber(value: unknown): number | null {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeNonNegativeInteger(value: unknown): number {
+  if (value === '' || value === null || value === undefined) return 0;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
 }
 
 function createTempImageId(prefix = 'temp-image'): string {
@@ -88,11 +132,16 @@ function normalizeProductImages(images: unknown[]): ProductImageRecord[] {
   }));
 }
 
-function getProductImagesFromFormState(source: {
-  images?: unknown;
-  image_url?: unknown;
-  cover_image_url?: unknown;
-} | null | undefined): ProductImageRecord[] {
+function getProductImagesFromFormState(
+  source:
+    | {
+        images?: unknown;
+        image_url?: unknown;
+        cover_image_url?: unknown;
+      }
+    | null
+    | undefined,
+): ProductImageRecord[] {
   const normalizedImages = Array.isArray(source?.images)
     ? normalizeProductImages(source.images)
     : [];
@@ -152,14 +201,20 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const [showTranslateModal, setShowTranslateModal] = useState(false);
   const [translateStep, setTranslateStep] = useState(0);
   const [translateProgress, setTranslateProgress] = useState(0);
-  const [translateSteps, setTranslateSteps] = useState<{step: number; text: string; progress: number}[]>([]);
-  const [translateTargetLangs, setTranslateTargetLangs] = useState<{code: string; name: string}[]>([]);
+  const [translateSteps, setTranslateSteps] = useState<
+    { step: number; text: string; progress: number }[]
+  >([]);
+  const [translateTargetLangs, setTranslateTargetLangs] = useState<
+    { code: string; name: string }[]
+  >([]);
 
   // UI 状态
   const [activeTab, setActiveTab] = useState('basic');
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
-  const [selectedSites, setSelectedSites] = useState<string[]>([currentSite === 'global' ? 'cn' : currentSite]);
+  const [selectedSites, setSelectedSites] = useState<string[]>([
+    currentSite === 'global' ? 'cn' : currentSite,
+  ]);
   const [publishing, setPublishing] = useState(false);
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
 
@@ -225,13 +280,15 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     setLoading(true);
     setError(null);
     try {
-      const json = await apiFetch<{ view: 'base'; data: any }>(`/api/v1/admin/products/${productId}?view=base`);
+      const json = await apiFetch<{ view: 'base'; data: any }>(
+        `/api/v1/admin/products/${productId}?view=base`,
+      );
       const data = json.data;
       setProduct(data);
       setEditForm({ ...data });
 
       // 加载分类数据
-      await loadCategories();
+      await loadCategories(data);
 
       // 加载 SKU 变体数据
       await loadVariantData();
@@ -242,24 +299,74 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     }
   }
 
-  async function loadCategories() {
+  async function loadCategories(productData?: any) {
     setLoadingCategories(true);
     try {
+      if (currentSite === 'global') {
+        setCategories([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('product_categories')
         .select('*')
         .eq('is_active', true)
+        .eq('site_code', currentSite)
+        .order('level', { ascending: true })
         .order('sort_order', { ascending: true });
-      
+
       if (error) throw error;
-      setCategories(data || []);
-      console.log('[ProductEdit] Loaded categories:', data?.length);
+
+      const scopedCategories = data || [];
+      const currentCategoryIds = [
+        productData?.category_id,
+        productData?.subcategory_id,
+        productData?.level3_category_id,
+      ].filter(Boolean);
+      const missingCategoryIds = currentCategoryIds.filter(
+        (categoryId: string) => !scopedCategories.some((category) => category.id === categoryId),
+      );
+
+      let mergedCategories = scopedCategories;
+      if (missingCategoryIds.length > 0) {
+        const { data: legacyCategories, error: legacyError } = await supabase
+          .from('product_categories')
+          .select('*')
+          .in('id', missingCategoryIds);
+
+        if (legacyError) throw legacyError;
+
+        const mergedMap = new Map(scopedCategories.map((category) => [category.id, category]));
+        (legacyCategories || []).forEach((category) => {
+          mergedMap.set(category.id, category);
+        });
+        mergedCategories = Array.from(mergedMap.values());
+      }
+
+      setCategories(mergedCategories);
+      console.log(
+        '[ProductEdit] Loaded categories:',
+        mergedCategories.length,
+        'site:',
+        currentSite,
+      );
     } catch (err) {
       console.error('[ProductEdit] Failed to load categories:', err);
     } finally {
       setLoadingCategories(false);
     }
   }
+
+  useEffect(() => {
+    if (isNewProduct) {
+      void loadCategories(editForm);
+      return;
+    }
+
+    if (product) {
+      void loadCategories(editForm);
+    }
+  }, [currentSite]);
 
   async function loadVariantData() {
     setLoadingVariants(true);
@@ -305,7 +412,10 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       if (skusError) throw skusError;
       setProductSkus(skus || []);
 
-      console.log('[ProductEdit] Loaded variants from DB:', { attrs: attrs?.length, skus: skus?.length });
+      console.log('[ProductEdit] Loaded variants from DB:', {
+        attrs: attrs?.length,
+        skus: skus?.length,
+      });
     } catch (err) {
       console.error('[ProductEdit] Failed to load variant data:', err);
     } finally {
@@ -315,7 +425,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
   // SKU展开/收起
   const toggleSkuExpanded = useCallback((skuId: string) => {
-    setExpandedSkus(prev => {
+    setExpandedSkus((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(skuId)) {
         newSet.delete(skuId);
@@ -328,74 +438,85 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
   // 更新SKU规格参数
   const updateSkuSpec = useCallback((skuId: string, specKey: string, specValue: string) => {
-    setProductSkus(prev => prev.map(sku => {
-      if (sku.id === skuId) {
-        const newSpecs = { ...(sku.specs || {}) };
-        if (specValue.trim()) {
-          newSpecs[specKey] = specValue.trim();
-        } else {
-          delete newSpecs[specKey];
+    setProductSkus((prev) =>
+      prev.map((sku) => {
+        if (sku.id === skuId) {
+          const newSpecs = { ...(sku.specs || {}) };
+          if (specValue.trim()) {
+            newSpecs[specKey] = specValue.trim();
+          } else {
+            delete newSpecs[specKey];
+          }
+          return { ...sku, specs: newSpecs };
         }
-        return { ...sku, specs: newSpecs };
-      }
-      return sku;
-    }));
+        return sku;
+      }),
+    );
     setIsDirty(true);
   }, []);
 
   // 添加SKU规格参数键
   const addSkuSpecKey = useCallback((skuId: string, specKey: string) => {
     if (!specKey.trim()) return;
-    setProductSkus(prev => prev.map(sku => {
-      if (sku.id === skuId) {
-        const newSpecs = { ...(sku.specs || {}) };
-        if (!(specKey in newSpecs)) {
-          newSpecs[specKey.trim()] = '';
+    setProductSkus((prev) =>
+      prev.map((sku) => {
+        if (sku.id === skuId) {
+          const newSpecs = { ...(sku.specs || {}) };
+          if (!(specKey in newSpecs)) {
+            newSpecs[specKey.trim()] = '';
+          }
+          return { ...sku, specs: newSpecs };
         }
-        return { ...sku, specs: newSpecs };
-      }
-      return sku;
-    }));
+        return sku;
+      }),
+    );
     setIsDirty(true);
   }, []);
 
   // 删除SKU规格参数键
   const removeSkuSpecKey = useCallback((skuId: string, specKey: string) => {
-    setProductSkus(prev => prev.map(sku => {
-      if (sku.id === skuId) {
-        const newSpecs = { ...(sku.specs || {}) };
-        delete newSpecs[specKey];
-        return { ...sku, specs: newSpecs };
-      }
-      return sku;
-    }));
+    setProductSkus((prev) =>
+      prev.map((sku) => {
+        if (sku.id === skuId) {
+          const newSpecs = { ...(sku.specs || {}) };
+          delete newSpecs[specKey];
+          return { ...sku, specs: newSpecs };
+        }
+        return sku;
+      }),
+    );
     setIsDirty(true);
   }, []);
 
   // 上传SKU图片
-  const uploadSkuImage = useCallback(async (skuId: string, file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'product');
+  const uploadSkuImage = useCallback(
+    async (skuId: string, file: File) => {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'product');
 
-      const data = await apiFetch<{ url: string }>('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+        const data = await apiFetch<{ url: string }>('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
 
-      setProductSkus(prev => prev.map(sku => {
-        if (sku.id === skuId) {
-          return { ...sku, image_url: data.url };
-        }
-        return sku;
-      }));
-      setIsDirty(true);
-      success('SKU图片上传成功');
-    } catch (err) {
-      toastError(getErrorMessage(err) || '图片上传失败，请重试');
-    }
-  }, [success, toastError]);
+        setProductSkus((prev) =>
+          prev.map((sku) => {
+            if (sku.id === skuId) {
+              return { ...sku, image_url: data.url };
+            }
+            return sku;
+          }),
+        );
+        setIsDirty(true);
+        success('SKU图片上传成功');
+      } catch (err) {
+        toastError(getErrorMessage(err) || '图片上传失败，请重试');
+      }
+    },
+    [success, toastError],
+  );
 
   const updateProductImages = useCallback(
     (updater: (images: ProductImageRecord[]) => ProductImageRecord[]) => {
@@ -417,13 +538,15 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   );
 
   // 上传商品图片（首图为主图，其余为详情图）
-  const uploadProductImages = useCallback(async (files: FileList | File[]) => {
-    const fileList = Array.from(files);
-    if (fileList.length === 0) return;
+  const uploadProductImages = useCallback(
+    async (files: FileList | File[]) => {
+      const fileList = Array.from(files);
+      if (fileList.length === 0) return;
 
-    try {
-      const uploadedImages = await Promise.all(
-        fileList.map(async (file) => {
+      try {
+        const uploadedImages: ProductImageRecord[] = [];
+
+        for (const file of fileList) {
           const formData = new FormData();
           formData.append('file', file);
           formData.append('type', 'product-gallery');
@@ -433,81 +556,106 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             body: formData,
           });
 
-          return {
+          uploadedImages.push({
             id: createTempImageId('temp-image'),
             url: data.url,
-            type: 'detail' as const,
+            type: 'detail',
             sort_order: 0,
-          };
-        }),
-      );
+          });
+        }
 
-      updateProductImages((currentImages) => {
-        const hasMainImage = currentImages.some((image) => image.type === 'main');
+        updateProductImages((currentImages) => {
+          const hasMainImage = currentImages.some((image) => image.type === 'main');
+          return [
+            ...currentImages,
+            ...uploadedImages.map(
+              (image, index): ProductImageRecord => ({
+                ...image,
+                type: !hasMainImage && index === 0 ? 'main' : 'detail',
+              }),
+            ),
+          ];
+        });
+
+        success(
+          fileList.length === 1
+            ? '商品图片上传成功'
+            : `商品图片上传成功，已新增 ${fileList.length} 张图片`,
+        );
+      } catch (err) {
+        toastError(getErrorMessage(err) || '商品图片上传失败');
+      }
+    },
+    [success, toastError, updateProductImages],
+  );
+
+  const setMainProductImage = useCallback(
+    (imageKey: string) => {
+      updateProductImages((images) => {
+        const selectedImage = images.find(
+          (image, index) => getProductImageKey(image, index) === imageKey,
+        );
+        if (!selectedImage) return images;
+
+        const remainingImages = images.filter(
+          (image, index) => getProductImageKey(image, index) !== imageKey,
+        );
         return [
-          ...currentImages,
-          ...uploadedImages.map((image, index): ProductImageRecord => ({
-            ...image,
-            type: !hasMainImage && index === 0 ? 'main' : 'detail',
-          })),
+          { ...selectedImage, type: 'main' },
+          ...remainingImages.map((image) => ({ ...image, type: 'detail' as const })),
         ];
       });
+    },
+    [updateProductImages],
+  );
 
-      success(fileList.length === 1 ? '商品图片上传成功' : `商品图片上传成功，已新增 ${fileList.length} 张图片`);
-    } catch (err) {
-      toastError(getErrorMessage(err) || '商品图片上传失败');
-    }
-  }, [success, toastError, updateProductImages]);
-
-  const setMainProductImage = useCallback((imageKey: string) => {
-    updateProductImages((images) => {
-      const selectedImage = images.find((image, index) => getProductImageKey(image, index) === imageKey);
-      if (!selectedImage) return images;
-
-      const remainingImages = images.filter((image, index) => getProductImageKey(image, index) !== imageKey);
-      return [{ ...selectedImage, type: 'main' }, ...remainingImages.map((image) => ({ ...image, type: 'detail' as const }))];
-    });
-  }, [updateProductImages]);
-
-  const removeProductImage = useCallback((imageKey: string) => {
-    updateProductImages((images) =>
-      images.filter((image, index) => getProductImageKey(image, index) !== imageKey),
-    );
-  }, [updateProductImages]);
+  const removeProductImage = useCallback(
+    (imageKey: string) => {
+      updateProductImages((images) =>
+        images.filter((image, index) => getProductImageKey(image, index) !== imageKey),
+      );
+    },
+    [updateProductImages],
+  );
 
   // 更新SKU字段
   const updateSkuField = useCallback((skuId: string, field: string, value: any) => {
-    setProductSkus(prev => prev.map(sku => {
-      if (sku.id === skuId) {
-        return { ...sku, [field]: value };
-      }
-      return sku;
-    }));
+    setProductSkus((prev) =>
+      prev.map((sku) => {
+        if (sku.id === skuId) {
+          return { ...sku, [field]: value };
+        }
+        return sku;
+      }),
+    );
     setIsDirty(true);
   }, []);
 
   // 加载 SKU 阶梯价格
-  const loadPriceTiers = useCallback(async (skuId: string) => {
-    setLoadingTiers(prev => ({ ...prev, [skuId]: true }));
-    try {
-      const { data, error } = await supabase
-        .from('product_price_tiers')
-        .select('*')
-        .eq('sku_id', skuId)
-        .order('min_quantity', { ascending: true });
+  const loadPriceTiers = useCallback(
+    async (skuId: string) => {
+      setLoadingTiers((prev) => ({ ...prev, [skuId]: true }));
+      try {
+        const { data, error } = await supabase
+          .from('product_price_tiers')
+          .select('*')
+          .eq('sku_id', skuId)
+          .order('min_quantity', { ascending: true });
 
-      if (error) throw error;
-      setPriceTiers(prev => ({ ...prev, [skuId]: data || [] }));
-    } catch (err) {
-      console.error('加载阶梯价格失败:', err);
-    } finally {
-      setLoadingTiers(prev => ({ ...prev, [skuId]: false }));
-    }
-  }, [supabase]);
+        if (error) throw error;
+        setPriceTiers((prev) => ({ ...prev, [skuId]: data || [] }));
+      } catch (err) {
+        console.error('加载阶梯价格失败:', err);
+      } finally {
+        setLoadingTiers((prev) => ({ ...prev, [skuId]: false }));
+      }
+    },
+    [supabase],
+  );
 
   // 添加阶梯价格
   const addPriceTier = useCallback((skuId: string) => {
-    setPriceTiers(prev => {
+    setPriceTiers((prev) => {
       const tiers = prev[skuId] || [];
       const lastTier = tiers[tiers.length - 1];
       const newMin = lastTier ? (lastTier.max_quantity || lastTier.min_quantity + 10) + 1 : 1;
@@ -515,87 +663,92 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
       return {
         ...prev,
-        [skuId]: [...tiers, {
-          id: `new-${Date.now()}`,
-          sku_id: skuId,
-          min_quantity: newMin,
-          max_quantity: newMax,
-          price_usd: 0,
-          price_cny: 0,
-          price_jpy: null,
-          price_thb: null,
-          _isNew: true,
-        }],
+        [skuId]: [
+          ...tiers,
+          {
+            id: `new-${Date.now()}`,
+            sku_id: skuId,
+            min_quantity: newMin,
+            max_quantity: newMax,
+            price_usd: 0,
+            price_cny: 0,
+            price_jpy: null,
+            price_thb: null,
+            _isNew: true,
+          },
+        ],
       };
     });
     setIsDirty(true);
   }, []);
 
   // 更新阶梯价格
-  const updatePriceTier = useCallback((skuId: string, tierId: string, field: string, value: any) => {
-    setPriceTiers(prev => ({
-      ...prev,
-      [skuId]: (prev[skuId] || []).map(tier => {
-        if (tier.id === tierId) {
-          return { ...tier, [field]: value };
-        }
-        return tier;
-      }),
-    }));
-    setIsDirty(true);
-  }, []);
+  const updatePriceTier = useCallback(
+    (skuId: string, tierId: string, field: string, value: any) => {
+      setPriceTiers((prev) => ({
+        ...prev,
+        [skuId]: (prev[skuId] || []).map((tier) => {
+          if (tier.id === tierId) {
+            return { ...tier, [field]: value };
+          }
+          return tier;
+        }),
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
 
   // 删除阶梯价格
   const removePriceTier = useCallback((skuId: string, tierId: string) => {
-    setPriceTiers(prev => ({
+    setPriceTiers((prev) => ({
       ...prev,
-      [skuId]: (prev[skuId] || []).filter(tier => tier.id !== tierId),
+      [skuId]: (prev[skuId] || []).filter((tier) => tier.id !== tierId),
     }));
     setIsDirty(true);
   }, []);
 
   // 保存阶梯价格
-  const savePriceTiers = useCallback(async (skuId: string) => {
-    const tiers = priceTiers[skuId] || [];
-    if (tiers.length === 0) return;
+  const savePriceTiers = useCallback(
+    async (skuId: string) => {
+      const tiers = priceTiers[skuId] || [];
+      if (tiers.length === 0) return;
 
-    try {
-      // 删除已存在的阶梯价格
-      await supabase
-        .from('product_price_tiers')
-        .delete()
-        .eq('sku_id', skuId);
+      try {
+        // 删除已存在的阶梯价格
+        await supabase.from('product_price_tiers').delete().eq('sku_id', skuId);
 
-      // 插入新的阶梯价格
-      const tiersToInsert = tiers.map(tier => ({
-        sku_id: skuId,
-        min_quantity: tier.min_quantity,
-        max_quantity: tier.max_quantity || null,
-        price_usd: tier.price_usd || 0,
-        price_cny: tier.price_cny || null,
-        price_jpy: tier.price_jpy || null,
-        price_thb: tier.price_thb || null,
-      }));
+        // 插入新的阶梯价格
+        const tiersToInsert = tiers.map((tier) => ({
+          sku_id: skuId,
+          min_quantity: tier.min_quantity,
+          max_quantity: tier.max_quantity || null,
+          price_usd: tier.price_usd || 0,
+          price_cny: tier.price_cny || null,
+          price_jpy: tier.price_jpy || null,
+          price_thb: tier.price_thb || null,
+        }));
 
-      const { error } = await supabase
-        .from('product_price_tiers')
-        .insert(tiersToInsert);
+        const { error } = await supabase.from('product_price_tiers').insert(tiersToInsert);
 
-      if (error) throw error;
-      success('阶梯价格保存成功');
-      await loadPriceTiers(skuId);
-    } catch (err) {
-      console.error('保存阶梯价格失败:', err);
-      toastError('保存阶梯价格失败');
-    }
-  }, [priceTiers, supabase, success, toastError, loadPriceTiers]);
+        if (error) throw error;
+        success('阶梯价格保存成功');
+        await loadPriceTiers(skuId);
+      } catch (err) {
+        console.error('保存阶梯价格失败:', err);
+        toastError('保存阶梯价格失败');
+      }
+    },
+    [priceTiers, supabase, success, toastError, loadPriceTiers],
+  );
 
   // 多语言读写逻辑
-  const getPublishLang = () => ((editForm as any).publish_language || (editForm as any).publishLanguage || 'zh') as string;
-  
+  const getPublishLang = () =>
+    ((editForm as any).publish_language || (editForm as any).publishLanguage || 'zh') as string;
+
   const getLocalizedValue = (baseField: string, obj: any = editForm): string => {
     const publishLang = getPublishLang();
-    
+
     // 优先检查带语言后缀的字段（包括源语言）
     const suffixKey = `${baseField}_${editLang}`;
     if (obj && suffixKey in obj) {
@@ -604,7 +757,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         return String(suffixValue);
       }
     }
-    
+
     // 回退到基础字段：源语言 或 中文（中文内容始终存储在基础字段，数据库无 _zh 列）
     if (editLang === publishLang || editLang === 'zh') {
       const baseValue = obj?.[baseField];
@@ -612,21 +765,23 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         return String(baseValue);
       }
     }
-    
+
     return '';
   };
-  
+
   const setLocalizedValue = (baseField: string, value: string) => {
     const publishLang = getPublishLang();
-    
+
     // 如果带后缀的字段存在，优先使用带后缀的字段（包括源语言）
     const suffixKey = `${baseField}_${editLang}`;
     const useSuffix = editForm && suffixKey in editForm;
     // 中文始终写入基础字段（数据库无 _zh 列）
-    const field = useSuffix ? suffixKey
-      : (editLang === publishLang || editLang === 'zh') ? baseField
-      : `${baseField}_${editLang}`;
-    
+    const field = useSuffix
+      ? suffixKey
+      : editLang === publishLang || editLang === 'zh'
+        ? baseField
+        : `${baseField}_${editLang}`;
+
     setEditForm((prev: any) => ({ ...prev, [field]: value }));
     setIsDirty(true);
   };
@@ -651,9 +806,11 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     const publishLang = getPublishLang();
     const suffixKey = `${baseField}_${editLang}`;
     const useSuffix = editForm && suffixKey in editForm;
-    const field = useSuffix ? suffixKey
-      : (editLang === publishLang || editLang === 'zh') ? baseField
-      : `${baseField}_${editLang}`;
+    const field = useSuffix
+      ? suffixKey
+      : editLang === publishLang || editLang === 'zh'
+        ? baseField
+        : `${baseField}_${editLang}`;
     setEditForm((prev: any) => ({ ...prev, [field]: value }));
     setIsDirty(true);
   };
@@ -666,10 +823,18 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   // 获取产品已发布的站点名称
   const getPublishedSiteNames = (): string => {
     const sites: string[] = [];
-    if (product?.site_views?.some((sv: any) => sv.site_code === 'cn' && sv.publish_status === 'published')) {
+    if (
+      product?.site_views?.some(
+        (sv: any) => sv.site_code === 'cn' && sv.publish_status === 'published',
+      )
+    ) {
       sites.push('中国站');
     }
-    if (product?.site_views?.some((sv: any) => sv.site_code === 'intl' && sv.publish_status === 'published')) {
+    if (
+      product?.site_views?.some(
+        (sv: any) => sv.site_code === 'intl' && sv.publish_status === 'published',
+      )
+    ) {
       sites.push('国际站');
     }
     return sites.join('、');
@@ -699,7 +864,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       hasSpecs: 'specs' in editForm,
       specsValue: editForm.specs,
       specsType: typeof editForm.specs,
-      specsStringified: editForm.specs ? JSON.stringify(editForm.specs) : 'undefined'
+      specsStringified: editForm.specs ? JSON.stringify(editForm.specs) : 'undefined',
     });
 
     try {
@@ -732,10 +897,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       // 2. 保存规格属性（先删除旧的，再插入新的）
       if (variantAttributes.length > 0) {
         // 删除旧的规格属性
-        await supabase
-          .from('product_variant_attributes')
-          .delete()
-          .eq('product_id', newProductId);
+        await supabase.from('product_variant_attributes').delete().eq('product_id', newProductId);
 
         // 插入新的规格属性
         const attrsToInsert = variantAttributes.map((attr, idx) => ({
@@ -752,37 +914,43 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         if (attrsError) throw attrsError;
       } else if (!isNewProduct) {
         // 如果没有规格属性，删除所有旧的（仅更新模式）
-        await supabase
-          .from('product_variant_attributes')
-          .delete()
-          .eq('product_id', newProductId);
+        await supabase.from('product_variant_attributes').delete().eq('product_id', newProductId);
       }
 
       // 3. 保存 SKU 数据（销售定价、规格参数、图片等）
       if (productSkus.length > 0) {
         for (const sku of productSkus) {
-          await supabase
+          const { error: skuUpdateError } = await supabase
             .from('product_skus')
             .update({
-              selling_price: sku.selling_price || null,
-              selling_price_usd: sku.selling_price_usd || null,
-              selling_price_jpy: sku.selling_price_jpy || null,
-              selling_price_thb: sku.selling_price_thb || null,
+              selling_price: normalizeNullableNumber(sku.selling_price),
+              selling_price_usd: normalizeNullableNumber(sku.selling_price_usd),
+              selling_price_jpy: normalizeNullableNumber(sku.selling_price_jpy),
+              selling_price_thb: normalizeNullableNumber(sku.selling_price_thb),
+              stock_quantity: normalizeNonNegativeInteger(sku.stock_quantity),
               specs: sku.specs || null,
               image_url: sku.image_url || null,
             })
             .eq('id', sku.id);
+
+          if (skuUpdateError) throw skuUpdateError;
         }
       }
 
       setSaveSuccess(true);
       setIsDirty(false);
-      success(isNewProduct ? '产品创建成功' : '产品修改已保存' + (isProductPublished() ? '，商城内容已更新' : ''));
+      success(
+        isNewProduct
+          ? '产品创建成功'
+          : '产品修改已保存' + (isProductPublished() ? '，商城内容已更新' : ''),
+      );
       setTimeout(() => setSaveSuccess(false), 2000);
 
       if (isNewProduct) {
         // 重新加载新产品数据
-        const json = await apiFetch<{ view: 'base'; data: any }>(`/api/v1/admin/products/${newProductId}?view=base`);
+        const json = await apiFetch<{ view: 'base'; data: any }>(
+          `/api/v1/admin/products/${newProductId}?view=base`,
+        );
         setProduct(json.data);
         setEditForm({ ...json.data });
       } else {
@@ -821,22 +989,19 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       console.log('[Publish] Step 2: Saving variants...');
       // 2. 保存规格属性
       if (variantAttributes.length > 0) {
-        await supabase
-          .from('product_variant_attributes')
-          .delete()
-          .eq('product_id', productId);
-        
+        await supabase.from('product_variant_attributes').delete().eq('product_id', productId);
+
         const attrsToInsert = variantAttributes.map((attr, idx) => ({
           product_id: productId,
           attribute_name: attr.attribute_name,
           attribute_values: attr.attribute_values,
           sort_order: idx,
         }));
-        
+
         const { error: attrsError } = await supabase
           .from('product_variant_attributes')
           .insert(attrsToInsert);
-        
+
         if (attrsError) {
           console.error('[Publish] Step 2 failed:', attrsError);
           throw attrsError;
@@ -850,17 +1015,25 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       for (const site of selectedSites) {
         console.log(`[Publish] Creating site view for site: ${site}, product: ${productId}`);
         try {
-          const data = await apiFetch(`/api/v1/admin/products/${productId}/site-view?site_code=${site}`, {
-            method: 'POST',
-            body: JSON.stringify({ site_code: site, publish_status: 'published', is_enabled: true }),
-          });
+          const data = await apiFetch(
+            `/api/v1/admin/products/${productId}/site-view?site_code=${site}`,
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                site_code: site,
+                publish_status: 'published',
+                is_enabled: true,
+              }),
+            },
+          );
           console.log(`[Publish] Site view created successfully for ${site}:`, data);
         } catch (err) {
           console.error(`[Publish] Site view error for ${site}:`, err);
           siteViewErrors.push(`${site}: ${getErrorMessage(err)}`);
         }
       }
-      if (siteViewErrors.length > 0) throw new Error(`站点视图创建失败：${siteViewErrors.join(', ')}`);
+      if (siteViewErrors.length > 0)
+        throw new Error(`站点视图创建失败：${siteViewErrors.join(', ')}`);
       console.log('[Publish] Step 3 complete');
 
       // 4. 更新产品状态为已发布
@@ -877,7 +1050,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
       // 5. 记录审计日志
       console.log('[Publish] Step 5: Recording audit log...');
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const { error: auditError } = await supabase.from('admin_audit_logs').insert({
         admin_user_id: user?.id,
         module: 'product',
@@ -897,7 +1072,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       setIsDirty(false);
       await loadProduct();
       // 获取站点名称
-      const siteNames = selectedSites.map(s => s === 'cn' ? '中国站' : '国际站').join('、');
+      const siteNames = selectedSites.map((s) => (s === 'cn' ? '中国站' : '国际站')).join('、');
       success(`产品已成功上架到 ${siteNames}`);
       console.log('[Publish] All steps completed successfully!');
     } catch (err) {
@@ -922,7 +1097,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       { code: 'th', name: 'ภาษาไทย' },
       { code: 'ja', name: '日本語' },
     ];
-    const targets = allLangs.filter(l => l.code !== currentPublishLang);
+    const targets = allLangs.filter((l) => l.code !== currentPublishLang);
     setTranslateTargetLangs(targets);
 
     // 动态生成进度步骤
@@ -948,11 +1123,11 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     let currentStepIdx = 0;
     const stepDuration = 15000; // 每个语言约 15 秒
     const progressInterval = setInterval(() => {
-      setTranslateProgress(prev => {
+      setTranslateProgress((prev) => {
         if (prev >= 88) return prev; // 等待实际完成
         // 计算当前应该在哪个步骤
         const elapsed = prev;
-        const expectedStep = dynamicSteps.find(s => s.progress > elapsed);
+        const expectedStep = dynamicSteps.find((s) => s.progress > elapsed);
         if (expectedStep && expectedStep.step > currentStepIdx + 1) {
           currentStepIdx = expectedStep.step - 1;
           setTranslateStep(expectedStep.step);
@@ -964,9 +1139,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     // 逐步推进步骤（基于时间估算）
     const stepTimers: NodeJS.Timeout[] = [];
     targets.forEach((_, i) => {
-      const timer = setTimeout(() => {
-        setTranslateStep(i + 2);
-      }, 1000 + i * stepDuration);
+      const timer = setTimeout(
+        () => {
+          setTranslateStep(i + 2);
+        },
+        1000 + i * stepDuration,
+      );
       stepTimers.push(timer);
     });
 
@@ -978,12 +1156,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       });
 
       // 清理步骤定时器
-      stepTimers.forEach(t => clearTimeout(t));
+      stepTimers.forEach((t) => clearTimeout(t));
 
       // 保存步骤
       setTranslateStep(dynamicSteps[dynamicSteps.length - 1].step);
       setTranslateProgress(95);
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
 
       // 完成
       clearInterval(progressInterval);
@@ -992,29 +1170,35 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       await loadProduct();
 
       // 动态成功消息
-      const langNamesZh: Record<string, string> = { en: '英文', zh: '中文', th: '泰文', ja: '日文' };
+      const langNamesZh: Record<string, string> = {
+        en: '英文',
+        zh: '中文',
+        th: '泰文',
+        ja: '日文',
+      };
       if (result.failedLangs && result.failedLangs.length > 0) {
         const failedNames = result.failedLangs.map((l: string) => langNamesZh[l] || l).join('、');
-        const completedNames = (result.completedLangs || []).map((l: string) => langNamesZh[l] || l).join('、');
+        const completedNames = (result.completedLangs || [])
+          .map((l: string) => langNamesZh[l] || l)
+          .join('、');
         // 部分成功也更新已翻译的目标语言显示
         setTranslateTargetLangs(
-          targets.filter(t => (result.completedLangs || []).includes(t.code))
+          targets.filter((t) => (result.completedLangs || []).includes(t.code)),
         );
         setTimeout(() => {
           setShowTranslateModal(false);
           warning(`已完成${completedNames}翻译，${failedNames}翻译失败`);
         }, 1500);
       } else {
-        const targetNames = targets.map(t => langNamesZh[t.code] || t.name).join('、');
+        const targetNames = targets.map((t) => langNamesZh[t.code] || t.name).join('、');
         setTimeout(() => {
           setShowTranslateModal(false);
           success(`AI 翻译完成，已自动补全${targetNames}内容`);
         }, 1000);
       }
-
     } catch (err) {
       clearInterval(progressInterval);
-      stepTimers.forEach(t => clearTimeout(t));
+      stepTimers.forEach((t) => clearTimeout(t));
       setTranslateError(err instanceof Error ? err.message : '翻译失败');
       toastError(err instanceof Error ? err.message : '翻译失败');
       setTimeout(() => {
@@ -1050,7 +1234,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     try {
       await apiFetch(`/api/v1/admin/products/${productId}?action=reject`, {
         method: 'POST',
-        body: JSON.stringify({ reason })
+        body: JSON.stringify({ reason }),
       });
       await loadProduct();
       warning('产品已拒绝');
@@ -1066,7 +1250,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   // 下架
   async function handleOfflineFromSite(siteCode: string) {
     const siteName = siteCode === 'cn' ? '中国站' : '国际站';
-    if (!confirm(`确定要从 ${siteName} 下架这个产品吗？\n\n下架后，该产品将无法在 ${siteName} 商城购买。`)) return;
+    if (
+      !confirm(
+        `确定要从 ${siteName} 下架这个产品吗？\n\n下架后，该产品将无法在 ${siteName} 商城购买。`,
+      )
+    )
+      return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -1074,7 +1263,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         .from('product_site_views')
         .update({
           publish_status: 'offline',
-          is_enabled: false
+          is_enabled: false,
         })
         .eq('product_id', productId)
         .eq('site_code', siteCode);
@@ -1112,7 +1301,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
-  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><LoadingState /></div>;
+  if (loading)
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingState />
+      </div>
+    );
 
   if (error || !product) {
     return (
@@ -1138,69 +1332,143 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       {/* 顶部工具栏 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button onClick={handleBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors"
+          >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             返回
           </button>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 truncate max-w-md">{editForm.name || '编辑产品'}</h1>
+            <h1 className="text-xl font-bold text-slate-900 truncate max-w-md">
+              {editForm.name || '编辑产品'}
+            </h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                product.status === 'pending_review' || product.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                product.status === 'approved' || product.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
-                product.status === 'rejected' || product.status === 'Rejected' ? 'bg-red-100 text-red-600' :
-                product.status === 'published' || product.status === 'Published' ? 'bg-blue-100 text-blue-700' :
-                'bg-slate-100 text-slate-500'
-              }`}>
-                {product.status === 'pending_review' || product.status === 'Pending' ? '待审核' :
-                 product.status === 'approved' || product.status === 'Approved' ? '已通过' :
-                 product.status === 'rejected' || product.status === 'Rejected' ? '已拒绝' :
-                 product.status === 'published' || product.status === 'Published' ? '已发布' : product.status}
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  product.status === 'pending_review' || product.status === 'Pending'
+                    ? 'bg-amber-100 text-amber-700'
+                    : product.status === 'approved' || product.status === 'Approved'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : product.status === 'rejected' || product.status === 'Rejected'
+                        ? 'bg-red-100 text-red-600'
+                        : product.status === 'published' || product.status === 'Published'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                {product.status === 'pending_review' || product.status === 'Pending'
+                  ? '待审核'
+                  : product.status === 'approved' || product.status === 'Approved'
+                    ? '已通过'
+                    : product.status === 'rejected' || product.status === 'Rejected'
+                      ? '已拒绝'
+                      : product.status === 'published' || product.status === 'Published'
+                        ? '已发布'
+                        : product.status}
               </span>
               {product.translationsComplete ? (
-                <span className="text-sky-700 bg-sky-100 px-2 py-0.5 rounded text-xs font-bold">已翻译</span>
+                <span className="text-sky-700 bg-sky-100 px-2 py-0.5 rounded text-xs font-bold">
+                  已翻译
+                </span>
               ) : (
-                <span className="text-orange-700 bg-orange-100 px-2 py-0.5 rounded text-xs font-bold">待翻译</span>
+                <span className="text-orange-700 bg-orange-100 px-2 py-0.5 rounded text-xs font-bold">
+                  待翻译
+                </span>
               )}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={handleTranslate} loading={translating}
-            className={translateSuccess ? '!bg-emerald-500 !text-white' : '!bg-purple-600 hover:!bg-purple-500 !text-white'}>
+          <Button
+            variant="secondary"
+            onClick={handleTranslate}
+            loading={translating}
+            className={
+              translateSuccess
+                ? '!bg-emerald-500 !text-white'
+                : '!bg-purple-600 hover:!bg-purple-500 !text-white'
+            }
+          >
             {translating ? 'AI 翻译中...' : translateSuccess ? '翻译完成 ✓' : 'AI 补全翻译'}
           </Button>
           {(product.status === 'pending_review' || product.status === 'Pending') && (
             <>
-              <Button variant="secondary" onClick={handleApprove} loading={saving} className="!bg-green-600 hover:!bg-green-500 !text-white">✓ 通过</Button>
-              <Button variant="secondary" onClick={handleReject} loading={saving} className="!bg-red-600 hover:!bg-red-500 !text-white">✕ 拒绝</Button>
+              <Button
+                variant="secondary"
+                onClick={handleApprove}
+                loading={saving}
+                className="!bg-green-600 hover:!bg-green-500 !text-white"
+              >
+                ✓ 通过
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleReject}
+                loading={saving}
+                className="!bg-red-600 hover:!bg-red-500 !text-white"
+              >
+                ✕ 拒绝
+              </Button>
             </>
           )}
-          <Button onClick={handleSaveClick} loading={saving} className={saveSuccess ? '!bg-green-500' : ''}>
+          <Button
+            onClick={handleSaveClick}
+            loading={saving}
+            className={saveSuccess ? '!bg-green-500' : ''}
+          >
             {saving ? '保存中...' : saveSuccess ? '已保存 ✓' : '保存修改'}
           </Button>
-          {(product.status === 'pending_review' || product.status === 'Pending' || product.status === 'rejected' || product.status === 'Rejected' || product.status === 'draft' || product.status === 'Draft') && (
-            <Button onClick={() => setShowPublishDialog(true)} className="!bg-emerald-600 hover:!bg-emerald-500 !text-white">保存并上架</Button>
+          {(product.status === 'pending_review' ||
+            product.status === 'Pending' ||
+            product.status === 'rejected' ||
+            product.status === 'Rejected' ||
+            product.status === 'draft' ||
+            product.status === 'Draft') && (
+            <Button
+              onClick={() => setShowPublishDialog(true)}
+              className="!bg-emerald-600 hover:!bg-emerald-500 !text-white"
+            >
+              保存并上架
+            </Button>
           )}
         </div>
       </div>
 
       {(saveError || translateError) && (
-        <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl text-sm">{saveError || translateError}</div>
+        <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl text-sm">
+          {saveError || translateError}
+        </div>
       )}
 
       {/* 语言切换 */}
       <div className="flex gap-2 flex-wrap sticky top-0 bg-[var(--admin-bg)] py-3 z-10">
-        {(['en', 'zh', 'th', 'ja'] as const).map(lang => {
+        {(['en', 'zh', 'th', 'ja'] as const).map((lang) => {
           const isSource = lang === publishLang;
           return (
-            <button key={lang} onClick={() => setEditLang(lang)}
+            <button
+              key={lang}
+              onClick={() => setEditLang(lang)}
               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                editLang === lang ? 'bg-emerald-500 text-black' : 'bg-slate-100/50 text-slate-500 hover:bg-slate-100'
-              }`}>
-              {lang === 'en' ? 'English' : lang === 'zh' ? '中文' : lang === 'th' ? 'ไทย' : '日本語'}
+                editLang === lang
+                  ? 'bg-emerald-500 text-black'
+                  : 'bg-slate-100/50 text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              {lang === 'en'
+                ? 'English'
+                : lang === 'zh'
+                  ? '中文'
+                  : lang === 'th'
+                    ? 'ไทย'
+                    : '日本語'}
               {isSource && <span className="ml-1 text-xs opacity-70">(源)</span>}
             </button>
           );
@@ -1216,12 +1484,18 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           { id: 'specs', label: '规格参数', icon: '⚙️' },
           { id: 'seo', label: 'SEO 优化', icon: '🔍' },
           { id: 'publish', label: '发布管理', icon: '🌐' },
-        ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-              activeTab === tab.id ? 'bg-emerald-500 text-black' : 'bg-slate-100/50 text-slate-500 hover:bg-slate-100'
-            }`}>
-            <span className="mr-1">{tab.icon}</span>{tab.label}
+              activeTab === tab.id
+                ? 'bg-emerald-500 text-black'
+                : 'bg-slate-100/50 text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            <span className="mr-1">{tab.icon}</span>
+            {tab.label}
           </button>
         ))}
       </div>
@@ -1236,7 +1510,13 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
               <span className="text-xs text-slate-500">发布语言:</span>
               <span className="text-sm text-slate-900 font-medium">
-                {publishLang === 'zh' ? '中文' : publishLang === 'en' ? 'English' : publishLang === 'ja' ? '日本語' : 'ภาษาไทย'}
+                {publishLang === 'zh'
+                  ? '中文'
+                  : publishLang === 'en'
+                    ? 'English'
+                    : publishLang === 'ja'
+                      ? '日本語'
+                      : 'ภาษาไทย'}
               </span>
               <span className="text-xs text-slate-600">(AI 翻译将从此语言翻译到其他语言)</span>
             </div>
@@ -1245,21 +1525,38 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
                   商品名称 ({editLang === publishLang ? `${editLang} - 源` : editLang})
                 </label>
-                <input type="text" value={getLocalizedValue('name')} onChange={(e) => setLocalizedValue('name', e.target.value)} 
-                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
+                <input
+                  type="text"
+                  value={getLocalizedValue('name')}
+                  onChange={(e) => setLocalizedValue('name', e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">品牌 Brand</label>
-                <input type="text" value={editForm.brand || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, brand: e.target.value })); setIsDirty(true); }} 
-                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                  品牌 Brand
+                </label>
+                <input
+                  type="text"
+                  value={editForm.brand || ''}
+                  onChange={(e) => {
+                    setEditForm((prev: any) => ({ ...prev, brand: e.target.value }));
+                    setIsDirty(true);
+                  }}
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                />
               </div>
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
                 商品描述 ({editLang === publishLang ? `${editLang} - 源` : editLang})
               </label>
-              <textarea value={getLocalizedValue('description')} onChange={(e) => setLocalizedValue('description', e.target.value)}  rows={4}
-                className="w-full min-h-[100px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50" />
+              <textarea
+                value={getLocalizedValue('description')}
+                onChange={(e) => setLocalizedValue('description', e.target.value)}
+                rows={4}
+                className="w-full min-h-[100px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
@@ -1275,52 +1572,59 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">商品图片</label>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                商品图片
+              </label>
               {productImages.length > 0 ? (
                 <div className="flex flex-wrap gap-3 mb-3">
                   {productImages.map((img, idx) => {
                     const imageKey = getProductImageKey(img, idx);
 
                     return (
-                    <div key={imageKey} className="w-24">
-                      <div className="relative group">
-                      <img
-                        src={img.url}
-                        alt={img.type || `图片 ${idx + 1}`}
-                        className="w-24 h-24 object-cover rounded-lg border border-slate-200/50"
-                      />
-                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded">
-                        {img.type === 'main' ? '主图' : '详情图'}
-                      </span>
-                    </div>
-                      <div className="mt-2 flex flex-col gap-2">
-                        {img.type === 'main' ? (
-                          <span className="inline-flex items-center justify-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
-                            当前主图
+                      <div key={imageKey} className="w-24">
+                        <div className="relative group">
+                          <img
+                            src={img.url}
+                            alt={img.type || `图片 ${idx + 1}`}
+                            className="w-24 h-24 object-cover rounded-lg border border-slate-200/50"
+                          />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded">
+                            {img.type === 'main' ? '主图' : '详情图'}
                           </span>
-                        ) : (
+                        </div>
+                        <div className="mt-2 flex flex-col gap-2">
+                          {img.type === 'main' ? (
+                            <span className="inline-flex items-center justify-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                              当前主图
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setMainProductImage(imageKey)}
+                              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:border-emerald-400 hover:text-emerald-600"
+                            >
+                              设为主图
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => setMainProductImage(imageKey)}
-                            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:border-emerald-400 hover:text-emerald-600"
+                            onClick={() => removeProductImage(imageKey)}
+                            className="inline-flex items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
                           >
-                            设为主图
+                            <Trash2 className="h-3.5 w-3.5" />
+                            删除
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeProductImage(imageKey)}
-                          className="inline-flex items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          删除
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  )})}
+                    );
+                  })}
                 </div>
               ) : mainProductImage ? (
-                <img src={mainProductImage.url} alt="商品" className="w-32 h-32 object-cover rounded-lg mb-2 border border-slate-200/50" />
+                <img
+                  src={mainProductImage.url}
+                  alt="商品"
+                  className="w-32 h-32 object-cover rounded-lg mb-2 border border-slate-200/50"
+                />
               ) : (
                 <div className="w-32 h-32 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-slate-400 text-sm">
                   暂无图片
@@ -1378,18 +1682,43 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 placeholder="主图 URL"
                 className="mt-3 w-full px-4 py-2 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
               />
-              <p className="mt-1 text-xs text-slate-500">支持一次上传多张图片。系统会保留 1 张主图用于列表展示，其余图片保存为详情图；你也可以手动切换主图。</p>
+              <p className="mt-1 text-xs text-slate-500">
+                支持一次上传多张图片。系统会保留 1
+                张主图用于列表展示，其余图片保存为详情图；你也可以手动切换主图。
+              </p>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">专科分类 Specialty</label>
-              <input type="text" value={editForm.specialty || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, specialty: e.target.value })); setIsDirty(true); }}  placeholder="例如：Orthodontics, Oral Surgery"
-                className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                专科分类 Specialty
+              </label>
+              <input
+                type="text"
+                value={editForm.specialty || ''}
+                onChange={(e) => {
+                  setEditForm((prev: any) => ({ ...prev, specialty: e.target.value }));
+                  setIsDirty(true);
+                }}
+                placeholder="例如：Orthodontics, Oral Surgery"
+                className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">来源 URL Source URL</label>
-              <input type="url" value={editForm.source_url || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, source_url: e.target.value })); setIsDirty(true); }}  placeholder="例如：https://www.alibaba.com/product-detail/..."
-                className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" />
-              <p className="mt-1 text-xs text-slate-500">产品来源链接，用于追溯原始供应商或采购渠道</p>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                来源 URL Source URL
+              </label>
+              <input
+                type="url"
+                value={editForm.source_url || ''}
+                onChange={(e) => {
+                  setEditForm((prev: any) => ({ ...prev, source_url: e.target.value }));
+                  setIsDirty(true);
+                }}
+                placeholder="例如：https://www.alibaba.com/product-detail/..."
+                className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                产品来源链接，用于追溯原始供应商或采购渠道
+              </p>
             </div>
 
             {/* 物流与贸易信息 */}
@@ -1399,42 +1728,118 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               </h5>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">定价模式</label>
-                  <select value={editForm.pricing_mode || 'fixed'} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, pricing_mode: e.target.value })); setIsDirty(true); }} 
-                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50">
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                    定价模式
+                  </label>
+                  <select
+                    value={editForm.pricing_mode || 'fixed'}
+                    onChange={(e) => {
+                      setEditForm((prev: any) => ({ ...prev, pricing_mode: e.target.value }));
+                      setIsDirty(true);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                  >
                     <option value="fixed">固定价格</option>
                     <option value="inquiry">询价模式</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">发货时间</label>
-                  <input type="text" value={getLocalizedValue('delivery_time') || editForm.delivery_time_en || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, delivery_time: e.target.value, delivery_time_en: e.target.value })); setIsDirty(true); }} 
-                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：3-5个工作日" />
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                    发货时间
+                  </label>
+                  <input
+                    type="text"
+                    value={getLocalizedValue('delivery_time') || editForm.delivery_time_en || ''}
+                    onChange={(e) => {
+                      setEditForm((prev: any) => ({
+                        ...prev,
+                        delivery_time: e.target.value,
+                        delivery_time_en: e.target.value,
+                      }));
+                      setIsDirty(true);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                    placeholder="如：3-5个工作日"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">最小起订量</label>
-                  <input type="number" min="1" value={editForm.min_order_quantity || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, min_order_quantity: Number(e.target.value) })); setIsDirty(true); }} 
-                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="1" />
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                    最小起订量
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editForm.min_order_quantity || ''}
+                    onChange={(e) => {
+                      setEditForm((prev: any) => ({
+                        ...prev,
+                        min_order_quantity: Number(e.target.value),
+                      }));
+                      setIsDirty(true);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                    placeholder="1"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">包装信息</label>
-                  <input type="text" value={editForm.packaging_info || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, packaging_info: e.target.value })); setIsDirty(true); }} 
-                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：纸箱包装，每箱10件" />
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                    包装信息
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.packaging_info || ''}
+                    onChange={(e) => {
+                      setEditForm((prev: any) => ({ ...prev, packaging_info: e.target.value }));
+                      setIsDirty(true);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                    placeholder="如：纸箱包装，每箱10件"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">保修信息</label>
-                  <input type="text" value={editForm.warranty_info || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, warranty_info: e.target.value })); setIsDirty(true); }} 
-                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：整机保修1年" />
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                    保修信息
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.warranty_info || ''}
+                    onChange={(e) => {
+                      setEditForm((prev: any) => ({ ...prev, warranty_info: e.target.value }));
+                      setIsDirty(true);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                    placeholder="如：整机保修1年"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">产品尺寸</label>
-                  <input type="text" value={editForm.dimensions || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, dimensions: e.target.value })); setIsDirty(true); }} 
-                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="如：30x20x15 cm" />
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                    产品尺寸
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.dimensions || ''}
+                    onChange={(e) => {
+                      setEditForm((prev: any) => ({ ...prev, dimensions: e.target.value }));
+                      setIsDirty(true);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                    placeholder="如：30x20x15 cm"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">产品视频</label>
-                  <input type="url" value={editForm.video_url || ''} onChange={(e) => { setEditForm((prev: any) => ({ ...prev, video_url: e.target.value })); setIsDirty(true); }} 
-                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="https://..." />
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                    产品视频
+                  </label>
+                  <input
+                    type="url"
+                    value={editForm.video_url || ''}
+                    onChange={(e) => {
+                      setEditForm((prev: any) => ({ ...prev, video_url: e.target.value }));
+                      setIsDirty(true);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                    placeholder="https://..."
+                  />
                 </div>
               </div>
             </div>
@@ -1449,45 +1854,67 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             <span className="text-lg">🏷️</span> 商品分类
           </h4>
           <div className="space-y-4">
+            {isGLOBAL && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                当前是 Global
+                视角。产品分类已经改为站点独立，请先切换到中国站或国际站，再为该产品选择对应站点的分类。
+              </div>
+            )}
             {loadingCategories ? (
-              <div className="flex items-center justify-center py-12"><LoadingState /></div>
-            ) : (
+              <div className="flex items-center justify-center py-12">
+                <LoadingState />
+              </div>
+            ) : isGLOBAL ? null : (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">一级分类</label>
-                    <select 
-                      value={editForm.category_id || ''} 
-                      onChange={(e) => { 
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                      一级分类
+                    </label>
+                    <select
+                      value={editForm.category_id || ''}
+                      onChange={(e) => {
                         const categoryId = e.target.value;
-                        setEditForm((prev: any) => ({ ...prev, category_id: categoryId, subcategory_id: '' })); 
-                        setIsDirty(true); 
-                      }} 
-                      
+                        setEditForm((prev: any) => ({
+                          ...prev,
+                          category_id: categoryId,
+                          subcategory_id: '',
+                        }));
+                        setIsDirty(true);
+                      }}
+                      disabled={isGLOBAL}
                       className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
                     >
                       <option value="">选择一级分类</option>
-                      {categories.filter(c => c.level === 1).map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
+                      {categories
+                        .filter((c) => c.level === 1)
+                        .map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">二级分类</label>
-                    <select 
-                      value={editForm.subcategory_id || ''} 
-                      onChange={(e) => { 
-                        setEditForm((prev: any) => ({ ...prev, subcategory_id: e.target.value })); 
-                        setIsDirty(true); 
-                      }} 
-                      disabled={!editForm.category_id}
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                      二级分类
+                    </label>
+                    <select
+                      value={editForm.subcategory_id || ''}
+                      onChange={(e) => {
+                        setEditForm((prev: any) => ({ ...prev, subcategory_id: e.target.value }));
+                        setIsDirty(true);
+                      }}
+                      disabled={isGLOBAL || !editForm.category_id}
                       className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
                     >
                       <option value="">选择二级分类</option>
                       {categories
-                        .filter(c => c.level === 2 && c.parent_id === editForm.category_id)
-                        .map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        .filter((c) => c.level === 2 && c.parent_id === editForm.category_id)
+                        .map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
                         ))}
                     </select>
                   </div>
@@ -1497,17 +1924,25 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     <p className="text-sm text-slate-600 mb-2">当前分类路径:</p>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full">
-                        {categories.find(c => c.id === editForm.category_id)?.name || '未知'}
+                        {categories.find((c) => c.id === editForm.category_id)?.name || '未知'}
                       </span>
                       {editForm.subcategory_id && (
                         <>
                           <span className="text-slate-400">/</span>
                           <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
-                            {categories.find(c => c.id === editForm.subcategory_id)?.name || '未知'}
+                            {categories.find((c) => c.id === editForm.subcategory_id)?.name ||
+                              '未知'}
                           </span>
                         </>
                       )}
                     </div>
+                    {categories.find((c) => c.id === editForm.category_id)?.site_code ===
+                      'global' && (
+                      <p className="mt-3 text-sm text-amber-700">
+                        该产品当前仍引用 legacy global
+                        分类。请重新选择当前站点的分类，完成站点隔离迁移。
+                      </p>
+                    )}
                   </div>
                 )}
               </>
@@ -1525,7 +1960,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           <div className="space-y-6">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <p className="text-sm text-blue-800">
-                💡 <strong>多规格系统：</strong>为商品添加多个规格维度（如颜色、尺寸、型号），系统会自动生成所有组合，每个组合可设置独立的价格和库存。
+                💡 <strong>多规格系统：</strong>
+                为商品添加多个规格维度（如颜色、尺寸、型号），系统会自动生成所有组合，每个组合可设置独立的价格和库存。
               </p>
             </div>
 
@@ -1533,9 +1969,18 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h5 className="text-sm font-bold text-slate-900">规格维度</h5>
-                <button 
-                  onClick={() => setVariantAttributes(prev => [...prev, { id: `new-${Date.now()}`, attribute_name: '', attribute_values: [], product_id: productId }])}
-                  
+                <button
+                  onClick={() =>
+                    setVariantAttributes((prev) => [
+                      ...prev,
+                      {
+                        id: `new-${Date.now()}`,
+                        attribute_name: '',
+                        attribute_values: [],
+                        product_id: productId,
+                      },
+                    ])
+                  }
                   className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
                 >
                   + 添加规格
@@ -1545,46 +1990,58 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 {variantAttributes.map((attr, idx) => (
                   <div key={attr.id || idx} className="border rounded-xl p-4 bg-slate-50">
                     <div className="flex items-center gap-3 mb-3">
-                      <input 
-                        type="text" 
-                        value={attr.attribute_name || ''} 
+                      <input
+                        type="text"
+                        value={attr.attribute_name || ''}
                         onChange={(e) => {
                           const newAttrs = [...variantAttributes];
                           newAttrs[idx].attribute_name = e.target.value;
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        
                         placeholder="规格名称（如：颜色、尺寸、型号）"
                         className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
                       />
-                      <button 
+                      <button
                         onClick={() => {
                           const newAttrs = variantAttributes.filter((_, i) => i !== idx);
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        
                         className="px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
                       >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </button>
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">规格值（用逗号分隔）</label>
-                      <input 
-                        type="text" 
-                        value={attr.attribute_values?.join(', ') || ''} 
+                      <label className="block text-xs text-slate-500 mb-1">
+                        规格值（用逗号分隔）
+                      </label>
+                      <input
+                        type="text"
+                        value={attr.attribute_values?.join(', ') || ''}
                         onChange={(e) => {
-                          const values = e.target.value.split(',').map(v => v.trim()).filter(v => v);
+                          const values = e.target.value
+                            .split(',')
+                            .map((v) => v.trim())
+                            .filter((v) => v);
                           const newAttrs = [...variantAttributes];
                           newAttrs[idx].attribute_values = values;
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        
                         placeholder="例如：红色，蓝色，白色 或 S, M, L, XL"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
                       />
@@ -1602,7 +2059,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             {/* SKU 列表 - 无论有没有规格维度都显示 */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h5 className="text-sm font-bold text-slate-900">SKU 列表 ({productSkus.length} 个)</h5>
+                <h5 className="text-sm font-bold text-slate-900">
+                  SKU 列表 ({productSkus.length} 个)
+                </h5>
                 <p className="text-xs text-slate-400">点击展开行可编辑规格参数和图片</p>
               </div>
               {productSkus.length > 0 ? (
@@ -1611,15 +2070,33 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     <thead className="bg-slate-50">
                       <tr>
                         <th className="w-10 px-2 py-3"></th>
-                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">SKU 编码</th>
-                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">规格组合</th>
-                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">供货价</th>
-                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">建议零售价</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-emerald-600 uppercase bg-emerald-50">CNY 销售价</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-blue-600 uppercase bg-blue-50">USD 销售价</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-purple-600 uppercase bg-purple-50">JPY 销售价</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-amber-600 uppercase bg-amber-50">THB 销售价</th>
-                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">库存</th>
+                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                          SKU 编码
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                          规格组合
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                          供货价
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                          建议零售价
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-emerald-600 uppercase bg-emerald-50">
+                          CNY 销售价
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-blue-600 uppercase bg-blue-50">
+                          USD 销售价
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-purple-600 uppercase bg-purple-50">
+                          JPY 销售价
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-amber-600 uppercase bg-amber-50">
+                          THB 销售价
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                          库存
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1641,28 +2118,50 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                   )}
                                 </button>
                               </td>
-                              <td className="px-3 py-3 text-slate-900 font-mono text-xs">{sku.sku_code}</td>
+                              <td className="px-3 py-3 text-slate-900 font-mono text-xs">
+                                {sku.sku_code}
+                              </td>
                               <td className="px-3 py-3">
-                                {sku.attribute_combination && Object.keys(sku.attribute_combination).length > 0 ? (
+                                {sku.attribute_combination &&
+                                Object.keys(sku.attribute_combination).length > 0 ? (
                                   <div className="flex gap-1 flex-wrap">
-                                    {Object.entries(sku.attribute_combination).map(([key, value]) => (
-                                      <span key={key} className="px-2 py-1 bg-slate-100 rounded text-xs">
-                                        {key}: {String(value)}
-                                      </span>
-                                    ))}
+                                    {Object.entries(sku.attribute_combination).map(
+                                      ([key, value]) => (
+                                        <span
+                                          key={key}
+                                          className="px-2 py-1 bg-slate-100 rounded text-xs"
+                                        >
+                                          {key}: {String(value)}
+                                        </span>
+                                      ),
+                                    )}
                                   </div>
                                 ) : (
                                   <span className="text-slate-400 text-xs">默认SKU</span>
                                 )}
                               </td>
                               <td className="px-3 py-3 text-slate-900">¥{sku.price}</td>
-                              <td className="px-3 py-3 text-slate-500">{sku.suggested_retail_price ? `¥${sku.suggested_retail_price}` : '-'}</td>
+                              <td className="px-3 py-3 text-slate-500">
+                                {sku.suggested_retail_price
+                                  ? `¥${sku.suggested_retail_price}`
+                                  : '-'}
+                              </td>
                               {/* CNY 销售价 */}
                               <td className="px-3 py-2 bg-emerald-50/50">
                                 <div className="flex items-center gap-1">
                                   <span className="text-emerald-600 text-xs">¥</span>
-                                  <input type="number" step="0.01" min="0" value={sku.selling_price || ''}
-                                    onChange={(e) => updateSkuField(sku.id, 'selling_price', parseFloat(e.target.value) || null)}
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={sku.selling_price || ''}
+                                    onChange={(e) =>
+                                      updateSkuField(
+                                        sku.id,
+                                        'selling_price',
+                                        parseFloat(e.target.value) || null,
+                                      )
+                                    }
                                     className="w-20 px-2 py-1 border border-emerald-200 rounded text-sm text-center"
                                     placeholder="CNY"
                                   />
@@ -1672,8 +2171,18 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                               <td className="px-3 py-2 bg-blue-50/50">
                                 <div className="flex items-center gap-1">
                                   <span className="text-blue-600 text-xs">$</span>
-                                  <input type="number" step="0.01" min="0" value={sku.selling_price_usd || ''}
-                                    onChange={(e) => updateSkuField(sku.id, 'selling_price_usd', parseFloat(e.target.value) || null)}
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={sku.selling_price_usd || ''}
+                                    onChange={(e) =>
+                                      updateSkuField(
+                                        sku.id,
+                                        'selling_price_usd',
+                                        parseFloat(e.target.value) || null,
+                                      )
+                                    }
                                     className="w-20 px-2 py-1 border border-blue-200 rounded text-sm text-center"
                                     placeholder="USD"
                                   />
@@ -1683,8 +2192,18 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                               <td className="px-3 py-2 bg-purple-50/50">
                                 <div className="flex items-center gap-1">
                                   <span className="text-purple-600 text-xs">¥</span>
-                                  <input type="number" step="1" min="0" value={sku.selling_price_jpy || ''}
-                                    onChange={(e) => updateSkuField(sku.id, 'selling_price_jpy', parseFloat(e.target.value) || null)}
+                                  <input
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    value={sku.selling_price_jpy || ''}
+                                    onChange={(e) =>
+                                      updateSkuField(
+                                        sku.id,
+                                        'selling_price_jpy',
+                                        parseFloat(e.target.value) || null,
+                                      )
+                                    }
                                     className="w-20 px-2 py-1 border border-purple-200 rounded text-sm text-center"
                                     placeholder="JPY"
                                   />
@@ -1694,14 +2213,41 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                               <td className="px-3 py-2 bg-amber-50/50">
                                 <div className="flex items-center gap-1">
                                   <span className="text-amber-600 text-xs">฿</span>
-                                  <input type="number" min="0" value={sku.selling_price_thb || ''}
-                                    onChange={(e) => updateSkuField(sku.id, 'selling_price_thb', parseInt(e.target.value) || null)}
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={sku.selling_price_thb || ''}
+                                    onChange={(e) =>
+                                      updateSkuField(
+                                        sku.id,
+                                        'selling_price_thb',
+                                        parseInt(e.target.value) || null,
+                                      )
+                                    }
                                     className="w-20 px-2 py-1 border border-amber-200 rounded text-sm text-center"
                                     placeholder="THB(整数)"
                                   />
                                 </div>
                               </td>
-                              <td className="px-3 py-3 text-slate-900">{sku.stock_quantity ?? '-'}</td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={sku.stock_quantity ?? ''}
+                                  onChange={(e) =>
+                                    updateSkuField(
+                                      sku.id,
+                                      'stock_quantity',
+                                      e.target.value === ''
+                                        ? 0
+                                        : Math.max(0, Number.parseInt(e.target.value, 10) || 0),
+                                    )
+                                  }
+                                  className="w-20 px-2 py-1 border border-slate-200 rounded text-sm text-center"
+                                  placeholder="库存"
+                                />
+                              </td>
                             </tr>
                             {/* 展开行 - 图片和规格参数编辑 */}
                             {isExpanded && (
@@ -1723,7 +2269,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                               className="w-full h-full object-cover"
                                             />
                                             <button
-                                              onClick={() => updateSkuField(sku.id, 'image_url', null)}
+                                              onClick={() =>
+                                                updateSkuField(sku.id, 'image_url', null)
+                                              }
                                               className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl"
                                             >
                                               <X className="w-3 h-3" />
@@ -1735,13 +2283,15 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                               type="file"
                                               accept="image/jpeg,image/png,image/webp"
                                               className="hidden"
-                                              onChange={e => {
+                                              onChange={(e) => {
                                                 const file = e.target.files?.[0];
                                                 if (file) uploadSkuImage(sku.id, file);
                                               }}
                                             />
                                             <Upload className="w-5 h-5 text-slate-400" />
-                                            <span className="text-xs text-slate-400 mt-1">上传</span>
+                                            <span className="text-xs text-slate-400 mt-1">
+                                              上传
+                                            </span>
                                           </label>
                                         )}
                                       </div>
@@ -1759,13 +2309,21 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                           step="0.01"
                                           min="0"
                                           value={sku.weight ?? ''}
-                                          onChange={(e) => updateSkuField(sku.id, 'weight', parseFloat(e.target.value) || null)}
+                                          onChange={(e) =>
+                                            updateSkuField(
+                                              sku.id,
+                                              'weight',
+                                              parseFloat(e.target.value) || null,
+                                            )
+                                          }
                                           className="w-24 px-3 py-2 border border-slate-200 rounded-lg text-sm text-center"
                                           placeholder="0.00"
                                         />
                                         <select
                                           value={sku.weight_unit || 'kg'}
-                                          onChange={(e) => updateSkuField(sku.id, 'weight_unit', e.target.value)}
+                                          onChange={(e) =>
+                                            updateSkuField(sku.id, 'weight_unit', e.target.value)
+                                          }
                                           className="px-2 py-2 border border-slate-200 rounded-lg text-sm"
                                         >
                                           <option value="kg">kg</option>
@@ -1784,7 +2342,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                         </p>
                                         <div className="flex gap-2">
                                           <select
-                                            onChange={e => {
+                                            onChange={(e) => {
                                               if (e.target.value) {
                                                 addSkuSpecKey(sku.id, e.target.value);
                                                 e.target.value = '';
@@ -1793,15 +2351,19 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                             className="text-xs border border-slate-300 rounded px-2 py-1"
                                           >
                                             <option value="">添加参数...</option>
-                                            {SKU_SPEC_PRESETS.filter(p => !(sku.specs && p in sku.specs)).map(preset => (
-                                              <option key={preset} value={preset}>{preset}</option>
+                                            {SKU_SPEC_PRESETS.filter(
+                                              (p) => !(sku.specs && p in sku.specs),
+                                            ).map((preset) => (
+                                              <option key={preset} value={preset}>
+                                                {preset}
+                                              </option>
                                             ))}
                                           </select>
                                           <input
                                             type="text"
                                             placeholder="自定义参数名"
                                             className="text-xs border border-slate-300 rounded px-2 py-1 w-24"
-                                            onKeyDown={e => {
+                                            onKeyDown={(e) => {
                                               if (e.key === 'Enter') {
                                                 const value = (e.target as HTMLInputElement).value;
                                                 if (value.trim()) {
@@ -1814,24 +2376,32 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                         </div>
                                       </div>
                                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                        {sku.specs && Object.entries(sku.specs).map(([key, value]) => (
-                                          <div key={key} className="flex items-center gap-1 bg-white border border-slate-200 rounded px-2 py-1.5">
-                                            <span className="text-xs text-slate-500 w-14 truncate">{key}:</span>
-                                            <input
-                                              type="text"
-                                              value={String(value)}
-                                              onChange={e => updateSkuSpec(sku.id, key, e.target.value)}
-                                              className="flex-1 text-xs border-none outline-none bg-transparent"
-                                              placeholder="值"
-                                            />
-                                            <button
-                                              onClick={() => removeSkuSpecKey(sku.id, key)}
-                                              className="text-slate-400 hover:text-red-500"
+                                        {sku.specs &&
+                                          Object.entries(sku.specs).map(([key, value]) => (
+                                            <div
+                                              key={key}
+                                              className="flex items-center gap-1 bg-white border border-slate-200 rounded px-2 py-1.5"
                                             >
-                                              <X className="w-3 h-3" />
-                                            </button>
-                                          </div>
-                                        ))}
+                                              <span className="text-xs text-slate-500 w-14 truncate">
+                                                {key}:
+                                              </span>
+                                              <input
+                                                type="text"
+                                                value={String(value)}
+                                                onChange={(e) =>
+                                                  updateSkuSpec(sku.id, key, e.target.value)
+                                                }
+                                                className="flex-1 text-xs border-none outline-none bg-transparent"
+                                                placeholder="值"
+                                              />
+                                              <button
+                                                onClick={() => removeSkuSpecKey(sku.id, key)}
+                                                className="text-slate-400 hover:text-red-500"
+                                              >
+                                                <X className="w-3 h-3" />
+                                              </button>
+                                            </div>
+                                          ))}
                                         {(!sku.specs || Object.keys(sku.specs).length === 0) && (
                                           <p className="text-xs text-slate-400 col-span-full py-2">
                                             暂无规格参数，可从上方添加
@@ -1871,36 +2441,57 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                         {/* 折扣率快速设置 */}
                                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                                           <div className="flex flex-wrap items-center gap-3">
-                                            <span className="text-xs font-bold text-blue-700">快捷设置折扣：</span>
+                                            <span className="text-xs font-bold text-blue-700">
+                                              快捷设置折扣：
+                                            </span>
                                             <div className="flex items-center gap-1">
-                                              {[5, 10, 15, 20, 25, 30].map(discount => (
+                                              {[5, 10, 15, 20, 25, 30].map((discount) => (
                                                 <button
                                                   key={discount}
                                                   onClick={() => {
                                                     // 获取所有币种的基准价格
-                                                    const baseUsd = sku.selling_price_usd || sku.price || 0;
+                                                    const baseUsd =
+                                                      sku.selling_price_usd || sku.price || 0;
                                                     const baseCny = sku.selling_price || 0;
                                                     const baseJpy = sku.selling_price_jpy || 0;
                                                     const baseThb = sku.selling_price_thb || 0;
-                                                    
-                                                    const newTiers = (priceTiers[sku.id] || []).map((tier, idx) => {
-                                                      const tierDiscount = discount + (idx * 5); // 每级递增5%
-                                                      const multiplier = (100 - tierDiscount) / 100;
-                                                      
-                                                      return {
-                                                        ...tier,
-                                                        // USD: 支持小数，保留两位
-                                                        price_usd: baseUsd ? Math.round(baseUsd * multiplier * 100) / 100 : tier.price_usd,
-                                                        // CNY: 支持小数，保留两位
-                                                        price_cny: baseCny ? Math.round(baseCny * multiplier * 100) / 100 : tier.price_cny,
-                                                        // JPY: 取整数
-                                                        price_jpy: baseJpy ? Math.round(baseJpy * multiplier) : tier.price_jpy,
-                                                        // THB: 取整数
-                                                        price_thb: baseThb ? Math.round(baseThb * multiplier) : tier.price_thb,
-                                                      };
-                                                    });
-                                                    
-                                                    setPriceTiers(prev => ({ ...prev, [sku.id]: newTiers }));
+
+                                                    const newTiers = (priceTiers[sku.id] || []).map(
+                                                      (tier, idx) => {
+                                                        const tierDiscount = discount + idx * 5; // 每级递增5%
+                                                        const multiplier =
+                                                          (100 - tierDiscount) / 100;
+
+                                                        return {
+                                                          ...tier,
+                                                          // USD: 支持小数，保留两位
+                                                          price_usd: baseUsd
+                                                            ? Math.round(
+                                                                baseUsd * multiplier * 100,
+                                                              ) / 100
+                                                            : tier.price_usd,
+                                                          // CNY: 支持小数，保留两位
+                                                          price_cny: baseCny
+                                                            ? Math.round(
+                                                                baseCny * multiplier * 100,
+                                                              ) / 100
+                                                            : tier.price_cny,
+                                                          // JPY: 取整数
+                                                          price_jpy: baseJpy
+                                                            ? Math.round(baseJpy * multiplier)
+                                                            : tier.price_jpy,
+                                                          // THB: 取整数
+                                                          price_thb: baseThb
+                                                            ? Math.round(baseThb * multiplier)
+                                                            : tier.price_thb,
+                                                        };
+                                                      },
+                                                    );
+
+                                                    setPriceTiers((prev) => ({
+                                                      ...prev,
+                                                      [sku.id]: newTiers,
+                                                    }));
                                                     setIsDirty(true);
                                                   }}
                                                   className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -1909,10 +2500,13 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                                 </button>
                                               ))}
                                             </div>
-                                            <span className="text-xs text-blue-500">（每级递增5%）</span>
+                                            <span className="text-xs text-blue-500">
+                                              （每级递增5%）
+                                            </span>
                                           </div>
                                           <p className="text-xs text-blue-500 mt-2">
-                                            💡 点击折扣率会自动计算所有币种的阶梯价格（USD/CNY/THB保留两位小数，JPY取整数）
+                                            💡
+                                            点击折扣率会自动计算所有币种的阶梯价格（USD/CNY/THB保留两位小数，JPY取整数）
                                           </p>
                                         </div>
 
@@ -1932,29 +2526,63 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                           const baseCny = sku.selling_price || 0;
                                           const baseJpy = sku.selling_price_jpy || 0;
                                           const baseThb = sku.selling_price_thb || 0;
-                                          
-                                          const discountUsd = baseUsd > 0 && tier.price_usd ? Math.round((1 - tier.price_usd / baseUsd) * 100) : 0;
-                                          const discountCny = baseCny > 0 && tier.price_cny ? Math.round((1 - tier.price_cny / baseCny) * 100) : 0;
-                                          const discountJpy = baseJpy > 0 && tier.price_jpy ? Math.round((1 - tier.price_jpy / baseJpy) * 100) : 0;
-                                          const discountThb = baseThb > 0 && tier.price_thb ? Math.round((1 - tier.price_thb / baseThb) * 100) : 0;
-                                          
+
+                                          const discountUsd =
+                                            baseUsd > 0 && tier.price_usd
+                                              ? Math.round((1 - tier.price_usd / baseUsd) * 100)
+                                              : 0;
+                                          const discountCny =
+                                            baseCny > 0 && tier.price_cny
+                                              ? Math.round((1 - tier.price_cny / baseCny) * 100)
+                                              : 0;
+                                          const discountJpy =
+                                            baseJpy > 0 && tier.price_jpy
+                                              ? Math.round((1 - tier.price_jpy / baseJpy) * 100)
+                                              : 0;
+                                          const discountThb =
+                                            baseThb > 0 && tier.price_thb
+                                              ? Math.round((1 - tier.price_thb / baseThb) * 100)
+                                              : 0;
+
                                           // 取第一个有值的折扣显示
-                                          const discountPercent = discountUsd || discountCny || discountJpy || discountThb || 0;
-                                          
+                                          const discountPercent =
+                                            discountUsd ||
+                                            discountCny ||
+                                            discountJpy ||
+                                            discountThb ||
+                                            0;
+
                                           return (
-                                            <div key={tier.id} className="grid grid-cols-8 gap-2 text-xs bg-white p-2 rounded border border-slate-200">
+                                            <div
+                                              key={tier.id}
+                                              className="grid grid-cols-8 gap-2 text-xs bg-white p-2 rounded border border-slate-200"
+                                            >
                                               <input
                                                 type="number"
                                                 min="1"
                                                 value={tier.min_quantity}
-                                                onChange={(e) => updatePriceTier(sku.id, tier.id, 'min_quantity', parseInt(e.target.value) || 1)}
+                                                onChange={(e) =>
+                                                  updatePriceTier(
+                                                    sku.id,
+                                                    tier.id,
+                                                    'min_quantity',
+                                                    parseInt(e.target.value) || 1,
+                                                  )
+                                                }
                                                 className="px-2 py-1 border border-slate-300 rounded w-full"
                                               />
                                               <input
                                                 type="number"
                                                 min="1"
                                                 value={tier.max_quantity || ''}
-                                                onChange={(e) => updatePriceTier(sku.id, tier.id, 'max_quantity', parseInt(e.target.value) || null)}
+                                                onChange={(e) =>
+                                                  updatePriceTier(
+                                                    sku.id,
+                                                    tier.id,
+                                                    'max_quantity',
+                                                    parseInt(e.target.value) || null,
+                                                  )
+                                                }
                                                 className="px-2 py-1 border border-slate-300 rounded w-full"
                                                 placeholder="∞"
                                               />
@@ -1963,44 +2591,92 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                                   type="number"
                                                   step="0.01"
                                                   value={tier.price_usd || ''}
-                                                  onChange={(e) => updatePriceTier(sku.id, tier.id, 'price_usd', parseFloat(e.target.value) || 0)}
+                                                  onChange={(e) =>
+                                                    updatePriceTier(
+                                                      sku.id,
+                                                      tier.id,
+                                                      'price_usd',
+                                                      parseFloat(e.target.value) || 0,
+                                                    )
+                                                  }
                                                   className="px-2 py-1 border border-blue-200 rounded w-full"
                                                 />
-                                                {discountUsd > 0 && <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 rounded">-{discountUsd}%</span>}
+                                                {discountUsd > 0 && (
+                                                  <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 rounded">
+                                                    -{discountUsd}%
+                                                  </span>
+                                                )}
                                               </div>
                                               <div className="relative">
                                                 <input
                                                   type="number"
                                                   step="0.01"
                                                   value={tier.price_cny || ''}
-                                                  onChange={(e) => updatePriceTier(sku.id, tier.id, 'price_cny', parseFloat(e.target.value) || null)}
+                                                  onChange={(e) =>
+                                                    updatePriceTier(
+                                                      sku.id,
+                                                      tier.id,
+                                                      'price_cny',
+                                                      parseFloat(e.target.value) || null,
+                                                    )
+                                                  }
                                                   className="px-2 py-1 border border-emerald-200 rounded w-full"
                                                 />
-                                                {discountCny > 0 && <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 rounded">-{discountCny}%</span>}
+                                                {discountCny > 0 && (
+                                                  <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 rounded">
+                                                    -{discountCny}%
+                                                  </span>
+                                                )}
                                               </div>
                                               <div className="relative">
                                                 <input
                                                   type="number"
                                                   value={tier.price_jpy || ''}
-                                                  onChange={(e) => updatePriceTier(sku.id, tier.id, 'price_jpy', parseInt(e.target.value) || null)}
+                                                  onChange={(e) =>
+                                                    updatePriceTier(
+                                                      sku.id,
+                                                      tier.id,
+                                                      'price_jpy',
+                                                      parseInt(e.target.value) || null,
+                                                    )
+                                                  }
                                                   className="px-2 py-1 border border-purple-200 rounded w-full"
                                                   placeholder="整数"
                                                 />
-                                                {discountJpy > 0 && <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 rounded">-{discountJpy}%</span>}
+                                                {discountJpy > 0 && (
+                                                  <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 rounded">
+                                                    -{discountJpy}%
+                                                  </span>
+                                                )}
                                               </div>
                                               <div className="relative">
                                                 <input
                                                   type="number"
                                                   value={tier.price_thb || ''}
-                                                  onChange={(e) => updatePriceTier(sku.id, tier.id, 'price_thb', parseInt(e.target.value) || null)}
+                                                  onChange={(e) =>
+                                                    updatePriceTier(
+                                                      sku.id,
+                                                      tier.id,
+                                                      'price_thb',
+                                                      parseInt(e.target.value) || null,
+                                                    )
+                                                  }
                                                   className="px-2 py-1 border border-amber-200 rounded w-full"
                                                   placeholder="整数"
                                                 />
-                                                {discountThb > 0 && <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 rounded">-{discountThb}%</span>}
+                                                {discountThb > 0 && (
+                                                  <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 rounded">
+                                                    -{discountThb}%
+                                                  </span>
+                                                )}
                                               </div>
-                                              <span className={`px-2 py-1 text-center font-bold rounded ${
-                                                discountPercent > 0 ? 'bg-red-100 text-red-600' : 'text-slate-400'
-                                              }`}>
+                                              <span
+                                                className={`px-2 py-1 text-center font-bold rounded ${
+                                                  discountPercent > 0
+                                                    ? 'bg-red-100 text-red-600'
+                                                    : 'text-slate-400'
+                                                }`}
+                                              >
                                                 {discountPercent > 0 ? `-${discountPercent}%` : '-'}
                                               </span>
                                               <button
@@ -2025,7 +2701,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                       </p>
                                     )}
                                     <p className="text-xs text-slate-400 mt-2">
-                                      💡 设置不同数量的批发价格，例如：1-9件原价，10-49件95折，50+件9折
+                                      💡
+                                      设置不同数量的批发价格，例如：1-9件原价，10-49件95折，50+件9折
                                     </p>
                                   </div>
                                 </td>
@@ -2042,7 +2719,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                   <p className="text-slate-400 mb-3">暂无 SKU 数据</p>
                 </div>
               )}
-              
+
               {/* 批量定价工具 */}
               {productSkus.length > 0 && (
                 <div className="mt-4 p-4 bg-slate-50 rounded-xl">
@@ -2051,7 +2728,14 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">按供货价倍数设置</label>
                       <div className="flex items-center gap-2">
-                        <input type="number" step="0.1" min="1" defaultValue="1.5" id="priceMultiplier" className="w-20 px-2 py-1 border rounded text-sm" />
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="1"
+                          defaultValue="1.5"
+                          id="priceMultiplier"
+                          className="w-20 px-2 py-1 border rounded text-sm"
+                        />
                         <span className="text-sm text-slate-500">倍</span>
                       </div>
                     </div>
@@ -2066,11 +2750,24 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     </div>
                     <button
                       onClick={() => {
-                        const multiplier = parseFloat((document.getElementById('priceMultiplier') as HTMLInputElement)?.value || '1.5');
-                        const currency = (document.getElementById('targetCurrency') as HTMLSelectElement)?.value || 'cny';
-                        const fieldMap: Record<string, string> = { cny: 'selling_price', usd: 'selling_price_usd', jpy: 'selling_price_jpy', thb: 'selling_price_thb' };
+                        const multiplier = parseFloat(
+                          (document.getElementById('priceMultiplier') as HTMLInputElement)?.value ||
+                            '1.5',
+                        );
+                        const currency =
+                          (document.getElementById('targetCurrency') as HTMLSelectElement)?.value ||
+                          'cny';
+                        const fieldMap: Record<string, string> = {
+                          cny: 'selling_price',
+                          usd: 'selling_price_usd',
+                          jpy: 'selling_price_jpy',
+                          thb: 'selling_price_thb',
+                        };
                         const field = fieldMap[currency];
-                        const updatedSkus = productSkus.map((s: any) => ({...s, [field]: Math.round(s.price * multiplier * 100) / 100}));
+                        const updatedSkus = productSkus.map((s: any) => ({
+                          ...s,
+                          [field]: Math.round(s.price * multiplier * 100) / 100,
+                        }));
                         setProductSkus(updatedSkus);
                         setIsDirty(true);
                         success(`已按供货价的 ${multiplier} 倍设置${currency.toUpperCase()}销售价`);
@@ -2105,11 +2802,24 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           </h4>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">规格参数 (JSON 格式) ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</label>
-              <textarea value={JSON.stringify(getLocalizedJsonValue('specifications') || {}, null, 2)} onChange={(e) => {
-                try { const specifications = JSON.parse(e.target.value); setLocalizedJsonValue('specifications', specifications); } catch { } }}  rows={10}
-                  className="w-full min-h-[200px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm font-mono text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
-                  placeholder={`{\n  "material": "医用级不锈钢",\n  "size": "10cm x 5cm",\n  "weight": "200g"\n}`} />
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                规格参数 (JSON 格式) (
+                {editLang === getPublishLang() ? `${editLang} - 源` : editLang})
+              </label>
+              <textarea
+                value={JSON.stringify(getLocalizedJsonValue('specifications') || {}, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const specifications = JSON.parse(e.target.value);
+                    setLocalizedJsonValue('specifications', specifications);
+                  } catch {
+                    return;
+                  }
+                }}
+                rows={10}
+                className="w-full min-h-[200px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm font-mono text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
+                placeholder={`{\n  "material": "医用级不锈钢",\n  "size": "10cm x 5cm",\n  "weight": "200g"\n}`}
+              />
             </div>
           </div>
         </Card>
@@ -2126,72 +2836,127 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             <div className="space-y-4">
               <h5 className="text-sm font-bold text-slate-900">SEO 元数据</h5>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">核心关键词 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</label>
-                <input type="text" value={getLocalizedValue('focus_keyword')} onChange={(e) => setLocalizedValue('focus_keyword', e.target.value)} 
-                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="例如：兽用手术器械，宠物医疗耗材" />
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                  核心关键词 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})
+                </label>
+                <input
+                  type="text"
+                  value={getLocalizedValue('focus_keyword')}
+                  onChange={(e) => setLocalizedValue('focus_keyword', e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                  placeholder="例如：兽用手术器械，宠物医疗耗材"
+                />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">Meta 标题 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</label>
-                <input type="text" value={getLocalizedValue('meta_title')} onChange={(e) => setLocalizedValue('meta_title', e.target.value)}  maxLength={60}
-                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50" placeholder="搜索引擎结果中显示的标题" />
-                <p className="mt-1 text-xs text-slate-500">建议长度：50-60 个字符，当前长度：{(getLocalizedValue('meta_title') || '').length}</p>
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                  Meta 标题 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})
+                </label>
+                <input
+                  type="text"
+                  value={getLocalizedValue('meta_title')}
+                  onChange={(e) => setLocalizedValue('meta_title', e.target.value)}
+                  maxLength={60}
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none disabled:opacity-50"
+                  placeholder="搜索引擎结果中显示的标题"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  建议长度：50-60 个字符，当前长度：{(getLocalizedValue('meta_title') || '').length}
+                </p>
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">Meta 描述 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</label>
-                <textarea value={getLocalizedValue('meta_description')} onChange={(e) => setLocalizedValue('meta_description', e.target.value)}  maxLength={160} rows={3}
-                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50" placeholder="搜索引擎结果中显示的产品描述" />
-                <p className="mt-1 text-xs text-slate-500">建议长度：150-160 个字符，当前长度：{(getLocalizedValue('meta_description') || '').length}</p>
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+                  Meta 描述 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})
+                </label>
+                <textarea
+                  value={getLocalizedValue('meta_description')}
+                  onChange={(e) => setLocalizedValue('meta_description', e.target.value)}
+                  maxLength={160}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
+                  placeholder="搜索引擎结果中显示的产品描述"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  建议长度：150-160 个字符，当前长度：
+                  {(getLocalizedValue('meta_description') || '').length}
+                </p>
               </div>
             </div>
 
             {/* FAQ 字段 */}
             <div className="border-t pt-6">
-              <h5 className="text-sm font-bold text-slate-900 mb-4">FAQ 常见问题 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})</h5>
+              <h5 className="text-sm font-bold text-slate-900 mb-4">
+                FAQ 常见问题 ({editLang === getPublishLang() ? `${editLang} - 源` : editLang})
+              </h5>
               <div className="space-y-3">
                 {(getLocalizedJsonValue('faq') || []).map((faqItem: any, idx: number) => (
                   <div key={idx} className="border rounded-xl p-4 bg-slate-50">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-bold text-slate-900">问题 {idx + 1}</span>
-                      <button onClick={() => {
-                        const currentFaq = getLocalizedJsonValue('faq') || [];
-                        const newFaq = currentFaq.filter((_: any, i: number) => i !== idx);
-                        setLocalizedJsonValue('faq', newFaq);
-                      }}  className="text-red-600 hover:text-red-800 p-1">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <button
+                        onClick={() => {
+                          const currentFaq = getLocalizedJsonValue('faq') || [];
+                          const newFaq = currentFaq.filter((_: any, i: number) => i !== idx);
+                          setLocalizedJsonValue('faq', newFaq);
+                        }}
+                        className="text-red-600 hover:text-red-800 p-1"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </button>
                     </div>
                     <div className="space-y-3">
                       <div>
                         <label className="block text-xs text-slate-600 mb-1">问题</label>
-                        <input type="text" value={faqItem.question || ''} onChange={(e) => {
-                          const currentFaq = getLocalizedJsonValue('faq') || [];
-                          const newFaq = [...currentFaq];
-                          newFaq[idx] = { ...newFaq[idx], question: e.target.value };
-                          setLocalizedJsonValue('faq', newFaq);
-                        }} 
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="客户可能会问的问题" />
+                        <input
+                          type="text"
+                          value={faqItem.question || ''}
+                          onChange={(e) => {
+                            const currentFaq = getLocalizedJsonValue('faq') || [];
+                            const newFaq = [...currentFaq];
+                            newFaq[idx] = { ...newFaq[idx], question: e.target.value };
+                            setLocalizedJsonValue('faq', newFaq);
+                          }}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
+                          placeholder="客户可能会问的问题"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs text-slate-600 mb-1">回答</label>
-                        <textarea value={faqItem.answer || ''} onChange={(e) => {
-                          const currentFaq = getLocalizedJsonValue('faq') || [];
-                          const newFaq = [...currentFaq];
-                          newFaq[idx] = { ...newFaq[idx], answer: e.target.value };
-                          setLocalizedJsonValue('faq', newFaq);
-                        }}  rows={3}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="详细、专业的回答" />
+                        <textarea
+                          value={faqItem.answer || ''}
+                          onChange={(e) => {
+                            const currentFaq = getLocalizedJsonValue('faq') || [];
+                            const newFaq = [...currentFaq];
+                            newFaq[idx] = { ...newFaq[idx], answer: e.target.value };
+                            setLocalizedJsonValue('faq', newFaq);
+                          }}
+                          rows={3}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
+                          placeholder="详细、专业的回答"
+                        />
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              <button onClick={() => {
-                const currentFaq = getLocalizedJsonValue('faq') || [];
-                setLocalizedJsonValue('faq', [...currentFaq, { question: '', answer: '' }]);
-              }} 
-                className="mt-3 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+              <button
+                onClick={() => {
+                  const currentFaq = getLocalizedJsonValue('faq') || [];
+                  setLocalizedJsonValue('faq', [...currentFaq, { question: '', answer: '' }]);
+                }}
+                className="mt-3 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+              >
                 + 添加 FAQ
               </button>
             </div>
@@ -2212,36 +2977,50 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 {[
                   { code: 'cn', label: '中国站 (CN)', desc: 'vetsphere.cn' },
                   { code: 'intl', label: '国际站 (INTL)', desc: 'vetsphere.net' },
-                ].filter(site => isGLOBAL || site.code === currentSite).map(site => {
-                  const isPublished = product.site_views?.some((sv: any) => sv.site_code === site.code && sv.publish_status === 'published');
-                  return (
-                    <div key={site.code} className="flex items-center justify-between p-4 border rounded-xl">
-                      <div>
-                        <p className="font-medium text-slate-900">{site.label}</p>
-                        <p className="text-sm text-slate-500">{site.desc}</p>
-                        {isPublished && (
-                          <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                            已发布
-                          </p>
-                        )}
+                ]
+                  .filter((site) => isGLOBAL || site.code === currentSite)
+                  .map((site) => {
+                    const isPublished = product.site_views?.some(
+                      (sv: any) => sv.site_code === site.code && sv.publish_status === 'published',
+                    );
+                    return (
+                      <div
+                        key={site.code}
+                        className="flex items-center justify-between p-4 border rounded-xl"
+                      >
+                        <div>
+                          <p className="font-medium text-slate-900">{site.label}</p>
+                          <p className="text-sm text-slate-500">{site.desc}</p>
+                          {isPublished && (
+                            <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                              <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                              已发布
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          {!isPublished ? (
+                            <button
+                              onClick={() => {
+                                setSelectedSites([site.code]);
+                                handleSaveAndPublish();
+                              }}
+                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 bg-emerald-600 text-white hover:bg-emerald-700"
+                            >
+                              发布
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOfflineFromSite(site.code)}
+                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 bg-slate-500 text-white hover:bg-slate-600"
+                            >
+                              下架
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        {!isPublished ? (
-                          <button onClick={() => { setSelectedSites([site.code]); handleSaveAndPublish(); }} 
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 bg-emerald-600 text-white hover:bg-emerald-700">
-                            发布
-                          </button>
-                        ) : (
-                          <button onClick={() => handleOfflineFromSite(site.code)} 
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 bg-slate-500 text-white hover:bg-slate-600">
-                            下架
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
             {(product.approved_at || product.rejection_reason || product.published_at) && (
@@ -2251,7 +3030,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                   {product.approved_at && (
                     <div className="flex justify-between">
                       <span className="text-slate-600">批准时间:</span>
-                      <span className="text-slate-900">{new Date(product.approved_at).toLocaleString()}</span>
+                      <span className="text-slate-900">
+                        {new Date(product.approved_at).toLocaleString()}
+                      </span>
                     </div>
                   )}
                   {product.rejection_reason && (
@@ -2263,7 +3044,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                   {product.published_at && (
                     <div className="flex justify-between">
                       <span className="text-slate-600">发布时间:</span>
-                      <span className="text-slate-900">{new Date(product.published_at).toLocaleString()}</span>
+                      <span className="text-slate-900">
+                        {new Date(product.published_at).toLocaleString()}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -2274,39 +3057,76 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       )}
 
       {/* 离开确认对话框 */}
-      <ConfirmDialog open={showLeaveDialog} title="确认离开" message="您有未保存的更改，确定要离开吗？所有未保存的更改将丢失。" confirmText="确认离开" onConfirm={() => router.push('/products')} onCancel={() => setShowLeaveDialog(false)} danger />
+      <ConfirmDialog
+        open={showLeaveDialog}
+        title="确认离开"
+        message="您有未保存的更改，确定要离开吗？所有未保存的更改将丢失。"
+        confirmText="确认离开"
+        onConfirm={() => router.push('/products')}
+        onCancel={() => setShowLeaveDialog(false)}
+        danger
+      />
 
       {/* 上架站点选择弹窗 */}
       {showPublishDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-2">保存并上架产品</h3>
-            <p className="text-sm text-slate-500 mb-5">请选择要上架的站点，产品将保存并发布到所选站点。</p>
+            <p className="text-sm text-slate-500 mb-5">
+              请选择要上架的站点，产品将保存并发布到所选站点。
+            </p>
             <div className="space-y-3 mb-6">
               {[
                 { code: 'cn', label: '中国站 (CN)', desc: '面向中国大陆用户' },
                 { code: 'intl', label: '国际站 (INTL)', desc: '面向海外用户' },
-              ].filter(site => isGLOBAL || site.code === currentSite).map(site => (
-                <label key={site.code} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                  selectedSites.includes(site.code) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
-                }`}>
-                  <input type="checkbox" checked={selectedSites.includes(site.code)} onChange={(e) => {
-                    if (e.target.checked) setSelectedSites(prev => [...prev, site.code]);
-                    else setSelectedSites(prev => prev.filter(s => s !== site.code));
-                  }} className="w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500" />
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">{site.label}</div>
-                    <div className="text-xs text-slate-500">{site.desc}</div>
-                  </div>
-                </label>
-              ))}
+              ]
+                .filter((site) => isGLOBAL || site.code === currentSite)
+                .map((site) => (
+                  <label
+                    key={site.code}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                      selectedSites.includes(site.code)
+                        ? 'border-emerald-500 bg-emerald-50'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedSites.includes(site.code)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedSites((prev) => [...prev, site.code]);
+                        else setSelectedSites((prev) => prev.filter((s) => s !== site.code));
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">{site.label}</div>
+                      <div className="text-xs text-slate-500">{site.desc}</div>
+                    </div>
+                  </label>
+                ))}
             </div>
-            {saveError && <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">{saveError}</div>}
+            {saveError && (
+              <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+                {saveError}
+              </div>
+            )}
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowPublishDialog(false); setSaveError(null); }} disabled={publishing}
-                className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">取消</button>
-              <button onClick={handleSaveAndPublish} disabled={publishing || selectedSites.length === 0}
-                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <button
+                onClick={() => {
+                  setShowPublishDialog(false);
+                  setSaveError(null);
+                }}
+                disabled={publishing}
+                className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveAndPublish}
+                disabled={publishing || selectedSites.length === 0}
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 {publishing ? '上架中...' : `确认上架 (${selectedSites.length} 个站点)`}
               </button>
             </div>
@@ -2339,14 +3159,34 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               <div className="w-16 h-16 mx-auto mb-4 relative">
                 {translateProgress >= 100 ? (
                   <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-8 h-8 text-emerald-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   </div>
                 ) : translateError ? (
                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-8 h-8 text-red-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </div>
                 ) : (
@@ -2356,14 +3196,18 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
               {/* 标题 */}
               <h3 className="text-lg font-bold text-slate-900 mb-2">
-                {translateError ? '翻译失败' : translateProgress >= 100 ? '翻译完成' : 'AI 智能翻译中'}
+                {translateError
+                  ? '翻译失败'
+                  : translateProgress >= 100
+                    ? '翻译完成'
+                    : 'AI 智能翻译中'}
               </h3>
 
               {/* 当前步骤 */}
               {!translateError && translateProgress < 100 && (
                 <div className="mb-4">
                   <p className="text-sm text-slate-600 mb-3">
-                    {translateSteps.find(s => s.step === translateStep)?.text || '处理中...'}
+                    {translateSteps.find((s) => s.step === translateStep)?.text || '处理中...'}
                   </p>
 
                   {/* 进度条 */}
@@ -2382,8 +3226,13 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 <div className="text-left bg-emerald-50 rounded-lg p-4 mb-4">
                   <p className="text-sm text-emerald-700 font-medium mb-2">已完成翻译：</p>
                   <div className="flex flex-wrap gap-2">
-                    {translateTargetLangs.map(t => (
-                      <span key={t.code} className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">✓ {t.name}</span>
+                    {translateTargetLangs.map((t) => (
+                      <span
+                        key={t.code}
+                        className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full"
+                      >
+                        ✓ {t.name}
+                      </span>
                     ))}
                   </div>
                 </div>

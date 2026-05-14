@@ -35,6 +35,10 @@ async function readAccessTokenFast(): Promise<string | null> {
   }
 }
 
+export async function getApiAccessToken(): Promise<string | null> {
+  return readAccessTokenFast();
+}
+
 export class ApiError extends Error {
   status: number;
   data: unknown;
@@ -62,7 +66,7 @@ interface ApiFetchOptions extends RequestInit {
  */
 export async function apiFetch<T = unknown>(
   url: string,
-  options: ApiFetchOptions = {}
+  options: ApiFetchOptions = {},
 ): Promise<T> {
   const { withAuth = true, parseJson = true, headers, body, ...rest } = options;
 

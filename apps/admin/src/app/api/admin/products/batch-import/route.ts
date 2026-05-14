@@ -11,7 +11,17 @@ import OpenAI from 'openai';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 
-const supabase = getSupabaseAdmin();
+type AdminSupabaseClient = ReturnType<typeof getSupabaseAdmin>;
+
+function extractAccessToken(req: NextRequest): string | undefined {
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+  if (authHeader?.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice(7).trim();
+  }
+
+  const cookieToken = req.cookies.get('sb-access-token')?.value;
+  return cookieToken || undefined;
+}
 
 interface ImportRow {
   _rowIndex: number;
@@ -31,7 +41,7 @@ interface ImportRow {
   packageQty: number;
   packageUnit: string;
   weight: number;
-  weightUnit: string;  // Weight unit from Excel (kg, g, lb)
+  weightUnit: string; // Weight unit from Excel (kg, g, lb)
   leadTime: string;
   availability: string;
   status: string;
@@ -82,7 +92,7 @@ function generateSlug(name: string): string {
 async function processImages(
   primaryImageUrl: string,
   additionalImages: string,
-  productId: string
+  productId: string,
 ): Promise<{ primaryImage: string; additionalImages: string[] }> {
   const allUrls: string[] = [];
 
@@ -93,8 +103,8 @@ async function processImages(
   if (additionalImages) {
     const urls = additionalImages
       .split(/[,\n]/)
-      .map(u => u.trim())
-      .filter(u => u);
+      .map((u) => u.trim())
+      .filter((u) => u);
     allUrls.push(...urls);
   }
 
@@ -105,7 +115,7 @@ async function processImages(
   try {
     const ossUrls = await uploadMultipleImages(allUrls, productId);
     const primaryImage = ossUrls[0] || '';
-    const additional = ossUrls.slice(1).filter(u => u);
+    const additional = ossUrls.slice(1).filter((u) => u);
     return { primaryImage, additionalImages: additional };
   } catch (error) {
     console.error(`[Batch Import] Image upload failed for ${productId}:`, error);
@@ -136,11 +146,29 @@ function convertToHtmlRichText(text: string): string {
 
   // Common section heading keywords in product descriptions
   const headingKeywords = [
-    'product overview', 'overview', 'key features', 'features', 'specifications',
-    'product specifications', 'applications', 'how to use', 'package includes',
-    'important notes', 'why choose', 'technical details', 'description',
-    'benefits', 'warnings', 'cautions', 'storage', 'usage', 'contents',
-    'what\'s included', 'warranty', 'dimensions', 'compatibility',
+    'product overview',
+    'overview',
+    'key features',
+    'features',
+    'specifications',
+    'product specifications',
+    'applications',
+    'how to use',
+    'package includes',
+    'important notes',
+    'why choose',
+    'technical details',
+    'description',
+    'benefits',
+    'warnings',
+    'cautions',
+    'storage',
+    'usage',
+    'contents',
+    "what's included",
+    'warranty',
+    'dimensions',
+    'compatibility',
   ];
 
   function isHeadingLine(line: string, nextLine: string | undefined): boolean {
@@ -148,7 +176,11 @@ function convertToHtmlRichText(text: string): string {
     if (!trimmed || trimmed.length > 80) return false;
     // Check if it matches known heading keywords
     const lower = trimmed.toLowerCase();
-    if (headingKeywords.some(kw => lower === kw || lower.startsWith(kw + ' ') || lower.endsWith(' ' + kw))) {
+    if (
+      headingKeywords.some(
+        (kw) => lower === kw || lower.startsWith(kw + ' ') || lower.endsWith(' ' + kw),
+      )
+    ) {
       return true;
     }
     // Short line (<=60 chars) that doesn't end with common sentence punctuation
@@ -196,7 +228,7 @@ function convertToHtmlRichText(text: string): string {
     const listItem = isListItem(trimmed);
     if (listItem) {
       const items: string[] = [];
-      let listType = listItem.type;
+      const listType = listItem.type;
       items.push(listItem.content);
       i++;
       while (i < lines.length) {
@@ -212,7 +244,7 @@ function convertToHtmlRichText(text: string): string {
         }
       }
       const tag = listType === 'ol' ? 'ol' : 'ul';
-      htmlParts.push(`<${tag}>${items.map(item => `<li>${item}</li>`).join('')}</${tag}>`);
+      htmlParts.push(`<${tag}>${items.map((item) => `<li>${item}</li>`).join('')}</${tag}>`);
       continue;
     }
 
@@ -235,13 +267,23 @@ function normalizeWeightUnit(unit: string): string {
   const normalized = unit.toLowerCase().trim();
 
   // Map common variations
-  if (normalized === 'kg' || normalized === 'kgs' || normalized === 'kilogram' || normalized === 'kilograms') {
+  if (
+    normalized === 'kg' ||
+    normalized === 'kgs' ||
+    normalized === 'kilogram' ||
+    normalized === 'kilograms'
+  ) {
     return 'kg';
   }
   if (normalized === 'g' || normalized === 'gram' || normalized === 'grams') {
     return 'g';
   }
-  if (normalized === 'lb' || normalized === 'lbs' || normalized === 'pound' || normalized === 'pounds') {
+  if (
+    normalized === 'lb' ||
+    normalized === 'lbs' ||
+    normalized === 'pound' ||
+    normalized === 'pounds'
+  ) {
     return 'lb';
   }
 
@@ -253,7 +295,10 @@ function normalizeWeightUnit(unit: string): string {
  * Convert weight to kg if unit is g (for consistency)
  * SKU weight_unit expects g/kg/lb, but we store weight in the unit specified
  */
-function normalizeWeightValue(weight: number, unit: string): { weight: number; weight_unit: string } {
+function normalizeWeightValue(
+  weight: number,
+  unit: string,
+): { weight: number; weight_unit: string } {
   const normalizedUnit = normalizeWeightUnit(unit);
 
   // If the unit is 'g' and weight is large (e.g., 5000g = 5kg),
@@ -269,9 +314,9 @@ function normalizeWeightValue(weight: number, unit: string): { weight: number; w
  */
 const EXCHANGE_RATES = {
   USD: 1,
-  CNY: 7.2,   // 1 USD ≈ 7.2 CNY
-  JPY: 150,   // 1 USD ≈ 150 JPY
-  THB: 35,    // 1 USD ≈ 35 THB
+  CNY: 7.2, // 1 USD ≈ 7.2 CNY
+  JPY: 150, // 1 USD ≈ 150 JPY
+  THB: 35, // 1 USD ≈ 35 THB
 };
 
 /**
@@ -292,15 +337,39 @@ function convertPriceToOtherCurrencies(usdPrice: number): {
 /**
  * Create a single product with SKU
  */
-async function createProduct(row: ImportRow): Promise<{ success: boolean; productId?: string; error?: string }> {
+async function createProduct(
+  row: ImportRow,
+  siteCode: 'cn' | 'intl',
+  supabase: AdminSupabaseClient,
+): Promise<{ success: boolean; productId?: string; error?: string }> {
   try {
     const productId = generateProductId();
+
+    if (row._mappedCategoryId) {
+      const { data: category, error: categoryError } = await supabase
+        .from('product_categories')
+        .select('id, site_code')
+        .eq('id', row._mappedCategoryId)
+        .maybeSingle();
+
+      if (categoryError) {
+        return { success: false, error: categoryError.message };
+      }
+
+      if (!category) {
+        return { success: false, error: '映射分类不存在，请先刷新分类映射后重试' };
+      }
+
+      if (category.site_code !== siteCode) {
+        return { success: false, error: `映射分类不属于当前站点：${siteCode}` };
+      }
+    }
 
     // Process images
     const { primaryImage, additionalImages } = await processImages(
       row.primaryImageUrl,
       row.additionalImages,
-      productId
+      productId,
     );
 
     // Build specifications from attributes
@@ -315,7 +384,7 @@ async function createProduct(row: ImportRow): Promise<{ success: boolean; produc
     // Normalize weight unit and value
     const { weight: normalizedWeight, weight_unit: normalizedWeightUnit } = normalizeWeightValue(
       row.weight,
-      row.weightUnit || 'kg'
+      row.weightUnit || 'kg',
     );
 
     // Convert selling price to other currencies
@@ -331,53 +400,51 @@ async function createProduct(row: ImportRow): Promise<{ success: boolean; produc
       id: productId,
       sku_code: row.sku || null,
       // Base fields (Chinese) - empty, will be filled by translation
-      name: '',  // Empty - will be translated to Chinese
-      name_en: row.name,  // English data from Excel
-      brand: '',  // Empty - will be translated
-      brand_en: row.brand || '',  // English data
-      description: '',  // Empty - will be translated
-      description_en: row.shortDescription || '',  // English data
-      rich_description: '',  // Empty - will be translated
-      rich_description_en: richDescriptionHtml,  // English HTML content
+      name: '', // Empty - will be translated to Chinese
+      name_en: row.name, // English data from Excel
+      brand: '', // Empty - will be translated
+      brand_en: row.brand || '', // English data
+      description: '', // Empty - will be translated
+      description_en: row.shortDescription || '', // English data
+      rich_description: '', // Empty - will be translated
+      rich_description_en: richDescriptionHtml, // English HTML content
       category_id: row._mappedCategoryId || null,
-      image_url: primaryImage,  // Primary image URL from OSS
-      slug: '',  // Empty - will be translated
-      slug_en: generateSlug(row.name),  // English slug
+      image_url: primaryImage, // Primary image URL from OSS
+      slug: '', // Empty - will be translated
+      slug_en: generateSlug(row.name), // English slug
       status: 'draft', // Always draft for review
       has_price: true,
       min_order_quantity: row.minOrderQty || 1,
       package_qty: row.packageQty || 1,
       package_unit: row.packageUnit || 'Each',
       lead_time: row.leadTime || '2-4 weeks',
-      delivery_time: '',  // Empty - will be translated
+      delivery_time: '', // Empty - will be translated
       delivery_time_en: row.leadTime || '2-4 weeks',
-      source_url: row.sourceUrl || null,  // Source URL from Excel
+      source_url: row.sourceUrl || null, // Source URL from Excel
       focus_keyword: row.focusKeyword || null,
       // Meta fields
-      meta_title: '',  // Empty - will be translated
+      meta_title: '', // Empty - will be translated
       meta_title_en: row.metaTitle || '',
-      meta_description: '',  // Empty - will be translated
+      meta_description: '', // Empty - will be translated
       meta_description_en: row.metaDescription || '',
       // Specifications (stored as JSONB) - English source goes to _en column
-      specifications: {},  // Empty - will be translated to Chinese
-      specifications_en: specifications,  // English specs from Excel
+      specifications: {}, // Empty - will be translated to Chinese
+      specifications_en: specifications, // English specs from Excel
       // FAQs - English source goes to _en column
-      faq: null,  // Empty - will be translated to Chinese
-      faq_en: row.faqs.length > 0 ? row.faqs : null,  // English FAQs from Excel
+      faq: null, // Empty - will be translated to Chinese
+      faq_en: row.faqs.length > 0 ? row.faqs : null, // English FAQs from Excel
       // Weight (stored at SKU level)
       weight: normalizedWeight,
       // Source language marker - English is the source
-      publish_language: 'en',  // Mark English as source language
-      translated_at: null,  // Will be set after translation
+      publish_language: 'en', // Mark English as source language
+      translated_at: null, // Will be set after translation
       supplier_id: null, // Platform self-operated, no supplier
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
     // Insert product
-    const { error: productError } = await supabase
-      .from('products')
-      .insert(productData);
+    const { error: productError } = await supabase.from('products').insert(productData);
 
     if (productError) {
       console.error(`[Batch Import] Product insert error:`, productError);
@@ -393,9 +460,7 @@ async function createProduct(row: ImportRow): Promise<{ success: boolean; produc
         sort_order: index + 1,
       }));
 
-      const { error: imageError } = await supabase
-        .from('product_images')
-        .insert(imageRecords);
+      const { error: imageError } = await supabase.from('product_images').insert(imageRecords);
 
       if (imageError) {
         console.error(`[Batch Import] Image insert error:`, imageError);
@@ -416,30 +481,44 @@ async function createProduct(row: ImportRow): Promise<{ success: boolean; produc
       sku_code: row.sku || `${productId}-001`,
       attribute_combination: {}, // Empty object for no variants (NOT NULL field)
       // Cost price (供货价) - the price Admin pays to supplier
-      price: row.costPriceCny || 0,  // CNY cost price
+      price: row.costPriceCny || 0, // CNY cost price
       // Selling prices (销售价) - the price customers pay
-      selling_price: convertedPrices.cny,  // CNY selling price (converted)
-      selling_price_usd: row.sellingPriceUsd || 0,  // USD selling price (from Excel)
-      selling_price_jpy: convertedPrices.jpy,  // JPY selling price (converted)
-      selling_price_thb: convertedPrices.thb,  // THB selling price (converted)
-      original_price: row.sellingPriceUsd || 0,  // Original/reference price in USD
+      selling_price: convertedPrices.cny, // CNY selling price (converted)
+      selling_price_usd: row.sellingPriceUsd || 0, // USD selling price (from Excel)
+      selling_price_jpy: convertedPrices.jpy, // JPY selling price (converted)
+      selling_price_thb: convertedPrices.thb, // THB selling price (converted)
+      original_price: row.sellingPriceUsd || 0, // Original/reference price in USD
       stock_quantity: row.availability === 'In Stock' ? 100 : 0,
       // Weight with normalized unit
       weight: normalizedWeight,
-      weight_unit: normalizedWeightUnit,  // kg, g, or lb (normalized)
+      weight_unit: normalizedWeightUnit, // kg, g, or lb (normalized)
       is_active: true,
       sort_order: 1,
-      image_url: primaryImage,  // SKU image same as product primary image
-      specs: specifications,  // SKU specifications (规格参数)
+      image_url: primaryImage, // SKU image same as product primary image
+      specs: specifications, // SKU specifications (规格参数)
     };
 
-    const { error: skuError } = await supabase
-      .from('product_skus')
-      .insert(skuData);
+    const { error: skuError } = await supabase.from('product_skus').insert(skuData);
 
     if (skuError) {
       console.error(`[Batch Import] SKU insert error:`, skuError);
       // Don't fail for SKU error, can be fixed manually
+    }
+
+    const { error: siteViewError } = await supabase.from('product_site_views').upsert(
+      {
+        product_id: productId,
+        site_code: siteCode,
+        is_enabled: true,
+        publish_status: 'draft',
+        published_at: null,
+      },
+      { onConflict: 'product_id,site_code' },
+    );
+
+    if (siteViewError) {
+      console.error('[Batch Import] Site view insert error:', siteViewError);
+      return { success: false, error: siteViewError.message };
     }
 
     return { success: true, productId };
@@ -457,7 +536,10 @@ async function createProduct(row: ImportRow): Promise<{ success: boolean; produc
  * Source language: English (_en fields)
  * Target languages: Chinese (zh/base fields), Thai (th), Japanese (ja)
  */
-async function translateProduct(productId: string): Promise<boolean> {
+async function translateProduct(
+  productId: string,
+  supabase: AdminSupabaseClient,
+): Promise<boolean> {
   const apiKey = process.env.DASHSCOPE_API_KEY || process.env.AI_API_KEY;
   if (!apiKey) {
     console.error('[Batch Import] No DashScope API key configured');
@@ -480,9 +562,16 @@ async function translateProduct(productId: string): Promise<boolean> {
     // Extract translatable content from English fields (_en)
     const content: Record<string, string> = {};
     const translatableFields = [
-      'name', 'subtitle', 'description', 'rich_description',
-      'brand', 'packaging_info', 'delivery_time', 'warranty_info',
-      'meta_title', 'meta_description',
+      'name',
+      'subtitle',
+      'description',
+      'rich_description',
+      'brand',
+      'packaging_info',
+      'delivery_time',
+      'warranty_info',
+      'meta_title',
+      'meta_description',
     ];
 
     // Read from _en fields (English source)
@@ -500,11 +589,14 @@ async function translateProduct(productId: string): Promise<boolean> {
 
     // Extract JSONB fields (specifications, faq)
     const sourceSpecs = product.specifications_en;
-    const hasSpecs = sourceSpecs && typeof sourceSpecs === 'object' && Object.keys(sourceSpecs).length > 0;
+    const hasSpecs =
+      sourceSpecs && typeof sourceSpecs === 'object' && Object.keys(sourceSpecs).length > 0;
     const sourceFaq = product.faq_en;
     const hasFaq = Array.isArray(sourceFaq) && sourceFaq.length > 0;
 
-    console.log(`[Batch Import] Translation: Translating ${Object.keys(content).length} fields, specs:${hasSpecs}, faq:${hasFaq} for ${productId}`);
+    console.log(
+      `[Batch Import] Translation: Translating ${Object.keys(content).length} fields, specs:${hasSpecs}, faq:${hasFaq} for ${productId}`,
+    );
 
     // Create AI client with undici fetch
     const { fetch } = require('undici');
@@ -544,12 +636,18 @@ SOURCE CONTENT (English):
 ${contentEntries}
 
 Return format (EXACT JSON, no extra text):
-{ ${Object.keys(content).map(k => `"${k}": "translated value"`).join(', ')} }`;
+{ ${Object.keys(content)
+          .map((k) => `"${k}": "translated value"`)
+          .join(', ')} }`;
 
         const completion = await client.chat.completions.create({
           model,
           messages: [
-            { role: 'system', content: 'You are a professional e-commerce translator. Return only valid JSON. /no_think' },
+            {
+              role: 'system',
+              content:
+                'You are a professional e-commerce translator. Return only valid JSON. /no_think',
+            },
             { role: 'user', content: prompt },
           ],
           temperature: 0.3,
@@ -587,12 +685,17 @@ Return EXACT JSON object, no extra text.`;
             const specsCompletion = await client.chat.completions.create({
               model,
               messages: [
-                { role: 'system', content: 'You are a professional translator. Return only valid JSON. /no_think' },
+                {
+                  role: 'system',
+                  content: 'You are a professional translator. Return only valid JSON. /no_think',
+                },
                 { role: 'user', content: specsPrompt },
               ],
               temperature: 0.2,
             });
-            let specsText = (specsCompletion.choices[0].message.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            let specsText = (specsCompletion.choices[0].message.content || '')
+              .replace(/<think>[\s\S]*?<\/think>/g, '')
+              .trim();
             if (specsText.startsWith('```json')) specsText = specsText.slice(7);
             else if (specsText.startsWith('```')) specsText = specsText.slice(3);
             if (specsText.endsWith('```')) specsText = specsText.slice(0, -3);
@@ -600,7 +703,10 @@ Return EXACT JSON object, no extra text.`;
             updatePayload[specsKey] = JSON.parse(specsText.trim());
             console.log(`[Batch Import] Specs to ${languageNames[lang]} done`);
           } catch (e) {
-            console.error(`[Batch Import] Specs translation failed for ${lang}:`, e instanceof Error ? e.message : e);
+            console.error(
+              `[Batch Import] Specs translation failed for ${lang}:`,
+              e instanceof Error ? e.message : e,
+            );
           }
         }
 
@@ -614,12 +720,18 @@ Return EXACT JSON array [{"question":"...","answer":"..."},...], no extra text.`
             const faqCompletion = await client.chat.completions.create({
               model,
               messages: [
-                { role: 'system', content: 'You are a professional translator. Return only valid JSON array. /no_think' },
+                {
+                  role: 'system',
+                  content:
+                    'You are a professional translator. Return only valid JSON array. /no_think',
+                },
                 { role: 'user', content: faqPrompt },
               ],
               temperature: 0.3,
             });
-            let faqText = (faqCompletion.choices[0].message.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            let faqText = (faqCompletion.choices[0].message.content || '')
+              .replace(/<think>[\s\S]*?<\/think>/g, '')
+              .trim();
             if (faqText.startsWith('```json')) faqText = faqText.slice(7);
             else if (faqText.startsWith('```')) faqText = faqText.slice(3);
             if (faqText.endsWith('```')) faqText = faqText.slice(0, -3);
@@ -627,13 +739,19 @@ Return EXACT JSON array [{"question":"...","answer":"..."},...], no extra text.`
             updatePayload[faqKey] = JSON.parse(faqText.trim());
             console.log(`[Batch Import] FAQ to ${languageNames[lang]} done`);
           } catch (e) {
-            console.error(`[Batch Import] FAQ translation failed for ${lang}:`, e instanceof Error ? e.message : e);
+            console.error(
+              `[Batch Import] FAQ translation failed for ${lang}:`,
+              e instanceof Error ? e.message : e,
+            );
           }
         }
 
         console.log(`[Batch Import] Translation to ${languageNames[lang]} completed`);
       } catch (langError) {
-        console.error(`[Batch Import] Translation failed for ${languageNames[lang]}:`, langError instanceof Error ? langError.message : langError);
+        console.error(
+          `[Batch Import] Translation failed for ${languageNames[lang]}:`,
+          langError instanceof Error ? langError.message : langError,
+        );
       }
     }
 
@@ -668,7 +786,14 @@ export async function POST(request: NextRequest) {
   if ('response' in auth) return auth.response;
 
   try {
-    const { rows, translateAfterImport } = await request.json();
+    const { rows, translateAfterImport, siteCode } = await request.json();
+
+    if (siteCode !== 'cn' && siteCode !== 'intl') {
+      return new Response(JSON.stringify({ error: 'siteCode must be cn or intl' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!rows || !Array.isArray(rows) || rows.length === 0) {
       return new Response(JSON.stringify({ error: '无有效数据' }), {
@@ -676,6 +801,8 @@ export async function POST(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    const supabase = getSupabaseAdmin(extractAccessToken(request));
 
     // Create streaming response
     const encoder = new TextEncoder();
@@ -700,7 +827,7 @@ export async function POST(request: NextRequest) {
           // Send progress update
           controller.enqueue(encoder.encode(JSON.stringify(progress) + '\n'));
 
-          const result = await createProduct(row);
+          const result = await createProduct(row, siteCode, supabase);
 
           if (result.success) {
             progress.success++;
@@ -731,14 +858,14 @@ export async function POST(request: NextRequest) {
             // Get product name for display
             const { data: product } = await supabase
               .from('products')
-              .select('name')
+              .select('name, name_en')
               .eq('id', productId)
               .single();
 
-            progress.currentProduct = product?.name || productId;
+            progress.currentProduct = product?.name || product?.name_en || productId;
             controller.enqueue(encoder.encode(JSON.stringify(progress) + '\n'));
 
-            await translateProduct(productId);
+            await translateProduct(productId, supabase);
           }
         }
 
@@ -765,7 +892,7 @@ export async function POST(request: NextRequest) {
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
-      }
+      },
     );
   }
 }

@@ -560,21 +560,29 @@ export default function AdminProductsPage() {
   // ---- Load categories (site-filtered) ----
   useEffect(() => {
     async function loadCategories() {
-      let query = supabase
+      if (currentSite === 'global') {
+        setCategories([]);
+        return;
+      }
+
+      const { data } = await supabase
         .from('product_categories')
         .select('id, name, name_en, level, parent_id')
         .eq('is_active', true)
-        .order('display_order', { ascending: true });
-      // 非全局模式：只加载当前站点和全局分类
-      if (currentSite !== 'global') {
-        query = query.or(`site_code.eq.${currentSite},site_code.eq.global`);
-      }
-      const { data } = await query;
+        .eq('site_code', currentSite)
+        .order('sort_order', { ascending: true });
+
       if (data) {
         setCategories(data as ProductCategory[]);
       }
     }
     loadCategories();
+  }, [currentSite]);
+
+  useEffect(() => {
+    setCategoryFilter('');
+    setPage(1);
+    setSelectedKeys(new Set());
   }, [currentSite]);
 
   // ---- Load products & counts ----
@@ -1347,39 +1355,45 @@ export default function AdminProductsPage() {
               </button>
             )}
           </div>
-          <select
-            value={categoryFilter}
-            onChange={(e) => {
-              setCategoryFilter(e.target.value);
-              setPage(1);
-              setSelectedKeys(new Set());
-            }}
-            className="px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[140px]"
-          >
-            <option value="">全部分类</option>
-            {/* Render categories hierarchically: L1 > L2 > L3 */}
-            {categories
-              .filter((c) => c.level === 1)
-              .map((l1) => (
-                <React.Fragment key={l1.id}>
-                  <option value={l1.id}>{l1.name || l1.name_en}</option>
-                  {categories
-                    .filter((c) => c.parent_id === l1.id && c.level === 2)
-                    .map((l2) => (
-                      <React.Fragment key={l2.id}>
-                        <option value={l2.id}>&nbsp;&nbsp;{l2.name || l2.name_en}</option>
-                        {categories
-                          .filter((c) => c.parent_id === l2.id && c.level === 3)
-                          .map((l3) => (
-                            <option key={l3.id} value={l3.id}>
-                              &nbsp;&nbsp;&nbsp;&nbsp;{l3.name || l3.name_en}
-                            </option>
-                          ))}
-                      </React.Fragment>
-                    ))}
-                </React.Fragment>
-              ))}
-          </select>
+          {isGLOBAL ? (
+            <div className="px-3 py-2 rounded-lg bg-slate-100 text-sm text-slate-500 min-w-[180px] text-center">
+              Global 视角不提供分类筛选
+            </div>
+          ) : (
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setPage(1);
+                setSelectedKeys(new Set());
+              }}
+              className="px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[140px]"
+            >
+              <option value="">全部分类</option>
+              {/* Render categories hierarchically: L1 > L2 > L3 */}
+              {categories
+                .filter((c) => c.level === 1)
+                .map((l1) => (
+                  <React.Fragment key={l1.id}>
+                    <option value={l1.id}>{l1.name || l1.name_en}</option>
+                    {categories
+                      .filter((c) => c.parent_id === l1.id && c.level === 2)
+                      .map((l2) => (
+                        <React.Fragment key={l2.id}>
+                          <option value={l2.id}>&nbsp;&nbsp;{l2.name || l2.name_en}</option>
+                          {categories
+                            .filter((c) => c.parent_id === l2.id && c.level === 3)
+                            .map((l3) => (
+                              <option key={l3.id} value={l3.id}>
+                                &nbsp;&nbsp;&nbsp;&nbsp;{l3.name || l3.name_en}
+                              </option>
+                            ))}
+                        </React.Fragment>
+                      ))}
+                  </React.Fragment>
+                ))}
+            </select>
+          )}
           <select
             value={sortBy}
             onChange={(e) => {

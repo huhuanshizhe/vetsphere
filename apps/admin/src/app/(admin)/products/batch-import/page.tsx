@@ -1,24 +1,21 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import { apiFetch, getApiAccessToken } from '@/lib/api-client';
 import { createClient } from '@/lib/supabase/client';
+import { useSite } from '@/context/SiteContext';
 import {
   Upload,
   FileSpreadsheet,
   AlertCircle,
   CheckCircle2,
   X,
-  Download,
   Loader2,
   ArrowRight,
-  Eye,
-  Trash2,
   ChevronDown,
   ChevronUp,
   Languages,
-  Settings,
   FolderTree,
 } from 'lucide-react';
 
@@ -40,7 +37,7 @@ interface ExcelRow {
   packageQty: number;
   packageUnit: string;
   weight: number;
-  weightUnit: string;  // Weight unit from Excel (kg, g, lb)
+  weightUnit: string; // Weight unit from Excel (kg, g, lb)
   leadTime: string;
   availability: string;
   status: string;
@@ -70,6 +67,7 @@ interface CategoryMapping {
   excel_l2: string | null;
   excel_l3: string | null;
   category_id: string;
+  site_code: 'cn' | 'intl';
 }
 
 interface SystemCategory {
@@ -82,12 +80,13 @@ interface SystemCategory {
 }
 
 export default function ProductBatchImportPage() {
+  const { currentSite, isCN, isINTL, isGLOBAL } = useSite();
 
   // 防御性价格解析：处理 number/string/格式化货币等各种输入
   function parsePrice(value: any): number {
     if (typeof value === 'number') return isNaN(value) ? 0 : value;
     if (typeof value === 'string') {
-      const cleaned = value.replace(/[^0-9.\-]/g, '');
+      const cleaned = value.replace(/[^0-9.-]/g, '');
       const num = parseFloat(cleaned);
       return isNaN(num) ? 0 : num;
     }
@@ -98,7 +97,7 @@ export default function ProductBatchImportPage() {
   function parseIntSafe(value: any): number {
     if (typeof value === 'number') return isNaN(value) ? 0 : Math.round(value);
     if (typeof value === 'string') {
-      const cleaned = value.replace(/[^0-9.\-]/g, '');
+      const cleaned = value.replace(/[^0-9.-]/g, '');
       const num = parseInt(cleaned, 10);
       return isNaN(num) ? 0 : num;
     }
@@ -125,15 +124,27 @@ export default function ProductBatchImportPage() {
   const [translateAfterImport, setTranslateAfterImport] = useState(true);
 
   useEffect(() => {
+    if (currentSite === 'global') {
+      setMappings([]);
+      setSystemCategories([]);
+      return;
+    }
+
     loadMappings();
     loadSystemCategories();
-  }, []);
+  }, [currentSite]);
 
   const loadMappings = async () => {
     try {
+      if (currentSite === 'global') {
+        setMappings([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('category_mappings')
-        .select('*');
+        .select('*')
+        .eq('site_code', currentSite);
 
       if (error) throw error;
       setMappings(data || []);
@@ -144,10 +155,16 @@ export default function ProductBatchImportPage() {
 
   const loadSystemCategories = async () => {
     try {
+      if (currentSite === 'global') {
+        setSystemCategories([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('product_categories')
         .select('id, name, name_en, slug, level, parent_id')
         .eq('is_active', true)
+        .eq('site_code', currentSite)
         .order('level')
         .order('sort_order');
 
@@ -164,8 +181,11 @@ export default function ProductBatchImportPage() {
     // 尝试匹配中文名或英文名
     const matchByName = (name: string): SystemCategory | undefined => {
       if (!name) return undefined;
-      return systemCategories.find(cat =>
-        cat.name === name || cat.name_en === name || cat.slug === name.toLowerCase().replace(/\s+/g, '-')
+      return systemCategories.find(
+        (cat) =>
+          cat.name === name ||
+          cat.name_en === name ||
+          cat.slug === name.toLowerCase().replace(/\s+/g, '-'),
       );
     };
 
@@ -200,30 +220,32 @@ export default function ProductBatchImportPage() {
 
   const parseExcelFile = async (file: File) => {
     setLoading(true);
-    setProgress(prev => ({ ...prev, status: 'parsing' }));
+    setProgress((prev) => ({ ...prev, status: 'parsing' }));
 
     try {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/admin/products/parse-excel', {
+      const data = await apiFetch<{ rows?: any[] }>('/api/admin/products/parse-excel', {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Failed to parse Excel file');
-
-      const data = await response.json();
       const parsedRows = validateAndEnrichRows(data.rows || []);
       setRows(parsedRows);
       setShowPreview(true);
-      setProgress(prev => ({ ...prev, status: 'idle' }));
+      setProgress((prev) => ({ ...prev, status: 'idle' }));
     } catch (error) {
       console.error('Failed to parse Excel:', error);
-      setProgress(prev => ({
+      setProgress((prev) => ({
         ...prev,
         status: 'error',
-        errors: [{ row: 0, message: `文件解析失败: ${error instanceof Error ? error.message : '未知错误'}` }],
+        errors: [
+          {
+            row: 0,
+            message: `文件解析失败: ${error instanceof Error ? error.message : '未知错误'}`,
+          },
+        ],
       }));
     } finally {
       setLoading(false);
@@ -268,10 +290,11 @@ export default function ProductBatchImportPage() {
       let mappedCategoryId: string | undefined;
 
       // Try to find mapping (prioritize most specific match)
-      const mapping = mappings.find(m =>
-        m.excel_l1 === l1 &&
-        (m.excel_l2 === l2 || (!m.excel_l2 && !l2)) &&
-        (m.excel_l3 === l3 || (!m.excel_l3 && !l3))
+      const mapping = mappings.find(
+        (m) =>
+          m.excel_l1 === l1 &&
+          (m.excel_l2 === l2 || (!m.excel_l2 && !l2)) &&
+          (m.excel_l3 === l3 || (!m.excel_l3 && !l3)),
       );
 
       if (mapping) {
@@ -306,7 +329,7 @@ export default function ProductBatchImportPage() {
         packageQty: parseIntSafe(row['Package Qty']) || 1,
         packageUnit: row['Package Unit'] || 'Each',
         weight: parsePrice(row['Weight (kg)']),
-        weightUnit: row['Weight Unit'] || 'kg',  // Parse weight unit (kg/g/lb)
+        weightUnit: row['Weight Unit'] || 'kg', // Parse weight unit (kg/g/lb)
         leadTime: row['Lead Time'] || '2-4 weeks',
         availability: row['Availability'] || 'In Stock',
         status: row['Status'] || 'published',
@@ -324,7 +347,12 @@ export default function ProductBatchImportPage() {
   };
 
   const handleImport = async () => {
-    const validRows = rows.filter(r => r._errors.length === 0);
+    if (isGLOBAL) {
+      alert('请先切换到中国站或国际站，再执行批量导入。');
+      return;
+    }
+
+    const validRows = rows.filter((r) => r._errors.length === 0);
     if (validRows.length === 0) {
       alert('没有有效数据可导入');
       return;
@@ -341,12 +369,17 @@ export default function ProductBatchImportPage() {
     });
 
     try {
+      const token = await getApiAccessToken();
       const response = await fetch('/api/admin/products/batch-import', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           rows: validRows,
           translateAfterImport,
+          siteCode: currentSite,
         }),
       });
 
@@ -366,7 +399,7 @@ export default function ProductBatchImportPage() {
           for (const line of lines) {
             try {
               const update = JSON.parse(line);
-              setProgress(prev => ({
+              setProgress((prev) => ({
                 ...prev,
                 ...update,
               }));
@@ -378,10 +411,13 @@ export default function ProductBatchImportPage() {
       }
     } catch (error) {
       console.error('Import failed:', error);
-      setProgress(prev => ({
+      setProgress((prev) => ({
         ...prev,
         status: 'error',
-        errors: [...prev.errors, { row: 0, message: `导入失败: ${error instanceof Error ? error.message : '未知错误'}` }],
+        errors: [
+          ...prev.errors,
+          { row: 0, message: `导入失败: ${error instanceof Error ? error.message : '未知错误'}` },
+        ],
       }));
     } finally {
       setLoading(false);
@@ -415,8 +451,8 @@ export default function ProductBatchImportPage() {
     setExpandedRows(newExpanded);
   };
 
-  const validCount = rows.filter(r => r._errors.length === 0).length;
-  const errorCount = rows.filter(r => r._errors.length > 0).length;
+  const validCount = rows.filter((r) => r._errors.length === 0).length;
+  const errorCount = rows.filter((r) => r._errors.length > 0).length;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -426,9 +462,26 @@ export default function ProductBatchImportPage() {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Upload className="w-7 h-7 text-emerald-600" />
             产品批量导入
+            {isCN && (
+              <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                中国站
+              </span>
+            )}
+            {isINTL && (
+              <span className="text-sm font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
+                国际站
+              </span>
+            )}
+            {isGLOBAL && (
+              <span className="text-sm font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                需切换站点
+              </span>
+            )}
           </h1>
           <p className="text-slate-500 mt-1">
-            上传Excel文件批量导入产品数据，导入后产品默认为草稿状态
+            {isGLOBAL
+              ? '批量导入必须在具体站点内执行，导入的产品会自动绑定到当前站点。'
+              : '上传Excel文件批量导入产品数据，导入后产品默认为草稿状态，并自动绑定当前站点。'}
           </p>
         </div>
         <Link
@@ -440,8 +493,15 @@ export default function ProductBatchImportPage() {
         </Link>
       </div>
 
+      {isGLOBAL && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Global 视角不允许直接导入产品。请切换到中国站或国际站后，再上传
+          Excel，并为当前站点使用对应的分类映射。
+        </div>
+      )}
+
       {/* Quick Links */}
-      {!showPreview && (
+      {!isGLOBAL && !showPreview && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
@@ -449,10 +509,13 @@ export default function ProductBatchImportPage() {
               <p className="font-medium mb-1">导入前请先配置分类映射</p>
               <p>
                 Excel中的分类名称需要映射到系统分类，请先前往{' '}
-                <Link href="/products/batch-import/category-mappings" className="underline font-medium hover:text-amber-900">
+                <Link
+                  href="/products/batch-import/category-mappings"
+                  className="underline font-medium hover:text-amber-900"
+                >
                   分类映射配置
-                </Link>
-                {' '}页面设置映射关系。
+                </Link>{' '}
+                页面设置映射关系。
               </p>
             </div>
           </div>
@@ -460,19 +523,15 @@ export default function ProductBatchImportPage() {
       )}
 
       {/* Upload Area */}
-      {!showPreview && (
+      {!isGLOBAL && !showPreview && (
         <div className="bg-white rounded-xl border border-slate-200 p-8">
           <div
             onClick={() => fileInputRef.current?.click()}
             className="border-2 border-dashed border-slate-300 rounded-xl p-12 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/50 transition-all"
           >
             <FileSpreadsheet className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-            <p className="text-lg font-medium text-slate-700 mb-2">
-              点击上传Excel文件
-            </p>
-            <p className="text-sm text-slate-500">
-              支持 .xlsx 和 .xls 格式，单次最多导入100条数据
-            </p>
+            <p className="text-lg font-medium text-slate-700 mb-2">点击上传Excel文件</p>
+            <p className="text-sm text-slate-500">支持 .xlsx 和 .xls 格式，单次最多导入100条数据</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -494,7 +553,7 @@ export default function ProductBatchImportPage() {
       )}
 
       {/* Preview */}
-      {showPreview && rows.length > 0 && (
+      {!isGLOBAL && showPreview && rows.length > 0 && (
         <div className="space-y-6">
           {/* Summary */}
           <div className="grid grid-cols-4 gap-4">
@@ -526,9 +585,7 @@ export default function ProductBatchImportPage() {
                 className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
               />
               <Languages className="w-5 h-5 text-slate-500" />
-              <span className="text-sm text-slate-700">
-                导入后自动翻译到中文/日文/泰文
-              </span>
+              <span className="text-sm text-slate-700">导入后自动翻译到中文/日文/泰文</span>
             </label>
           </div>
 
@@ -591,9 +648,7 @@ export default function ProductBatchImportPage() {
                 />
               </div>
               {progress.currentProduct && (
-                <p className="text-sm text-slate-500 mt-2 truncate">
-                  {progress.currentProduct}
-                </p>
+                <p className="text-sm text-slate-500 mt-2 truncate">{progress.currentProduct}</p>
               )}
             </div>
           )}
@@ -667,8 +722,7 @@ export default function ProductBatchImportPage() {
                       </div>
                       <div className="text-sm text-slate-500 truncate">
                         {row.brand && `${row.brand} · `}
-                        {row.sku && `SKU: ${row.sku} · `}
-                        ${row.sellingPriceUsd}
+                        {row.sku && `SKU: ${row.sku} · `}${row.sellingPriceUsd}
                       </div>
                     </div>
                   </div>
@@ -678,7 +732,9 @@ export default function ProductBatchImportPage() {
                       {row._errors.length > 0 && (
                         <div className="p-3 bg-red-50 rounded-lg">
                           {row._errors.map((err, i) => (
-                            <p key={i} className="text-red-600">{err}</p>
+                            <p key={i} className="text-red-600">
+                              {err}
+                            </p>
                           ))}
                         </div>
                       )}
@@ -691,7 +747,9 @@ export default function ProductBatchImportPage() {
                         </div>
                         <div>
                           <span className="text-slate-500">映射:</span>{' '}
-                          <span className={row._mappedCategoryId ? 'text-emerald-600' : 'text-red-600'}>
+                          <span
+                            className={row._mappedCategoryId ? 'text-emerald-600' : 'text-red-600'}
+                          >
                             {row._mappedCategoryId ? '已映射' : '未映射'}
                           </span>
                         </div>
@@ -703,9 +761,7 @@ export default function ProductBatchImportPage() {
                         </div>
                         <div>
                           <span className="text-slate-500">规格:</span>{' '}
-                          <span className="text-slate-700">
-                            {row.attributes.length} 项
-                          </span>
+                          <span className="text-slate-700">{row.attributes.length} 项</span>
                         </div>
                       </div>
                     </div>

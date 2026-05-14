@@ -1,17 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Save,
-  X,
-  ArrowRight,
-  FolderTree,
-  AlertCircle,
-} from 'lucide-react';
+import { useSite } from '@/context/SiteContext';
+import { Plus, Pencil, Trash2, Save, X, ArrowRight, FolderTree, AlertCircle } from 'lucide-react';
 
 interface CategoryMapping {
   id: string;
@@ -19,6 +11,7 @@ interface CategoryMapping {
   excel_l2: string | null;
   excel_l3: string | null;
   category_id: string | null;
+  site_code: 'cn' | 'intl';
   created_at: string;
   category?: {
     id: string;
@@ -51,6 +44,7 @@ const initialFormData: FormData = {
 
 export default function CategoryMappingsPage() {
   const supabase = createClient();
+  const { currentSite, isCN, isINTL, isGLOBAL } = useSite();
   const [mappings, setMappings] = useState<CategoryMapping[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,16 +55,29 @@ export default function CategoryMappingsPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
+    if (currentSite === 'global') {
+      setMappings([]);
+      setCategories([]);
+      return;
+    }
+
     loadData();
-  }, []);
+  }, [currentSite]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      if (currentSite === 'global') {
+        setMappings([]);
+        setCategories([]);
+        return;
+      }
+
       const [mappingsRes, categoriesRes] = await Promise.all([
         supabase
           .from('category_mappings')
           .select('*, category:product_categories(id, name, slug)')
+          .eq('site_code', currentSite)
           .order('excel_l1')
           .order('excel_l2')
           .order('excel_l3'),
@@ -78,6 +85,7 @@ export default function CategoryMappingsPage() {
           .from('product_categories')
           .select('id, name, slug, level, parent_id')
           .eq('is_active', true)
+          .eq('site_code', currentSite)
           .order('level')
           .order('sort_order'),
       ]);
@@ -95,6 +103,11 @@ export default function CategoryMappingsPage() {
   };
 
   const handleAddMapping = () => {
+    if (isGLOBAL) {
+      alert('请先切换到中国站或国际站，再维护分类映射。');
+      return;
+    }
+
     setEditingMapping(null);
     setFormData(initialFormData);
     setShowModal(true);
@@ -115,10 +128,7 @@ export default function CategoryMappingsPage() {
     if (!confirm('确定要删除此映射吗？')) return;
 
     try {
-      const { error } = await supabase
-        .from('category_mappings')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('category_mappings').delete().eq('id', id);
 
       if (error) throw error;
       await loadData();
@@ -129,6 +139,11 @@ export default function CategoryMappingsPage() {
   };
 
   const handleSaveMapping = async () => {
+    if (currentSite === 'global') {
+      alert('请先切换到中国站或国际站，再保存分类映射。');
+      return;
+    }
+
     if (!formData.excel_l1.trim()) {
       alert('请输入Excel一级分类');
       return;
@@ -145,6 +160,7 @@ export default function CategoryMappingsPage() {
         excel_l2: formData.excel_l2.trim() || null,
         excel_l3: formData.excel_l3.trim() || null,
         category_id: formData.category_id,
+        site_code: currentSite,
       };
 
       let error;
@@ -155,9 +171,7 @@ export default function CategoryMappingsPage() {
           .eq('id', editingMapping.id);
         error = result.error;
       } else {
-        const result = await supabase
-          .from('category_mappings')
-          .insert(payload);
+        const result = await supabase.from('category_mappings').insert(payload);
         error = result.error;
       }
 
@@ -181,17 +195,18 @@ export default function CategoryMappingsPage() {
   };
 
   // Filter mappings by search term
-  const filteredMappings = mappings.filter(m => 
-    m.excel_l1.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (m.excel_l2?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (m.excel_l3?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (m.category?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredMappings = mappings.filter(
+    (m) =>
+      m.excel_l1.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.excel_l2?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.excel_l3?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.category?.name?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Group categories by level for the select dropdown
   const getCategoryPath = (cat: Category): string => {
     if (cat.level === 1) return cat.name;
-    const parent = categories.find(c => c.id === cat.parent_id);
+    const parent = categories.find((c) => c.id === cat.parent_id);
     if (parent) return `${parent.name} > ${cat.name}`;
     return cat.name;
   };
@@ -203,11 +218,35 @@ export default function CategoryMappingsPage() {
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
           <FolderTree className="w-7 h-7 text-emerald-600" />
           Excel分类映射管理
+          {isCN && (
+            <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+              中国站
+            </span>
+          )}
+          {isINTL && (
+            <span className="text-sm font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
+              国际站
+            </span>
+          )}
+          {isGLOBAL && (
+            <span className="text-sm font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+              需切换站点
+            </span>
+          )}
         </h1>
         <p className="text-slate-500 mt-1">
-          配置Excel导入时的分类名称到系统分类的映射关系
+          {isGLOBAL
+            ? '分类映射已经改为站点独立，请先切换到中国站或国际站。'
+            : '配置当前站点下 Excel 分类名称到系统分类的映射关系。'}
         </p>
       </div>
+
+      {isGLOBAL && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Global 视角不允许维护分类映射。CN 与 INTL 的 Excel
+          分类路径必须分别配置，避免导入时跨站污染。
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-6">
@@ -219,13 +258,12 @@ export default function CategoryMappingsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-64"
           />
-          <span className="text-sm text-slate-500">
-            共 {mappings.length} 条映射
-          </span>
+          <span className="text-sm text-slate-500">共 {mappings.length} 条映射</span>
         </div>
         <button
           onClick={handleAddMapping}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+          disabled={isGLOBAL}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           <Plus className="w-5 h-5" />
           新增映射
@@ -241,17 +279,27 @@ export default function CategoryMappingsPage() {
         ) : filteredMappings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-500">
             <AlertCircle className="w-12 h-12 mb-4 text-slate-300" />
-            <p>暂无映射数据</p>
-            <p className="text-sm mt-1">点击"新增映射"添加分类映射关系</p>
+            <p>{isGLOBAL ? '请切换到具体站点查看映射' : '暂无映射数据'}</p>
+            <p className="text-sm mt-1">
+              {isGLOBAL ? '当前页面只展示站点内映射' : '点击"新增映射"添加分类映射关系'}
+            </p>
           </div>
         ) : (
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Excel分类路径</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 w-20">映射到</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">系统分类</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700 w-32">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                  Excel分类路径
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 w-20">
+                  映射到
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                  系统分类
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700 w-32">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -332,7 +380,7 @@ export default function CategoryMappingsPage() {
                 <input
                   type="text"
                   value={formData.excel_l1}
-                  onChange={(e) => setFormData(prev => ({ ...prev, excel_l1: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, excel_l1: e.target.value }))}
                   placeholder="如：防护用品"
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -346,7 +394,7 @@ export default function CategoryMappingsPage() {
                 <input
                   type="text"
                   value={formData.excel_l2}
-                  onChange={(e) => setFormData(prev => ({ ...prev, excel_l2: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, excel_l2: e.target.value }))}
                   placeholder="如：手套"
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -360,7 +408,7 @@ export default function CategoryMappingsPage() {
                 <input
                   type="text"
                   value={formData.excel_l3}
-                  onChange={(e) => setFormData(prev => ({ ...prev, excel_l3: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, excel_l3: e.target.value }))}
                   placeholder="如：丁腈手套"
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -373,15 +421,19 @@ export default function CategoryMappingsPage() {
                 </label>
                 <select
                   value={formData.category_id}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category_id: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, category_id: e.target.value }))
+                  }
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">请选择分类</option>
-                  {categories.filter(c => c.level >= 2).map(cat => (
-                    <option key={cat.id} value={cat.id}>
-                      {getCategoryPath(cat)}
-                    </option>
-                  ))}
+                  {categories
+                    .filter((c) => c.level >= 2)
+                    .map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {getCategoryPath(cat)}
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>

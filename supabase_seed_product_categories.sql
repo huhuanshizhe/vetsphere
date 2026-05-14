@@ -285,11 +285,69 @@ INSERT INTO public.product_categories (id, name, name_en, slug, level, parent_id
 ON CONFLICT (id) DO NOTHING;
 
 -- ==========================================
+-- 站点独立分类树复制
+-- 说明：保留 global 作为历史基线，同时自动生成 CN / INTL 两套独立分类树
+-- ==========================================
+
+WITH site_targets AS (
+  SELECT 'cn'::text AS site_code
+  UNION ALL
+  SELECT 'intl'::text AS site_code
+), global_categories AS (
+  SELECT id, name, name_en, slug, level, parent_id, icon, sort_order, is_active
+  FROM public.product_categories
+  WHERE site_code = 'global'
+), prepared AS (
+  SELECT
+    format('cat-%s-%s', targets.site_code, regexp_replace(gc.id, '^cat-', '')) AS id,
+    gc.name,
+    gc.name_en,
+    gc.slug,
+    gc.level,
+    CASE
+      WHEN gc.parent_id IS NULL THEN NULL
+      ELSE format('cat-%s-%s', targets.site_code, regexp_replace(gc.parent_id, '^cat-', ''))
+    END AS parent_id,
+    gc.icon,
+    gc.sort_order,
+    targets.site_code,
+    gc.is_active
+  FROM global_categories gc
+  CROSS JOIN site_targets targets
+)
+INSERT INTO public.product_categories (
+  id,
+  name,
+  name_en,
+  slug,
+  level,
+  parent_id,
+  icon,
+  sort_order,
+  site_code,
+  is_active
+)
+SELECT
+  prepared.id,
+  prepared.name,
+  prepared.name_en,
+  prepared.slug,
+  prepared.level,
+  prepared.parent_id,
+  prepared.icon,
+  prepared.sort_order,
+  prepared.site_code,
+  prepared.is_active
+FROM prepared
+ON CONFLICT (id) DO NOTHING;
+
+-- ==========================================
 -- 验证
 -- ==========================================
 SELECT 
+  site_code,
   level,
   COUNT(*) as count
 FROM public.product_categories
-GROUP BY level
-ORDER BY level;
+GROUP BY site_code, level
+ORDER BY site_code, level;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useSite } from '@/context/SiteContext';
 import {
@@ -9,7 +9,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  GripVertical,
   FolderOpen,
   Eye,
   EyeOff,
@@ -46,7 +45,7 @@ const initialFormData: CategoryFormData = {
   level: 1,
   icon: '',
   description: '',
-  site_code: 'global',
+  site_code: 'cn',
 };
 
 export default function ProductCategoriesPage() {
@@ -62,34 +61,35 @@ export default function ProductCategoriesPage() {
 
   useEffect(() => {
     loadCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSite]);
 
   const loadCategories = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      let query = supabase
-        .from('product_categories')
-        .select('*')
-        .order('level')
-        .order('sort_order');
-
-      // 非全局模式：只加载当前站点和全局分类
-      if (currentSite !== 'global') {
-        query = query.or(`site_code.eq.${currentSite},site_code.eq.global`);
+      if (currentSite === 'global') {
+        setCategories([]);
+        if (!silent) {
+          setExpandedIds(new Set());
+        }
+        return;
       }
 
-      const { data, error } = await query;
+      const { data, error } = await supabase
+        .from('product_categories')
+        .select('*')
+        .eq('site_code', currentSite)
+        .order('level')
+        .order('sort_order');
 
       if (error) throw error;
 
       // Build tree structure
       const tree = buildTree(data || []);
       setCategories(tree);
-      
+
       // Auto-expand level 1 only on initial load
       if (!silent) {
-        const level1Ids = (data || []).filter(c => c.level === 1).map(c => c.id);
+        const level1Ids = (data || []).filter((c) => c.level === 1).map((c) => c.id);
         setExpandedIds(new Set(level1Ids));
       }
     } catch (error) {
@@ -104,12 +104,12 @@ export default function ProductCategoriesPage() {
     const roots: Category[] = [];
 
     // First pass: create map
-    flatList.forEach(item => {
+    flatList.forEach((item) => {
       map.set(item.id, { ...item, children: [] });
     });
 
     // Second pass: build tree
-    flatList.forEach(item => {
+    flatList.forEach((item) => {
       const node = map.get(item.id)!;
       if (item.parent_id && map.has(item.parent_id)) {
         const parent = map.get(item.parent_id)!;
@@ -123,7 +123,7 @@ export default function ProductCategoriesPage() {
     // Sort children
     const sortChildren = (nodes: Category[]) => {
       nodes.sort((a, b) => a.sort_order - b.sort_order);
-      nodes.forEach(node => {
+      nodes.forEach((node) => {
         if (node.children && node.children.length > 0) {
           sortChildren(node.children);
         }
@@ -145,12 +145,17 @@ export default function ProductCategoriesPage() {
   };
 
   const handleAddCategory = (parentId: string | null = null, level: number = 1) => {
+    if (isGLOBAL) {
+      alert('请先切换到中国站或国际站，再管理产品分类。');
+      return;
+    }
+
     setEditingCategory(null);
     setFormData({
       ...initialFormData,
       parent_id: parentId,
       level: level,
-      site_code: currentSite === 'global' ? 'global' : currentSite,
+      site_code: currentSite,
     });
     setShowModal(true);
   };
@@ -164,7 +169,7 @@ export default function ProductCategoriesPage() {
       level: category.level,
       icon: category.icon || '',
       description: category.description || '',
-      site_code: category.site_code || 'global',
+      site_code: category.site_code || currentSite,
     });
     setShowModal(true);
   };
@@ -175,10 +180,7 @@ export default function ProductCategoriesPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('product_categories')
-        .delete()
-        .eq('id', category.id);
+      const { error } = await supabase.from('product_categories').delete().eq('id', category.id);
 
       if (error) throw error;
       loadCategories(true);
@@ -211,13 +213,19 @@ export default function ProductCategoriesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isGLOBAL) {
+      alert('请先切换到中国站或国际站，再保存产品分类。');
+      return;
+    }
+
     setSaving(true);
 
     try {
       const slug = formData.slug || generateSlug(formData.name);
       const id = editingCategory?.id || `cat-${slug}-${Date.now()}`;
 
-      const siteCode = isGLOBAL ? formData.site_code : currentSite;
+      const siteCode = currentSite;
 
       if (editingCategory) {
         const { error } = await supabase
@@ -237,7 +245,8 @@ export default function ProductCategoriesPage() {
         let siblingsQuery = supabase
           .from('product_categories')
           .select('sort_order')
-          .eq('level', formData.level);
+          .eq('level', formData.level)
+          .eq('site_code', siteCode);
         if (formData.parent_id) {
           siblingsQuery = siblingsQuery.eq('parent_id', formData.parent_id);
         } else {
@@ -247,21 +256,19 @@ export default function ProductCategoriesPage() {
 
         const maxOrder = siblings?.reduce((max, s) => Math.max(max, s.sort_order || 0), 0) || 0;
 
-        const { error } = await supabase
-          .from('product_categories')
-          .insert({
-            id: id,
-            name: formData.name,
-            name_en: slug,
-            slug: slug,
-            parent_id: formData.parent_id,
-            level: formData.level,
-            icon: formData.icon || null,
-            description: formData.description || null,
-            site_code: siteCode,
-            sort_order: maxOrder + 1,
-            is_active: true,
-          });
+        const { error } = await supabase.from('product_categories').insert({
+          id: id,
+          name: formData.name,
+          name_en: slug,
+          slug: slug,
+          parent_id: formData.parent_id,
+          level: formData.level,
+          icon: formData.icon || null,
+          description: formData.description || null,
+          site_code: siteCode,
+          sort_order: maxOrder + 1,
+          is_active: true,
+        });
 
         if (error) throw error;
       }
@@ -270,7 +277,8 @@ export default function ProductCategoriesPage() {
       loadCategories(true);
     } catch (error) {
       console.error('Failed to save category:', error);
-      const msg = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
+      const msg =
+        error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
       alert('保存失败：' + msg);
     } finally {
       setSaving(false);
@@ -310,7 +318,9 @@ export default function ProductCategoriesPage() {
           </button>
 
           {/* Icon */}
-          <div className={`w-8 h-8 rounded-lg ${levelBgs[category.level - 1]} flex items-center justify-center`}>
+          <div
+            className={`w-8 h-8 rounded-lg ${levelBgs[category.level - 1]} flex items-center justify-center`}
+          >
             {category.icon ? (
               <span className="text-lg">{category.icon}</span>
             ) : (
@@ -352,11 +362,7 @@ export default function ProductCategoriesPage() {
               }`}
               title={category.is_active ? '禁用' : '启用'}
             >
-              {category.is_active ? (
-                <Eye className="w-4 h-4" />
-              ) : (
-                <EyeOff className="w-4 h-4" />
-              )}
+              {category.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </button>
             <button
               onClick={() => handleEditCategory(category)}
@@ -377,9 +383,7 @@ export default function ProductCategoriesPage() {
 
         {/* Children */}
         {hasChildren && isExpanded && (
-          <div>
-            {category.children!.map(child => renderCategory(child, depth + 1))}
-          </div>
+          <div>{category.children!.map((child) => renderCategory(child, depth + 1))}</div>
         )}
       </div>
     );
@@ -401,27 +405,50 @@ export default function ProductCategoriesPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">
               产品分类管理
-              {isCN && <span className="ml-2 text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">中国站</span>}
-              {isINTL && <span className="ml-2 text-sm font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">国际站</span>}
+              {isCN && (
+                <span className="ml-2 text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                  中国站
+                </span>
+              )}
+              {isINTL && (
+                <span className="ml-2 text-sm font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
+                  国际站
+                </span>
+              )}
+              {isGLOBAL && (
+                <span className="ml-2 text-sm font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                  需切换站点
+                </span>
+              )}
             </h1>
-            <p className="text-sm text-slate-500 mt-1">支持三级分类结构，可拖拽排序</p>
+            <p className="text-sm text-slate-500 mt-1">
+              {isGLOBAL
+                ? '分类设计已改为站点独立。请先切换到中国站或国际站后再维护。'
+                : '当前仅维护本地站点分类树，CN 与 INTL 完全独立。'}
+            </p>
           </div>
           <button
             onClick={() => handleAddCategory()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            disabled={isGLOBAL}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             <Plus className="w-4 h-4" />
             添加一级分类
           </button>
         </div>
 
+        {isGLOBAL && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Global 视图仅用于跨站点总览。产品分类现在必须在具体站点内分别维护，避免 CN / INTL
+            再次共用同一套分类树。
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <p className="text-sm text-slate-500">一级分类</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {categories.length}
-            </p>
+            <p className="text-2xl font-bold text-blue-600">{categories.length}</p>
           </div>
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <p className="text-sm text-slate-500">二级分类</p>
@@ -435,7 +462,7 @@ export default function ProductCategoriesPage() {
               {categories.reduce(
                 (sum, c) =>
                   sum + (c.children?.reduce((s, sc) => s + (sc.children?.length || 0), 0) || 0),
-                0
+                0,
               )}
             </p>
           </div>
@@ -449,11 +476,13 @@ export default function ProductCategoriesPage() {
           {categories.length === 0 ? (
             <div className="p-12 text-center">
               <FolderOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500">暂无分类，点击上方按钮添加</p>
+              <p className="text-slate-500">
+                {isGLOBAL ? '请切换到中国站或国际站查看分类树' : '暂无分类，点击上方按钮添加'}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {categories.map(category => renderCategory(category))}
+              {categories.map((category) => renderCategory(category))}
             </div>
           )}
         </div>
@@ -463,33 +492,27 @@ export default function ProductCategoriesPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold mb-4">
-              {editingCategory ? '编辑分类' : '添加分类'}
-            </h3>
+            <h3 className="text-lg font-bold mb-4">{editingCategory ? '编辑分类' : '添加分类'}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  分类名称 *
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">分类名称 *</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   placeholder="例如：耗材"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  SEO Slug *
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">SEO Slug *</label>
                 <input
                   type="text"
                   required
                   value={formData.slug}
-                  onChange={e => setFormData({ ...formData, slug: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   placeholder="例如：consumables"
                 />
@@ -502,42 +525,22 @@ export default function ProductCategoriesPage() {
                 <input
                   type="text"
                   value={formData.icon}
-                  onChange={e => setFormData({ ...formData, icon: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   placeholder="例如：🧤"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  描述
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">描述</label>
                 <textarea
                   value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   rows={2}
                   placeholder="分类简介..."
                 />
               </div>
-
-              {isGLOBAL && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    站点
-                  </label>
-                  <select
-                    value={formData.site_code}
-                    onChange={e => setFormData({ ...formData, site_code: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  >
-                    <option value="global">全球 (CN + INTL)</option>
-                    <option value="cn">仅中国站</option>
-                    <option value="intl">仅国际站</option>
-                  </select>
-                </div>
-              )}
-
               <div className="flex gap-2 justify-end pt-4">
                 <button
                   type="button"

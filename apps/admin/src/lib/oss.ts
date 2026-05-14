@@ -7,6 +7,28 @@ import OSS from 'ali-oss';
 // Lazy-initialized OSS client to avoid build-time errors when env vars are missing
 let _ossClient: OSS | null = null;
 
+const DEFAULT_OSS_TIMEOUT_MS = 5 * 60 * 1000;
+const DEFAULT_OSS_TIMEOUT_RETRIES = 1;
+
+function resolveOSSUploadTimeout(): number {
+  const rawTimeout = Number(process.env.OSS_TIMEOUT_MS || DEFAULT_OSS_TIMEOUT_MS);
+  return Number.isFinite(rawTimeout) && rawTimeout > 0 ? rawTimeout : DEFAULT_OSS_TIMEOUT_MS;
+}
+
+function resolveOSSUploadRetryCount(): number {
+  const rawRetries = Number(process.env.OSS_TIMEOUT_RETRIES || DEFAULT_OSS_TIMEOUT_RETRIES);
+  return Number.isFinite(rawRetries) && rawRetries >= 0
+    ? Math.trunc(rawRetries)
+    : DEFAULT_OSS_TIMEOUT_RETRIES;
+}
+
+function isOSSResponseTimeoutError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /Response timeout|ResponseTimeoutError|response timeout/i.test(error.message)
+  );
+}
+
 function getOSSClient(): OSS {
   if (!_ossClient) {
     _ossClient = new OSS({
@@ -15,6 +37,7 @@ function getOSSClient(): OSS {
       accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || '',
       bucket: process.env.OSS_BUCKET || 'vertax',
       endpoint: process.env.OSS_ENDPOINT || 'https://oss-cn-hangzhou.aliyuncs.com',
+      timeout: resolveOSSUploadTimeout(),
     });
   }
   return _ossClient;
@@ -51,14 +74,32 @@ export async function uploadBufferToOSS(
   const prefix = options.prefix || OSS_PREFIX;
   const ossPath = buildObjectPath(prefix, options.entityId, extension);
 
-  const result = await getOSSClient().put(ossPath, buffer, {
-    headers: {
-      'Content-Type': contentType,
-    },
-  });
+  let lastError: unknown = null;
+  const maxRetries = resolveOSSUploadRetryCount();
 
-  console.log(`[OSS] Uploaded buffer: ${ossPath}`);
-  return result.url;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const result = await getOSSClient().put(ossPath, buffer, {
+        headers: {
+          'Content-Type': contentType,
+        },
+      });
+
+      console.log(`[OSS] Uploaded buffer: ${ossPath}`);
+      return result.url;
+    } catch (error) {
+      lastError = error;
+      if (!isOSSResponseTimeoutError(error) || attempt === maxRetries) {
+        throw error;
+      }
+
+      console.warn(
+        `[OSS] Upload timed out for ${ossPath}, retrying (${attempt + 1}/${maxRetries})`,
+      );
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('OSS upload failed');
 }
 
 /**
