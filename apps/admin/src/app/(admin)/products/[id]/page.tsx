@@ -502,19 +502,46 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     setIsDirty(true);
   }, []);
 
+  const uploadImageThroughAdminApi = useCallback(async (file: File, type: string) => {
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', type);
+
+      try {
+        return await apiFetch<{ url: string }>('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+      } catch (err) {
+        lastError = err;
+        const message = getErrorMessage(err);
+        const isNetworkError = /Failed to fetch|NetworkError|Load failed/i.test(message);
+        if (!isNetworkError || attempt === 1) {
+          break;
+        }
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error('图片上传失败');
+  }, []);
+
+  const getUploadFailureMessage = useCallback((err: unknown) => {
+    const message = getErrorMessage(err);
+    if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+      return '图片上传请求未成功到达服务端，请重试；若仍失败，请检查生产环境 admin 域名下 /api/upload 的反向代理与 HTTPS 配置。';
+    }
+    return message || '图片上传失败，请重试';
+  }, []);
+
   // 上传SKU图片
   const uploadSkuImage = useCallback(
     async (skuId: string, file: File) => {
       setUploadingSkuImageIds((prev) => new Set(prev).add(skuId));
       try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', 'product');
-
-        const data = await apiFetch<{ url: string }>('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
+        const data = await uploadImageThroughAdminApi(file, 'product');
 
         setProductSkus((prev) =>
           prev.map((sku) => {
@@ -527,7 +554,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         setIsDirty(true);
         success('SKU图片上传成功');
       } catch (err) {
-        toastError(getErrorMessage(err) || '图片上传失败，请重试');
+        toastError(getUploadFailureMessage(err));
       } finally {
         setUploadingSkuImageIds((prev) => {
           const next = new Set(prev);
@@ -536,7 +563,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         });
       }
     },
-    [success, toastError],
+    [getUploadFailureMessage, success, toastError, uploadImageThroughAdminApi],
   );
 
   const updateProductImages = useCallback(
@@ -569,14 +596,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         const uploadedImages: ProductImageRecord[] = [];
 
         for (const file of fileList) {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('type', 'product-gallery');
-
-          const data = await apiFetch<{ url: string }>('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
+          const data = await uploadImageThroughAdminApi(file, 'product-gallery');
 
           uploadedImages.push({
             id: createTempImageId('temp-image'),
@@ -605,12 +625,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             : `商品图片上传成功，已新增 ${fileList.length} 张图片`,
         );
       } catch (err) {
-        toastError(getErrorMessage(err) || '商品图片上传失败');
+        toastError(getUploadFailureMessage(err));
       } finally {
         setUploadingProductImages(false);
       }
     },
-    [success, toastError, updateProductImages],
+    [getUploadFailureMessage, success, toastError, updateProductImages, uploadImageThroughAdminApi],
   );
 
   const setMainProductImage = useCallback(
@@ -875,6 +895,17 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     }
   }
 
+  const buildPersistPayload = useCallback(
+    (overrides: Record<string, unknown> = {}) => ({
+      ...editForm,
+      variant_attributes: variantAttributes,
+      skus: productSkus,
+      ...overrides,
+      updated_at: new Date().toISOString(),
+    }),
+    [editForm, productSkus, variantAttributes],
+  );
+
   // 保存
   async function performSave(options: { skipPostSaveRefresh?: boolean } = {}) {
     const { skipPostSaveRefresh = false } = options;
@@ -895,10 +926,11 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
     try {
       let newProductId = productId;
+      const basePersistPayload = buildPersistPayload();
 
       // 1. 保存产品基本信息
       if (isNewProduct) {
-        const { id: _unusedId, ...createPayload } = editForm || {};
+        const { id: _unusedId, ...createPayload } = basePersistPayload || {};
         // 新建产品：使用 POST 创建
         const newData = await apiFetch<any>(`/api/v1/admin/products`, {
           method: 'POST',
@@ -910,6 +942,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           }),
         });
         newProductId = newData.id;
+
+        await apiFetch(`/api/v1/admin/products/${newProductId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(buildPersistPayload({ id: newProductId })),
+        });
+
         // 常规保存时跳转到新产品编辑页；保存后离开则跳过
         if (!skipPostSaveRefresh) {
           router.replace(`/products/${newProductId}`);
@@ -918,51 +956,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         // 更新产品：使用 PATCH
         await apiFetch(`/api/v1/admin/products/${productId}`, {
           method: 'PATCH',
-          body: JSON.stringify({ ...editForm, updated_at: new Date().toISOString() }),
+          body: JSON.stringify(basePersistPayload),
         });
-      }
-
-      // 2. 保存规格属性（先删除旧的，再插入新的）
-      if (variantAttributes.length > 0) {
-        // 删除旧的规格属性
-        await supabase.from('product_variant_attributes').delete().eq('product_id', newProductId);
-
-        // 插入新的规格属性
-        const attrsToInsert = variantAttributes.map((attr, idx) => ({
-          product_id: newProductId,
-          attribute_name: attr.attribute_name,
-          attribute_values: attr.attribute_values,
-          sort_order: idx,
-        }));
-
-        const { error: attrsError } = await supabase
-          .from('product_variant_attributes')
-          .insert(attrsToInsert);
-
-        if (attrsError) throw attrsError;
-      } else if (!isNewProduct) {
-        // 如果没有规格属性，删除所有旧的（仅更新模式）
-        await supabase.from('product_variant_attributes').delete().eq('product_id', newProductId);
-      }
-
-      // 3. 保存 SKU 数据（销售定价、规格参数、图片等）
-      if (productSkus.length > 0) {
-        for (const sku of productSkus) {
-          const { error: skuUpdateError } = await supabase
-            .from('product_skus')
-            .update({
-              selling_price: normalizeNullableNumber(sku.selling_price),
-              selling_price_usd: normalizeNullableNumber(sku.selling_price_usd),
-              selling_price_jpy: normalizeNullableNumber(sku.selling_price_jpy),
-              selling_price_thb: normalizeNullableNumber(sku.selling_price_thb),
-              stock_quantity: normalizeNonNegativeInteger(sku.stock_quantity),
-              specs: sku.specs || null,
-              image_url: sku.image_url || null,
-            })
-            .eq('id', sku.id);
-
-          if (skuUpdateError) throw skuUpdateError;
-        }
       }
 
       setSaveSuccess(true);
@@ -1011,38 +1006,15 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     setSaveError(null);
     try {
       console.log('[Publish] Step 1: Saving product...');
-      // 1. 保存产品基本信息
+      // 1. 保存产品基本信息、规格属性与 SKU
       await apiFetch(`/api/v1/admin/products/${productId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ ...editForm, updated_at: new Date().toISOString() }),
+        body: JSON.stringify(buildPersistPayload()),
       });
       console.log('[Publish] Step 1 complete');
 
-      console.log('[Publish] Step 2: Saving variants...');
-      // 2. 保存规格属性
-      if (variantAttributes.length > 0) {
-        await supabase.from('product_variant_attributes').delete().eq('product_id', productId);
-
-        const attrsToInsert = variantAttributes.map((attr, idx) => ({
-          product_id: productId,
-          attribute_name: attr.attribute_name,
-          attribute_values: attr.attribute_values,
-          sort_order: idx,
-        }));
-
-        const { error: attrsError } = await supabase
-          .from('product_variant_attributes')
-          .insert(attrsToInsert);
-
-        if (attrsError) {
-          console.error('[Publish] Step 2 failed:', attrsError);
-          throw attrsError;
-        }
-      }
-      console.log('[Publish] Step 2 complete');
-
-      // 3. 创建站点视图并发布
-      console.log('[Publish] Step 3: Creating site views...');
+      // 2. 创建站点视图并发布
+      console.log('[Publish] Step 2: Creating site views...');
       const siteViewErrors: string[] = [];
       for (const site of selectedSites) {
         console.log(`[Publish] Creating site view for site: ${site}, product: ${productId}`);
@@ -1066,39 +1038,38 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       }
       if (siteViewErrors.length > 0)
         throw new Error(`站点视图创建失败：${siteViewErrors.join(', ')}`);
+      console.log('[Publish] Step 2 complete');
+
+      // 3. 更新产品状态为已发布
+      console.log('[Publish] Step 3: Updating product status...');
+      await apiFetch(`/api/v1/admin/products/${productId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'published', published_at: new Date().toISOString() }),
+      });
       console.log('[Publish] Step 3 complete');
 
-      // 4. 更新产品状态为已发布
-      console.log('[Publish] Step 4: Updating product status...');
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ status: 'published', published_at: new Date().toISOString() })
-        .eq('id', productId);
-      if (updateError) {
-        console.error('[Publish] Step 4 failed:', updateError);
-        throw updateError;
+      // 4. 记录审计日志
+      console.log('[Publish] Step 4: Recording audit log...');
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const { error: auditError } = await supabase.from('admin_audit_logs').insert({
+          admin_user_id: user?.id,
+          module: 'product',
+          action: 'publish',
+          target_type: 'product',
+          target_id: productId,
+          target_name: product.name,
+          changes_summary: `上架产品：${product.name}，站点：${selectedSites.join(', ').toUpperCase()}`,
+        });
+        if (auditError) {
+          console.error('[Publish] Step 4 audit log failed (non-critical):', auditError);
+        }
+      } catch (auditError) {
+        console.error('[Publish] Step 4 audit log threw (non-critical):', auditError);
       }
       console.log('[Publish] Step 4 complete');
-
-      // 5. 记录审计日志
-      console.log('[Publish] Step 5: Recording audit log...');
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const { error: auditError } = await supabase.from('admin_audit_logs').insert({
-        admin_user_id: user?.id,
-        module: 'product',
-        action: 'publish',
-        target_type: 'product',
-        target_id: productId,
-        target_name: product.name,
-        changes_summary: `上架产品：${product.name}，站点：${selectedSites.join(', ').toUpperCase()}`,
-      });
-      if (auditError) {
-        console.error('[Publish] Step 5 audit log failed (non-critical):', auditError);
-        // Don't throw for audit errors, it's not critical
-      }
-      console.log('[Publish] Step 5 complete');
 
       setShowPublishDialog(false);
       setIsDirty(false);
@@ -1623,8 +1594,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         {[
           { id: 'basic', label: '基本信息', icon: '📋' },
           { id: 'category', label: '商品分类', icon: '🏷️' },
-          { id: 'variants', label: '规格与 SKU', icon: '📦' },
-          { id: 'specs', label: '规格参数', icon: '⚙️' },
+          { id: 'variants', label: '变体维度与 SKU', icon: '📦' },
+          { id: 'specs', label: '产品公共参数', icon: '⚙️' },
           { id: 'seo', label: 'SEO 优化', icon: '🔍' },
           { id: 'publish', label: '发布管理', icon: '🌐' },
         ].map((tab) => (
@@ -2097,24 +2068,34 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         </Card>
       )}
 
-      {/* Section 3: 规格与 SKU */}
+      {/* Section 3: 变体维度与 SKU */}
       {activeTab === 'variants' && (
         <Card>
           <h4 className="text-emerald-400 font-bold text-sm mb-4 flex items-center gap-2">
-            <span className="text-lg">📦</span> 规格与 SKU
+            <span className="text-lg">📦</span> 变体维度与 SKU
           </h4>
           <div className="space-y-6">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="text-sm text-blue-800">
-                💡 <strong>多规格系统：</strong>
-                为商品添加多个规格维度（如颜色、尺寸、型号），系统会自动生成所有组合，每个组合可设置独立的价格和库存。
-              </p>
+              <div className="space-y-2 text-sm text-blue-800">
+                <p>
+                  💡 <strong>填写规则：</strong>先区分“产品公共参数”和“变体维度”。
+                </p>
+                <p>
+                  产品公共参数：所有 SKU
+                  共用的信息，例如材质、灭菌方式、适用动物、包装规格，请填写到“产品公共参数”页。
+                </p>
+                <p>
+                  变体维度：客户下单前需要选择的项，例如颜色、尺寸、型号、长度，在这里填写，系统会据此生成
+                  SKU 组合。
+                </p>
+                <p>SKU：每个组合独立的编码、价格、库存、图片和阶梯价格，在下方 SKU 列表维护。</p>
+              </div>
             </div>
 
             {/* 规格属性列表 */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h5 className="text-sm font-bold text-slate-900">规格维度</h5>
+                <h5 className="text-sm font-bold text-slate-900">变体维度（生成 SKU 组合）</h5>
                 <button
                   onClick={() =>
                     setVariantAttributes((prev) => [
@@ -2129,7 +2110,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                   }
                   className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  + 添加规格
+                  + 添加变体维度
                 </button>
               </div>
               <div className="space-y-3">
@@ -2145,7 +2126,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        placeholder="规格名称（如：颜色、尺寸、型号）"
+                        placeholder="变体维度名称（如：颜色、尺寸、型号）"
                         className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
                       />
                       <button
@@ -2173,7 +2154,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">
-                        规格值（用逗号分隔）
+                        维度值（用逗号分隔）
                       </label>
                       <input
                         type="text"
@@ -2188,7 +2169,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        placeholder="例如：红色，蓝色，白色 或 S, M, L, XL"
+                        placeholder="例如：红色、蓝色、白色，或 S、M、L、XL"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
                       />
                     </div>
@@ -2196,7 +2177,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 ))}
                 {variantAttributes.length === 0 && (
                   <div className="text-center py-12 text-slate-400">
-                    <p>暂无规格维度，点击"添加规格"开始设置</p>
+                    <p>暂无变体维度，点击“添加变体维度”开始设置</p>
                   </div>
                 )}
               </div>
@@ -2208,7 +2189,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 <h5 className="text-sm font-bold text-slate-900">
                   SKU 列表 ({productSkus.length} 个)
                 </h5>
-                <p className="text-xs text-slate-400">点击展开行可编辑规格参数和图片</p>
+                <p className="text-xs text-slate-400">
+                  点击展开行可编辑 SKU 补充参数、图片和阶梯价格
+                </p>
               </div>
               {productSkus.length > 0 ? (
                 <div className="border rounded-xl overflow-x-auto">
@@ -2220,7 +2203,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           SKU 编码
                         </th>
                         <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">
-                          规格组合
+                          变体组合
                         </th>
                         <th className="px-3 py-3 text-left text-xs font-bold text-slate-500 uppercase">
                           供货价
@@ -2488,8 +2471,12 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                       <div className="flex items-center justify-between mb-2">
                                         <p className="text-xs font-bold text-slate-500 flex items-center gap-1">
                                           <Settings2 className="w-3 h-3" />
-                                          SKU 规格参数
+                                          SKU 补充参数
                                         </p>
+                                        <span className="text-[11px] text-slate-400">
+                                          仅当某个 SKU
+                                          有独有参数时填写；颜色、尺寸、型号不要在这里重复录入。
+                                        </span>
                                         <div className="flex gap-2">
                                           <select
                                             onChange={(e) => {
@@ -2500,7 +2487,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                             }}
                                             className="text-xs border border-slate-300 rounded px-2 py-1"
                                           >
-                                            <option value="">添加参数...</option>
+                                            <option value="">添加补充参数...</option>
                                             {SKU_SPEC_PRESETS.filter(
                                               (p) => !(sku.specs && p in sku.specs),
                                             ).map((preset) => (
@@ -2511,7 +2498,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                           </select>
                                           <input
                                             type="text"
-                                            placeholder="自定义参数名"
+                                            placeholder="自定义补充参数"
                                             className="text-xs border border-slate-300 rounded px-2 py-1 w-24"
                                             onKeyDown={(e) => {
                                               if (e.key === 'Enter') {
@@ -2554,7 +2541,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                                           ))}
                                         {(!sku.specs || Object.keys(sku.specs).length === 0) && (
                                           <p className="text-xs text-slate-400 col-span-full py-2">
-                                            暂无规格参数，可从上方添加
+                                            暂无 SKU
+                                            补充参数；若只是颜色、尺寸、型号差异，不要在这里重复填写。
                                           </p>
                                         )}
                                       </div>
@@ -2936,7 +2924,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             {variantAttributes.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <p className="text-sm text-amber-800">
-                  💡 <strong>提示：</strong>规格设置完成后，请点击右上角"保存修改"按钮保存。
+                  💡 <strong>提示：</strong>变体维度决定客户怎么选，SKU 列表决定每个组合怎么卖。所有
+                  SKU 共用的参数请放到“产品公共参数”页。
                 </p>
               </div>
             )}
@@ -2944,16 +2933,25 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         </Card>
       )}
 
-      {/* Section 5: 规格参数 */}
+      {/* Section 5: 产品公共参数 */}
       {activeTab === 'specs' && (
         <Card>
           <h4 className="text-emerald-400 font-bold text-sm mb-4 flex items-center gap-2">
-            <span className="text-lg">⚙️</span> 规格参数
+            <span className="text-lg">⚙️</span> 产品公共参数
           </h4>
           <div className="space-y-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 space-y-2">
+              <p>
+                这里填写所有 SKU 共用的产品事实参数，例如材质、灭菌方式、适用动物、功率、包装规格。
+              </p>
+              <p>
+                不要把颜色、尺寸、型号、长度这类会让客户选择并影响价格或库存的内容写在这里；这些应放到“变体维度与
+                SKU”页。
+              </p>
+            </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1.5">
-                规格参数 (JSON 格式) (
+                产品公共参数 (JSON 格式) (
                 {editLang === getPublishLang() ? `${editLang} - 源` : editLang})
               </label>
               <textarea
@@ -2968,7 +2966,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 }}
                 rows={10}
                 className="w-full min-h-[200px] px-4 py-3 bg-white border border-slate-200/50 rounded-xl text-sm font-mono text-slate-900 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
-                placeholder={`{\n  "material": "医用级不锈钢",\n  "size": "10cm x 5cm",\n  "weight": "200g"\n}`}
+                placeholder={`{\n  "material": "医用级不锈钢",\n  "sterilization": "高温高压",\n  "package_spec": "10支/盒"\n}`}
               />
             </div>
           </div>

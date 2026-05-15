@@ -15,7 +15,9 @@ const PATCH_EXCLUDED_FIELDS = new Set([
   'skus',
   'variants',
   'variant_attributes',
+  'variantAttributes',
   'product_skus',
+  'productSkus',
   'category',
   'supplier',
   'translationsComplete',
@@ -74,6 +76,253 @@ function buildPatchUpdateData(
   return { updateData, ignoredKeys };
 }
 
+function normalizeStringValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeNullableNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed.replace(/,/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeNonNegativeInteger(value: unknown, fallback = 0): number {
+  const parsed = normalizeNullableNumber(value);
+  if (parsed === null) return fallback;
+  return Math.max(0, Math.trunc(parsed));
+}
+
+function normalizeRecordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function isPersistedEntityId(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  return Boolean(trimmed) && !trimmed.startsWith('new-');
+}
+
+interface NormalizedVariantAttributeInput {
+  attribute_name: string;
+  attribute_values: string[];
+  sort_order: number;
+}
+
+function normalizeVariantAttributesInput(value: unknown): NormalizedVariantAttributeInput[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+
+      const record = item as Record<string, unknown>;
+      const attributeName = normalizeStringValue(record.attribute_name || record.attributeName);
+      const attributeValuesSource = record.attribute_values ?? record.attributeValues;
+      const attributeValues = Array.isArray(attributeValuesSource)
+        ? attributeValuesSource.map((entry: unknown) => normalizeStringValue(entry)).filter(Boolean)
+        : [];
+
+      if (!attributeName || attributeValues.length === 0) return null;
+
+      return {
+        attribute_name: attributeName,
+        attribute_values: Array.from(new Set(attributeValues)),
+        sort_order: normalizeNonNegativeInteger(record.sort_order || record.sortOrder, index),
+      };
+    })
+    .filter((item): item is NormalizedVariantAttributeInput => Boolean(item));
+}
+
+interface NormalizedSkuInput {
+  id?: string;
+  sku_code: string;
+  attribute_combination: Record<string, unknown>;
+  price: number;
+  original_price: number | null;
+  stock_quantity: number;
+  weight: number | null;
+  weight_unit: string | null;
+  suggested_retail_price: number | null;
+  selling_price: number | null;
+  selling_price_usd: number | null;
+  selling_price_jpy: number | null;
+  selling_price_thb: number | null;
+  image_url: string | null;
+  barcode: string | null;
+  specs: Record<string, unknown> | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+function normalizeSkuInputList(value: unknown): NormalizedSkuInput[] {
+  if (!Array.isArray(value)) return [];
+
+  const normalized: Array<NormalizedSkuInput | null> = value.map((item, index) => {
+    if (!item || typeof item !== 'object') return null;
+
+    const record = item as Record<string, unknown>;
+    const skuCode = normalizeStringValue(record.sku_code || record.skuCode);
+    if (!skuCode) return null;
+
+    const specs = normalizeRecordValue(record.specs);
+    const persistedId = isPersistedEntityId(record.id) ? record.id.trim() : undefined;
+
+    return {
+      ...(persistedId ? { id: persistedId } : {}),
+      sku_code: skuCode,
+      attribute_combination: normalizeRecordValue(
+        record.attribute_combination || record.attributeCombination,
+      ),
+      price: normalizeNullableNumber(record.price) ?? 0,
+      original_price: normalizeNullableNumber(record.original_price || record.originalPrice),
+      stock_quantity: normalizeNonNegativeInteger(record.stock_quantity || record.stockQuantity, 0),
+      weight: normalizeNullableNumber(record.weight),
+      weight_unit: normalizeStringValue(record.weight_unit || record.weightUnit) || null,
+      suggested_retail_price: normalizeNullableNumber(
+        record.suggested_retail_price || record.suggestedRetailPrice,
+      ),
+      selling_price: normalizeNullableNumber(record.selling_price || record.sellingPrice),
+      selling_price_usd: normalizeNullableNumber(
+        record.selling_price_usd || record.sellingPriceUsd,
+      ),
+      selling_price_jpy: normalizeNullableNumber(
+        record.selling_price_jpy || record.sellingPriceJpy,
+      ),
+      selling_price_thb: normalizeNullableNumber(
+        record.selling_price_thb || record.sellingPriceThb,
+      ),
+      image_url: normalizeStringValue(record.image_url || record.imageUrl) || null,
+      barcode: normalizeStringValue(record.barcode) || null,
+      specs: Object.keys(specs).length > 0 ? specs : null,
+      is_active: record.is_active !== false && record.isActive !== false,
+      sort_order: normalizeNonNegativeInteger(record.sort_order || record.sortOrder, index),
+    };
+  });
+
+  return normalized.filter((item): item is NormalizedSkuInput => item !== null);
+}
+
+async function syncVariantAttributes(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  productId: string,
+  value: unknown,
+) {
+  if (!Array.isArray(value)) return;
+
+  const normalized = normalizeVariantAttributesInput(value);
+  const { error: deleteError } = await supabase
+    .from('product_variant_attributes')
+    .delete()
+    .eq('product_id', productId);
+
+  if (deleteError) {
+    console.error('[Product PATCH] Failed to clear variant attributes:', deleteError);
+    throw deleteError;
+  }
+
+  if (normalized.length === 0) return;
+
+  const { error: insertError } = await supabase.from('product_variant_attributes').insert(
+    normalized.map((attribute) => ({
+      product_id: productId,
+      ...attribute,
+    })),
+  );
+
+  if (insertError) {
+    console.error('[Product PATCH] Failed to sync variant attributes:', insertError);
+    throw insertError;
+  }
+}
+
+async function syncProductSkus(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  productId: string,
+  value: unknown,
+) {
+  if (!Array.isArray(value)) return;
+
+  const normalized = normalizeSkuInputList(value);
+  if (normalized.length === 0) return;
+
+  const { data: existingRows, error: existingRowsError } = await supabase
+    .from('product_skus')
+    .select('id')
+    .eq('product_id', productId);
+
+  if (existingRowsError) {
+    console.error('[Product PATCH] Failed to load existing SKUs:', existingRowsError);
+    throw existingRowsError;
+  }
+
+  const existingIds = new Set((existingRows || []).map((row) => row.id as string));
+  const incomingIds = new Set(
+    normalized.flatMap((sku) => (sku.id && existingIds.has(sku.id) ? [sku.id] : [])),
+  );
+  const idsToDelete = Array.from(existingIds).filter((existingId) => !incomingIds.has(existingId));
+
+  if (idsToDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('product_skus')
+      .delete()
+      .in('id', idsToDelete);
+    if (deleteError) {
+      console.error('[Product PATCH] Failed to remove stale SKUs:', deleteError);
+      throw deleteError;
+    }
+  }
+
+  for (const sku of normalized) {
+    const skuRecord = {
+      product_id: productId,
+      sku_code: sku.sku_code,
+      attribute_combination: sku.attribute_combination,
+      price: sku.price,
+      original_price: sku.original_price,
+      stock_quantity: sku.stock_quantity,
+      weight: sku.weight,
+      weight_unit: sku.weight_unit,
+      suggested_retail_price: sku.suggested_retail_price,
+      selling_price: sku.selling_price,
+      selling_price_usd: sku.selling_price_usd,
+      selling_price_jpy: sku.selling_price_jpy,
+      selling_price_thb: sku.selling_price_thb,
+      image_url: sku.image_url,
+      barcode: sku.barcode,
+      specs: sku.specs,
+      is_active: sku.is_active,
+      sort_order: sku.sort_order,
+    };
+
+    if (sku.id && existingIds.has(sku.id)) {
+      const { error: updateError } = await supabase
+        .from('product_skus')
+        .update(skuRecord)
+        .eq('id', sku.id)
+        .eq('product_id', productId);
+
+      if (updateError) {
+        console.error('[Product PATCH] Failed to update SKU:', sku.id, updateError);
+        throw updateError;
+      }
+      continue;
+    }
+
+    const { error: insertError } = await supabase.from('product_skus').insert(skuRecord);
+    if (insertError) {
+      console.error('[Product PATCH] Failed to insert SKU:', sku.sku_code, insertError);
+      throw insertError;
+    }
+  }
+}
+
 // GET /api/v1/admin/products/[id]?view=base|site&site_code=cn
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(req);
@@ -110,6 +359,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         `
         *,
         images:product_images(id, url, type, sort_order),
+        variant_attributes:product_variant_attributes(id, attribute_name, attribute_values, sort_order),
         skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, selling_price_usd, selling_price_jpy, selling_price_thb, image_url, barcode, is_active, sort_order, specs)
       `,
       )
@@ -144,12 +394,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const body = (await req.json()) as Record<string, unknown>;
     const hasImagesInBody = 'images' in body;
+    const hasVariantAttributesInBody = 'variant_attributes' in body || 'variantAttributes' in body;
+    const hasSkusInBody = 'skus' in body;
     const normalizedImages = hasImagesInBody
       ? normalizeProductImagesInput(
           body.images,
           body.image_url || body.imageUrl || body.cover_image_url || body.coverImageUrl,
         )
       : [];
+    const normalizedVariantAttributes = hasVariantAttributesInBody
+      ? normalizeVariantAttributesInput(body.variant_attributes || body.variantAttributes)
+      : [];
+    const normalizedSkus = hasSkusInBody ? normalizeSkuInputList(body.skus) : [];
 
     const { data: existingProduct, error: existingProductError } = await supabase
       .from('products')
@@ -170,6 +426,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const mainImage = getMainProductImage(normalizedImages);
       updateData.image_url = mainImage?.url || null;
       updateData.cover_image_url = mainImage?.url || null;
+    }
+
+    if (hasSkusInBody && normalizedSkus.length > 0) {
+      const activeSkus = normalizedSkus.filter((sku) => sku.is_active);
+      const priceSource = activeSkus.length > 0 ? activeSkus : normalizedSkus;
+      const totalStock = normalizedSkus.reduce((sum, sku) => sum + sku.stock_quantity, 0);
+      const priceRangeMin = Math.min(...priceSource.map((sku) => sku.price));
+      const priceRangeMax = Math.max(...priceSource.map((sku) => sku.price));
+
+      if ('price' in existingProduct) updateData.price = priceRangeMin;
+      if ('price_min' in existingProduct) updateData.price_min = priceRangeMin;
+      if ('price_max' in existingProduct) updateData.price_max = priceRangeMax;
+      if ('price_range_min' in existingProduct) updateData.price_range_min = priceRangeMin;
+      if ('price_range_max' in existingProduct) updateData.price_range_max = priceRangeMax;
+      if ('stock_quantity' in existingProduct) updateData.stock_quantity = totalStock;
+      if ('total_stock' in existingProduct) updateData.total_stock = totalStock;
+    }
+
+    if (hasVariantAttributesInBody || hasSkusInBody) {
+      const hasVariantCombination = normalizedSkus.some(
+        (sku) => Object.keys(sku.attribute_combination).length > 0,
+      );
+      updateData.has_variants = normalizedVariantAttributes.length > 0 || hasVariantCombination;
     }
 
     if (ignoredKeys.length > 0) {
@@ -241,6 +520,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           throw insertImageError;
         }
       }
+    }
+
+    if (hasVariantAttributesInBody) {
+      await syncVariantAttributes(supabase, id, body.variant_attributes || body.variantAttributes);
+    }
+
+    if (hasSkusInBody) {
+      await syncProductSkus(supabase, id, body.skus);
     }
 
     writeAuditLog(req, auth.admin, {
