@@ -250,7 +250,6 @@ async function syncProductSkus(
   if (!Array.isArray(value)) return;
 
   const normalized = normalizeSkuInputList(value);
-  if (normalized.length === 0) return;
 
   const { data: existingRows, error: existingRowsError } = await supabase
     .from('product_skus')
@@ -278,6 +277,8 @@ async function syncProductSkus(
       throw deleteError;
     }
   }
+
+  if (normalized.length === 0) return;
 
   for (const sku of normalized) {
     const skuRecord = {

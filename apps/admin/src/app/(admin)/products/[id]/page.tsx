@@ -36,6 +36,39 @@ type ProductImageRecord = {
   sort_order: number;
 };
 
+type VariantAttributeRecord = {
+  id?: string;
+  product_id?: string;
+  attribute_name: string;
+  attribute_values: string[];
+  sort_order?: number;
+};
+
+type NormalizedVariantAttributeRecord = VariantAttributeRecord & {
+  sort_order: number;
+};
+
+type ProductSkuRecord = {
+  id: string;
+  sku_code: string;
+  attribute_combination: Record<string, string>;
+  price: number;
+  original_price: number | null;
+  stock_quantity: number;
+  weight: number | null;
+  weight_unit: string | null;
+  suggested_retail_price: number | null;
+  selling_price: number | null;
+  selling_price_usd: number | null;
+  selling_price_jpy: number | null;
+  selling_price_thb: number | null;
+  image_url: string | null;
+  barcode: string | null;
+  specs: Record<string, unknown> | null;
+  is_active: boolean;
+  sort_order: number;
+};
+
 type PendingLeaveAction =
   | {
       type: 'route';
@@ -85,6 +118,10 @@ function normalizeNonNegativeInteger(value: unknown): number {
 
 function createTempImageId(prefix = 'temp-image'): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createTempSkuId(): string {
+  return `new-sku-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function isProductImageType(value: unknown): value is ProductImageType {
@@ -183,11 +220,169 @@ function getProductImageKey(image: ProductImageRecord, index: number): string {
   return image.id || `${image.type}-${index}-${image.url}`;
 }
 
+function normalizeVariantAttributesForSkuSync(
+  attributes: VariantAttributeRecord[],
+): NormalizedVariantAttributeRecord[] {
+  return attributes
+    .map((attribute, index) => {
+      const attributeName = normalizeOptionalString(attribute.attribute_name);
+      const attributeValues = Array.from(
+        new Set((attribute.attribute_values || []).map((value) => normalizeOptionalString(value))),
+      ).filter(Boolean);
+
+      if (!attributeName || attributeValues.length === 0) {
+        return null;
+      }
+
+      return {
+        ...attribute,
+        attribute_name: attributeName,
+        attribute_values: attributeValues,
+        sort_order: index,
+      } satisfies NormalizedVariantAttributeRecord;
+    })
+    .filter((attribute): attribute is NormalizedVariantAttributeRecord => attribute !== null);
+}
+
+function buildAttributeCombinationKey(combination: Record<string, unknown>): string {
+  return Object.entries(combination)
+    .map(([key, value]) => [normalizeOptionalString(key), normalizeOptionalString(value)] as const)
+    .filter(([key, value]) => key && value)
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey, 'zh-CN'))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('|');
+}
+
+function generateAttributeCombinations(
+  attributes: NormalizedVariantAttributeRecord[],
+): Record<string, string>[] {
+  if (attributes.length === 0) return [];
+
+  return attributes.reduce<Record<string, string>[]>((combinations, attribute) => {
+    if (combinations.length === 0) {
+      return attribute.attribute_values.map((value) => ({ [attribute.attribute_name]: value }));
+    }
+
+    return combinations.flatMap((combination) =>
+      attribute.attribute_values.map((value) => ({
+        ...combination,
+        [attribute.attribute_name]: value,
+      })),
+    );
+  }, []);
+}
+
+function generateSkuCode(combination: Record<string, string>, index: number): string {
+  const prefix = Object.values(combination)
+    .map((value) =>
+      normalizeOptionalString(value)
+        .replace(/[^a-zA-Z0-9]+/g, '')
+        .slice(0, 4),
+    )
+    .filter(Boolean)
+    .map((value) => value.toUpperCase())
+    .join('-');
+  const uniqueSuffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+    .slice(-10)
+    .toUpperCase();
+
+  return `${prefix || 'SKU'}-${uniqueSuffix}-${index + 1}`;
+}
+
+function createSkuRecord(
+  combination: Record<string, string>,
+  index: number,
+  templateSku: Partial<ProductSkuRecord> | null,
+  options: { preserveIdentity?: boolean } = {},
+): ProductSkuRecord {
+  const preserveIdentity = options.preserveIdentity === true;
+  const templateSpecs =
+    templateSku?.specs && typeof templateSku.specs === 'object' && !Array.isArray(templateSku.specs)
+      ? { ...(templateSku.specs as Record<string, unknown>) }
+      : null;
+
+  return {
+    id:
+      preserveIdentity && normalizeOptionalString(templateSku?.id)
+        ? normalizeOptionalString(templateSku?.id)
+        : createTempSkuId(),
+    sku_code:
+      preserveIdentity && normalizeOptionalString(templateSku?.sku_code)
+        ? normalizeOptionalString(templateSku?.sku_code)
+        : generateSkuCode(combination, index),
+    attribute_combination: combination,
+    price: normalizeNullableNumber(templateSku?.price) ?? 0,
+    original_price: normalizeNullableNumber(templateSku?.original_price),
+    stock_quantity: preserveIdentity ? normalizeNonNegativeInteger(templateSku?.stock_quantity) : 0,
+    weight: normalizeNullableNumber(templateSku?.weight),
+    weight_unit: normalizeOptionalString(templateSku?.weight_unit) || null,
+    suggested_retail_price: normalizeNullableNumber(templateSku?.suggested_retail_price),
+    selling_price: normalizeNullableNumber(templateSku?.selling_price),
+    selling_price_usd: normalizeNullableNumber(templateSku?.selling_price_usd),
+    selling_price_jpy: normalizeNullableNumber(templateSku?.selling_price_jpy),
+    selling_price_thb: normalizeNullableNumber(templateSku?.selling_price_thb),
+    image_url: preserveIdentity ? normalizeOptionalString(templateSku?.image_url) || null : null,
+    barcode: preserveIdentity ? normalizeOptionalString(templateSku?.barcode) || null : null,
+    specs: preserveIdentity ? templateSpecs : null,
+    is_active: templateSku?.is_active !== false,
+    sort_order: index,
+  };
+}
+
+function syncSkusFromVariantAttributes(
+  attributes: VariantAttributeRecord[],
+  currentSkus: ProductSkuRecord[],
+  basePriceSource: unknown,
+): ProductSkuRecord[] {
+  const normalizedAttributes = normalizeVariantAttributesForSkuSync(attributes);
+  const nextCombinations = generateAttributeCombinations(normalizedAttributes);
+  const emptyCombinationSku =
+    currentSkus.find(
+      (sku) => buildAttributeCombinationKey(sku.attribute_combination || {}) === '',
+    ) || null;
+  const templateSkuForNew: Partial<ProductSkuRecord> = emptyCombinationSku ||
+    currentSkus[0] || {
+      price: normalizeNullableNumber(basePriceSource) ?? 0,
+      is_active: true,
+    };
+
+  if (nextCombinations.length === 0) {
+    const fallbackSku = currentSkus[0] || null;
+    return [
+      createSkuRecord({}, 0, fallbackSku || templateSkuForNew, {
+        preserveIdentity: Boolean(fallbackSku),
+      }),
+    ];
+  }
+
+  const existingByKey = new Map(
+    currentSkus.map((sku) => [buildAttributeCombinationKey(sku.attribute_combination || {}), sku]),
+  );
+  let reusableEmptyCombinationSku = emptyCombinationSku;
+
+  return nextCombinations.map((combination, index) => {
+    const combinationKey = buildAttributeCombinationKey(combination);
+    const existingSku = existingByKey.get(combinationKey);
+    if (existingSku) {
+      return createSkuRecord(combination, index, existingSku, { preserveIdentity: true });
+    }
+
+    if (reusableEmptyCombinationSku) {
+      const skuToReuse = reusableEmptyCombinationSku;
+      reusableEmptyCombinationSku = null;
+      return createSkuRecord(combination, index, skuToReuse, { preserveIdentity: true });
+    }
+
+    return createSkuRecord(combination, index, templateSkuForNew, { preserveIdentity: false });
+  });
+}
+
 export default function AdminProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: productId } = use(params);
   const router = useRouter();
   const supabase = createClient();
   const { currentSite, isCN, isINTL, isGLOBAL } = useSite();
+  const isNewProduct = productId === 'new';
 
   // 数据状态
   const [product, setProduct] = useState<any>(null);
@@ -231,6 +426,9 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const [uploadingProductImages, setUploadingProductImages] = useState(false);
   const [uploadingSkuImageIds, setUploadingSkuImageIds] = useState<Set<string>>(new Set());
   const skipBeforeUnloadRef = useRef(false);
+  const variantSyncReadyRef = useRef(isNewProduct);
+  const variantSyncInitializedRef = useRef(false);
+  const lastVariantSignatureRef = useRef('');
 
   // Toast 通知
   const { toasts, addToast, removeToast, success, error: toastError, warning } = useToast();
@@ -238,8 +436,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   // 分类和 SKU 状态
   const [categories, setCategories] = useState<any[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
-  const [variantAttributes, setVariantAttributes] = useState<any[]>([]);
-  const [productSkus, setProductSkus] = useState<any[]>([]);
+  const [variantAttributes, setVariantAttributes] = useState<VariantAttributeRecord[]>([]);
+  const [productSkus, setProductSkus] = useState<ProductSkuRecord[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
 
   // SKU展开状态
@@ -252,8 +450,11 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   // Admin 可以编辑所有状态的产品
   const isReadOnly = false;
 
-  // 是否为新建模式
-  const isNewProduct = productId === 'new';
+  useEffect(() => {
+    variantSyncReadyRef.current = isNewProduct;
+    variantSyncInitializedRef.current = false;
+    lastVariantSignatureRef.current = '';
+  }, [isNewProduct, productId]);
 
   // 加载产品数据
   useEffect(() => {
@@ -305,7 +506,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       await loadCategories(data);
 
       // 加载 SKU 变体数据
-      await loadVariantData();
+      await loadVariantData(data);
     } catch (err) {
       setError(getErrorMessage(err) || '加载失败');
     } finally {
@@ -382,16 +583,21 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     }
   }, [currentSite]);
 
-  async function loadVariantData() {
+  async function loadVariantData(productData?: any) {
+    variantSyncReadyRef.current = false;
+    variantSyncInitializedRef.current = false;
+    lastVariantSignatureRef.current = '';
     setLoadingVariants(true);
     try {
+      const sourceProduct = productData || product;
+
       // 如果 API 已经返回了数据，直接使用
-      if (product?.skus && product?.skus.length > 0) {
-        setProductSkus(product.skus);
-        console.log('[ProductEdit] Using SKUs from API response:', product.skus.length);
+      if (sourceProduct?.skus && sourceProduct.skus.length > 0) {
+        setProductSkus(sourceProduct.skus);
+        console.log('[ProductEdit] Using SKUs from API response:', sourceProduct.skus.length);
 
         // 同时加载规格属性（如果 API 没有返回）
-        if (!product.variant_attributes || product.variant_attributes.length === 0) {
+        if (!sourceProduct.variant_attributes || sourceProduct.variant_attributes.length === 0) {
           const { data: attrs, error: attrsError } = await supabase
             .from('product_variant_attributes')
             .select('*')
@@ -401,7 +607,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           if (attrsError) throw attrsError;
           setVariantAttributes(attrs || []);
         } else {
-          setVariantAttributes(product.variant_attributes);
+          setVariantAttributes(sourceProduct.variant_attributes);
         }
         setLoadingVariants(false);
         return;
@@ -433,9 +639,43 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     } catch (err) {
       console.error('[ProductEdit] Failed to load variant data:', err);
     } finally {
+      variantSyncReadyRef.current = true;
       setLoadingVariants(false);
     }
   }
+
+  useEffect(() => {
+    if (!variantSyncReadyRef.current || loadingVariants) {
+      return;
+    }
+
+    const normalizedAttributes = normalizeVariantAttributesForSkuSync(variantAttributes);
+    const nextVariantSignature = JSON.stringify(
+      normalizedAttributes.map((attribute) => [
+        attribute.attribute_name,
+        attribute.attribute_values,
+      ]),
+    );
+
+    if (!variantSyncInitializedRef.current) {
+      lastVariantSignatureRef.current = nextVariantSignature;
+      variantSyncInitializedRef.current = true;
+      return;
+    }
+
+    if (nextVariantSignature === lastVariantSignatureRef.current) {
+      return;
+    }
+
+    lastVariantSignatureRef.current = nextVariantSignature;
+
+    const nextSkus = syncSkusFromVariantAttributes(variantAttributes, productSkus, editForm.price);
+    setProductSkus(nextSkus);
+    setExpandedSkus(
+      new Set(Array.from(expandedSkus).filter((skuId) => nextSkus.some((sku) => sku.id === skuId))),
+    );
+    setIsDirty(true);
+  }, [editForm.price, expandedSkus, loadingVariants, productSkus, variantAttributes]);
 
   // SKU展开/收起
   const toggleSkuExpanded = useCallback((skuId: string) => {
@@ -2190,7 +2430,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                   SKU 列表 ({productSkus.length} 个)
                 </h5>
                 <p className="text-xs text-slate-400">
-                  点击展开行可编辑 SKU 补充参数、图片和阶梯价格
+                  维度值变化后会自动同步 SKU 组合；点击展开行可编辑补充参数、图片和阶梯价格
                 </p>
               </div>
               {productSkus.length > 0 ? (
