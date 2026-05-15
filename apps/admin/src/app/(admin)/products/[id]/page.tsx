@@ -124,6 +124,35 @@ function createTempSkuId(): string {
   return `new-sku-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function splitVariantAttributeValues(input: string): string[] {
+  return input
+    .split(/[\r\n,，;；、]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function normalizeVariantAttributeValueList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(value.flatMap((entry) => splitVariantAttributeValues(normalizeOptionalString(entry)))),
+  );
+}
+
+function hydrateVariantAttributesForEditor(
+  attributes: VariantAttributeRecord[],
+): VariantAttributeRecord[] {
+  return attributes.map((attribute, index) => ({
+    ...attribute,
+    attribute_name: normalizeOptionalString(attribute.attribute_name),
+    attribute_values: normalizeVariantAttributeValueList(attribute.attribute_values),
+    sort_order:
+      typeof attribute.sort_order === 'number' && Number.isFinite(attribute.sort_order)
+        ? attribute.sort_order
+        : index,
+  }));
+}
+
 function isProductImageType(value: unknown): value is ProductImageType {
   return value === 'main' || value === 'detail';
 }
@@ -226,9 +255,7 @@ function normalizeVariantAttributesForSkuSync(
   return attributes
     .map((attribute, index) => {
       const attributeName = normalizeOptionalString(attribute.attribute_name);
-      const attributeValues = Array.from(
-        new Set((attribute.attribute_values || []).map((value) => normalizeOptionalString(value))),
-      ).filter(Boolean);
+      const attributeValues = normalizeVariantAttributeValueList(attribute.attribute_values);
 
       if (!attributeName || attributeValues.length === 0) {
         return null;
@@ -375,6 +402,35 @@ function syncSkusFromVariantAttributes(
 
     return createSkuRecord(combination, index, templateSkuForNew, { preserveIdentity: false });
   });
+}
+
+function skusMatchVariantAttributes(
+  attributes: VariantAttributeRecord[],
+  currentSkus: ProductSkuRecord[],
+): boolean {
+  const normalizedAttributes = normalizeVariantAttributesForSkuSync(attributes);
+  const expectedCombinations = generateAttributeCombinations(normalizedAttributes);
+
+  if (expectedCombinations.length === 0) {
+    if (currentSkus.length === 0) return true;
+    if (currentSkus.length === 1) {
+      return buildAttributeCombinationKey(currentSkus[0].attribute_combination || {}) === '';
+    }
+    return false;
+  }
+
+  if (currentSkus.length !== expectedCombinations.length) {
+    return false;
+  }
+
+  const expectedKeys = expectedCombinations
+    .map((combination) => buildAttributeCombinationKey(combination))
+    .sort();
+  const currentKeys = currentSkus
+    .map((sku) => buildAttributeCombinationKey(sku.attribute_combination || {}))
+    .sort();
+
+  return expectedKeys.every((key, index) => key === currentKeys[index]);
 }
 
 export default function AdminProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -605,9 +661,11 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
             .order('sort_order');
 
           if (attrsError) throw attrsError;
-          setVariantAttributes(attrs || []);
+          setVariantAttributes(hydrateVariantAttributesForEditor(attrs || []));
         } else {
-          setVariantAttributes(sourceProduct.variant_attributes);
+          setVariantAttributes(
+            hydrateVariantAttributesForEditor(sourceProduct.variant_attributes || []),
+          );
         }
         setLoadingVariants(false);
         return;
@@ -621,7 +679,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         .order('sort_order');
 
       if (attrsError) throw attrsError;
-      setVariantAttributes(attrs || []);
+      setVariantAttributes(hydrateVariantAttributesForEditor(attrs || []));
 
       const { data: skus, error: skusError } = await supabase
         .from('product_skus')
@@ -660,6 +718,22 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     if (!variantSyncInitializedRef.current) {
       lastVariantSignatureRef.current = nextVariantSignature;
       variantSyncInitializedRef.current = true;
+
+      if (!skusMatchVariantAttributes(variantAttributes, productSkus)) {
+        const nextSkus = syncSkusFromVariantAttributes(
+          variantAttributes,
+          productSkus,
+          editForm.price,
+        );
+        setProductSkus(nextSkus);
+        setExpandedSkus(
+          new Set(
+            Array.from(expandedSkus).filter((skuId) => nextSkus.some((sku) => sku.id === skuId)),
+          ),
+        );
+        setIsDirty(true);
+      }
+
       return;
     }
 
@@ -2400,16 +2474,13 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                         type="text"
                         value={attr.attribute_values?.join(', ') || ''}
                         onChange={(e) => {
-                          const values = e.target.value
-                            .split(',')
-                            .map((v) => v.trim())
-                            .filter((v) => v);
+                          const values = splitVariantAttributeValues(e.target.value);
                           const newAttrs = [...variantAttributes];
                           newAttrs[idx].attribute_values = values;
                           setVariantAttributes(newAttrs);
                           setIsDirty(true);
                         }}
-                        placeholder="例如：红色、蓝色、白色，或 S、M、L、XL"
+                        placeholder="例如：红色，蓝色，白色 或 S、M、L、XL（支持中英文逗号、分号、换行）"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
                       />
                     </div>

@@ -49,7 +49,10 @@ const HTML_CONTENT_PATTERN =
 
 function normalizeRichDescription(content: string) {
   return content
-    .replace(/src="\/uploads\//g, 'src="https://tvxrgbntiksskywsroax.supabase.co/storage/v1/object/public/uploads/')
+    .replace(
+      /src="\/uploads\//g,
+      'src="https://tvxrgbntiksskywsroax.supabase.co/storage/v1/object/public/uploads/',
+    )
     .replace(/<p>(?:&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '');
 }
 
@@ -72,7 +75,9 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
 
   // SKU state
   const [skus, setSkus] = useState<IntlProductSku[]>([]);
-  const [variantAttributes, setVariantAttributes] = useState<{ name: string; values: string[] }[]>([]);
+  const [variantAttributes, setVariantAttributes] = useState<{ name: string; values: string[] }[]>(
+    [],
+  );
   const [selectedSku, setSelectedSku] = useState<IntlProductSku | null>(null);
 
   // Quote modal state
@@ -128,7 +133,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   }, [product]);
 
   useEffect(() => {
-    getIntlProductBySlug(productSlug, locale).then(data => {
+    getIntlProductBySlug(productSlug, locale).then((data) => {
       setProduct(data);
       setLoading(false);
       if (data) {
@@ -207,7 +212,8 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
       }
 
       // Get image URL
-      const imageUrl = selectedSku?.image_url || (images.length > 0 ? getImageUrl(images[0].url) : null);
+      const imageUrl =
+        selectedSku?.image_url || (images.length > 0 ? getImageUrl(images[0].url) : null);
 
       // Create cart item
       const cartItem = {
@@ -231,7 +237,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
 
       await addToCart(cartItem);
       setAddedToCart(true);
-      
+
       // Reset after 3 seconds
       setTimeout(() => {
         setAddedToCart(false);
@@ -281,7 +287,10 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
         <Package className="w-16 h-16 text-slate-300 mx-auto mb-6" />
         <h1 className="text-2xl font-bold text-slate-700 mb-4">{pd.notFound}</h1>
         <p className="text-slate-500 mb-8">{pd.notFoundDesc}</p>
-        <Link href={`/${locale}/shop`} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition">
+        <Link
+          href={`/${locale}/shop`}
+          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition"
+        >
           {pd.browseAll}
         </Link>
       </div>
@@ -303,15 +312,19 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
     const getSellingPrice = (sku: IntlProductSku | null) => {
       if (!sku) return null;
       switch (locale) {
-        case 'en': return sku.selling_price_usd;
-        case 'ja': return sku.selling_price_jpy;
-        case 'th': return sku.selling_price_thb;
-        default: return sku.selling_price;
+        case 'en':
+          return sku.selling_price_usd;
+        case 'ja':
+          return sku.selling_price_jpy;
+        case 'th':
+          return sku.selling_price_thb;
+        default:
+          return sku.selling_price;
       }
     };
 
     // 检查是否有任何SKU有销售价
-    const hasSellingPrice = skus.some(sku => {
+    const hasSellingPrice = skus.some((sku) => {
       const price = getSellingPrice(sku);
       return price !== null && price !== undefined;
     });
@@ -327,10 +340,10 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
       // 价格必须 > 0 才算有效
       if (price !== null && price !== undefined && price > 0) {
         const currencySymbols: Record<string, string> = {
-          'en': '$',
-          'ja': '¥',
-          'th': '฿',
-          'zh': '¥',
+          en: '$',
+          ja: '¥',
+          th: '฿',
+          zh: '¥',
         };
         const sym = currencySymbols[locale] || '$';
         return `${sym}${price.toLocaleString()}`;
@@ -341,7 +354,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
 
     // 没有选中 SKU 时，显示价格区间（只显示有效价格 > 0）
     const prices = skus
-      .map(sku => getSellingPrice(sku))
+      .map((sku) => getSellingPrice(sku))
       .filter((p): p is number => p !== null && p !== undefined && p > 0);
 
     if (prices.length === 0) {
@@ -352,10 +365,10 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
     const maxPrice = Math.max(...prices);
 
     const currencySymbols: Record<string, string> = {
-      'en': '$',
-      'ja': '¥',
-      'th': '฿',
-      'zh': '¥',
+      en: '$',
+      ja: '¥',
+      th: '฿',
+      zh: '¥',
     };
     const sym = currencySymbols[locale] || '$';
 
@@ -367,8 +380,10 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
 
   // All images: cover + product_images (with full URLs)
   const allImages = [
-    ...(product.cover_image_url ? [{ url: getImageUrl(product.cover_image_url), alt_text: product.display_name }] : []),
-    ...images.map(img => ({ ...img, url: getImageUrl(img.url) })),
+    ...(product.cover_image_url
+      ? [{ url: getImageUrl(product.cover_image_url), alt_text: product.display_name }]
+      : []),
+    ...images.map((img) => ({ ...img, url: getImageUrl(img.url) })),
   ];
 
   return (
@@ -376,11 +391,17 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
       {/* Breadcrumb */}
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 pt-28 pb-4">
         <nav className="flex items-center gap-2 text-sm text-slate-400">
-          <Link href={`/${locale}`} className="hover:text-emerald-600 transition">{pd.home}</Link>
+          <Link href={`/${locale}`} className="hover:text-emerald-600 transition">
+            {pd.home}
+          </Link>
           <ChevronRight className="w-3.5 h-3.5" />
-          <Link href={`/${locale}/shop`} className="hover:text-emerald-600 transition">{pd.equipment}</Link>
+          <Link href={`/${locale}/shop`} className="hover:text-emerald-600 transition">
+            {pd.equipment}
+          </Link>
           <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-slate-600 font-medium truncate max-w-[300px]">{product.display_name}</span>
+          <span className="text-slate-600 font-medium truncate max-w-[300px]">
+            {product.display_name}
+          </span>
         </nav>
       </div>
 
@@ -414,7 +435,12 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                   </span>
                 )}
                 {product.display_tags.slice(0, 2).map((tag, i) => (
-                  <span key={i} className="px-3 py-1.5 bg-blue-500/90 text-white text-xs font-bold rounded-full backdrop-blur-sm">{tag}</span>
+                  <span
+                    key={i}
+                    className="px-3 py-1.5 bg-blue-500/90 text-white text-xs font-bold rounded-full backdrop-blur-sm"
+                  >
+                    {tag}
+                  </span>
                 ))}
               </div>
               {isInquiryMode && (
@@ -432,7 +458,9 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                     key={idx}
                     onClick={() => setActiveImage(idx)}
                     className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 shrink-0 transition ${
-                      activeImage === idx ? 'border-emerald-500 shadow-md' : 'border-slate-200 hover:border-slate-300'
+                      activeImage === idx
+                        ? 'border-emerald-500 shadow-md'
+                        : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <Image
@@ -453,7 +481,9 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
           {/* Right: Product Info */}
           <div className="space-y-6">
             {product.brand && (
-              <span className="text-sm text-slate-400 font-bold uppercase tracking-wider">{product.brand}</span>
+              <span className="text-sm text-slate-400 font-bold uppercase tracking-wider">
+                {product.brand}
+              </span>
             )}
             <h1 className="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
               {product.display_name}
@@ -568,7 +598,9 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
             {product.recommendation_reason && (
               <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <p className="text-sm text-emerald-800 font-medium">{product.recommendation_reason}</p>
+                <p className="text-sm text-emerald-800 font-medium">
+                  {product.recommendation_reason}
+                </p>
               </div>
             )}
 
@@ -582,7 +614,9 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                   {Object.entries(translatedSpecs).map(([key, value]) => (
                     <div key={key} className="flex px-6 py-3">
                       <span className="w-1/3 text-sm text-slate-500 font-medium">{key}</span>
-                      <span className="w-2/3 text-sm text-slate-900 font-medium">{String(value)}</span>
+                      <span className="w-2/3 text-sm text-slate-900 font-medium">
+                        {String(value)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -600,18 +634,18 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                   if (isHtml) {
                     const normalizedContent = normalizeRichDescription(content);
                     return (
-                      <div
-                        className="text-slate-600 leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: normalizedContent }}
-                      />
+                      <div className="overflow-x-auto">
+                        <div
+                          className="text-slate-600 leading-relaxed [&_table]:min-w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-200 [&_table]:rounded-xl [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-slate-200 [&_td]:px-4 [&_td]:py-3 [&_p]:leading-7 [&_img]:rounded-xl"
+                          dangerouslySetInnerHTML={{ __html: normalizedContent }}
+                        />
+                      </div>
                     );
                   }
 
                   // Plain text
                   return (
-                    <p className="text-slate-600 leading-relaxed whitespace-pre-line">
-                      {content}
-                    </p>
+                    <p className="text-slate-600 leading-relaxed whitespace-pre-line">{content}</p>
                   );
                 })()}
               </div>
@@ -656,7 +690,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {relatedCourses.map(course => (
+              {relatedCourses.map((course) => (
                 <Link
                   key={course.id}
                   href={`/${locale}/courses/${course.slug}`}
@@ -677,15 +711,21 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                     )}
                     <div className="absolute top-3 left-3 flex gap-1.5">
                       {course.specialty && (
-                        <span className="px-2.5 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full">{course.specialty}</span>
+                        <span className="px-2.5 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full">
+                          {course.specialty}
+                        </span>
                       )}
                       {course.level && (
-                        <span className="px-2.5 py-1 bg-white/90 text-slate-700 text-xs font-bold rounded-full backdrop-blur-sm">{course.level}</span>
+                        <span className="px-2.5 py-1 bg-white/90 text-slate-700 text-xs font-bold rounded-full backdrop-blur-sm">
+                          {course.level}
+                        </span>
                       )}
                     </div>
                   </div>
                   <div className="p-5">
-                    <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-2 mb-2">{course.title}</h3>
+                    <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-2 mb-2">
+                      {course.title}
+                    </h3>
                     {course.summary && (
                       <p className="text-sm text-slate-500 line-clamp-2 mb-3">{course.summary}</p>
                     )}
@@ -715,7 +755,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.map(rp => (
+              {relatedProducts.map((rp) => (
                 <Link
                   key={rp.id}
                   href={`/${locale}/shop/${rp.slug}`}
@@ -736,11 +776,17 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                     )}
                   </div>
                   <div className="p-4">
-                    {rp.brand && <span className="text-xs text-slate-400 font-bold uppercase">{rp.brand}</span>}
-                    <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-2 text-sm mt-1">{rp.display_name}</h4>
+                    {rp.brand && (
+                      <span className="text-xs text-slate-400 font-bold uppercase">{rp.brand}</span>
+                    )}
+                    <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-2 text-sm mt-1">
+                      {rp.display_name}
+                    </h4>
                     <div className="mt-2 flex items-center justify-between">
                       {rp.display_price ? (
-                        <span className="text-sm font-bold text-slate-900">${rp.display_price.toLocaleString()}</span>
+                        <span className="text-sm font-bold text-slate-900">
+                          ${rp.display_price.toLocaleString()}
+                        </span>
                       ) : (
                         <span className="text-xs text-slate-400">{pd.contact}</span>
                       )}
@@ -768,11 +814,20 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
       {/* QUOTE REQUEST MODAL */}
       {/* ============================================ */}
       {showQuoteModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowQuoteModal(false)}>
-          <div className="bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowQuoteModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-900">{pd.quoteModalTitle}</h2>
-              <button onClick={() => setShowQuoteModal(false)} className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+              <button
+                onClick={() => setShowQuoteModal(false)}
+                className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition"
+              >
                 <X className="w-5 h-5 text-slate-600" />
               </button>
             </div>
@@ -783,7 +838,11 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                 <h3 className="text-xl font-bold text-slate-900 mb-2">{pd.quoteSubmitted}</h3>
                 <p className="text-slate-500 mb-6">{pd.quoteSubmittedDesc}</p>
                 <button
-                  onClick={() => { setShowQuoteModal(false); setQuoteSuccess(false); setQuoteForm({ name: '', email: '', clinic: '', message: '' }); }}
+                  onClick={() => {
+                    setShowQuoteModal(false);
+                    setQuoteSuccess(false);
+                    setQuoteForm({ name: '', email: '', clinic: '', message: '' });
+                  }}
                   className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition"
                 >
                   {pd.done}
@@ -793,49 +852,63 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
               <form onSubmit={handleQuoteSubmit} className="space-y-4">
                 <div className="bg-slate-50 rounded-xl p-4 mb-4 flex items-center gap-3">
                   {product.cover_image_url && (
-                    <img src={product.cover_image_url} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                    <img
+                      src={product.cover_image_url}
+                      alt=""
+                      className="w-12 h-12 rounded-lg object-cover"
+                    />
                   )}
                   <div>
-                    <p className="font-bold text-slate-900 text-sm line-clamp-1">{product.display_name}</p>
+                    <p className="font-bold text-slate-900 text-sm line-clamp-1">
+                      {product.display_name}
+                    </p>
                     {product.brand && <p className="text-xs text-slate-400">{product.brand}</p>}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">{pd.yourName} *</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    {pd.yourName} *
+                  </label>
                   <input
                     type="text"
                     required
                     value={quoteForm.name}
-                    onChange={e => setQuoteForm(f => ({ ...f, name: e.target.value }))}
+                    onChange={(e) => setQuoteForm((f) => ({ ...f, name: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">{pd.email} *</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    {pd.email} *
+                  </label>
                   <input
                     type="email"
                     required
                     value={quoteForm.email}
-                    onChange={e => setQuoteForm(f => ({ ...f, email: e.target.value }))}
+                    onChange={(e) => setQuoteForm((f) => ({ ...f, email: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">{pd.clinicName}</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    {pd.clinicName}
+                  </label>
                   <input
                     type="text"
                     value={quoteForm.clinic}
-                    onChange={e => setQuoteForm(f => ({ ...f, clinic: e.target.value }))}
+                    onChange={(e) => setQuoteForm((f) => ({ ...f, clinic: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">{pd.messageRequirements}</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    {pd.messageRequirements}
+                  </label>
                   <textarea
                     rows={3}
                     value={quoteForm.message}
-                    onChange={e => setQuoteForm(f => ({ ...f, message: e.target.value }))}
+                    onChange={(e) => setQuoteForm((f) => ({ ...f, message: e.target.value }))}
                     placeholder={pd.messagePlaceholder}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none"
                   />

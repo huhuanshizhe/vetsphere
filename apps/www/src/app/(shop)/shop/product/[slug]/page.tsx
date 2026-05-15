@@ -10,7 +10,7 @@ import SkuImageGallery from '@/components/SkuImageGallery';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
 
 interface Product {
@@ -57,11 +57,7 @@ export default function ShopProductDetailPage() {
       setLoading(true);
 
       // Fetch product details
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('slug', slug)
-        .single();
+      const { data, error } = await supabase.from('products').select('*').eq('slug', slug).single();
 
       if (error || !data) {
         console.error('Product not found');
@@ -85,24 +81,26 @@ export default function ShopProductDetailPage() {
           .select('*')
           .eq('product_id', data.id)
           .eq('is_active', true);
-        
+
         skus = skuData || [];
       }
 
       // Fetch specifications
       const { data: specs } = await supabase
         .from('specification_definitions')
-        .select(`
+        .select(
+          `
           *,
           spec_values:specification_values(*)
-        `)
+        `,
+        )
         .eq('product_id', data.id);
 
       setProduct({
         ...data,
         images: images || [],
         skus,
-        specifications: specs || []
+        specifications: specs || [],
       });
     } catch (error) {
       console.error('Failed to fetch product:', error);
@@ -115,7 +113,9 @@ export default function ShopProductDetailPage() {
     if (!product) return;
 
     // Check if user is logged in
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       alert('Please login to add items to cart');
       return;
@@ -137,23 +137,21 @@ export default function ShopProductDetailPage() {
           .from('shopping_cart')
           .insert({
             user_id: user.id,
-            site_code: 'intl'
+            site_code: 'intl',
           })
           .select()
           .single();
-        
+
         cartId = newCart?.id;
       }
 
       // Add item to cart
-      const { error } = await supabase
-        .from('shopping_cart_items')
-        .insert({
-          cart_id: cartId,
-          product_id: product.id,
-          sku_id: selectedSku?.id || null,
-          quantity
-        });
+      const { error } = await supabase.from('shopping_cart_items').insert({
+        cart_id: cartId,
+        product_id: product.id,
+        sku_id: selectedSku?.id || null,
+        quantity,
+      });
 
       if (error) throw error;
 
@@ -196,7 +194,9 @@ export default function ShopProductDetailPage() {
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="text-sm text-gray-600">
-            <Link href="/shop" className="hover:text-emerald-600">Shop</Link>
+            <Link href="/shop" className="hover:text-emerald-600">
+              Shop
+            </Link>
             {' > '}
             <span className="text-gray-900">{product.name}</span>
           </div>
@@ -208,10 +208,7 @@ export default function ShopProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Images */}
           <div>
-            <SkuImageGallery
-              images={product.images}
-              selectedSkuImage={selectedSku?.image_url}
-            />
+            <SkuImageGallery images={product.images} selectedSkuImage={selectedSku?.image_url} />
           </div>
 
           {/* Product Info */}
@@ -254,7 +251,9 @@ export default function ShopProductDetailPage() {
               </label>
               <div className="flex items-center gap-4">
                 <button
-                  onClick={() => setQuantity(Math.max(product.min_order_quantity || 1, quantity - 1))}
+                  onClick={() =>
+                    setQuantity(Math.max(product.min_order_quantity || 1, quantity - 1))
+                  }
                   className="w-10 h-10 border border-gray-300 rounded-md flex items-center justify-center hover:bg-gray-50"
                 >
                   -
@@ -262,7 +261,11 @@ export default function ShopProductDetailPage() {
                 <input
                   type="number"
                   value={quantity}
-                  onChange={(e) => setQuantity(Math.max(product.min_order_quantity || 1, parseInt(e.target.value) || 1))}
+                  onChange={(e) =>
+                    setQuantity(
+                      Math.max(product.min_order_quantity || 1, parseInt(e.target.value) || 1),
+                    )
+                  }
                   className="w-20 text-center border border-gray-300 rounded-md px-3 py-2"
                   min={product.min_order_quantity || 1}
                 />
@@ -293,7 +296,7 @@ export default function ShopProductDetailPage() {
                   Send Inquiry
                 </button>
               )}
-              
+
               {!product.has_price && (
                 <button
                   onClick={handleInquire}
@@ -356,7 +359,12 @@ export default function ShopProductDetailPage() {
             {activeTab === 'description' && (
               <div>
                 {product.rich_description ? (
-                  <div dangerouslySetInnerHTML={{ __html: product.rich_description }} />
+                  <div className="overflow-x-auto">
+                    <div
+                      className="prose prose-slate max-w-none text-gray-700 [&_table]:min-w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-200 [&_table]:rounded-lg [&_thead]:bg-slate-50 [&_th]:border [&_th]:border-slate-200 [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-slate-200 [&_td]:px-4 [&_td]:py-3 [&_p]:leading-7 [&_img]:rounded-lg"
+                      dangerouslySetInnerHTML={{ __html: product.rich_description }}
+                    />
+                  </div>
                 ) : (
                   <p className="text-gray-700 whitespace-pre-line">{product.description}</p>
                 )}
@@ -373,9 +381,7 @@ export default function ShopProductDetailPage() {
                           <td className="py-3 px-4 font-medium text-gray-700 w-1/3">
                             {spec.spec_name}
                           </td>
-                          <td className="py-3 px-4 text-gray-900">
-                            {spec.spec_value}
-                          </td>
+                          <td className="py-3 px-4 text-gray-900">{spec.spec_value}</td>
                         </tr>
                       ))}
                     </tbody>
