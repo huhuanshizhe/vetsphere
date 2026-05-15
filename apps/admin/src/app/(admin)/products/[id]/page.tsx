@@ -18,6 +18,7 @@ import RichTextEditor from '@/components/RichTextEditor';
 import {
   ChevronRight,
   ChevronUp,
+  GripVertical,
   Upload,
   X,
   Settings2,
@@ -122,6 +123,10 @@ function createTempImageId(prefix = 'temp-image'): string {
 
 function createTempSkuId(): string {
   return `new-sku-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getVariantAttributeDraftKey(attribute: VariantAttributeRecord, index: number): string {
+  return attribute.id || `variant-attribute-${index}`;
 }
 
 function splitVariantAttributeValues(input: string): string[] {
@@ -481,6 +486,8 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
   const [uploadingProductImages, setUploadingProductImages] = useState(false);
   const [uploadingSkuImageIds, setUploadingSkuImageIds] = useState<Set<string>>(new Set());
+  const [draggedProductImageKey, setDraggedProductImageKey] = useState<string | null>(null);
+  const [dragOverProductImageKey, setDragOverProductImageKey] = useState<string | null>(null);
   const skipBeforeUnloadRef = useRef(false);
   const variantSyncReadyRef = useRef(isNewProduct);
   const variantSyncInitializedRef = useRef(false);
@@ -493,6 +500,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
   const [categories, setCategories] = useState<any[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [variantAttributes, setVariantAttributes] = useState<VariantAttributeRecord[]>([]);
+  const [variantAttributeDrafts, setVariantAttributeDrafts] = useState<Record<string, string>>({});
   const [productSkus, setProductSkus] = useState<ProductSkuRecord[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
 
@@ -643,6 +651,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     variantSyncReadyRef.current = false;
     variantSyncInitializedRef.current = false;
     lastVariantSignatureRef.current = '';
+    setVariantAttributeDrafts({});
     setLoadingVariants(true);
     try {
       const sourceProduct = productData || product;
@@ -975,6 +984,63 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     },
     [updateProductImages],
   );
+
+  const handleProductImageDragStart = useCallback((imageKey: string) => {
+    setDraggedProductImageKey(imageKey);
+    setDragOverProductImageKey(null);
+  }, []);
+
+  const handleProductImageDragOver = useCallback(
+    (event: React.DragEvent<HTMLDivElement>, imageKey: string) => {
+      event.preventDefault();
+
+      if (!draggedProductImageKey || draggedProductImageKey === imageKey) {
+        return;
+      }
+
+      setDragOverProductImageKey(imageKey);
+    },
+    [draggedProductImageKey],
+  );
+
+  const handleProductImageDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>, targetImageKey: string) => {
+      event.preventDefault();
+
+      if (!draggedProductImageKey || draggedProductImageKey === targetImageKey) {
+        setDraggedProductImageKey(null);
+        setDragOverProductImageKey(null);
+        return;
+      }
+
+      updateProductImages((images) => {
+        const reorderedImages = [...images];
+        const draggedIndex = reorderedImages.findIndex(
+          (image, index) => getProductImageKey(image, index) === draggedProductImageKey,
+        );
+        const targetIndex = reorderedImages.findIndex(
+          (image, index) => getProductImageKey(image, index) === targetImageKey,
+        );
+
+        if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+          return images;
+        }
+
+        const [draggedImage] = reorderedImages.splice(draggedIndex, 1);
+        reorderedImages.splice(targetIndex, 0, draggedImage);
+        return reorderedImages;
+      });
+
+      setDraggedProductImageKey(null);
+      setDragOverProductImageKey(null);
+    },
+    [draggedProductImageKey, updateProductImages],
+  );
+
+  const handleProductImageDragEnd = useCallback(() => {
+    setDraggedProductImageKey(null);
+    setDragOverProductImageKey(null);
+  }, []);
 
   // 更新SKU字段
   const updateSkuField = useCallback((skuId: string, field: string, value: any) => {
@@ -2007,17 +2073,37 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                 <div className="flex flex-wrap gap-3 mb-3">
                   {productImages.map((img, idx) => {
                     const imageKey = getProductImageKey(img, idx);
+                    const isDragged = draggedProductImageKey === imageKey;
+                    const isDragOver = dragOverProductImageKey === imageKey;
 
                     return (
                       <div key={imageKey} className="w-24">
-                        <div className="relative group">
+                        <div
+                          draggable
+                          onDragStart={() => handleProductImageDragStart(imageKey)}
+                          onDragOver={(event) => handleProductImageDragOver(event, imageKey)}
+                          onDrop={(event) => handleProductImageDrop(event, imageKey)}
+                          onDragEnd={handleProductImageDragEnd}
+                          className={`relative group cursor-move rounded-lg transition-all ${
+                            isDragOver
+                              ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white'
+                              : ''
+                          } ${isDragged ? 'opacity-50' : ''}`}
+                        >
                           <img
                             src={img.url}
                             alt={img.type || `图片 ${idx + 1}`}
                             className="w-24 h-24 object-cover rounded-lg border border-slate-200/50"
                           />
+                          <div className="absolute top-1 left-1 inline-flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                            <GripVertical className="h-3 w-3" />
+                            拖拽
+                          </div>
                           <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded">
                             {img.type === 'main' ? '主图' : '详情图'}
+                          </span>
+                          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white">
+                            {idx + 1}
                           </span>
                         </div>
                         <div className="mt-2 flex flex-col gap-2">
@@ -2115,7 +2201,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
               />
               <p className="mt-1 text-xs text-slate-500">
                 支持一次上传多张图片。系统会保留 1
-                张主图用于列表展示，其余图片保存为详情图；你也可以手动切换主图。
+                张主图用于列表展示，其余图片保存为详情图；你也可以手动切换主图或直接拖拽调整图片顺序。
               </p>
             </div>
             <div>
@@ -2445,8 +2531,21 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                       />
                       <button
                         onClick={() => {
+                          const attributeDraftKey = getVariantAttributeDraftKey(
+                            variantAttributes[idx],
+                            idx,
+                          );
                           const newAttrs = variantAttributes.filter((_, i) => i !== idx);
                           setVariantAttributes(newAttrs);
+                          setVariantAttributeDrafts((prev) => {
+                            if (!(attributeDraftKey in prev)) {
+                              return prev;
+                            }
+
+                            const next = { ...prev };
+                            delete next[attributeDraftKey];
+                            return next;
+                          });
                           setIsDirty(true);
                         }}
                         className="px-2 py-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
@@ -2470,19 +2569,47 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                       <label className="block text-xs text-slate-500 mb-1">
                         维度值（用逗号分隔）
                       </label>
-                      <input
-                        type="text"
-                        value={attr.attribute_values?.join(', ') || ''}
-                        onChange={(e) => {
-                          const values = splitVariantAttributeValues(e.target.value);
-                          const newAttrs = [...variantAttributes];
-                          newAttrs[idx].attribute_values = values;
-                          setVariantAttributes(newAttrs);
-                          setIsDirty(true);
-                        }}
-                        placeholder="例如：红色，蓝色，白色 或 S、M、L、XL（支持中英文逗号、分号、换行）"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
-                      />
+                      {(() => {
+                        const attributeDraftKey = getVariantAttributeDraftKey(attr, idx);
+                        const inputValue = Object.prototype.hasOwnProperty.call(
+                          variantAttributeDrafts,
+                          attributeDraftKey,
+                        )
+                          ? variantAttributeDrafts[attributeDraftKey]
+                          : attr.attribute_values?.join(', ') || '';
+
+                        return (
+                          <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => {
+                              const nextDraft = e.target.value;
+                              const values = splitVariantAttributeValues(nextDraft);
+                              setVariantAttributeDrafts((prev) => ({
+                                ...prev,
+                                [attributeDraftKey]: nextDraft,
+                              }));
+                              const newAttrs = [...variantAttributes];
+                              newAttrs[idx].attribute_values = values;
+                              setVariantAttributes(newAttrs);
+                              setIsDirty(true);
+                            }}
+                            onBlur={() => {
+                              setVariantAttributeDrafts((prev) => {
+                                if (!(attributeDraftKey in prev)) {
+                                  return prev;
+                                }
+
+                                const next = { ...prev };
+                                delete next[attributeDraftKey];
+                                return next;
+                              });
+                            }}
+                            placeholder="例如：红色，蓝色，白色 或 S、M、L、XL（支持中英文逗号、分号、换行）"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
+                          />
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}
