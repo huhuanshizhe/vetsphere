@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import CourseRelationsBlock from '../components/CourseRelationsBlock';
+import { buildProductDetailHref } from '../lib/product-url';
 
 interface ProductDetailClientProps {
   productId: string;
@@ -92,7 +93,7 @@ const ProductDetailClient: React.FC<ProductDetailClientProps> = ({ productId }) 
   const handleShare = async () => {
     if (!product) return;
     
-    const shareUrl = `${window.location.origin}/${locale}/shop/${product.id}`;
+    const shareUrl = `${window.location.origin}${buildProductDetailHref(locale, product)}`;
     const shareTitle = `[VetSphere Equipment] ${product.name}`;
     
     if (navigator.share) {

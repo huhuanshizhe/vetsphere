@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { finalizeCourseOrderPayment } from '@/lib/course-order-payment';
 
 
 
@@ -132,19 +133,17 @@ export async function POST(request: NextRequest) {
 
     // 更新订单状态
     if (orderId) {
-      const { error: updateOrderError } = await supabaseAdmin
-        .from('orders')
-        .update({
-          status: 'paid',
-          payment_status: 'paid',
+      await finalizeCourseOrderPayment(supabaseAdmin, {
+        orderId,
+        paymentStatus: 'paid',
+        orderUpdate: {
+          payment_method: 'paypal',
           paid_at: new Date().toISOString(),
+          payment_id: transactionId,
+          paid_amount: amount ? Number(amount) : undefined,
           transaction_id: transactionId,
-        })
-        .eq('id', orderId);
-
-      if (updateOrderError) {
-        console.error('Failed to update order:', updateOrderError);
-      }
+        },
+      });
 
       // 发送确认邮件（可选）
       // await sendOrderConfirmationEmail(orderId);

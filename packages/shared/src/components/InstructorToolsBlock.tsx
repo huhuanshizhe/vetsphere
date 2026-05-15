@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import type { CourseProductRelation } from '../types';
 import ClinicalConsultationModal from './ClinicalConsultationModal';
 import InquiryModal from './InquiryModal';
+import { buildProductDetailHref } from '../lib/product-url';
 
 const translations = {
   en: {
@@ -103,8 +104,7 @@ export default function InstructorToolsBlock({ relations, locale, instructorName
       <div id="instructor-tools" className="mt-6 pt-6 border-t border-slate-100">
         <h4 className="text-sm font-black text-slate-700 mb-3 flex items-center gap-2">
           <span>&#9733;</span> {instructorName
-            ? (language === 'ja' ? `${instructorName} 推奨ツール` :
-               language === 'th' ? `เครื่องมือแนะนำโดย ${instructorName}` :
+            ? (language === 'th' ? `เครื่องมือแนะนำโดย ${instructorName}` :
                language === 'zh' ? `${instructorName} 推荐工具` :
                `Tools Recommended by ${instructorName}`)
             : t.title}
@@ -128,14 +128,14 @@ export default function InstructorToolsBlock({ relations, locale, instructorName
                   src={product.imageUrl}
                   alt={product.name}
                   className="w-10 h-10 rounded-lg object-cover shrink-0 bg-white border border-slate-100 cursor-pointer"
-                  onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                  onClick={() => router.push(buildProductDetailHref(locale, product))}
                 />
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p
                     className="text-xs font-bold text-slate-900 line-clamp-1 cursor-pointer hover:text-vs transition-colors"
-                    onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                    onClick={() => router.push(buildProductDetailHref(locale, product))}
                   >
                     {product.name}
                   </p>

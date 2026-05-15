@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import {
+  getVisionModelCandidates,
+  normalizeCompatibleAIBaseUrl,
+  shouldContinueVisionModelFallback,
+} from '@/lib/ai-vision';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { isOSSConfigured, uploadBufferToOSS } from '@/lib/oss';
 import { writeAuditLog } from '@/lib/audit';
+import {
+  formatCoursePublishIssues,
+  validateCoursePublishReadiness,
+} from '@/lib/course-publish-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,40 +52,6 @@ interface ExtractedCourseData {
   agenda?: ExtractedAgendaDay[];
   rawText?: string;
   confidence?: number;
-}
-
-function normalizeBaseUrl(rawBaseUrl: string): string {
-  if (!rawBaseUrl) return rawBaseUrl;
-  if (rawBaseUrl.includes('/v1')) return rawBaseUrl;
-  return rawBaseUrl.endsWith('/') ? `${rawBaseUrl}v1` : `${rawBaseUrl}/v1`;
-}
-
-function normalizeModelName(value: string | undefined | null): string | null {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized || null;
-}
-
-function getVisionModelCandidates(): string[] {
-  const configuredVisionModel = normalizeModelName(process.env.AI_VISION_MODEL);
-  const fallbackModel = normalizeModelName(process.env.AI_MODEL);
-  const fallbackVisionModel =
-    fallbackModel && /(^|-)vl(-|$)/i.test(fallbackModel) ? fallbackModel : null;
-
-  return [
-    configuredVisionModel,
-    configuredVisionModel?.replace(/-latest$/i, ''),
-    fallbackVisionModel,
-    fallbackVisionModel?.replace(/-latest$/i, ''),
-    'qwen-vl-max',
-    'qwen-vl-plus',
-  ].filter((model, index, allModels): model is string => {
-    return Boolean(model) && allModels.indexOf(model) === index;
-  });
-}
-
-function isUnsupportedModelError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message.toLowerCase() : '';
-  return message.includes('model') && message.includes('not supported');
 }
 
 function generateEntityId(prefix: string): string {
@@ -312,14 +287,17 @@ function buildFallbackExtractedCourse(source: PreparedPosterSource): ExtractedCo
 
 async function extractCourseDataFromPoster(visionUrl: string): Promise<ExtractedCourseData> {
   const apiKey = process.env.AI_API_KEY;
-  const baseURL = normalizeBaseUrl(process.env.AI_BASE_URL || '');
-  const modelCandidates = getVisionModelCandidates();
+  const baseURL = normalizeCompatibleAIBaseUrl(process.env.AI_BASE_URL || '');
+  const modelCandidates = getVisionModelCandidates({
+    configuredVisionModel: process.env.AI_VISION_MODEL,
+    fallbackModel: process.env.AI_MODEL,
+  });
 
   if (!apiKey) {
     throw new Error('AI service not configured');
   }
 
-  const openai = new OpenAI({ apiKey, baseURL: baseURL || undefined });
+  const openai = new OpenAI({ apiKey, baseURL: baseURL || undefined, timeout: 180000, maxRetries: 2 });
   const prompt = [
     'You are extracting structured course listing data from a course poster.',
     'Do not translate anything. Keep the source language exactly as it appears on the poster.',
@@ -373,7 +351,7 @@ async function extractCourseDataFromPoster(visionUrl: string): Promise<Extracted
       break;
     } catch (error) {
       lastError = error;
-      if (isUnsupportedModelError(error) && model !== modelCandidates[modelCandidates.length - 1]) {
+      if (shouldContinueVisionModelFallback(error) && model !== modelCandidates[modelCandidates.length - 1]) {
         continue;
       }
       throw error;
@@ -512,6 +490,19 @@ export async function POST(request: NextRequest) {
       effectivePublishStatus,
       siteCode,
     );
+
+    if (effectivePublishStatus === 'published') {
+      const validation = validateCoursePublishReadiness(payload);
+      if (!validation.canPublish) {
+        effectivePublishStatus = 'draft';
+        payload.status = 'draft';
+        payload.publishStatus = 'draft';
+        warnings.push(
+          `课程信息未满足发布条件，已自动保存为草稿：${formatCoursePublishIssues(validation.issues)}`,
+        );
+      }
+    }
+
     const authorization = request.headers.get('authorization');
 
     const createResponse = await fetch(`${request.nextUrl.origin}/api/v1/admin/courses`, {

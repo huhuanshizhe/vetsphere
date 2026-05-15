@@ -9,6 +9,7 @@ import type { CourseProductRelation } from '../types';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import ClinicalConsultationModal from './ClinicalConsultationModal';
 import InquiryModal from './InquiryModal';
+import { buildProductDetailHref } from '../lib/product-url';
 
 const translations = {
   en: {
@@ -151,13 +152,12 @@ export default function CourseEquipmentSidebar({ relations, locale }: CourseEqui
                 key={relation.id}
                 className="flex gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-vs/40 transition-all group"
               >
-                {/* Thumbnail */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={product.imageUrl}
                   alt={product.name}
-                  className="w-12 h-12 rounded-lg object-cover shrink-0 bg-white border border-slate-100 cursor-pointer"
-                  onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                  className="w-16 h-16 rounded-xl object-cover shrink-0 bg-white border border-slate-100 cursor-pointer"
+                  onClick={() => router.push(buildProductDetailHref(locale, product))}
                 />
 
                 <div className="flex-1 min-w-0">
@@ -174,7 +174,7 @@ export default function CourseEquipmentSidebar({ relations, locale }: CourseEqui
                   {/* Name */}
                   <p
                     className="text-xs font-bold text-slate-900 line-clamp-1 cursor-pointer hover:text-vs transition-colors"
-                    onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                    onClick={() => router.push(buildProductDetailHref(locale, product))}
                   >
                     {product.name}
                   </p>

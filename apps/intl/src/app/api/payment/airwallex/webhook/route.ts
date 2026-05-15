@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { finalizeCourseOrderPayment } from '@/lib/course-order-payment';
 
 import crypto from 'crypto';
 
@@ -90,15 +91,17 @@ async function handlePaymentIntentSucceeded(event: any) {
 
   // Update order status
   if (paymentRecord.order_id) {
-    await supabaseAdmin
-      .from('orders')
-      .update({
-        status: 'paid',
-        payment_status: 'paid',
+    await finalizeCourseOrderPayment(supabaseAdmin, {
+      orderId: paymentRecord.order_id,
+      paymentStatus: 'paid',
+      orderUpdate: {
+        payment_method: 'airwallex',
         paid_at: new Date().toISOString(),
+        payment_id: paymentIntentId,
+        paid_amount: typeof amount === 'number' ? amount : undefined,
         transaction_id: paymentIntentId,
-      })
-      .eq('id', paymentRecord.order_id);
+      },
+    });
     
     console.log('[Airwallex Webhook] Order updated:', paymentRecord.order_id);
   }
@@ -190,13 +193,10 @@ async function handleRefundSucceeded(event: any) {
 
   // Update order status
   if (paymentRecord.order_id) {
-    await supabaseAdmin
-      .from('orders')
-      .update({
-        status: 'refunded',
-        payment_status: 'refunded',
-      })
-      .eq('id', paymentRecord.order_id);
+    await finalizeCourseOrderPayment(supabaseAdmin, {
+      orderId: paymentRecord.order_id,
+      paymentStatus: 'refunded',
+    });
   }
 }
 

@@ -38,6 +38,8 @@ import {
   X,
   Check,
   Heart,
+  ExternalLink,
+  ZoomIn,
 } from 'lucide-react';
 
 interface IntlProductDetailClientProps {
@@ -72,6 +74,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   const [relatedProducts, setRelatedProducts] = useState<IntlProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  const [showImageLightbox, setShowImageLightbox] = useState(false);
 
   // SKU state
   const [skus, setSkus] = useState<IntlProductSku[]>([]);
@@ -262,6 +265,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   // Determine pricing mode: inquiry products require quote request
   const isInquiryMode = product?.pricing_mode === 'inquiry' || product?.purchase_type === 'quote';
   const isFixedMode = product?.pricing_mode === 'fixed' && !isInquiryMode;
+  void isFixedMode;
 
   if (loading) {
     return (
@@ -379,12 +383,73 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   })();
 
   // All images: cover + product_images (with full URLs)
-  const allImages = [
-    ...(product.cover_image_url
-      ? [{ url: getImageUrl(product.cover_image_url), alt_text: product.display_name }]
-      : []),
-    ...images.map((img) => ({ ...img, url: getImageUrl(img.url) })),
-  ];
+  const allImages = useMemo(() => {
+    const merged = [
+      ...(selectedSku?.image_url
+        ? [{ url: getImageUrl(selectedSku.image_url), alt_text: product.display_name }]
+        : []),
+      ...(product.cover_image_url
+        ? [{ url: getImageUrl(product.cover_image_url), alt_text: product.display_name }]
+        : []),
+      ...images.map((img) => ({ ...img, url: getImageUrl(img.url) })),
+    ].filter((image): image is { url: string; alt_text?: string } => Boolean(image?.url));
+
+    const seenUrls = new Set<string>();
+    return merged.filter((image) => {
+      if (seenUrls.has(image.url)) {
+        return false;
+      }
+
+      seenUrls.add(image.url);
+      return true;
+    });
+  }, [images, product.cover_image_url, product.display_name, selectedSku?.image_url]);
+
+  useEffect(() => {
+    if (allImages.length === 0) {
+      if (activeImage !== 0) {
+        setActiveImage(0);
+      }
+      return;
+    }
+
+    const preferredSkuImage = selectedSku?.image_url ? getImageUrl(selectedSku.image_url) : null;
+    if (preferredSkuImage) {
+      const preferredIndex = allImages.findIndex((image) => image.url === preferredSkuImage);
+      if (preferredIndex >= 0 && preferredIndex !== activeImage) {
+        setActiveImage(preferredIndex);
+        return;
+      }
+    }
+
+    if (activeImage >= allImages.length) {
+      setActiveImage(0);
+    }
+  }, [activeImage, allImages, selectedSku?.image_url]);
+
+  useEffect(() => {
+    if (!showImageLightbox || allImages.length === 0) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowImageLightbox(false);
+        return;
+      }
+
+      if (allImages.length <= 1) return;
+
+      if (event.key === 'ArrowLeft') {
+        setActiveImage((prev) => (prev - 1 + allImages.length) % allImages.length);
+      }
+
+      if (event.key === 'ArrowRight') {
+        setActiveImage((prev) => (prev + 1) % allImages.length);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [allImages.length, showImageLightbox]);
 
   return (
     <div className="bg-white">
@@ -411,17 +476,49 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
           {/* Left: Gallery */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div className="relative rounded-3xl overflow-hidden bg-slate-50 aspect-square w-full">
+            <div
+              className="relative aspect-square w-full overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 shadow-sm cursor-zoom-in"
+              onClick={() => allImages.length > 0 && setShowImageLightbox(true)}
+            >
               {allImages.length > 0 ? (
-                <Image
-                  src={allImages[activeImage]?.url}
-                  alt={allImages[activeImage]?.alt_text || product.display_name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 720px"
-                  className="object-cover"
-                  priority
-                  quality={85}
-                />
+                <>
+                  <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setShowImageLightbox(true);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white"
+                    >
+                      <ZoomIn className="h-3.5 w-3.5" />
+                      Zoom
+                    </button>
+                    <a
+                      href={allImages[activeImage]?.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => event.stopPropagation()}
+                      className="inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Original
+                    </a>
+                  </div>
+                  <div className="absolute inset-0 p-5 sm:p-8">
+                    <div className="relative h-full w-full">
+                      <Image
+                        src={allImages[activeImage]?.url}
+                        alt={allImages[activeImage]?.alt_text || product.display_name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 720px"
+                        className="object-contain"
+                        priority
+                        quality={85}
+                      />
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package className="w-24 h-24 text-slate-200" />
@@ -457,21 +554,23 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                   <button
                     key={idx}
                     onClick={() => setActiveImage(idx)}
-                    className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 shrink-0 transition ${
+                    className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border bg-white p-2 shadow-sm transition ${
                       activeImage === idx
-                        ? 'border-emerald-500 shadow-md'
+                        ? 'border-emerald-500 ring-2 ring-emerald-100 shadow-md'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <Image
-                      src={img.url}
-                      alt={img.alt_text || ''}
-                      fill
-                      sizes="80px"
-                      className="object-cover"
-                      loading="lazy"
-                      quality={75}
-                    />
+                    <div className="relative h-full w-full">
+                      <Image
+                        src={img.url}
+                        alt={img.alt_text || ''}
+                        fill
+                        sizes="80px"
+                        className="object-contain"
+                        loading="lazy"
+                        quality={75}
+                      />
+                    </div>
                   </button>
                 ))}
               </div>
@@ -672,6 +771,77 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
           </div>
         </div>
       </div>
+
+      {showImageLightbox && allImages.length > 0 ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/92 p-4 sm:p-6"
+          onClick={() => setShowImageLightbox(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setShowImageLightbox(false)}
+            className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+            aria-label="Close image preview"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {allImages.length > 1 ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setActiveImage((prev) => (prev - 1 + allImages.length) % allImages.length);
+              }}
+              className="absolute left-4 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+              aria-label="Previous image"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          ) : null}
+          <div
+            className="flex w-full max-w-6xl flex-col items-center gap-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex max-h-[80vh] w-full items-center justify-center overflow-hidden rounded-3xl bg-white/5 p-4 sm:p-8">
+              <img
+                src={allImages[activeImage]?.url}
+                alt={allImages[activeImage]?.alt_text || product.display_name}
+                className="max-h-[72vh] max-w-full object-contain"
+              />
+            </div>
+            <div className="flex w-full items-center justify-between gap-4 text-white">
+              <div>
+                <p className="text-sm font-medium">{product.display_name}</p>
+                <p className="text-xs text-slate-300">
+                  {activeImage + 1} / {allImages.length}
+                </p>
+              </div>
+              <a
+                href={allImages[activeImage]?.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open original
+              </a>
+            </div>
+          </div>
+          {allImages.length > 1 ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setActiveImage((prev) => (prev + 1) % allImages.length);
+              }}
+              className="absolute right-4 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+              aria-label="Next image"
+            >
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* ============================================ */}
       {/* RELATED TRAINING SECTION */}

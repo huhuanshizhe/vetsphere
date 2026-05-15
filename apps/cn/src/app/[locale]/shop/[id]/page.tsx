@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
+import { permanentRedirect } from 'next/navigation';
 import JsonLd, { productSchema, breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
 import CnProductDetailClient from '@vetsphere/shared/pages/cn/CnProductDetailClient';
 import { PRODUCTS_CN } from '@vetsphere/shared';
 import { Product } from '@vetsphere/shared/types';
+import { api } from '@vetsphere/shared/services/api';
+import { buildProductDetailHref } from '@vetsphere/shared/lib/product-url';
 import { supabase } from '@vetsphere/shared/services/supabase';
 import { siteConfig } from '@/config/site.config';
 
@@ -11,30 +14,8 @@ type Locale = (typeof locales)[number];
 
 // 获取商品数据 - 通过 product_site_views 获取 CN 站已发布产品
 async function getProductById(id: string): Promise<Product | undefined> {
-  try {
-    const { data, error } = await supabase
-      .from('product_site_views')
-      .select('*, products!inner(*)')
-      .eq('product_id', id)
-      .eq('site_code', 'cn')
-      .single();
-    if (!error && data) {
-      const sv = data as any;
-      const p = sv.products;
-      return {
-        id: p.id, name: sv.display_name || p.name, brand: p.brand,
-        price: sv.pricing_mode === 'custom' && sv.display_price ? sv.display_price : p.price,
-        specialty: p.specialty,
-        group: p.group_category, imageUrl: p.image_url || p.cover_image_url,
-        description: p.description,
-        longDescription: p.long_description || p.description,
-        specs: p.specs || {}, compareData: p.compare_data,
-        stockStatus: p.stock_status || 'In Stock',
-        supplier: p.supplier_info || { name: 'Verified Supplier', origin: 'Global', rating: 5.0 }
-      } as Product;
-    }
-  } catch {}
-  return PRODUCTS_CN.find(p => p.id === id);
+  const product = await api.getProductById(id);
+  return product || undefined;
 }
 
 // 生成静态参数 - 只为 CN 站已发布的产品生成
@@ -83,7 +64,8 @@ export async function generateMetadata({
     };
   }
 
-  const productUrl = `${siteConfig.siteUrl}/${locale}/shop/${id}`;
+  const productPath = buildProductDetailHref(locale, product);
+  const productUrl = `${siteConfig.siteUrl}${productPath}`;
   const title = product.name;
   const description = `${product.description} 品牌：${product.brand}。`;
 
@@ -121,7 +103,7 @@ export async function generateMetadata({
     alternates: {
       canonical: productUrl,
       languages: Object.fromEntries(
-        siteConfig.locales.map(l => [l === 'zh' ? 'zh-CN' : l, `${siteConfig.siteUrl}/${l}/shop/${id}`])
+        siteConfig.locales.map(l => [l === 'zh' ? 'zh-CN' : l, `${siteConfig.siteUrl}${buildProductDetailHref(l, product)}`])
       ),
     },
   };
@@ -134,6 +116,11 @@ export default async function ProductDetailPage({
 }) {
   const { locale, id } = await params;
   const product = await getProductById(id);
+  const canonicalPath = product ? buildProductDetailHref(locale, product) : `/${locale}/shop/${id}`;
+
+  if (product && canonicalPath !== `/${locale}/shop/${id}`) {
+    permanentRedirect(canonicalPath);
+  }
 
   // 不在服务端 404 —— 客户端组件 CnProductDetailClient 会自行获取数据并处理未找到的情况
   return (
@@ -142,7 +129,7 @@ export default async function ProductDetailPage({
       <JsonLd data={breadcrumbSchema([
         { name: '首页', url: `${siteConfig.siteUrl}/${locale}` },
         { name: '临床器械与耗材', url: `${siteConfig.siteUrl}/${locale}/shop` },
-        { name: product?.name || '商品详情', url: `${siteConfig.siteUrl}/${locale}/shop/${id}` },
+        { name: product?.name || '商品详情', url: `${siteConfig.siteUrl}${canonicalPath}` },
       ])} />
       
       {/* 产品 Schema */}
@@ -154,6 +141,7 @@ export default async function ProductDetailPage({
           imageUrl: product.imageUrl,
           brand: product.brand,
           stockStatus: product.stockStatus,
+          url: `${siteConfig.siteUrl}${canonicalPath}`,
         })} />
       )}
       

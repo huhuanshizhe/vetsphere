@@ -241,6 +241,7 @@ export interface DoctorProfile {
 
 export interface Product {
   id: string;
+  slug?: string;
   name: string;
   brand: string;
   group?: ProductGroup; // Optional for backward compatibility

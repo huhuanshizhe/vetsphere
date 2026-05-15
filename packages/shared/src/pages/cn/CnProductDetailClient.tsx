@@ -33,6 +33,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { api } from '../../services/api';
 import ClinicalConsultationModal from '../../components/ClinicalConsultationModal';
+import { buildProductDetailHref } from '../../lib/product-url';
 import InquiryModal from '../../components/InquiryModal';
 import {
   CnProductDetailData,
@@ -1055,7 +1056,7 @@ const ProductRecommendationsSection: React.FC<{
     return (
       <div
         key={item.id}
-        onClick={() => router.push(`/${locale}/shop/${item.slug || item.id}`)}
+        onClick={() => router.push(buildProductDetailHref(locale, item))}
         className="bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group"
       >
         {/* 标签 */}

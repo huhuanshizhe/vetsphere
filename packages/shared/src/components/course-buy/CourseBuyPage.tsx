@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { CheckCircle, Loader2, AlertCircle, CreditCard, Smartphone, Building, Mail, ChevronRight, Pencil, LogIn, UserPlus, User, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import { getIntlCoursePurchaseContext } from '../../services/intl-api';
 import CourseInfoCard from './CourseInfoCard';
 
 const StripePaymentElement = dynamic(
@@ -20,24 +21,22 @@ interface CourseBuyPageProps {
 }
 
 interface CourseData {
-  id: string;
+  course_id: string;
   title: string;
-  title_zh?: string;
-  title_en?: string;
   cover_image_url?: string;
-  image_url?: string;
-  instructor_names?: any; // JSONB: { zh?: string; en?: string; ... } or string[]
-  instructor?: any; // JSONB: { name?: string; ... }
+  instructor_name?: string;
   start_date?: string;
   end_date?: string;
-  location?: any; // JSONB: { city?: { zh?: string; en?: string }, venue?: {...}, ... }
+  location_text?: string;
   format?: string;
-  price: number;
-  price_cny?: number;
-  price_usd?: number;
+  price: number | null;
   currency?: string;
-  max_enrollment?: number;
-  current_enrollment?: number;
+  is_free: boolean;
+  pricing_mode: string;
+  purchase_mode: 'direct' | 'inquiry';
+  max_enrollment: number;
+  current_enrollment: number;
+  enrollment_deadline?: string | null;
 }
 
 type PaymentMethod = 'stripe' | 'paypal' | 'bank_transfer' | 'wechat' | 'alipay';
@@ -80,21 +79,17 @@ export default function CourseBuyPage({ courseId, locale, site }: CourseBuyPageP
   useEffect(() => {
     async function fetchCourse() {
       try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-        );
-        const { data, error: fetchErr } = await supabase
-          .from('courses')
-          .select('id, title, title_zh, title_en, cover_image_url, image_url, instructor_names, instructor, start_date, end_date, location, format, price, price_cny, price_usd, currency, max_enrollment, current_enrollment')
-          .eq('id', courseId)
-          .single();
-
-        if (fetchErr || !data) {
-          setError(isZh ? '课程未找到' : 'Course not found');
+        if (site !== 'intl') {
+          setError(isZh ? '当前站点暂不支持课程在线报名' : 'Course checkout is not available on this site yet');
           return;
         }
+
+        const data = await getIntlCoursePurchaseContext(courseId, locale);
+        if (!data) {
+          setError(isZh ? '课程当前不可报名' : 'This course is not available for checkout');
+          return;
+        }
+
         setCourse(data as CourseData);
       } catch {
         setError(isZh ? '加载失败' : 'Failed to load course');
@@ -103,7 +98,7 @@ export default function CourseBuyPage({ courseId, locale, site }: CourseBuyPageP
       }
     }
     fetchCourse();
-  }, [courseId, isZh]);
+  }, [courseId, isZh, locale, site]);
 
   // Auto-fill from auth + sync account step
   useEffect(() => {
@@ -117,51 +112,22 @@ export default function CourseBuyPage({ courseId, locale, site }: CourseBuyPageP
   }, [isAuthenticated, user]);
 
   const courseTitle = useMemo(() => {
-    if (!course) return '';
-    if (isZh) return course.title_zh || course.title;
-    return course.title_en || course.title;
-  }, [course, isZh]);
+    return course?.title || '';
+  }, [course]);
 
-  // Extract instructor name from JSONB
   const instructorName = useMemo(() => {
-    if (!course) return '';
-    // Try instructor_names first
-    const names = course.instructor_names;
-    if (names) {
-      if (typeof names === 'object' && !Array.isArray(names)) {
-        return isZh ? (names.zh || names.en || '') : (names.en || names.zh || '');
-      }
-      if (Array.isArray(names) && names.length > 0) return names.join(', ');
-    }
-    // Fallback to instructor JSONB (flat keys: name_zh, name_en, name)
-    const inst = course.instructor;
-    if (inst && typeof inst === 'object') {
-      const suffix = isZh ? '_zh' : '_en';
-      return inst[`name${suffix}`] || inst.name_en || inst.name || '';
-    }
-    return '';
-  }, [course, isZh]);
+    return course?.instructor_name || '';
+  }, [course]);
 
-  // Extract location string from JSONB (flat keys like city_zh, venue_en)
   const locationStr = useMemo(() => {
-    if (!course?.location) return '';
-    const loc = course.location;
-    if (typeof loc === 'string') return loc;
-    if (typeof loc === 'object') {
-      const suffix = isZh ? '_zh' : '_en';
-      const city = loc[`city${suffix}`] || loc.city_zh || loc.city_en || loc.city || '';
-      const venue = loc[`venue${suffix}`] || loc.venue_zh || loc.venue_en || loc.venue || '';
-      return [city, venue].filter(Boolean).join(' · ');
-    }
-    return '';
-  }, [course, isZh]);
+    return course?.location_text || '';
+  }, [course]);
 
   const coursePrice = useMemo(() => {
-    if (!course) return 0;
-    return isCN ? (course.price_cny || course.price || 0) : (course.price_usd || course.price || 0);
-  }, [course, isCN]);
+    return course?.price || 0;
+  }, [course]);
 
-  const currency = isCN ? 'CNY' : (course?.currency || 'USD');
+  const currency = course?.currency || (isCN ? 'CNY' : 'USD');
 
   const paymentMethods: { id: PaymentMethod; label: string; desc?: string; icon: React.ReactNode }[] = isCN
     ? [
@@ -297,13 +263,12 @@ export default function CourseBuyPage({ courseId, locale, site }: CourseBuyPageP
         method: 'POST',
         headers,
         body: JSON.stringify({
-          courseId: course.id,
+          courseId: course.course_id,
           contactName: contactName.trim(),
           contactEmail: contactEmail.trim(),
           contactPhone: contactPhone.trim(),
           paymentMethod,
           locale,
-          currency,
         }),
       });
 
@@ -411,6 +376,41 @@ export default function CourseBuyPage({ courseId, locale, site }: CourseBuyPageP
     );
   }
 
+  if (course.purchase_mode !== 'direct') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="max-w-lg mx-auto px-4 text-center">
+          <div className="bg-white rounded-2xl border border-gray-200 p-8">
+            <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {isZh ? '该课程当前不支持直接报名' : 'Direct checkout is not available for this course'}
+            </h2>
+            <p className="text-gray-600 mb-1">{courseTitle}</p>
+            <p className="text-sm text-gray-500 mb-6">
+              {isZh
+                ? '当前课程采用咨询确认方式报名，请联系团队获取报价或报名安排。'
+                : 'This training currently uses consultation-based enrollment. Contact the team for pricing or booking details.'}
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push(`/${locale}/for-clinics#consultation`)}
+                className="w-full py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-500 transition"
+              >
+                {isZh ? '联系顾问' : 'Talk to the Team'}
+              </button>
+              <button
+                onClick={() => router.push(`/${locale}/courses/${course.course_id}`)}
+                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition"
+              >
+                {isZh ? '返回课程详情' : 'Back to Course Details'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Stripe payment screen
   if (showStripePayment && orderId) {
     return (
@@ -499,7 +499,7 @@ export default function CourseBuyPage({ courseId, locale, site }: CourseBuyPageP
               {/* Course Info */}
               <CourseInfoCard
                 title={courseTitle}
-                imageUrl={course.cover_image_url || course.image_url}
+                imageUrl={course.cover_image_url}
                 instructorName={instructorName}
                 startDate={course.start_date}
                 endDate={course.end_date}

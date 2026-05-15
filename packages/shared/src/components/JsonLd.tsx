@@ -1,5 +1,6 @@
 import React from 'react';
 import type { SiteConfig } from '../site-config.types';
+import { buildProductDetailHref } from '../lib/product-url';
 
 interface JsonLdProps {
   data: Record<string, any>;
@@ -119,6 +120,7 @@ export function productSchema(siteConfig: SiteConfig, product: {
   imageUrl: string;
   brand: string;
   stockStatus: string;
+  url?: string;
 }) {
   return {
     "@context": "https://schema.org",
@@ -139,7 +141,7 @@ export function productSchema(siteConfig: SiteConfig, product: {
         : product.stockStatus === 'Low Stock'
           ? "https://schema.org/LimitedAvailability"
           : "https://schema.org/OutOfStock",
-      "url": `${siteConfig.siteUrl}/shop`
+      "url": product.url || `${siteConfig.siteUrl}/shop`
     }
   };
 }
@@ -218,8 +220,10 @@ export function categoryPageSchema(params: {
 export function itemListSchema(params: {
   siteConfig: SiteConfig;
   products: Array<{
+    id?: string;
     name: string;
     slug: string;
+    categorySlug?: string;
     price?: number;
     brand?: string;
     imageUrl?: string;
@@ -241,7 +245,11 @@ export function itemListSchema(params: {
     "itemListElement": products.map((product, index) => ({
       "@type": "ListItem",
       "position": index + 1,
-      "url": `${siteConfig.siteUrl}/${locale}/shop/${product.slug}`,
+      "url": `${siteConfig.siteUrl}${buildProductDetailHref(locale, {
+        id: product.id || product.slug,
+        slug: product.slug,
+        categorySlug: product.categorySlug,
+      })}`,
       "name": product.name,
       ...(product.price && {
         "offers": {
@@ -269,8 +277,10 @@ export function itemListSchema(params: {
 export function productListSchema(params: {
   siteConfig: SiteConfig;
   products: Array<{
+    id?: string;
     name: string;
     slug: string;
+    categorySlug?: string;
     description?: string;
     price?: number;
     brand?: string;
@@ -302,7 +312,11 @@ export function productListSchema(params: {
         "position": index + 1,
         "name": product.name,
         "description": product.description,
-        "url": `${siteConfig.siteUrl}/${locale}/shop/${product.slug}`,
+        "url": `${siteConfig.siteUrl}${buildProductDetailHref(locale, {
+          id: product.id || product.slug,
+          slug: product.slug,
+          categorySlug: product.categorySlug,
+        })}`,
         ...(product.imageUrl && { "image": product.imageUrl }),
         ...(product.brand && {
           "brand": {

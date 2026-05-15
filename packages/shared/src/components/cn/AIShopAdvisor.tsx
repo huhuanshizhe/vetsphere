@@ -7,6 +7,7 @@ import {
   ShoppingCart, ChevronRight, Stethoscope, GraduationCap, Wrench,
 } from 'lucide-react';
 import Link from 'next/link';
+import { buildProductDetailHref } from '../../lib/product-url';
 
 // ─── Types ───
 interface ShopProfile {
@@ -540,7 +541,7 @@ export function AIShopAdvisor({ isOpen, onClose, locale }: AIShopAdvisorProps) {
                           ))}
                         </div>
                         <Link
-                          href={`/${locale}/shop/${product.id}`}
+                          href={buildProductDetailHref(locale, product)}
                           onClick={onClose}
                           className="flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700"
                         >

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
+import { finalizeCourseOrderPayment } from '@/lib/course-order-payment';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,42 +41,20 @@ export async function POST(request: NextRequest) {
       const orderId = paymentIntent.metadata?.orderId;
 
       if (orderId) {
-        // Idempotency check: Skip if order already paid
-        const { data: existingOrder } = await supabase
-          .from('orders')
-          .select('status')
-          .eq('id', orderId)
-          .single();
-
-        if (existingOrder?.status === 'Paid' || existingOrder?.status === 'Completed') {
-          console.log(`[Stripe Webhook] Order ${orderId} already paid, skipping duplicate`);
-          break;
-        }
-
-        // Update order status
-        const { error } = await supabase
-          .from('orders')
-          .update({
-            status: 'Paid',
+        const result = await finalizeCourseOrderPayment(supabase, {
+          orderId,
+          paymentStatus: 'paid',
+          orderUpdate: {
             payment_method: 'stripe',
             payment_id: paymentIntent.id,
             paid_amount: paymentIntent.amount / 100,
             paid_at: new Date().toISOString(),
-          })
-          .eq('id', orderId);
+          },
+        });
 
-        if (error) {
-          console.error('Failed to update order:', error);
-        }
-
-        // Update course enrollments payment status
-        const { error: enrollmentError } = await supabase
-          .from('course_enrollments')
-          .update({ payment_status: 'paid' })
-          .eq('order_id', orderId);
-
-        if (enrollmentError) {
-          console.error('Failed to update enrollments:', enrollmentError);
+        if (!result.changed) {
+          console.log(`[Stripe Webhook] Order ${orderId} already paid, skipping duplicate`);
+          break;
         }
 
         console.log(`Order ${orderId} paid via Stripe, payment_intent: ${paymentIntent.id}`);

@@ -3,6 +3,11 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import {
+  getVisionModelCandidates,
+  normalizeCompatibleAIBaseUrl,
+  shouldContinueVisionModelFallback,
+} from '@/lib/ai-vision';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { isOSSConfigured, uploadBufferToOSS } from '@/lib/oss';
 import { writeAuditLog } from '@/lib/audit';
@@ -48,40 +53,6 @@ interface PreparedSource {
 }
 
 let pdfWorkerHref: string | null = null;
-
-function normalizeBaseUrl(rawBaseUrl: string): string {
-  if (!rawBaseUrl) return rawBaseUrl;
-  if (rawBaseUrl.includes('/v1')) return rawBaseUrl;
-  return rawBaseUrl.endsWith('/') ? `${rawBaseUrl}v1` : `${rawBaseUrl}/v1`;
-}
-
-function normalizeModelName(value: string | undefined | null): string | null {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized || null;
-}
-
-function getVisionModelCandidates(): string[] {
-  const configuredVisionModel = normalizeModelName(process.env.AI_VISION_MODEL);
-  const fallbackModel = normalizeModelName(process.env.AI_MODEL);
-  const fallbackVisionModel =
-    fallbackModel && /(^|-)vl(-|$)/i.test(fallbackModel) ? fallbackModel : null;
-
-  return [
-    configuredVisionModel,
-    configuredVisionModel?.replace(/-latest$/i, ''),
-    fallbackVisionModel,
-    fallbackVisionModel?.replace(/-latest$/i, ''),
-    'qwen-vl-max',
-    'qwen-vl-plus',
-  ].filter((model, index, allModels): model is string => {
-    return Boolean(model) && allModels.indexOf(model) === index;
-  });
-}
-
-function isUnsupportedModelError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message.toLowerCase() : '';
-  return message.includes('model') && message.includes('not supported');
-}
 
 function generateEntityId(prefix: string): string {
   const timestamp = Date.now().toString(36);
@@ -364,13 +335,18 @@ function getOpenAIClient(): OpenAI {
 
   return new OpenAI({
     apiKey,
-    baseURL: normalizeBaseUrl(process.env.AI_BASE_URL || '') || undefined,
+    baseURL: normalizeCompatibleAIBaseUrl(process.env.AI_BASE_URL || '') || undefined,
+    timeout: 180000,
+    maxRetries: 2,
   });
 }
 
 async function extractFromImage(visionUrl: string): Promise<ExtractedProductData> {
   const client = getOpenAIClient();
-  const modelCandidates = getVisionModelCandidates();
+  const modelCandidates = getVisionModelCandidates({
+    configuredVisionModel: process.env.AI_VISION_MODEL,
+    fallbackModel: process.env.AI_MODEL,
+  });
   const prompt = [
     'Extract structured product listing data from a medical device product image or poster.',
     'Do not translate. Keep the original source language.',
@@ -426,7 +402,7 @@ async function extractFromImage(visionUrl: string): Promise<ExtractedProductData
       break;
     } catch (error) {
       lastError = error;
-      if (isUnsupportedModelError(error) && model !== modelCandidates[modelCandidates.length - 1]) {
+      if (shouldContinueVisionModelFallback(error) && model !== modelCandidates[modelCandidates.length - 1]) {
         continue;
       }
       throw error;

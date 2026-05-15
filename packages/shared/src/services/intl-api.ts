@@ -5,6 +5,12 @@
  * Reads from overlay tables (course_site_views, product_site_views, etc.)
  * JOINed with base tables for resolved display data.
  */
+import {
+  getLocalizedJsonbValue,
+  getPublishedIntlCoursePurchaseContext,
+  resolveCoursePurchaseMode,
+  resolveCourseSitePricing,
+} from '../lib/course-site-purchase';
 import { supabase, getImageUrl } from './supabase';
 
 const SITE_CODE = 'intl';
@@ -101,6 +107,7 @@ export interface IntlProduct {
   // Base product fields
   base_name: string;
   base_slug: string;
+  base_slug_en?: string;
   brand: string | null;
   specialty: string | null;
   scene_code: string | null;
@@ -136,6 +143,13 @@ export interface IntlProduct {
   sku_price_jpy_max?: number | null;
   sku_price_thb_max?: number | null;
   sku_price_cny_max?: number | null;
+  relationship_type?: 'required' | 'recommended' | 'mentioned';
+  relation_type?: 'course' | 'module' | 'instructor';
+  day_index?: number | null;
+  relation_display_order?: number;
+  instructor_note_en?: string | null;
+  instructor_note_th?: string | null;
+  instructor_note_ja?: string | null;
 }
 
 export interface IntlInstructor {
@@ -188,21 +202,6 @@ const localeToTargetAudienceField: Record<string, string> = {
   'ja': 'target_audience',
 };
 
-// 语言到价格和货币的映射
-const localeToPriceConfig: Record<string, { priceField: string; currency: string }> = {
-  'en': { priceField: 'price_usd', currency: 'USD' },
-  'zh': { priceField: 'price_cny', currency: 'CNY' },
-  'th': { priceField: 'price_thb', currency: 'THB' },
-  'ja': { priceField: 'price_jpy', currency: 'JPY' },
-};
-
-// 获取本地化的 JSONB 字段值
-function getLocalizedJsonbValue(obj: any, baseField: string, locale: string): string {
-  if (!obj) return '';
-  const localizedField = `${baseField}_${locale}`;
-  return obj[localizedField] || obj[baseField] || '';
-}
-
 function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
   const base = sv.courses || {};
   // 解析 location JSONB 对象
@@ -213,6 +212,13 @@ function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
   const titleField = localeToTitleField[locale] || 'title_en';
   const descField = localeToDescField[locale] || 'description_en';
   const targetAudienceField = localeToTargetAudienceField[locale] || 'target_audience';
+  const pricing = resolveCourseSitePricing(base, sv, locale);
+  const purchaseMode = resolveCoursePurchaseMode({
+    ctaConfig: sv.cta_config_json || {},
+    price: pricing.price,
+    isFree: pricing.isFree,
+    pricingMode: pricing.pricingMode,
+  });
 
   const localizedTitle = base[titleField] || base.title_en || base.title || '';
   const localizedDesc = base[descField] || base.description_en || base.description || '';
@@ -255,15 +261,15 @@ function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
     cover_image_url: getImageUrl(base.cover_image_url || base.image_url) ?? null,
     description: localizedDesc,
     target_audience: localizedTargetAudience,
-    is_free: base.is_free || false,
+    is_free: pricing.isFree,
     // Multi-currency prices
     price_cny: base.price_cny,
     price_usd: base.price_usd,
     price_jpy: base.price_jpy,
     price_thb: base.price_thb,
     // Localized price for current locale
-    price: base[localeToPriceConfig[locale]?.priceField] || base.price_usd || base.price_cny || null,
-    currency: localeToPriceConfig[locale]?.currency || 'USD',
+    price: pricing.price,
+    currency: pricing.currency,
     enrollment_count: base.enrollment_count || 0,
     avg_rating: base.avg_rating,
     growth_tracks: base.growth_tracks || [],
@@ -285,6 +291,13 @@ function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
     instructor_bio: getLocalizedJsonbValue(instructor, 'bio', locale),
     instructor_avatar_url: instructor.imageUrl || instructor.avatar_url || null,
   };
+}
+
+export async function getIntlCoursePurchaseContext(
+  courseId: string,
+  locale: string = 'en',
+) {
+  return getPublishedIntlCoursePurchaseContext(supabase, courseId, locale);
 }
 
 /** Get published INTL courses list */
@@ -493,6 +506,19 @@ export async function getIntlCourseInstructors(courseId: string, locale: string 
 
 function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
   const base = sv.products || {};
+
+  const getPreferredIntlSlug = () => {
+    const siteSlug = typeof sv.slug_override === 'string' ? sv.slug_override.trim() : '';
+    if (siteSlug) return siteSlug;
+
+    const localizedSlug = typeof base.slug_en === 'string' ? base.slug_en.trim() : '';
+    if (localizedSlug) return localizedSlug;
+
+    const baseSlug = typeof base.slug === 'string' ? base.slug.trim() : '';
+    if (baseSlug && !/^\d+$/.test(baseSlug)) return baseSlug;
+
+    return sv.product_id;
+  };
   
   // Get localized name based on locale
   const getLocalizedName = () => {
@@ -531,7 +557,7 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
     product_id: sv.product_id,
     site_code: sv.site_code,
     display_name: getLocalizedName(),
-    slug: sv.slug_override || base.slug || sv.product_id,
+    slug: getPreferredIntlSlug(),
     summary: getLocalizedSummary(),
     pricing_mode: effectivePricingMode,
     display_price: sv.display_price || base.price,
@@ -549,6 +575,7 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
     // Base
     base_name: base.name || '',
     base_slug: base.slug || '',
+    base_slug_en: base.slug_en || '',
     brand: base.brand,
     specialty: base.specialty,
     scene_code: base.scene_code,
@@ -606,7 +633,7 @@ export async function getIntlProducts(options?: {
     .select(`
       *,
       products!inner (
-        id, slug, name, name_en, name_ja, name_th,
+        id, slug, slug_en, name, name_en, name_ja, name_th,
         subtitle, description, description_en, description_ja, description_th,
         rich_description, rich_description_en, rich_description_ja, rich_description_th,
         brand, specialty, scene_code, clinical_category,
@@ -801,7 +828,7 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
     .select(`
       *,
       products (
-        id, slug, name, name_en, name_ja, name_th,
+        id, slug, slug_en, name, name_en, name_ja, name_th,
         subtitle, description, description_en, description_ja, description_th,
         rich_description, rich_description_en, rich_description_ja, rich_description_th,
         brand, specialty, scene_code, clinical_category,
@@ -879,17 +906,20 @@ export async function getIntlProductImages(productId: string) {
 // ============================================
 
 /** Get related products for a course (via course_product_relations) */
-export async function getIntlCourseProducts(courseId: string): Promise<IntlProduct[]> {
+export async function getIntlCourseProducts(courseId: string, locale: string = 'en'): Promise<IntlProduct[]> {
   // First get product IDs related to this course
   const { data: relations } = await supabase
     .from('course_product_relations')
-    .select('product_id, relation_type, display_order')
+    .select(
+      'product_id, relationship_type, relation_type, day_index, display_order, instructor_note_en, instructor_note_th, instructor_note_ja',
+    )
     .eq('course_id', courseId)
     .order('display_order');
 
   if (!relations || relations.length === 0) return [];
 
-  const productIds = relations.map(r => r.product_id);
+  const relationMap = new Map(relations.map((relation: any) => [relation.product_id, relation]));
+  const productIds = relations.map((relation: any) => relation.product_id);
 
   // Get their site views
   const { data: siteViews } = await supabase
@@ -897,7 +927,7 @@ export async function getIntlCourseProducts(courseId: string): Promise<IntlProdu
     .select(`
       *,
       products!inner (
-        id, slug, name, subtitle, description, rich_description,
+        id, slug, slug_en, name, subtitle, description, rich_description,
         brand, specialty, scene_code, clinical_category,
         cover_image_url, image_url, specs, price_min, price_max, status
       )
@@ -909,15 +939,29 @@ export async function getIntlCourseProducts(courseId: string): Promise<IntlProdu
 
   if (!siteViews) return [];
 
-  // Merge relation_type from relations
-  return siteViews.map(sv => {
-    const rel = relations.find(r => r.product_id === sv.product_id);
-    const product = mapProductRow(sv);
-    if (rel) {
-      (product as any).relation_type = rel.relation_type;
+  const equipmentProducts: IntlProduct[] = [];
+
+  siteViews.forEach((sv) => {
+    const relation = relationMap.get(sv.product_id);
+    if (!relation) {
+      return;
     }
-    return product;
+
+    equipmentProducts.push({
+      ...mapProductRow(sv, locale),
+      relationship_type: relation.relationship_type || 'recommended',
+      relation_type: relation.relation_type || 'course',
+      day_index: relation.day_index ?? null,
+      relation_display_order: relation.display_order ?? 0,
+      instructor_note_en: relation.instructor_note_en ?? null,
+      instructor_note_th: relation.instructor_note_th ?? null,
+      instructor_note_ja: relation.instructor_note_ja ?? null,
+    });
   });
+
+  return equipmentProducts.sort(
+    (left, right) => (left.relation_display_order || 0) - (right.relation_display_order || 0),
+  );
 }
 
 /** Get related courses for a product */
@@ -963,7 +1007,7 @@ export async function getIntlRelatedProducts(productId: string, sceneCode: strin
     .select(`
       *,
       products!inner (
-        id, slug, name, subtitle, description, long_description,
+        id, slug, slug_en, name, subtitle, description, long_description,
         brand, specialty, scene_code, clinical_category,
         cover_image_url, image_url, specs, price_min, price_max, status
       )

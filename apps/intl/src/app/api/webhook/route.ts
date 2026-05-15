@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
+import { finalizeCourseOrderPayment } from '@/lib/course-order-payment';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -32,51 +33,6 @@ async function getSupabaseAdmin() {
 
 async function getEmailFunctions() {
   return await import('@vetsphere/shared/lib/email');
-}
-
-async function updateOrderAndEnrollments(orderId: string, status: 'Paid' | 'refunded') {
-  const supabaseAdmin = await getSupabaseAdmin();
-  // Update order status
-  await supabaseAdmin
-    .from('orders')
-    .update({ status: status === 'Paid' ? 'paid' : 'refunded', payment_status: status === 'Paid' ? 'paid' : 'refunded' })
-    .eq('id', orderId);
-
-  // Update course enrollments payment status
-  const paymentStatus = status === 'Paid' ? 'paid' : 'refunded';
-  await supabaseAdmin
-    .from('course_enrollments')
-    .update({ payment_status: paymentStatus })
-    .eq('order_id', orderId);
-
-  // Increment current_enrollment for each course item when paid
-  if (status === 'Paid') {
-    // 从 order_items 表获取订单项
-    const { data: orderItems } = await supabaseAdmin
-      .from('order_items')
-      .select('product_id, product_name')
-      .eq('order_id', orderId);
-
-    if (orderItems) {
-      // 检查是否有课程产品
-      for (const item of orderItems) {
-        if (item.product_id) {
-          // 检查是否是课程
-          const { data: product } = await supabaseAdmin
-            .from('products')
-            .select('type')
-            .eq('id', item.product_id)
-            .single();
-          
-          if (product?.type === 'course') {
-            await supabaseAdmin.rpc('increment_course_enrollment', { p_course_id: item.product_id });
-          }
-        }
-      }
-    }
-  }
-
-  console.log(`[Webhook] Order ${orderId} updated to ${status}`);
 }
 
 async function sendPaymentEmails(orderId: string, amount: number) {
@@ -199,17 +155,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const orderId = paymentIntent.metadata?.orderId;
 
         if (orderId) {
-          // Idempotency check: skip if already processed
-          const { data: existingOrder } = await supabaseAdmin.from('orders').select('status').eq('id', orderId).single();
-          if (existingOrder?.status === 'Paid') {
-            console.log(`[Webhook] Order ${orderId} already paid, skipping duplicate`);
-            break;
-          }
+            const result = await finalizeCourseOrderPayment(supabaseAdmin, {
+              orderId,
+              paymentStatus: 'paid',
+              orderUpdate: {
+                payment_method: 'stripe',
+                payment_id: paymentIntent.id,
+                paid_amount: paymentIntent.amount / 100,
+                paid_at: new Date().toISOString(),
+              },
+            });
 
-          await updateOrderAndEnrollments(orderId, 'Paid');
-          // Send confirmation emails
-          await sendPaymentEmails(orderId, paymentIntent.amount / 100);
-          console.log(`[Webhook] Payment succeeded for order: ${orderId}`);
+            if (!result.changed) {
+              console.log(`[Webhook] Order ${orderId} already paid, skipping duplicate`);
+              break;
+            }
+
+            await sendPaymentEmails(orderId, paymentIntent.amount / 100);
+            console.log(`[Webhook] Payment succeeded for order: ${orderId}`);
         }
         break;
       }
@@ -227,7 +190,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const orderId = charge.metadata?.orderId;
 
         if (orderId) {
-          await updateOrderAndEnrollments(orderId, 'refunded');
+          await finalizeCourseOrderPayment(supabaseAdmin, {
+            orderId,
+            paymentStatus: 'refunded',
+          });
           console.log(`[Webhook] Refund processed for order: ${orderId}`);
         }
         break;

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '../context/LanguageContext';
 import type { Product } from '../types';
+import { buildProductDetailHref } from '../lib/product-url';
 
 interface ProductRelation {
   id: string;
@@ -189,7 +190,7 @@ export default function ProductRelationsBlock({ courseId, locale }: ProductRelat
               <div 
                 key={relation.id}
                 className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-vs/50 hover:shadow-md transition-all cursor-pointer group"
-                onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                onClick={() => router.push(buildProductDetailHref(locale, product))}
               >
                 <div className="flex gap-4">
                   {/* Product Image */}

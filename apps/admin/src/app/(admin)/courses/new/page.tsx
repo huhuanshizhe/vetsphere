@@ -62,6 +62,32 @@ const siteOptions = [
   { value: 'intl', label: 'INTL 国际站' },
 ];
 
+function buildEditorWorkflowUrl(
+  courseId: string,
+  entry: 'manual-create' | 'poster-import',
+  options?: {
+    siteCode?: string;
+    publishStatus?: string;
+    warningsCount?: number;
+  },
+) {
+  const params = new URLSearchParams({ entry });
+
+  if (options?.siteCode) {
+    params.set('site', options.siteCode);
+  }
+
+  if (options?.publishStatus) {
+    params.set('publish', options.publishStatus);
+  }
+
+  if (options?.warningsCount && options.warningsCount > 0) {
+    params.set('warnings', String(options.warningsCount));
+  }
+
+  return `/courses/${courseId}?${params.toString()}`;
+}
+
 export default function NewCoursePage() {
   const router = useRouter();
   const [manualTitle, setManualTitle] = useState('');
@@ -125,6 +151,15 @@ export default function NewCoursePage() {
       });
 
       setResult(json);
+      if (json.data?.id) {
+        router.push(
+          buildEditorWorkflowUrl(json.data.id, 'poster-import', {
+            siteCode,
+            publishStatus: json.data.status,
+            warningsCount: json.warnings?.length || 0,
+          }),
+        );
+      }
     } catch (importError) {
       setError(getErrorMessage(importError) || '导入失败');
     } finally {
@@ -156,7 +191,7 @@ export default function NewCoursePage() {
         }),
       });
 
-      router.push(`/courses/${json.data.id}`);
+      router.push(buildEditorWorkflowUrl(json.data.id, 'manual-create'));
     } catch (createError) {
       setManualError(getErrorMessage(createError) || '创建课程失败');
     } finally {
@@ -172,7 +207,7 @@ export default function NewCoursePage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">新建课程</h1>
           <p className="mt-1 text-sm text-slate-500">
-            支持先手工创建草稿课程继续编辑，也支持通过海报解析快速建课。
+            支持先手工创建草稿课程继续编辑，也支持通过海报解析快速建课，成功后会直接交给课程编辑工作流继续处理。
           </p>
         </div>
         <Button variant="secondary" onClick={() => router.push('/courses')}>
@@ -305,7 +340,7 @@ export default function NewCoursePage() {
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-slate-900">海报预览与识别结果</h2>
             <p className="text-sm text-slate-500">
-              先按海报源语言建课，翻译补全仍然走现有课程翻译流程。
+              先按海报源语言建课，翻译补全仍然走现有课程翻译流程；导入成功后会自动进入编辑工作流。
             </p>
           </div>
 
@@ -423,7 +458,7 @@ export default function NewCoursePage() {
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-              导入后这里会显示识别出的源语言、标题、时间地点、讲师和标签，并提供跳转到课程编辑页的入口。
+              导入时这里会显示识别预览；课程创建成功后会自动跳转到编辑页，继续走步骤化发布检查。
             </div>
           )}
         </Card>

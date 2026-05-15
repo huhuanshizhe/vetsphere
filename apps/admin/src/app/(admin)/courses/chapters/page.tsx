@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
   Card,
@@ -39,6 +40,10 @@ const PAGE_SIZE = 20;
 
 export default function ChaptersPage() {
   const supabase = createClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetCourseId = searchParams.get('course') || '';
+  const returnTo = searchParams.get('returnTo') || '';
   
   const [courses, setCourses] = useState<Course[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -58,6 +63,17 @@ export default function ChaptersPage() {
   useEffect(() => {
     loadCourses();
   }, []);
+
+  useEffect(() => {
+    if (!presetCourseId || selectedCourse || courses.length === 0) {
+      return;
+    }
+
+    const hasPresetCourse = courses.some((course) => course.id === presetCourseId);
+    if (hasPresetCourse) {
+      setSelectedCourse(presetCourseId);
+    }
+  }, [courses, presetCourseId, selectedCourse]);
 
   useEffect(() => {
     if (selectedCourse) {
@@ -289,6 +305,7 @@ export default function ChaptersPage() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
+  const selectedCourseInfo = courses.find((course) => course.id === selectedCourse);
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -297,22 +314,48 @@ export default function ChaptersPage() {
           <p className="text-slate-500 mt-1">管理课程章节内容与排序</p>
         </div>
         {selectedCourse && (
-          <Button onClick={() => {
-            setChapterToEdit({
-              title: '',
-              description: '',
-              video_url: '',
-              duration_minutes: 0,
-              is_free: false,
-              is_preview: false,
-              status: 'draft',
-            });
-            setShowEditDialog(true);
-          }}>
-            添加章节
-          </Button>
+          <div className="flex items-center gap-3">
+            {returnTo ? (
+              <Button variant="secondary" onClick={() => router.push(returnTo)}>
+                返回课程编辑
+              </Button>
+            ) : null}
+            <Button onClick={() => {
+              setChapterToEdit({
+                title: '',
+                description: '',
+                video_url: '',
+                duration_minutes: 0,
+                sort_order: chapters.length + 1,
+                is_free: false,
+                is_preview: false,
+                status: 'draft',
+              });
+              setShowEditDialog(true);
+            }} disabled={!selectedCourse}>
+              新增章节
+            </Button>
+          </div>
         )}
       </div>
+
+        {selectedCourseInfo ? (
+          <Card className="bg-emerald-50 border-emerald-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-emerald-800">当前课程：{selectedCourseInfo.title}</div>
+                <div className="text-xs text-emerald-700 mt-1">
+                  正在管理该课程的结构化章节内容。完成后可返回课程编辑工作流继续做发布检查。
+                </div>
+              </div>
+              {returnTo ? (
+                <Button variant="secondary" onClick={() => router.push(returnTo)}>
+                  完成后返回编辑页
+                </Button>
+              ) : null}
+            </div>
+          </Card>
+        ) : null}
 
       <Card>
         <div className="flex flex-col md:flex-row gap-4">

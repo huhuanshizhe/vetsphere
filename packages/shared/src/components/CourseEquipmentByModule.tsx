@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import type { CourseProductRelation, Course } from '../types';
 import ClinicalConsultationModal from './ClinicalConsultationModal';
 import InquiryModal from './InquiryModal';
+import { buildProductDetailHref } from '../lib/product-url';
 
 const translations = {
   en: {
@@ -297,7 +298,7 @@ export default function CourseEquipmentByModule({ relations, locale, agenda, ini
                               <div className="flex items-center justify-between mt-2">
                                 <div>
                                   {mode === 'inquiry' ? (
-                                    <span className="text-xs font-bold text-blue-600">{t.contactForPrice}</span>
+                                    <span className="text-[10px] font-bold text-blue-600">{t.contactForPrice}</span>
                                   ) : isAuthenticated ? (
                                     <span className="text-sm font-black text-vs">
                                       {currencySymbol}{product.price?.toLocaleString()}

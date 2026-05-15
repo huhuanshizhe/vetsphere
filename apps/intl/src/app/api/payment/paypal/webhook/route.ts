@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { finalizeCourseOrderPayment } from '@/lib/course-order-payment';
 
 import crypto from 'crypto';
 
@@ -99,15 +100,16 @@ async function handlePaymentCaptureCompleted(event: any) {
 
   // Update order status
   if (paymentRecord.order_id) {
-    await supabaseAdmin
-      .from('orders')
-      .update({
-        status: 'paid',
-        payment_status: 'paid',
+    await finalizeCourseOrderPayment(supabaseAdmin, {
+      orderId: paymentRecord.order_id,
+      paymentStatus: 'paid',
+      orderUpdate: {
+        payment_method: 'paypal',
         paid_at: new Date().toISOString(),
+        payment_id: transactionId,
         transaction_id: transactionId,
-      })
-      .eq('id', paymentRecord.order_id);
+      },
+    });
     
     console.log('[PayPal Webhook] Order updated:', paymentRecord.order_id);
   }
@@ -120,7 +122,8 @@ async function handleRefundCompleted(event: any) {
   const supabaseAdmin = await getSupabaseAdmin();
   const resource = event.resource;
   const refundId = resource.id;
-  const originalCaptureId = resource.links?.find((l: any) => l.rel === 'up')?.href?.split('/').pop();
+  const originalCaptureId =
+    resource.links?.find((l: any) => l.rel === 'up')?.href?.split('/').pop() || resource.id;
   
   console.log('[PayPal Webhook] Refund completed:', { refundId, originalCaptureId });
 
@@ -151,13 +154,10 @@ async function handleRefundCompleted(event: any) {
 
   // Update order status
   if (paymentRecord.order_id) {
-    await supabaseAdmin
-      .from('orders')
-      .update({
-        status: 'refunded',
-        payment_status: 'refunded',
-      })
-      .eq('id', paymentRecord.order_id);
+    await finalizeCourseOrderPayment(supabaseAdmin, {
+      orderId: paymentRecord.order_id,
+      paymentStatus: 'refunded',
+    });
     
     console.log('[PayPal Webhook] Order marked as refunded:', paymentRecord.order_id);
   }
@@ -235,10 +235,10 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'PAYMENT.CAPTURE.DENIED':
-      case 'PAYMENT.CAPTURE.REFUNDED':
         await handlePaymentDenied(event);
         break;
 
+      case 'PAYMENT.CAPTURE.REFUNDED':
       case 'PAYMENT.REFUND.COMPLETED':
         await handleRefundCompleted(event);
         break;

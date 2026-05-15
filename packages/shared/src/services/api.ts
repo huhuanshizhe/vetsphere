@@ -222,7 +222,7 @@ function mapProduct(p: any): Product {
   else stockStatus = 'In Stock';
 
   return {
-    id: p.id, name: p.name, brand: p.brand, price, specialty: p.specialty,
+    id: p.id, slug: p.slug || undefined, name: p.name, brand: p.brand, price, specialty: p.specialty,
     group: p.group_category, imageUrl, description: p.description,
     longDescription: p.long_description || p.description,
     specs: p.specs || {}, compareData: p.compare_data,
@@ -262,6 +262,58 @@ function mapProduct(p: any): Product {
     skus,
     richDescription: p.rich_description || undefined,
   };
+}
+
+async function fetchCnProductSiteView(match: {
+  productId?: string;
+  slug?: string;
+  categorySlug?: string;
+}) {
+  let query = supabase
+    .from('product_site_views')
+    .select(`
+      *,
+      products!inner(
+        *,
+        images:product_images(id, url, type, sort_order),
+        variant_attributes:product_variant_attributes(id, attribute_name, attribute_values, sort_order),
+        skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, is_active, sort_order)
+      )
+    `)
+    .eq('site_code', 'cn')
+    .eq('publish_status', 'published')
+    .eq('is_enabled', true)
+    .order('display_order', { ascending: true })
+    .limit(1);
+
+  if (match.productId) {
+    query = query.eq('product_id', match.productId);
+  }
+
+  if (match.slug) {
+    query = query.eq('products.slug', match.slug);
+  }
+
+  if (match.categorySlug) {
+    query = query.eq('products.category_slug', match.categorySlug);
+  }
+
+  const { data, error } = await query;
+  if (error || !data || data.length === 0) {
+    return null;
+  }
+
+  return data[0] as any;
+}
+
+function mapCnSiteViewToProduct(siteView: any): Product {
+  const p = siteView.products;
+  const flat = {
+    ...p,
+    name: siteView.display_name || p.name,
+    price: siteView.pricing_mode === 'custom' && siteView.display_price ? siteView.display_price : p.price,
+  };
+  return mapProduct(flat);
 }
 
 export const api = {
@@ -376,41 +428,48 @@ export const api = {
 
   async getProductById(id: string): Promise<Product | null> {
     try {
-      // 通过 product_site_views 获取 CN 站的单个产品
-      const { data, error } = await supabase
-        .from('product_site_views')
-        .select(`
-          *,
-          products!inner(
-            *,
-            images:product_images(id, url, type, sort_order),
-            variant_attributes:product_variant_attributes(id, attribute_name, attribute_values, sort_order),
-            skus:product_skus(id, sku_code, attribute_combination, price, original_price, stock_quantity, weight, weight_unit, suggested_retail_price, selling_price, image_url, is_active, sort_order)
-          )
-        `)
-        .eq('product_id', id)
-        .eq('site_code', 'cn')
-        .single();
+      const siteView = await fetchCnProductSiteView({ productId: id })
+        || await fetchCnProductSiteView({ slug: id });
 
-      if (error || !data) {
-        if (USE_MOCK_FALLBACK) {
-          return SEED_PRODUCTS.find(p => p.id === id) || null;
-        }
-        return null;
+      if (siteView) {
+        return mapCnSiteViewToProduct(siteView);
       }
 
-      const p = (data as any).products;
-      const sv = data as any;
-      const flat = {
-        ...p,
-        name: sv.display_name || p.name,
-        price: sv.pricing_mode === 'custom' && sv.display_price ? sv.display_price : p.price,
-      };
-      return mapProduct(flat);
+      if (USE_MOCK_FALLBACK) {
+        return (SEED_PRODUCTS as Array<Product & { slug?: string }>).find((product) => product.id === id || product.slug === id) || null;
+      }
+      return null;
     } catch (err) {
       console.error('[API] getProductById - Exception:', err);
       if (USE_MOCK_FALLBACK) {
-        return SEED_PRODUCTS.find(p => p.id === id) || null;
+        return (SEED_PRODUCTS as Array<Product & { slug?: string }>).find((product) => product.id === id || product.slug === id) || null;
+      }
+      return null;
+    }
+  },
+
+  async getProductBySeoPath(categorySlug: string, slug: string): Promise<Product | null> {
+    try {
+      const siteView = await fetchCnProductSiteView({ categorySlug, slug })
+        || await fetchCnProductSiteView({ slug });
+
+      if (siteView) {
+        return mapCnSiteViewToProduct(siteView);
+      }
+
+      if (USE_MOCK_FALLBACK) {
+        return (SEED_PRODUCTS as Array<Product & { slug?: string; categorySlug?: string }>).find(
+          (product) => product.slug === slug && (!product.categorySlug || product.categorySlug === categorySlug),
+        ) || null;
+      }
+
+      return null;
+    } catch (err) {
+      console.error('[API] getProductBySeoPath - Exception:', err);
+      if (USE_MOCK_FALLBACK) {
+        return (SEED_PRODUCTS as Array<Product & { slug?: string; categorySlug?: string }>).find(
+          (product) => product.slug === slug && (!product.categorySlug || product.categorySlug === categorySlug),
+        ) || null;
       }
       return null;
     }

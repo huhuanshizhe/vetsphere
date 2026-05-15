@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getPublishedIntlCoursePurchaseContext } from '@vetsphere/shared/lib/course-site-purchase';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,21 +31,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { courseId, contactName, contactEmail, contactPhone, paymentMethod, locale, currency } = body;
+    const { courseId, contactName, contactEmail, contactPhone, paymentMethod, locale } = body;
 
     if (!courseId || !contactEmail || !contactName) {
       return NextResponse.json({ error: 'Missing required fields: courseId, contactName, contactEmail' }, { status: 400 });
     }
 
-    // Validate course exists and has capacity
-    const { data: course, error: courseError } = await supabaseAdmin
-      .from('courses')
-      .select('id, title, title_zh, price, price_cny, price_usd, currency, max_enrollment, current_enrollment, enrollment_deadline, cover_image_url, image_url')
-      .eq('id', courseId)
-      .single();
+    const course = await getPublishedIntlCoursePurchaseContext(supabaseAdmin, courseId, locale || 'en');
 
-    if (courseError || !course) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    if (!course) {
+      return NextResponse.json({ error: 'Course is not available for checkout' }, { status: 404 });
+    }
+
+    if (course.purchase_mode !== 'direct') {
+      return NextResponse.json({ error: 'Course is not available for direct checkout' }, { status: 400 });
     }
 
     const maxEnroll = course.max_enrollment || 999;
@@ -71,11 +71,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Determine price
-    const orderCurrency = currency || course.currency || 'USD';
-    const coursePrice = orderCurrency === 'CNY'
-      ? (course.price_cny || course.price || 0)
-      : (course.price_usd || course.price || 0);
+    const orderCurrency = course.currency || 'USD';
+    const coursePrice = course.price || 0;
 
     const orderNumber = generateOrderNumber();
 
@@ -111,9 +108,9 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin.from('order_items').insert({
       order_id: order.id,
       product_id: null,
-      product_name: course.title || course.title_zh || 'Course',
+      product_name: course.title || 'Course',
       product_sku: `course:${courseId}`,
-      product_image: course.cover_image_url || course.image_url || '',
+      product_image: course.cover_image_url || '',
       unit_price: coursePrice,
       quantity: 1,
       total_price: coursePrice,

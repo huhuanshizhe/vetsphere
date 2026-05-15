@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { ToastContainer, useToast } from '@/components/ui';
 import {
   Package, MapPin, CreditCard, Truck, CheckCircle, XCircle, Clock, Phone, Mail,
@@ -225,34 +226,15 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     try {
       setStatusUpdating(true);
 
-      // 更新支付记录状态
-      await supabase
-        .from('payment_records')
-        .update({
-          status: 'completed',
-          paid_at: new Date().toISOString()
-        })
-        .eq('order_id', order.id)
-        .eq('payment_method', 'bank_transfer');
-
-      // 更新订单状态
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: 'paid',
-          payment_status: 'paid',
-          paid_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', order.id);
-
-      if (error) throw error;
+      await apiFetch(`/api/v1/admin/orders/${order.id}/confirm-bank-transfer`, {
+        method: 'POST',
+      });
 
       success('银行转账已确认');
       fetchOrder();
     } catch (error) {
       console.error('Failed to confirm transfer:', error);
-      toastError('确认失败');
+      toastError(getErrorMessage(error) || '确认失败');
     } finally {
       setStatusUpdating(false);
     }

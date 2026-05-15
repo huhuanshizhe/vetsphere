@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseViewMode, parseSiteCode, siteCodeErrorResponse } from '@/lib/site-resolver';
+import {
+  normalizeCourseInstructorRelations,
+  summarizeCourseChapters,
+} from '@/lib/course-structured-content';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
@@ -141,14 +145,34 @@ export async function GET(
     if (error) throw error;
 
     // Get all site views for this course
-    const { data: siteViews } = await supabase
-      .from('course_site_views')
-      .select('*')
-      .eq('course_id', id);
+    const [{ data: siteViews }, { data: courseInstructors }, { data: chapterRows }] = await Promise.all([
+      supabase.from('course_site_views').select('*').eq('course_id', id),
+      supabase
+        .from('course_instructors')
+        .select(
+          'id, role, display_order, instructor:instructors(id, name, title, avatar_url, credentials, bio)',
+        )
+        .eq('course_id', id)
+        .order('display_order', { ascending: true }),
+      supabase
+        .from('course_chapters')
+        .select('id, title, duration_minutes, status, sort_order, display_order, is_preview, is_free_preview, is_free')
+        .eq('course_id', id)
+        .is('deleted_at', null)
+        .order('sort_order', { ascending: true }),
+    ]);
 
     // Map snake_case DB columns to camelCase for frontend
     const mapped = mapCourseFromDB(data);
-    return NextResponse.json({ view: 'base', data: { ...mapped, site_views: siteViews || [] } });
+    return NextResponse.json({
+      view: 'base',
+      data: {
+        ...mapped,
+        site_views: siteViews || [],
+        course_instructors: normalizeCourseInstructorRelations(courseInstructors || []),
+        chapter_summary: summarizeCourseChapters(chapterRows || []),
+      },
+    });
   } catch (error) {
     try { return siteCodeErrorResponse(error); } catch {}
     console.error('Failed to fetch course:', error);

@@ -42,6 +42,45 @@ interface IntlCourseDetailClientProps {
   courseSlug: string;
 }
 
+const equipmentRelationCopy = {
+  en: {
+    required: 'Required',
+    recommended: 'Recommended',
+    mentioned: 'Featured',
+    course: 'Whole course',
+    module: 'Training day',
+    instructor: 'Instructor pick',
+    instructorNote: 'Instructor note',
+  },
+  th: {
+    required: 'จำเป็น',
+    recommended: 'แนะนำ',
+    mentioned: 'ใช้ในคลาส',
+    course: 'ทั้งหลักสูตร',
+    module: 'วันที่เรียน',
+    instructor: 'ผู้สอนแนะนำ',
+    instructorNote: 'หมายเหตุจากผู้สอน',
+  },
+  ja: {
+    required: '必須',
+    recommended: '推奨',
+    mentioned: '授業で使用',
+    course: 'コース全体',
+    module: '受講日',
+    instructor: '講師推奨',
+    instructorNote: '講師メモ',
+  },
+  zh: {
+    required: '必备',
+    recommended: '推荐',
+    mentioned: '课堂提及',
+    course: '整门课程',
+    module: '对应天数',
+    instructor: '讲师推荐',
+    instructorNote: '讲师备注',
+  },
+} as const;
+
 // ============================================
 // Helpers
 // ============================================
@@ -53,6 +92,56 @@ function productCTA(p: IntlProduct, locale: string): { label: string; href: stri
   return { label: 'View Product', href: `/${locale}/shop/${p.slug}`, variant: 'primary' };
 }
 
+function getEquipmentRelationLabel(product: IntlProduct, locale: string) {
+  const copy = equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
+
+  switch (product.relationship_type) {
+    case 'required':
+      return copy.required;
+    case 'mentioned':
+      return copy.mentioned;
+    default:
+      return copy.recommended;
+  }
+}
+
+function getEquipmentRelationClass(product: IntlProduct) {
+  switch (product.relationship_type) {
+    case 'required':
+      return 'bg-rose-50 text-rose-700 border border-rose-100';
+    case 'mentioned':
+      return 'bg-slate-100 text-slate-700 border border-slate-200';
+    default:
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+  }
+}
+
+function getEquipmentScopeLabel(product: IntlProduct, locale: string) {
+  const copy = equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
+
+  if (product.relation_type === 'module') {
+    return product.day_index ? `${copy.module} ${product.day_index}` : copy.module;
+  }
+
+  if (product.relation_type === 'instructor') {
+    return copy.instructor;
+  }
+
+  return copy.course;
+}
+
+function getEquipmentInstructorNote(product: IntlProduct, locale: string) {
+  if (locale === 'th') {
+    return product.instructor_note_th || product.instructor_note_en || null;
+  }
+
+  if (locale === 'ja') {
+    return product.instructor_note_ja || product.instructor_note_en || null;
+  }
+
+  return product.instructor_note_en || null;
+}
+
 // ============================================
 // Component
 // ============================================
@@ -62,6 +151,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
   const pathname = usePathname();
   const router = useRouter();
   const cd = t.courseDetail;
+  const equipmentCopy = equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
 
   const [course, setCourse] = useState<IntlCourse | null>(null);
   const [instructors, setInstructors] = useState<IntlInstructor[]>([]);
@@ -80,7 +170,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
         Promise.all([
           getIntlCourseInstructors(data.course_id, locale),
           getIntlCourseChapters(data.course_id),
-          getIntlCourseProducts(data.course_id),
+          getIntlCourseProducts(data.course_id, locale),
           getIntlCourseAgenda(data.course_id, locale),
           getIntlCourseServices(data.course_id, locale),
         ]).then(([inst, chap, eq, ag, svc]) => {
@@ -495,6 +585,7 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                 <div className="grid md:grid-cols-2 gap-4">
                   {equipmentProducts.map(product => {
                     const cta = productCTA(product, locale);
+                    const instructorNote = getEquipmentInstructorNote(product, locale);
                     return (
                       <Link
                         key={product.id}
@@ -516,12 +607,28 @@ export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailC
                           )}
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col">
-                          {product.brand && (
-                            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">{product.brand}</span>
-                          )}
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            {product.brand && (
+                              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">{product.brand}</span>
+                            )}
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${getEquipmentRelationClass(product)}`}>
+                              {getEquipmentRelationLabel(product, locale)}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                              {getEquipmentScopeLabel(product, locale)}
+                            </span>
+                          </div>
                           <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-1">{product.display_name}</h4>
-                          {product.recommendation_reason && (
+                          {product.recommendation_reason && !instructorNote && (
                             <p className="text-xs text-blue-600 mt-0.5">{product.recommendation_reason}</p>
+                          )}
+                          {instructorNote && (
+                            <div className="mt-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">
+                                {equipmentCopy.instructorNote}
+                              </p>
+                              <p className="text-xs text-amber-900 line-clamp-3">{instructorNote}</p>
+                            </div>
                           )}
                           <div className="mt-auto flex items-center justify-between pt-2">
                             {product.display_price ? (

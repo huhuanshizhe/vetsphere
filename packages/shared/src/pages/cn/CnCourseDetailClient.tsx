@@ -19,6 +19,7 @@ import { useNotification } from '../../context/NotificationContext';
 import CourseEquipmentByModule from '../../components/CourseEquipmentByModule';
 import ClinicalConsultationModal from '../../components/ClinicalConsultationModal';
 import InquiryModal from '../../components/InquiryModal';
+import { buildProductDetailHref } from '../../lib/product-url';
 
 // ============================================================================
 // 类型定义
@@ -431,12 +432,12 @@ const InstructorToolsSection: React.FC<{
                   src={product.imageUrl}
                   alt={product.name}
                   className="w-16 h-16 rounded-lg object-cover shrink-0 cursor-pointer"
-                  onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                  onClick={() => router.push(buildProductDetailHref(locale, product))}
                 />
                 <div className="flex-1 min-w-0">
                   <p
                     className="text-sm font-bold text-slate-900 line-clamp-1 cursor-pointer hover:text-amber-600 transition-colors"
-                    onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                    onClick={() => router.push(buildProductDetailHref(locale, product))}
                   >
                     {product.name}
                   </p>
@@ -554,12 +555,12 @@ const CoreEquipmentSidebar: React.FC<{
                 src={product.imageUrl}
                 alt={product.name}
                 className="w-12 h-12 rounded-lg object-cover shrink-0 cursor-pointer"
-                onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                onClick={() => router.push(buildProductDetailHref(locale, product))}
               />
               <div className="flex-1 min-w-0">
                 <p
                   className="text-xs font-bold text-slate-900 line-clamp-1 cursor-pointer hover:text-emerald-600 transition-colors"
-                  onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                  onClick={() => router.push(buildProductDetailHref(locale, product))}
                 >
                   {product.name}
                 </p>
@@ -647,7 +648,7 @@ const PostCourseRecommendations: React.FC<{
               return (
                 <Link
                   key={relation.id}
-                  href={`/${locale}/shop/${product.id}`}
+                  href={buildProductDetailHref(locale, product)}
                   className="group bg-white rounded-xl p-4 border border-slate-100 hover:shadow-lg hover:-translate-y-0.5 transition-all"
                 >
                   <div className="aspect-square rounded-lg overflow-hidden bg-slate-100 mb-3">

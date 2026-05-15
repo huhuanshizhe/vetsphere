@@ -15,6 +15,7 @@ import CourseEquipmentSidebar from '../components/CourseEquipmentSidebar';
 import CourseEquipmentByModule from '../components/CourseEquipmentByModule';
 import InstructorToolsBlock from '../components/InstructorToolsBlock';
 import ClinicalConsultationModal from '../components/ClinicalConsultationModal';
+import { buildProductDetailHref } from '../lib/product-url';
 
 interface CourseDetailClientProps {
   courseId: string;
@@ -655,7 +656,7 @@ const CourseDetailClient: React.FC<CourseDetailClientProps> = ({ courseId }) => 
                           return (
                             <Link
                               key={relation.id}
-                              href={`/${locale}/shop/${product.id}`}
+                              href={buildProductDetailHref(locale, product)}
                               className="group flex gap-4 bg-white rounded-2xl p-4 border border-slate-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
                             >
                               <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100">

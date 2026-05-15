@@ -19,6 +19,7 @@ import { Product, Specialty } from '../../types';
 import ClinicalConsultationModal from '../../components/ClinicalConsultationModal';
 import InquiryModal from '../../components/InquiryModal';
 import { AIShopAdvisor } from '../../components/cn/AIShopAdvisor';
+import { buildProductDetailHref } from '../../lib/product-url';
 
 // ============================================================================
 // 类型定义
@@ -665,7 +666,7 @@ const CourseGearSection: React.FC<{
               {/* CTA */}
               <div className="flex gap-2">
                 <button
-                  onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+                  onClick={() => router.push(buildProductDetailHref(locale, product))}
                   className="flex-1 py-2.5 bg-rose-500 text-white rounded-lg text-xs font-bold hover:bg-rose-600 transition-colors"
                 >
                   查看商品
@@ -960,7 +961,7 @@ const ProductCard: React.FC<{
   
   return (
     <div
-      onClick={() => router.push(`/${locale}/shop/${product.id}`)}
+      onClick={() => router.push(buildProductDetailHref(locale, product))}
       className="bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group"
     >
       {/* 标签区 */}

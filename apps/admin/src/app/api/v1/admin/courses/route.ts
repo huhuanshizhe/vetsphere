@@ -8,6 +8,10 @@ import {
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
+import {
+  formatCoursePublishIssues,
+  validateCoursePublishReadiness,
+} from '@/lib/course-publish-validation';
 
 type SupportedLanguage = 'zh' | 'en' | 'th' | 'ja';
 
@@ -251,6 +255,19 @@ export async function POST(req: NextRequest) {
 
     if (!payload.title) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    }
+
+    if (publishStatus === 'published') {
+      const validation = validateCoursePublishReadiness(payload);
+      if (!validation.canPublish) {
+        return NextResponse.json(
+          {
+            error: `课程未满足发布条件：${formatCoursePublishIssues(validation.issues)}`,
+            issues: validation.issues,
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const { data, error } = await supabase.from('courses').insert(payload).select('*').single();
