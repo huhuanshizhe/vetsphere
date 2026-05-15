@@ -815,6 +815,28 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
     .eq('publish_status', 'published')
     .eq('is_enabled', true);
 
+  const resolveByProductField = async (field: 'slug' | 'slug_en') => {
+    const { data: matchingProducts, error: productError } = await supabase
+      .from('products')
+      .select('id')
+      .eq(field, slugOrId)
+      .limit(20);
+
+    if (productError || !matchingProducts?.length) return null;
+
+    const candidateIds = Array.from(new Set(matchingProducts.map((product) => product.id).filter(Boolean)));
+    if (!candidateIds.length) return null;
+
+    const { data: siteViews, error: siteViewError } = await buildSiteViewQuery()
+      .in('product_id', candidateIds)
+      .order('published_at', { ascending: false })
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    if (siteViewError || !siteViews?.length) return null;
+    return mapProductRow(siteViews[0], locale);
+  };
+
   // Try slug_override first
   const { data: data2, error: error2 } = await buildSiteViewQuery().eq('slug_override', slugOrId).single();
 
@@ -825,29 +847,15 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
 
   if (data4 && !error4) return mapProductRow(data4, locale);
 
-  // Try products.slug - need to first look up product by slug
-  const { data: productData } = await supabase
-    .from('products')
-    .select('id')
-    .eq('slug', slugOrId)
-    .single();
-
-  if (productData) {
-    const { data: data3, error: error3 } = await buildSiteViewQuery().eq('product_id', productData.id).single();
-    if (data3 && !error3) return mapProductRow(data3, locale);
-  }
+  // Try products.slug. We intentionally resolve through product_site_views instead
+  // of .single() on products because historical imports can leave duplicate base slugs
+  // like "20" / "15" across products, while only one INTL-published site view is valid.
+  const productBySlug = await resolveByProductField('slug');
+  if (productBySlug) return productBySlug;
 
   // Try products.slug_en (international site localized slug)
-  const { data: productBySlugEn } = await supabase
-    .from('products')
-    .select('id')
-    .eq('slug_en', slugOrId)
-    .single();
-
-  if (productBySlugEn) {
-    const { data: data5, error: error5 } = await buildSiteViewQuery().eq('product_id', productBySlugEn.id).single();
-    if (data5 && !error5) return mapProductRow(data5, locale);
-  }
+  const productBySlugEn = await resolveByProductField('slug_en');
+  if (productBySlugEn) return productBySlugEn;
 
   return null;
 }

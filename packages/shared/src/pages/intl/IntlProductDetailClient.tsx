@@ -44,6 +44,15 @@ interface IntlProductDetailClientProps {
   productSlug: string;
 }
 
+const HTML_CONTENT_PATTERN =
+  /<(p|div|img|h[1-6]|ul|ol|li|table|thead|tbody|tr|td|th|blockquote|figure|figcaption|iframe|br|strong|em|span|a)\b[^>]*>/i;
+
+function normalizeRichDescription(content: string) {
+  return content
+    .replace(/src="\/uploads\//g, 'src="https://tvxrgbntiksskywsroax.supabase.co/storage/v1/object/public/uploads/')
+    .replace(/<p>(?:&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '');
+}
+
 // ============================================
 // Component
 // ============================================
@@ -585,19 +594,19 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
               <div className="prose prose-slate max-w-none">
                 <h3 className="text-lg font-bold text-slate-900 mb-3">{pd.productDetails}</h3>
                 {(() => {
-                  const content = localizedRichDescription || product.description;
-                  // Check if content is HTML (contains tags)
-                  const isHtml = content && (content.includes('<div') || content.includes('<img') || content.includes('<h') || content.includes('<ul'));
+                  const content = (localizedRichDescription || product.description || '').trim();
+                  const isHtml = HTML_CONTENT_PATTERN.test(content);
+
                   if (isHtml) {
-                    // Fix image URLs in HTML content
-                    const fixedContent = content.replace(/src="\/uploads\//g, `src="https://tvxrgbntiksskywsroax.supabase.co/storage/v1/object/public/uploads/`);
+                    const normalizedContent = normalizeRichDescription(content);
                     return (
                       <div
                         className="text-slate-600 leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: fixedContent || '' }}
+                        dangerouslySetInnerHTML={{ __html: normalizedContent }}
                       />
                     );
                   }
+
                   // Plain text
                   return (
                     <p className="text-slate-600 leading-relaxed whitespace-pre-line">
