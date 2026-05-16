@@ -1,6 +1,6 @@
 /**
  * INTL Site Views API
- * 
+ *
  * All INTL frontend data fetching functions.
  * Reads from overlay tables (course_site_views, product_site_views, etc.)
  * JOINed with base tables for resolved display data.
@@ -182,24 +182,24 @@ export interface IntlClinicProgram {
 
 // 语言到字段的映射
 const localeToTitleField: Record<string, string> = {
-  'en': 'title_en',
-  'zh': 'title_zh',
-  'th': 'title_th',
-  'ja': 'title_ja',
+  en: 'title_en',
+  zh: 'title_zh',
+  th: 'title_th',
+  ja: 'title_ja',
 };
 
 const localeToDescField: Record<string, string> = {
-  'en': 'description_en',
-  'zh': 'description_zh',
-  'th': 'description_th',
-  'ja': 'description_ja',
+  en: 'description_en',
+  zh: 'description_zh',
+  th: 'description_th',
+  ja: 'description_ja',
 };
 
 const localeToTargetAudienceField: Record<string, string> = {
-  'en': 'target_audience',
-  'zh': 'target_audience_zh',
-  'th': 'target_audience',
-  'ja': 'target_audience',
+  en: 'target_audience',
+  zh: 'target_audience_zh',
+  th: 'target_audience',
+  ja: 'target_audience',
 };
 
 function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
@@ -293,10 +293,7 @@ function mapCourseRow(sv: any, locale: string = 'en'): IntlCourse {
   };
 }
 
-export async function getIntlCoursePurchaseContext(
-  courseId: string,
-  locale: string = 'en',
-) {
+export async function getIntlCoursePurchaseContext(courseId: string, locale: string = 'en') {
   return getPublishedIntlCoursePurchaseContext(supabase, courseId, locale);
 }
 
@@ -314,7 +311,8 @@ export async function getIntlCourses(options?: {
 
   let query = supabase
     .from('course_site_views')
-    .select(`
+    .select(
+      `
       *,
       courses!inner (
         id, slug, title, subtitle, description,
@@ -327,7 +325,9 @@ export async function getIntlCourses(options?: {
         enrollment_count, avg_rating, growth_tracks,
         status, end_date, location, instructor
       )
-    `, { count: 'exact' })
+    `,
+      { count: 'exact' },
+    )
     .eq('site_code', SITE_CODE)
     .eq('publish_status', 'published')
     .eq('is_enabled', true);
@@ -363,17 +363,21 @@ export async function getIntlCourses(options?: {
   }
 
   return {
-    items: (data || []).map(row => mapCourseRow(row, locale)),
+    items: (data || []).map((row) => mapCourseRow(row, locale)),
     total: count || 0,
   };
 }
 
 /** Get single INTL course by slug or course_id */
-export async function getIntlCourseBySlug(slugOrId: string, locale: string = 'en'): Promise<IntlCourse | null> {
+export async function getIntlCourseBySlug(
+  slugOrId: string,
+  locale: string = 'en',
+): Promise<IntlCourse | null> {
   // Try slug_override first, then course_id
   const { data, error } = await supabase
     .from('course_site_views')
-    .select(`
+    .select(
+      `
       *,
       courses!inner (
         id, slug, title, subtitle, description,
@@ -388,7 +392,8 @@ export async function getIntlCourseBySlug(slugOrId: string, locale: string = 'en
         start_date, end_date, enrollment_deadline,
         location, instructor, teaching_languages
       )
-    `)
+    `,
+    )
     .eq('site_code', SITE_CODE)
     .eq('publish_status', 'published')
     .eq('is_enabled', true)
@@ -411,11 +416,7 @@ export async function getIntlCourseChapters(courseId: string) {
 
 /** Get course agenda/schedule for a given course_id (from courses.agenda JSONB) */
 export async function getIntlCourseAgenda(courseId: string, locale: string = 'en') {
-  const { data } = await supabase
-    .from('courses')
-    .select('agenda')
-    .eq('id', courseId)
-    .single();
+  const { data } = await supabase.from('courses').select('agenda').eq('id', courseId).single();
 
   if (!data?.agenda || !Array.isArray(data.agenda)) return [];
 
@@ -425,7 +426,8 @@ export async function getIntlCourseAgenda(courseId: string, locale: string = 'en
     if (day.items && Array.isArray(day.items)) {
       day.items.forEach((item: any, itemIndex: number) => {
         // 获取本地化的活动内容
-        const localizedActivity = item[`activity_${locale}`] || item.activity || item.activity_en || item.activity_zh || '';
+        const localizedActivity =
+          item[`activity_${locale}`] || item.activity || item.activity_en || item.activity_zh || '';
         agendaItems.push({
           id: `${dayIndex}-${itemIndex}`,
           day_number: dayIndex + 1,
@@ -442,11 +444,7 @@ export async function getIntlCourseAgenda(courseId: string, locale: string = 'en
 
 /** Get course services (meals, accommodation, etc.) for a given course_id (from courses.services JSONB) */
 export async function getIntlCourseServices(courseId: string, locale: string = 'en') {
-  const { data } = await supabase
-    .from('courses')
-    .select('services')
-    .eq('id', courseId)
-    .single();
+  const { data } = await supabase.from('courses').select('services').eq('id', courseId).single();
 
   if (!data?.services) return [];
 
@@ -472,13 +470,18 @@ export async function getIntlCourseServices(courseId: string, locale: string = '
 }
 
 /** Get course instructors for a given course_id */
-export async function getIntlCourseInstructors(courseId: string, locale: string = 'en'): Promise<IntlInstructor[]> {
+export async function getIntlCourseInstructors(
+  courseId: string,
+  locale: string = 'en',
+): Promise<IntlInstructor[]> {
   const { data } = await supabase
     .from('course_instructors')
-    .select(`
+    .select(
+      `
       role,
       instructor:instructors (id, name, title, bio, avatar_url, credentials, name_en, name_zh, name_th, name_ja, title_en, title_zh, title_th, title_ja, bio_en, bio_zh, bio_th, bio_ja)
-    `)
+    `,
+    )
     .eq('course_id', courseId);
 
   return (data || []).map((ci: any) => {
@@ -519,7 +522,7 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
 
     return sv.product_id;
   };
-  
+
   // Get localized name based on locale
   const getLocalizedName = () => {
     if (sv.display_name) return sv.display_name;
@@ -528,7 +531,7 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
     if (locale === 'th' && base.name_th) return base.name_th;
     return base.name || sv.product_id;
   };
-  
+
   // Get localized summary/description
   const getLocalizedSummary = () => {
     if (sv.summary_override) return sv.summary_override;
@@ -538,7 +541,7 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
     if (locale === 'th' && base.description_th) return base.description_th;
     return base.subtitle || base.description;
   };
-  
+
   // Get localized rich description (HTML with images from Admin)
   const getLocalizedRichDescription = () => {
     if (locale === 'en' && base.rich_description_en) return base.rich_description_en;
@@ -546,12 +549,13 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
     if (locale === 'th' && base.rich_description_th) return base.rich_description_th;
     return base.rich_description;
   };
-  
+
   // Determine effective pricing_mode: site view override or base product
-  const effectivePricingMode = sv.pricing_mode === 'inherit' || !sv.pricing_mode
-    ? (base.pricing_mode || 'fixed')
-    : sv.pricing_mode;
-  
+  const effectivePricingMode =
+    sv.pricing_mode === 'inherit' || !sv.pricing_mode
+      ? base.pricing_mode || 'fixed'
+      : sv.pricing_mode;
+
   return {
     id: sv.id,
     product_id: sv.product_id,
@@ -630,7 +634,8 @@ export async function getIntlProducts(options?: {
 
   let query = supabase
     .from('product_site_views')
-    .select(`
+    .select(
+      `
       *,
       products!inner (
         id, slug, slug_en, name, name_en, name_ja, name_th,
@@ -642,7 +647,9 @@ export async function getIntlProducts(options?: {
         supplier_uuid, has_variants, min_order_quantity,
         weight, weight_unit
       )
-    `, { count: 'exact' })
+    `,
+      { count: 'exact' },
+    )
     .eq('site_code', SITE_CODE)
     .eq('publish_status', 'published')
     .eq('is_enabled', true);
@@ -672,7 +679,7 @@ export async function getIntlProducts(options?: {
   if (options?.search) {
     const term = `%${options.search}%`;
     query = query.or(
-      `display_name.ilike.${term},products.name.ilike.${term},products.name_en.ilike.${term},products.brand.ilike.${term}`
+      `display_name.ilike.${term},products.name.ilike.${term},products.name_en.ilike.${term},products.brand.ilike.${term}`,
     );
   }
 
@@ -707,9 +714,10 @@ export async function getIntlProducts(options?: {
       break;
     case 'featured':
     default:
-      query = query.order('is_featured', { ascending: false })
-                   .order('display_order')
-                   .order('published_at', { ascending: false });
+      query = query
+        .order('is_featured', { ascending: false })
+        .order('display_order')
+        .order('published_at', { ascending: false });
       break;
   }
 
@@ -725,16 +733,20 @@ export async function getIntlProducts(options?: {
   }
 
   // Get product IDs for SKU price aggregation
-  const productIds = (data || []).map(row => row.products?.id || row.product_id);
+  const productIds = (data || []).map((row) => row.products?.id || row.product_id);
 
   // Batch query SKU min/max prices for each currency
   interface SkuPriceInfo {
-    usd_min: number | null; usd_max: number | null;
-    jpy_min: number | null; jpy_max: number | null;
-    thb_min: number | null; thb_max: number | null;
-    cny_min: number | null; cny_max: number | null;
+    usd_min: number | null;
+    usd_max: number | null;
+    jpy_min: number | null;
+    jpy_max: number | null;
+    thb_min: number | null;
+    thb_max: number | null;
+    cny_min: number | null;
+    cny_max: number | null;
   }
-  let skuPriceMap: Record<string, SkuPriceInfo> = {};
+  const skuPriceMap: Record<string, SkuPriceInfo> = {};
 
   if (productIds.length > 0) {
     const { data: skuData } = await supabase
@@ -749,41 +761,79 @@ export async function getIntlProducts(options?: {
         const pid = sku.product_id;
         if (!skuPriceMap[pid]) {
           skuPriceMap[pid] = {
-            usd_min: null, usd_max: null,
-            jpy_min: null, jpy_max: null,
-            thb_min: null, thb_max: null,
-            cny_min: null, cny_max: null
+            usd_min: null,
+            usd_max: null,
+            jpy_min: null,
+            jpy_max: null,
+            thb_min: null,
+            thb_max: null,
+            cny_min: null,
+            cny_max: null,
           };
         }
         // Track USD min/max
-        if (sku.selling_price_usd !== null && sku.selling_price_usd !== undefined && sku.selling_price_usd > 0) {
-          if (skuPriceMap[pid].usd_min === null || sku.selling_price_usd < skuPriceMap[pid].usd_min!) {
+        if (
+          sku.selling_price_usd !== null &&
+          sku.selling_price_usd !== undefined &&
+          sku.selling_price_usd > 0
+        ) {
+          if (
+            skuPriceMap[pid].usd_min === null ||
+            sku.selling_price_usd < skuPriceMap[pid].usd_min!
+          ) {
             skuPriceMap[pid].usd_min = sku.selling_price_usd;
           }
-          if (skuPriceMap[pid].usd_max === null || sku.selling_price_usd > skuPriceMap[pid].usd_max!) {
+          if (
+            skuPriceMap[pid].usd_max === null ||
+            sku.selling_price_usd > skuPriceMap[pid].usd_max!
+          ) {
             skuPriceMap[pid].usd_max = sku.selling_price_usd;
           }
         }
         // Track JPY min/max
-        if (sku.selling_price_jpy !== null && sku.selling_price_jpy !== undefined && sku.selling_price_jpy > 0) {
-          if (skuPriceMap[pid].jpy_min === null || sku.selling_price_jpy < skuPriceMap[pid].jpy_min!) {
+        if (
+          sku.selling_price_jpy !== null &&
+          sku.selling_price_jpy !== undefined &&
+          sku.selling_price_jpy > 0
+        ) {
+          if (
+            skuPriceMap[pid].jpy_min === null ||
+            sku.selling_price_jpy < skuPriceMap[pid].jpy_min!
+          ) {
             skuPriceMap[pid].jpy_min = sku.selling_price_jpy;
           }
-          if (skuPriceMap[pid].jpy_max === null || sku.selling_price_jpy > skuPriceMap[pid].jpy_max!) {
+          if (
+            skuPriceMap[pid].jpy_max === null ||
+            sku.selling_price_jpy > skuPriceMap[pid].jpy_max!
+          ) {
             skuPriceMap[pid].jpy_max = sku.selling_price_jpy;
           }
         }
         // Track THB min/max
-        if (sku.selling_price_thb !== null && sku.selling_price_thb !== undefined && sku.selling_price_thb > 0) {
-          if (skuPriceMap[pid].thb_min === null || sku.selling_price_thb < skuPriceMap[pid].thb_min!) {
+        if (
+          sku.selling_price_thb !== null &&
+          sku.selling_price_thb !== undefined &&
+          sku.selling_price_thb > 0
+        ) {
+          if (
+            skuPriceMap[pid].thb_min === null ||
+            sku.selling_price_thb < skuPriceMap[pid].thb_min!
+          ) {
             skuPriceMap[pid].thb_min = sku.selling_price_thb;
           }
-          if (skuPriceMap[pid].thb_max === null || sku.selling_price_thb > skuPriceMap[pid].thb_max!) {
+          if (
+            skuPriceMap[pid].thb_max === null ||
+            sku.selling_price_thb > skuPriceMap[pid].thb_max!
+          ) {
             skuPriceMap[pid].thb_max = sku.selling_price_thb;
           }
         }
         // Track CNY min/max (selling_price as fallback)
-        if (sku.selling_price !== null && sku.selling_price !== undefined && sku.selling_price > 0) {
+        if (
+          sku.selling_price !== null &&
+          sku.selling_price !== undefined &&
+          sku.selling_price > 0
+        ) {
           if (skuPriceMap[pid].cny_min === null || sku.selling_price < skuPriceMap[pid].cny_min!) {
             skuPriceMap[pid].cny_min = sku.selling_price;
           }
@@ -796,7 +846,7 @@ export async function getIntlProducts(options?: {
   }
 
   // Map products with SKU price data
-  const items = (data || []).map(row => {
+  const items = (data || []).map((row) => {
     const product = mapProductRow(row, locale);
     const pid = row.products?.id || row.product_id;
     const skuPrices = skuPriceMap[pid];
@@ -820,12 +870,17 @@ export async function getIntlProducts(options?: {
 }
 
 /** Get single INTL product by slug or product_id */
-export async function getIntlProductBySlug(slugOrId: string, locale: string = 'en'): Promise<IntlProduct | null> {
+export async function getIntlProductBySlug(
+  slugOrId: string,
+  locale: string = 'en',
+): Promise<IntlProduct | null> {
   // Build base query for product_site_views
   // Note: product_images loaded separately via getIntlProductImages()
-  const buildSiteViewQuery = () => supabase
-    .from('product_site_views')
-    .select(`
+  const buildSiteViewQuery = () =>
+    supabase
+      .from('product_site_views')
+      .select(
+        `
       *,
       products (
         id, slug, slug_en, name, name_en, name_ja, name_th,
@@ -837,10 +892,11 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
         supplier_uuid, has_variants, min_order_quantity,
         weight, weight_unit
       )
-    `)
-    .eq('site_code', SITE_CODE)
-    .eq('publish_status', 'published')
-    .eq('is_enabled', true);
+    `,
+      )
+      .eq('site_code', SITE_CODE)
+      .eq('publish_status', 'published')
+      .eq('is_enabled', true);
 
   const resolveByProductField = async (field: 'slug' | 'slug_en') => {
     const { data: matchingProducts, error: productError } = await supabase
@@ -851,7 +907,9 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
 
     if (productError || !matchingProducts?.length) return null;
 
-    const candidateIds = Array.from(new Set(matchingProducts.map((product) => product.id).filter(Boolean)));
+    const candidateIds = Array.from(
+      new Set(matchingProducts.map((product) => product.id).filter(Boolean)),
+    );
     if (!candidateIds.length) return null;
 
     const { data: siteViews, error: siteViewError } = await buildSiteViewQuery()
@@ -865,12 +923,16 @@ export async function getIntlProductBySlug(slugOrId: string, locale: string = 'e
   };
 
   // Try slug_override first
-  const { data: data2, error: error2 } = await buildSiteViewQuery().eq('slug_override', slugOrId).single();
+  const { data: data2, error: error2 } = await buildSiteViewQuery()
+    .eq('slug_override', slugOrId)
+    .maybeSingle();
 
   if (data2 && !error2) return mapProductRow(data2, locale);
 
   // Try product_id directly (cards fall back to product_id as slug when no slug is set)
-  const { data: data4, error: error4 } = await buildSiteViewQuery().eq('product_id', slugOrId).single();
+  const { data: data4, error: error4 } = await buildSiteViewQuery()
+    .eq('product_id', slugOrId)
+    .maybeSingle();
 
   if (data4 && !error4) return mapProductRow(data4, locale);
 
@@ -906,7 +968,10 @@ export async function getIntlProductImages(productId: string) {
 // ============================================
 
 /** Get related products for a course (via course_product_relations) */
-export async function getIntlCourseProducts(courseId: string, locale: string = 'en'): Promise<IntlProduct[]> {
+export async function getIntlCourseProducts(
+  courseId: string,
+  locale: string = 'en',
+): Promise<IntlProduct[]> {
   // First get product IDs related to this course
   const { data: relations } = await supabase
     .from('course_product_relations')
@@ -924,14 +989,16 @@ export async function getIntlCourseProducts(courseId: string, locale: string = '
   // Get their site views
   const { data: siteViews } = await supabase
     .from('product_site_views')
-    .select(`
+    .select(
+      `
       *,
       products!inner (
         id, slug, slug_en, name, subtitle, description, rich_description,
         brand, specialty, scene_code, clinical_category,
         cover_image_url, image_url, specs, price_min, price_max, status
       )
-    `)
+    `,
+    )
     .eq('site_code', SITE_CODE)
     .eq('publish_status', 'published')
     .eq('is_enabled', true)
@@ -965,7 +1032,10 @@ export async function getIntlCourseProducts(courseId: string, locale: string = '
 }
 
 /** Get related courses for a product */
-export async function getIntlProductCourses(productId: string, locale: string = 'en'): Promise<IntlCourse[]> {
+export async function getIntlProductCourses(
+  productId: string,
+  locale: string = 'en',
+): Promise<IntlCourse[]> {
   const { data: relations } = await supabase
     .from('course_product_relations')
     .select('course_id, relation_type')
@@ -973,11 +1043,12 @@ export async function getIntlProductCourses(productId: string, locale: string = 
 
   if (!relations || relations.length === 0) return [];
 
-  const courseIds = relations.map(r => r.course_id);
+  const courseIds = relations.map((r) => r.course_id);
 
   const { data: siteViews } = await supabase
     .from('course_site_views')
-    .select(`
+    .select(
+      `
       *,
       courses!inner (
         id, slug, title, subtitle, description,
@@ -988,30 +1059,37 @@ export async function getIntlProductCourses(productId: string, locale: string = 
         is_free, price_cny, price_usd,
         enrollment_count, avg_rating, growth_tracks, status
       )
-    `)
+    `,
+    )
     .eq('site_code', SITE_CODE)
     .eq('publish_status', 'published')
     .eq('is_enabled', true)
     .in('course_id', courseIds);
 
   if (!siteViews) return [];
-  return siteViews.map(row => mapCourseRow(row, locale));
+  return siteViews.map((row) => mapCourseRow(row, locale));
 }
 
 /** Get related/similar products for a product (same scene_code) */
-export async function getIntlRelatedProducts(productId: string, sceneCode: string | null, limit = 4): Promise<IntlProduct[]> {
+export async function getIntlRelatedProducts(
+  productId: string,
+  sceneCode: string | null,
+  limit = 4,
+): Promise<IntlProduct[]> {
   if (!sceneCode) return [];
 
   const { data } = await supabase
     .from('product_site_views')
-    .select(`
+    .select(
+      `
       *,
       products!inner (
         id, slug, slug_en, name, subtitle, description, long_description,
         brand, specialty, scene_code, clinical_category,
         cover_image_url, image_url, specs, price_min, price_max, status
       )
-    `)
+    `,
+    )
     .eq('site_code', SITE_CODE)
     .eq('publish_status', 'published')
     .eq('is_enabled', true)
@@ -1053,7 +1131,8 @@ export interface IntlProductSku {
 export async function getIntlProductSkus(productId: string): Promise<IntlProductSku[]> {
   const { data, error } = await supabase
     .from('product_skus')
-    .select(`
+    .select(
+      `
       id,
       sku_code,
       attribute_combination,
@@ -1067,7 +1146,8 @@ export async function getIntlProductSkus(productId: string): Promise<IntlProduct
       specs,
       image_url,
       is_active
-    `)
+    `,
+    )
     .eq('product_id', productId)
     .eq('is_active', true)
     .order('sku_code');
@@ -1077,7 +1157,7 @@ export async function getIntlProductSkus(productId: string): Promise<IntlProduct
     return [];
   }
 
-  return (data || []).map(sku => ({
+  return (data || []).map((sku) => ({
     id: sku.id,
     sku_code: sku.sku_code,
     attribute_combination: sku.attribute_combination || {},
@@ -1095,7 +1175,9 @@ export async function getIntlProductSkus(productId: string): Promise<IntlProduct
 }
 
 /** Get variant attributes for a product (defines SKU dimensions like color, size) */
-export async function getIntlProductVariantAttributes(productId: string): Promise<{ name: string; values: string[] }[]> {
+export async function getIntlProductVariantAttributes(
+  productId: string,
+): Promise<{ name: string; values: string[] }[]> {
   const { data, error } = await supabase
     .from('product_variant_attributes')
     .select('attribute_name, attribute_values')
@@ -1107,7 +1189,7 @@ export async function getIntlProductVariantAttributes(productId: string): Promis
     return [];
   }
 
-  return (data || []).map(attr => ({
+  return (data || []).map((attr) => ({
     name: attr.attribute_name,
     values: attr.attribute_values || [],
   }));
@@ -1153,7 +1235,9 @@ export interface IntlLeadSubmission {
 }
 
 /** Submit a lead / inquiry */
-export async function submitIntlLead(lead: IntlLeadSubmission): Promise<{ success: boolean; lead_id?: string }> {
+export async function submitIntlLead(
+  lead: IntlLeadSubmission,
+): Promise<{ success: boolean; lead_id?: string }> {
   const { data, error } = await supabase
     .from('purchase_leads')
     .insert({
@@ -1185,11 +1269,7 @@ export async function submitIntlLead(lead: IntlLeadSubmission): Promise<{ succes
 
 /** Get all data needed for INTL homepage in parallel */
 export async function getIntlHomePageData(locale?: string) {
-  const [
-    featuredCoursesResult,
-    featuredProductsResult,
-    programsResult,
-  ] = await Promise.all([
+  const [featuredCoursesResult, featuredProductsResult, programsResult] = await Promise.all([
     getIntlCourses({ featured: false, limit: 6, locale }), // 改为获取最新课程而不是精选
     getIntlProducts({ featured: false, limit: 6, locale }), // 改为获取最新产品而不是精选
     getIntlClinicPrograms(locale),
@@ -1303,7 +1383,7 @@ export async function getShippingZoneByCountry(countryCode: string): Promise<Shi
 /** Calculate shipping cost for cart items based on total weight */
 export async function calculateCartShipping(
   items: Array<{ productId: string; quantity: number }>,
-  locale: string = 'en'
+  locale: string = 'en',
 ): Promise<CartShippingEstimate> {
   if (items.length === 0) {
     return {
@@ -1315,7 +1395,7 @@ export async function calculateCartShipping(
   }
 
   // Get product weights from SKUs
-  const productIds = items.map(i => i.productId);
+  const productIds = items.map((i) => i.productId);
   const { data: skus } = await supabase
     .from('product_skus')
     .select('product_id, weight, weight_unit, is_active')
@@ -1351,9 +1431,10 @@ export async function calculateCartShipping(
       shippingCost += zone.perUnitFee * totalWeight;
     }
 
-    const estimatedDays = zone.estimatedDaysMin === zone.estimatedDaysMax
-      ? `${zone.estimatedDaysMin} days`
-      : `${zone.estimatedDaysMin}-${zone.estimatedDaysMax} days`;
+    const estimatedDays =
+      zone.estimatedDaysMin === zone.estimatedDaysMax
+        ? `${zone.estimatedDaysMin} days`
+        : `${zone.estimatedDaysMin}-${zone.estimatedDaysMax} days`;
 
     rates.push({
       zoneCode: zone.zoneCode,
@@ -1397,7 +1478,9 @@ export interface ProductCategory {
 /**
  * Get full product category tree for INTL site with product counts
  */
-export async function getIntlProductCategoryTree(locale: string = 'en'): Promise<ProductCategory[]> {
+export async function getIntlProductCategoryTree(
+  locale: string = 'en',
+): Promise<ProductCategory[]> {
   // Get all active categories from product_categories table
   const { data: categories, error } = await supabase
     .from('product_categories')
@@ -1421,7 +1504,7 @@ export async function getIntlProductCategoryTree(locale: string = 'en'): Promise
     .eq('is_enabled', true);
 
   // Get category-product mappings
-  const productIds = products?.map(p => p.product_id) || [];
+  const productIds = products?.map((p) => p.product_id) || [];
   const { data: mappings } = await supabase
     .from('product_category_mappings')
     .select('category_id, product_id')
@@ -1438,10 +1521,10 @@ export async function getIntlProductCategoryTree(locale: string = 'en'): Promise
   // Build tree structure
   const buildTree = (parentId: string | null = null, level: number = 1): ProductCategory[] => {
     const levelCategories = categories
-      .filter(c => c.parent_id === parentId && c.level === level)
+      .filter((c) => c.parent_id === parentId && c.level === level)
       .sort((a, b) => a.sort_order - b.sort_order);
 
-    return levelCategories.map(cat => ({
+    return levelCategories.map((cat) => ({
       id: cat.id,
       name: cat.name,
       name_en: cat.name_en,
@@ -1466,7 +1549,9 @@ export async function getIntlProductCategoryTree(locale: string = 'en'): Promise
 /**
  * Get categories flattened with product counts
  */
-export async function getIntlCategoriesWithCounts(locale: string = 'en'): Promise<CategoryWithCount[]> {
+export async function getIntlCategoriesWithCounts(
+  locale: string = 'en',
+): Promise<CategoryWithCount[]> {
   const tree = await getIntlProductCategoryTree(locale);
 
   // Flatten tree for backward compatibility
@@ -1496,7 +1581,9 @@ export async function getIntlCategoriesWithCounts(locale: string = 'en'): Promis
 }
 
 /** Get categories with product counts for INTL site (dynamic visibility) */
-export async function getIntlCategoriesWithCountsOld(locale: string = 'en'): Promise<CategoryWithCount[]> {
+export async function getIntlCategoriesWithCountsOld(
+  locale: string = 'en',
+): Promise<CategoryWithCount[]> {
   // Get clinical categories from product_site_views
   const { data: counts, error } = await supabase
     .from('product_site_views')
@@ -1522,15 +1609,45 @@ export async function getIntlCategoriesWithCountsOld(locale: string = 'en'): Pro
 
   // Categories from site config
   const categories: CategoryWithCount[] = [
-    { slug: 'imaging-diagnostics', name: { en: 'Imaging & Diagnostics', th: 'การถ่ายภาพและการวินิจฉัย', ja: '画像診断' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
-    { slug: 'surgery-anesthesia', name: { en: 'Surgery & Anesthesia', th: 'ศัลยกรรมและการดมยา', ja: '手術・麻酔' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
-    { slug: 'in-house-lab', name: { en: 'In-House Laboratory', th: 'ห้องปฏิบัติการในคลินิก', ja: '院内検査室' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
-    { slug: 'daily-supplies', name: { en: 'Daily Clinical Supplies', th: 'เวชภัณฑ์ประจำวัน', ja: '日常臨床用品' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
-    { slug: 'course-equipment', name: { en: 'Course-Recommended', th: 'แนะนำจากหลักสูตร', ja: 'コース推奨' }, productCount: 0, richDescriptionAbove: null, richDescriptionBelow: null },
+    {
+      slug: 'imaging-diagnostics',
+      name: { en: 'Imaging & Diagnostics', th: 'การถ่ายภาพและการวินิจฉัย', ja: '画像診断' },
+      productCount: 0,
+      richDescriptionAbove: null,
+      richDescriptionBelow: null,
+    },
+    {
+      slug: 'surgery-anesthesia',
+      name: { en: 'Surgery & Anesthesia', th: 'ศัลยกรรมและการดมยา', ja: '手術・麻酔' },
+      productCount: 0,
+      richDescriptionAbove: null,
+      richDescriptionBelow: null,
+    },
+    {
+      slug: 'in-house-lab',
+      name: { en: 'In-House Laboratory', th: 'ห้องปฏิบัติการในคลินิก', ja: '院内検査室' },
+      productCount: 0,
+      richDescriptionAbove: null,
+      richDescriptionBelow: null,
+    },
+    {
+      slug: 'daily-supplies',
+      name: { en: 'Daily Clinical Supplies', th: 'เวชภัณฑ์ประจำวัน', ja: '日常臨床用品' },
+      productCount: 0,
+      richDescriptionAbove: null,
+      richDescriptionBelow: null,
+    },
+    {
+      slug: 'course-equipment',
+      name: { en: 'Course-Recommended', th: 'แนะนำจากหลักสูตร', ja: 'コース推奨' },
+      productCount: 0,
+      richDescriptionAbove: null,
+      richDescriptionBelow: null,
+    },
   ];
 
   // Update counts
-  return categories.map(c => ({
+  return categories.map((c) => ({
     ...c,
     productCount: countMap[c.slug] || 0,
   }));
@@ -1577,7 +1694,7 @@ async function getProductIdsByCategory(categoryId: string): Promise<string[]> {
 
   const ids = new Set<string>();
   for (const r of [r1, r2, r3]) {
-    if (r.data) r.data.forEach(p => ids.add(p.id));
+    if (r.data) r.data.forEach((p) => ids.add(p.id));
   }
   return [...ids];
 }

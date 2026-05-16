@@ -267,6 +267,76 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   const isFixedMode = product?.pricing_mode === 'fixed' && !isInquiryMode;
   void isFixedMode;
 
+  // All images: cover + product_images (with full URLs)
+  const allImages = useMemo(() => {
+    const productDisplayName = product?.display_name || '';
+    const merged = [
+      ...(selectedSku?.image_url
+        ? [{ url: getImageUrl(selectedSku.image_url), alt_text: productDisplayName }]
+        : []),
+      ...(product?.cover_image_url
+        ? [{ url: getImageUrl(product.cover_image_url), alt_text: productDisplayName }]
+        : []),
+      ...images.map((img) => ({ ...img, url: getImageUrl(img.url) })),
+    ].filter((image): image is { url: string; alt_text?: string } => Boolean(image?.url));
+
+    const seenUrls = new Set<string>();
+    return merged.filter((image) => {
+      if (seenUrls.has(image.url)) {
+        return false;
+      }
+
+      seenUrls.add(image.url);
+      return true;
+    });
+  }, [images, product?.cover_image_url, product?.display_name, selectedSku?.image_url]);
+
+  useEffect(() => {
+    if (allImages.length === 0) {
+      if (activeImage !== 0) {
+        setActiveImage(0);
+      }
+      return;
+    }
+
+    const preferredSkuImage = selectedSku?.image_url ? getImageUrl(selectedSku.image_url) : null;
+    if (preferredSkuImage) {
+      const preferredIndex = allImages.findIndex((image) => image.url === preferredSkuImage);
+      if (preferredIndex >= 0 && preferredIndex !== activeImage) {
+        setActiveImage(preferredIndex);
+        return;
+      }
+    }
+
+    if (activeImage >= allImages.length) {
+      setActiveImage(0);
+    }
+  }, [activeImage, allImages, selectedSku?.image_url]);
+
+  useEffect(() => {
+    if (!showImageLightbox || allImages.length === 0) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowImageLightbox(false);
+        return;
+      }
+
+      if (allImages.length <= 1) return;
+
+      if (event.key === 'ArrowLeft') {
+        setActiveImage((prev) => (prev - 1 + allImages.length) % allImages.length);
+      }
+
+      if (event.key === 'ArrowRight') {
+        setActiveImage((prev) => (prev + 1) % allImages.length);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [allImages.length, showImageLightbox]);
+
   if (loading) {
     return (
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 pt-32 pb-16">
@@ -381,75 +451,6 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
     }
     return `${sym}${minPrice.toLocaleString()} - ${sym}${maxPrice.toLocaleString()}`;
   })();
-
-  // All images: cover + product_images (with full URLs)
-  const allImages = useMemo(() => {
-    const merged = [
-      ...(selectedSku?.image_url
-        ? [{ url: getImageUrl(selectedSku.image_url), alt_text: product.display_name }]
-        : []),
-      ...(product.cover_image_url
-        ? [{ url: getImageUrl(product.cover_image_url), alt_text: product.display_name }]
-        : []),
-      ...images.map((img) => ({ ...img, url: getImageUrl(img.url) })),
-    ].filter((image): image is { url: string; alt_text?: string } => Boolean(image?.url));
-
-    const seenUrls = new Set<string>();
-    return merged.filter((image) => {
-      if (seenUrls.has(image.url)) {
-        return false;
-      }
-
-      seenUrls.add(image.url);
-      return true;
-    });
-  }, [images, product.cover_image_url, product.display_name, selectedSku?.image_url]);
-
-  useEffect(() => {
-    if (allImages.length === 0) {
-      if (activeImage !== 0) {
-        setActiveImage(0);
-      }
-      return;
-    }
-
-    const preferredSkuImage = selectedSku?.image_url ? getImageUrl(selectedSku.image_url) : null;
-    if (preferredSkuImage) {
-      const preferredIndex = allImages.findIndex((image) => image.url === preferredSkuImage);
-      if (preferredIndex >= 0 && preferredIndex !== activeImage) {
-        setActiveImage(preferredIndex);
-        return;
-      }
-    }
-
-    if (activeImage >= allImages.length) {
-      setActiveImage(0);
-    }
-  }, [activeImage, allImages, selectedSku?.image_url]);
-
-  useEffect(() => {
-    if (!showImageLightbox || allImages.length === 0) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowImageLightbox(false);
-        return;
-      }
-
-      if (allImages.length <= 1) return;
-
-      if (event.key === 'ArrowLeft') {
-        setActiveImage((prev) => (prev - 1 + allImages.length) % allImages.length);
-      }
-
-      if (event.key === 'ArrowRight') {
-        setActiveImage((prev) => (prev + 1) % allImages.length);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [allImages.length, showImageLightbox]);
 
   return (
     <div className="bg-white">
