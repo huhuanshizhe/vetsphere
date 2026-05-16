@@ -2408,6 +2408,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                           ...prev,
                           category_id: categoryId,
                           subcategory_id: '',
+                          level3_category_id: null,
                         }));
                         setIsDirty(true);
                       }}
@@ -2431,7 +2432,11 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                     <select
                       value={editForm.subcategory_id || ''}
                       onChange={(e) => {
-                        setEditForm((prev: any) => ({ ...prev, subcategory_id: e.target.value }));
+                        setEditForm((prev: any) => ({
+                          ...prev,
+                          subcategory_id: e.target.value,
+                          level3_category_id: null,
+                        }));
                         setIsDirty(true);
                       }}
                       disabled={isGLOBAL || !editForm.category_id}

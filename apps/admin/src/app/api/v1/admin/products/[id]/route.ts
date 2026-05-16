@@ -106,6 +106,85 @@ function normalizeRecordValue(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function normalizeForeignKeyValue(value: unknown): string | null {
+  const normalized = normalizeStringValue(value);
+  return normalized || null;
+}
+
+interface ProductCategoryReferenceRow {
+  id: string;
+  parent_id: string | null;
+}
+
+async function sanitizeProductCategoryReferences(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  values: {
+    category_id?: unknown;
+    subcategory_id?: unknown;
+    level3_category_id?: unknown;
+  },
+): Promise<{
+  category_id: string | null;
+  subcategory_id: string | null;
+  level3_category_id: string | null;
+}> {
+  const normalized = {
+    category_id: normalizeForeignKeyValue(values.category_id),
+    subcategory_id: normalizeForeignKeyValue(values.subcategory_id),
+    level3_category_id: normalizeForeignKeyValue(values.level3_category_id),
+  };
+
+  const requestedIds = [
+    normalized.category_id,
+    normalized.subcategory_id,
+    normalized.level3_category_id,
+  ].filter((value): value is string => Boolean(value));
+
+  if (requestedIds.length === 0) {
+    return normalized;
+  }
+
+  const { data, error } = await supabase
+    .from('product_categories')
+    .select('id, parent_id')
+    .in('id', requestedIds);
+
+  if (error) {
+    console.error('[Product PATCH] Failed to validate category references:', error);
+    throw error;
+  }
+
+  const categoriesById = new Map(
+    ((data || []) as ProductCategoryReferenceRow[]).map((category) => [category.id, category]),
+  );
+
+  const category = normalized.category_id ? categoriesById.get(normalized.category_id) : null;
+  if (!category) {
+    normalized.category_id = null;
+    normalized.subcategory_id = null;
+    normalized.level3_category_id = null;
+    return normalized;
+  }
+
+  const subcategory = normalized.subcategory_id
+    ? categoriesById.get(normalized.subcategory_id)
+    : null;
+  if (!subcategory || subcategory.parent_id !== normalized.category_id) {
+    normalized.subcategory_id = null;
+    normalized.level3_category_id = null;
+    return normalized;
+  }
+
+  const level3Category = normalized.level3_category_id
+    ? categoriesById.get(normalized.level3_category_id)
+    : null;
+  if (!level3Category || level3Category.parent_id !== normalized.subcategory_id) {
+    normalized.level3_category_id = null;
+  }
+
+  return normalized;
+}
+
 function isPersistedEntityId(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   const trimmed = value.trim();
@@ -473,6 +552,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if ('dimensions' in updateData) {
       updateData.dimensions = normalizeDimensionsForStorage(updateData.dimensions);
+    }
+
+    if (
+      'category_id' in updateData ||
+      'subcategory_id' in updateData ||
+      'level3_category_id' in updateData
+    ) {
+      Object.assign(
+        updateData,
+        await sanitizeProductCategoryReferences(supabase, {
+          category_id:
+            'category_id' in updateData ? updateData.category_id : existingProduct.category_id,
+          subcategory_id:
+            'subcategory_id' in updateData
+              ? updateData.subcategory_id
+              : existingProduct.subcategory_id,
+          level3_category_id:
+            'level3_category_id' in updateData
+              ? updateData.level3_category_id
+              : existingProduct.level3_category_id,
+        }),
+      );
     }
 
     if (hasImagesInBody) {
