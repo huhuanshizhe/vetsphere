@@ -514,12 +514,6 @@ function mapProductRow(sv: any, locale: string = 'en'): IntlProduct {
     const siteSlug = typeof sv.slug_override === 'string' ? sv.slug_override.trim() : '';
     if (siteSlug) return siteSlug;
 
-    const localizedSlug = typeof base.slug_en === 'string' ? base.slug_en.trim() : '';
-    if (localizedSlug) return localizedSlug;
-
-    const baseSlug = typeof base.slug === 'string' ? base.slug.trim() : '';
-    if (baseSlug && !/^\d+$/.test(baseSlug)) return baseSlug;
-
     return sv.product_id;
   };
 

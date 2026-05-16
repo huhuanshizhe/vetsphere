@@ -4,6 +4,11 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
 import { createProductImageRows, getMainProductImage, normalizeProductImagesInput } from '@/lib/product-images';
+import {
+  assertUniqueProductSlug,
+  ensureUniqueGeneratedProductSlug,
+  normalizeManualSlug,
+} from '@/lib/product-slug';
 
 type SupportedLanguage = 'zh' | 'en' | 'th' | 'ja';
 
@@ -344,6 +349,52 @@ export async function POST(req: NextRequest) {
 
     if (!productData.name) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 });
+    }
+
+    const requestedSlug = normalizeString(body.slug);
+    if (requestedSlug) {
+      const normalizedSlug = normalizeManualSlug(requestedSlug);
+      if (!normalizedSlug) {
+        return NextResponse.json({ error: 'Slug 格式无效' }, { status: 400 });
+      }
+
+      try {
+        productData.slug = await assertUniqueProductSlug(supabase, 'slug', normalizedSlug);
+      } catch (error) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : 'Slug 已存在' },
+          { status: 409 },
+        );
+      }
+    } else {
+      productData.slug = await ensureUniqueGeneratedProductSlug(
+        supabase,
+        productData.slug || productData.id,
+        'slug',
+      );
+    }
+
+    const requestedSlugEn = normalizeString(body.slug_en);
+    if (requestedSlugEn) {
+      const normalizedSlugEn = normalizeManualSlug(requestedSlugEn);
+      if (!normalizedSlugEn) {
+        return NextResponse.json({ error: 'slug_en 格式无效' }, { status: 400 });
+      }
+
+      try {
+        productData.slug_en = await assertUniqueProductSlug(supabase, 'slug_en', normalizedSlugEn);
+      } catch (error) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : 'slug_en 已存在' },
+          { status: 409 },
+        );
+      }
+    } else if ('slug_en' in productData) {
+      productData.slug_en = await ensureUniqueGeneratedProductSlug(
+        supabase,
+        productData.slug,
+        'slug_en',
+      );
     }
 
     const { data, error } = await supabase.from('products').insert(productData).select().single();

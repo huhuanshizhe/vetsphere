@@ -10,6 +10,7 @@ import { uploadMultipleImages } from '@/lib/oss';
 import OpenAI from 'openai';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { ensureUniqueGeneratedProductSlug } from '@/lib/product-slug';
 
 type AdminSupabaseClient = ReturnType<typeof getSupabaseAdmin>;
 
@@ -344,6 +345,11 @@ async function createProduct(
 ): Promise<{ success: boolean; productId?: string; error?: string }> {
   try {
     const productId = generateProductId();
+    const uniqueEnglishSlug = await ensureUniqueGeneratedProductSlug(
+      supabase,
+      generateSlug(row.name) || productId,
+      'slug_en',
+    );
 
     if (row._mappedCategoryId) {
       const { data: category, error: categoryError } = await supabase
@@ -411,7 +417,7 @@ async function createProduct(
       category_id: row._mappedCategoryId || null,
       image_url: primaryImage, // Primary image URL from OSS
       slug: '', // Empty - will be translated
-      slug_en: generateSlug(row.name), // English slug
+      slug_en: uniqueEnglishSlug, // English slug
       status: 'draft', // Always draft for review
       has_price: true,
       min_order_quantity: row.minOrderQty || 1,
@@ -667,10 +673,24 @@ Return format (EXACT JSON, no extra text):
           if (value) {
             if (lang === 'zh') {
               updatePayload[field] = value;
-              if (field === 'name') updatePayload['slug'] = generateSlug(value);
+              if (field === 'name') {
+                updatePayload.slug = await ensureUniqueGeneratedProductSlug(
+                  supabase,
+                  generateSlug(value) || productId,
+                  'slug',
+                  productId,
+                );
+              }
             } else {
               updatePayload[`${field}_${lang}`] = value;
-              if (field === 'name') updatePayload[`slug_${lang}`] = generateSlug(value);
+              if (field === 'name' && (lang === 'th' || lang === 'ja')) {
+                updatePayload[`slug_${lang}`] = await ensureUniqueGeneratedProductSlug(
+                  supabase,
+                  generateSlug(value) || productId,
+                  `slug_${lang}`,
+                  productId,
+                );
+              }
             }
           }
         }

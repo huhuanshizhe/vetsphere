@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSiteCode, siteCodeErrorResponse } from '@/lib/site-resolver';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { assertUniqueProductSiteSlug, normalizeManualSlug } from '@/lib/product-slug';
 
 const supabase = getSupabaseAdmin();
 
@@ -17,6 +18,28 @@ export async function POST(
     const siteCode = requireSiteCode(req);
     const body = await req.json().catch(() => ({}));
 
+    let slugOverride: string | null | undefined;
+    if (Object.prototype.hasOwnProperty.call(body, 'slug_override')) {
+      const rawSlug = typeof body.slug_override === 'string' ? body.slug_override.trim() : '';
+      if (!rawSlug) {
+        slugOverride = null;
+      } else {
+        const normalizedSlug = normalizeManualSlug(rawSlug);
+        if (!normalizedSlug) {
+          return NextResponse.json({ error: 'slug_override 格式无效' }, { status: 400 });
+        }
+
+        try {
+          slugOverride = await assertUniqueProductSiteSlug(supabase, siteCode, normalizedSlug, id);
+        } catch (error) {
+          return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'slug_override 已存在' },
+            { status: 409 },
+          );
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('product_site_views')
       .upsert({
@@ -25,6 +48,7 @@ export async function POST(
         is_enabled: body.is_enabled ?? true,
         publish_status: body.publish_status || 'draft',
         published_at: body.publish_status === 'published' ? new Date().toISOString() : null,
+        ...(slugOverride !== undefined ? { slug_override: slugOverride } : {}),
       }, { onConflict: 'product_id,site_code' })
       .select()
       .single();
@@ -50,9 +74,36 @@ export async function PATCH(
     const siteCode = requireSiteCode(req);
     const body = await req.json();
 
+    const updateData = { ...body } as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(updateData, 'slug_override')) {
+      const rawSlug = typeof updateData.slug_override === 'string' ? updateData.slug_override.trim() : '';
+      if (!rawSlug) {
+        updateData.slug_override = null;
+      } else {
+        const normalizedSlug = normalizeManualSlug(rawSlug);
+        if (!normalizedSlug) {
+          return NextResponse.json({ error: 'slug_override 格式无效' }, { status: 400 });
+        }
+
+        try {
+          updateData.slug_override = await assertUniqueProductSiteSlug(
+            supabase,
+            siteCode,
+            normalizedSlug,
+            id,
+          );
+        } catch (error) {
+          return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'slug_override 已存在' },
+            { status: 409 },
+          );
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('product_site_views')
-      .update({ ...body, updated_at: new Date().toISOString() })
+      .update({ ...updateData, updated_at: new Date().toISOString() })
       .eq('product_id', id)
       .eq('site_code', siteCode)
       .select()
