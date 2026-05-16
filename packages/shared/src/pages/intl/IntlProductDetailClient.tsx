@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLanguage } from '../../context/LanguageContext';
@@ -94,6 +94,7 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   const [addedToCart, setAddedToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [tierPrice, setTierPrice] = useState<number | null>(null); // 阶梯价格（根据数量计算）
+  const shouldSyncToSelectedSkuImage = useRef(false);
 
   // Use global wishlist context for persistent state
   const { isInWishlist: globalIsInWishlist, toggleWishlist: globalToggleWishlist } = useWishlist();
@@ -136,10 +137,30 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   }, [product]);
 
   useEffect(() => {
-    getIntlProductBySlug(productSlug, locale).then((data) => {
-      setProduct(data);
-      setLoading(false);
-      if (data) {
+    let isCancelled = false;
+
+    setLoading(true);
+    setActiveImage(0);
+    setShowImageLightbox(false);
+    shouldSyncToSelectedSkuImage.current = false;
+
+    getIntlProductBySlug(productSlug, locale)
+      .then((data) => {
+        if (isCancelled) return;
+
+        setProduct(data);
+
+        if (!data) {
+          setImages([]);
+          setRelatedCourses([]);
+          setRelatedProducts([]);
+          setSkus([]);
+          setVariantAttributes([]);
+          setSelectedSku(null);
+          setLoading(false);
+          return;
+        }
+
         Promise.all([
           getIntlProductImages(data.product_id),
           getIntlProductCourses(data.product_id),
@@ -147,19 +168,35 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
           getIntlProductSkus(data.product_id),
           getIntlProductVariantAttributes(data.product_id),
         ]).then(([imgs, courses, related, productSkus, variantAttrs]) => {
+          if (isCancelled) return;
+
           setImages(imgs);
           setRelatedCourses(courses);
           setRelatedProducts(related);
           setSkus(productSkus);
           setVariantAttributes(variantAttrs);
-          // 默认选中第一个SKU（如果有）
-          if (productSkus.length > 0) {
-            setSelectedSku(productSkus[0]);
-          }
+          setSelectedSku(productSkus.length > 0 ? productSkus[0] : null);
+          setActiveImage(0);
+          setLoading(false);
         });
-      }
-    });
-  }, [productSlug]);
+      })
+      .catch(() => {
+        if (isCancelled) return;
+
+        setProduct(null);
+        setImages([]);
+        setRelatedCourses([]);
+        setRelatedProducts([]);
+        setSkus([]);
+        setVariantAttributes([]);
+        setSelectedSku(null);
+        setLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [locale, productSlug]);
 
   // Quote form handlers
   const handleQuoteSubmit = async (e: React.FormEvent) => {
@@ -270,15 +307,21 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   // All images: cover + product_images (with full URLs)
   const allImages = useMemo(() => {
     const productDisplayName = product?.display_name || '';
-    const merged = [
-      ...(selectedSku?.image_url
-        ? [{ url: getImageUrl(selectedSku.image_url), alt_text: productDisplayName }]
-        : []),
-      ...(product?.cover_image_url
-        ? [{ url: getImageUrl(product.cover_image_url), alt_text: productDisplayName }]
-        : []),
-      ...images.map((img) => ({ ...img, url: getImageUrl(img.url) })),
-    ].filter((image): image is { url: string; alt_text?: string } => Boolean(image?.url));
+    const galleryImages =
+      images.length > 0
+        ? images.map((img) => ({ ...img, url: getImageUrl(img.url) }))
+        : [
+            ...(selectedSku?.image_url
+              ? [{ url: getImageUrl(selectedSku.image_url), alt_text: productDisplayName }]
+              : []),
+            ...(product?.cover_image_url
+              ? [{ url: getImageUrl(product.cover_image_url), alt_text: productDisplayName }]
+              : []),
+          ];
+
+    const merged = galleryImages.filter((image): image is { url: string; alt_text?: string } =>
+      Boolean(image?.url),
+    );
 
     const seenUrls = new Set<string>();
     return merged.filter((image) => {
@@ -299,19 +342,28 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
       return;
     }
 
-    const preferredSkuImage = selectedSku?.image_url ? getImageUrl(selectedSku.image_url) : null;
-    if (preferredSkuImage) {
-      const preferredIndex = allImages.findIndex((image) => image.url === preferredSkuImage);
-      if (preferredIndex >= 0 && preferredIndex !== activeImage) {
-        setActiveImage(preferredIndex);
-        return;
-      }
-    }
-
     if (activeImage >= allImages.length) {
       setActiveImage(0);
     }
-  }, [activeImage, allImages, selectedSku?.image_url]);
+  }, [activeImage, allImages.length]);
+
+  useEffect(() => {
+    if (
+      !shouldSyncToSelectedSkuImage.current ||
+      !selectedSku?.image_url ||
+      allImages.length === 0
+    ) {
+      return;
+    }
+
+    const preferredSkuImage = getImageUrl(selectedSku.image_url);
+    const preferredIndex = allImages.findIndex((image) => image.url === preferredSkuImage);
+    shouldSyncToSelectedSkuImage.current = false;
+
+    if (preferredIndex >= 0) {
+      setActiveImage(preferredIndex);
+    }
+  }, [allImages, selectedSku?.image_url]);
 
   useEffect(() => {
     if (!showImageLightbox || allImages.length === 0) return;
@@ -608,7 +660,10 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
                   variantAttributes={variantAttributes}
                   skus={skus}
                   selectedSku={selectedSku}
-                  onSkuSelect={setSelectedSku}
+                  onSkuSelect={(sku) => {
+                    shouldSyncToSelectedSkuImage.current = true;
+                    setSelectedSku(sku);
+                  }}
                   locale={locale}
                 />
               </div>
