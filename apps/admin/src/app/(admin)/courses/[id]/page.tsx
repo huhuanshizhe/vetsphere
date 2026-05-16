@@ -183,11 +183,16 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
     }
   }, [availableInstructors, selectedInstructorId]);
 
-  async function loadCourse() {
-    setLoading(true);
-    setError(null);
-    setSiteViewError(null);
-    setSiteViewSaveSuccess(false);
+  async function loadCourse(options: { background?: boolean } = {}) {
+    const { background = false } = options;
+
+    if (!background) {
+      setLoading(true);
+      setError(null);
+      setSiteViewError(null);
+      setSiteViewSaveSuccess(false);
+    }
+
     try {
       const json = await apiFetch<{ data: CourseWithSiteViews }>('/api/v1/admin/courses/' + id + '?view=base');
       const data = {
@@ -199,9 +204,13 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
       // 默认显示源语言
       setEditLang((data.publishLanguage || 'zh') as Lang);
     } catch (err) {
-      setError(getErrorMessage(err) || '加载失败');
+      if (!background) {
+        setError(getErrorMessage(err) || '加载失败');
+      }
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   }
 
@@ -308,7 +317,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
       setShowPublishDialog(false);
       setIsDirty(false);
       // 重新加载以刷新状态
-      await loadCourse();
+      await loadCourse({ background: true });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : '上架失败');
     } finally {
@@ -361,7 +370,7 @@ export default function CourseEditPage({ params }: { params: Promise<{ id: strin
       clearInterval(progressInterval);
       setTranslateProgress(100);
       setTranslateSuccess(true);
-      await loadCourse();
+      await loadCourse({ background: true });
 
       // 短暂显示完成状态后关闭弹框
       setTimeout(() => {

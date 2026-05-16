@@ -110,9 +110,13 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
     }
   }, [orderId]);
 
-  const fetchOrder = async () => {
+  const fetchOrder = async (options: { background?: boolean } = {}) => {
+    const { background = false } = options;
+
     try {
-      setLoading(true);
+      if (!background) {
+        setLoading(true);
+      }
 
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
@@ -146,7 +150,9 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
       console.error('Failed to fetch order:', error);
       toastError('获取订单详情失败');
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   };
 
@@ -177,7 +183,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
       if (error) throw error;
 
       success('订单状态已更新');
-      fetchOrder();
+      await fetchOrder({ background: true });
     } catch (error) {
       console.error('Failed to update status:', error);
       toastError('更新状态失败');
@@ -211,7 +217,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
       setShowTrackingModal(false);
       setTrackingNumber('');
       setCarrier('');
-      fetchOrder();
+      await fetchOrder({ background: true });
     } catch (error) {
       console.error('Failed to ship order:', error);
       toastError('发货失败');
@@ -231,7 +237,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
       });
 
       success('银行转账已确认');
-      fetchOrder();
+      await fetchOrder({ background: true });
     } catch (error) {
       console.error('Failed to confirm transfer:', error);
       toastError(getErrorMessage(error) || '确认失败');

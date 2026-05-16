@@ -129,9 +129,14 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
     return getAccessTokenSafe();
   };
 
-  const loadData = async () => {
-    setLoading(true);
-    setError('');
+  const loadData = async (options: { background?: boolean } = {}) => {
+    const { background = false } = options;
+
+    if (!background) {
+      setLoading(true);
+      setError('');
+    }
+
     try {
       const token = await getAccessToken();
       if (!token) { setError('未登录'); return; }
@@ -145,9 +150,13 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
       }
       setData(await res.json());
     } catch (err: any) {
-      setError(err.message || '加载失败');
+      if (!background) {
+        setError(err.message || '加载失败');
+      }
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   };
 
@@ -169,7 +178,7 @@ export default function CnVerificationDetailPage({ params }: { params: Promise<{
       }
       setConfirmDialog({ open: false, type: 'approve' });
       setRejectReason('');
-      loadData();
+      await loadData({ background: true });
     } catch (err: any) {
       alert(err.message || '操作失败，请重试');
     } finally {

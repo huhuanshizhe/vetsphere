@@ -556,9 +556,14 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     }
   }, [productId]);
 
-  async function loadProduct() {
-    setLoading(true);
-    setError(null);
+  async function loadProduct(options: { background?: boolean } = {}) {
+    const { background = false } = options;
+
+    if (!background) {
+      setLoading(true);
+      setError(null);
+    }
+
     try {
       const json = await apiFetch<{ view: 'base'; data: any }>(
         `/api/v1/admin/products/${productId}?view=base`,
@@ -573,9 +578,15 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       // 加载 SKU 变体数据
       await loadVariantData(data);
     } catch (err) {
+      if (background) {
+        throw err;
+      }
+
       setError(getErrorMessage(err) || '加载失败');
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   }
 
@@ -1359,7 +1370,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
           setProduct(json.data);
           setEditForm({ ...json.data });
         } else {
-          await loadProduct(); // 重新加载产品数据
+          await loadProduct({ background: true }); // 静默刷新产品数据，避免整页回到加载态
         }
       }
 
@@ -1454,7 +1465,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
 
       setShowPublishDialog(false);
       setIsDirty(false);
-      await loadProduct();
+      await loadProduct({ background: true });
       // 获取站点名称
       const siteNames = selectedSites.map((s) => (s === 'cn' ? '中国站' : '国际站')).join('、');
       success(`产品已成功上架到 ${siteNames}`);
@@ -1551,7 +1562,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
       clearInterval(progressInterval);
       setTranslateProgress(100);
       setTranslateSuccess(true);
-      await loadProduct();
+      await loadProduct({ background: true });
 
       // 动态成功消息
       const langNamesZh: Record<string, string> = {
@@ -1599,7 +1610,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
     setSaving(true);
     try {
       await apiFetch(`/api/v1/admin/products/${productId}?action=approve`, { method: 'POST' });
-      await loadProduct();
+      await loadProduct({ background: true });
       success('产品已通过审核');
     } catch (err) {
       const errorMsg = getErrorMessage(err) || '批准失败';
@@ -1620,7 +1631,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         method: 'POST',
         body: JSON.stringify({ reason }),
       });
-      await loadProduct();
+      await loadProduct({ background: true });
       warning('产品已拒绝');
     } catch (err) {
       const errorMsg = getErrorMessage(err) || '拒绝失败';
@@ -1653,7 +1664,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
         .eq('site_code', siteCode);
 
       if (error) throw error;
-      await loadProduct();
+      await loadProduct({ background: true });
       success(`产品已从 ${siteName} 下架`);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : '下架失败';
