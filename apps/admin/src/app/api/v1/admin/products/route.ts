@@ -4,11 +4,13 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
 import { createProductImageRows, getMainProductImage, normalizeProductImagesInput } from '@/lib/product-images';
+import { normalizeDimensionsForStorage } from '@/lib/product-dimensions';
 import {
   assertUniqueProductSlug,
   ensureUniqueGeneratedProductSlug,
   normalizeManualSlug,
 } from '@/lib/product-slug';
+import { formatRouteErrorMessage } from '@/lib/route-error';
 
 type SupportedLanguage = 'zh' | 'en' | 'th' | 'ja';
 
@@ -162,6 +164,7 @@ function normalizeProductPayload(body: Record<string, any>) {
       body.selling_price,
   );
   const weight = toNumberOrNull(body.weight) ?? 0;
+  const dimensions = normalizeDimensionsForStorage(body.dimensions);
   const siteCode = normalizeString(body.siteCode || body.site_code).toLowerCase() || null;
   const slug = normalizeString(body.slug) || generateSlug(name, productId);
   const skuCode = normalizeString(body.sku_code || body.skuCode) || generateSkuCode(productId);
@@ -184,6 +187,7 @@ function normalizeProductPayload(body: Record<string, any>) {
     package_unit: normalizeString(body.package_unit) || null,
     lead_time: normalizeString(body.lead_time) || null,
     delivery_time: normalizeString(body.delivery_time) || null,
+    dimensions,
     unit: normalizeString(body.unit) || null,
     weight,
     weight_unit: normalizeString(body.weight_unit) || 'kg',
@@ -477,7 +481,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[Product POST] Error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create product' },
+      { error: formatRouteErrorMessage(error, 'Failed to create product') },
       { status: 500 },
     );
   }

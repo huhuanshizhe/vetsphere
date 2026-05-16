@@ -4,6 +4,7 @@ import React, { useState, useEffect, use, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
+import { getDimensionsDisplayValue } from '@/lib/product-dimensions';
 import { useSite } from '@/context/SiteContext';
 import {
   Card,
@@ -2334,7 +2335,7 @@ export default function AdminProductDetailPage({ params }: { params: Promise<{ i
                   </label>
                   <input
                     type="text"
-                    value={editForm.dimensions || ''}
+                    value={getDimensionsDisplayValue(editForm.dimensions)}
                     onChange={(e) => {
                       setEditForm((prev: any) => ({ ...prev, dimensions: e.target.value }));
                       setIsDirty(true);

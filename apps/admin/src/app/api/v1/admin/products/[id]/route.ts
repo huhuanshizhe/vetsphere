@@ -4,11 +4,13 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
 import { assertUniqueProductSlug, normalizeManualSlug } from '@/lib/product-slug';
+import { normalizeDimensionsForStorage } from '@/lib/product-dimensions';
 import {
   createProductImageRows,
   getMainProductImage,
   normalizeProductImagesInput,
 } from '@/lib/product-images';
+import { formatRouteErrorMessage } from '@/lib/route-error';
 
 const PATCH_EXCLUDED_FIELDS = new Set([
   'site_views',
@@ -469,6 +471,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    if ('dimensions' in updateData) {
+      updateData.dimensions = normalizeDimensionsForStorage(updateData.dimensions);
+    }
+
     if (hasImagesInBody) {
       const mainImage = getMainProductImage(normalizedImages);
       updateData.image_url = mainImage?.url || null;
@@ -592,7 +598,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   } catch (error) {
     console.error('Failed to update product:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update product' },
+      { error: formatRouteErrorMessage(error, 'Failed to update product') },
       { status: 500 },
     );
   }
