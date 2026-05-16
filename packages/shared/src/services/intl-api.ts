@@ -957,6 +957,59 @@ export async function getIntlProductImages(productId: string) {
   return data || [];
 }
 
+export async function getIntlProductPrimaryImageMap(productIds: string[]): Promise<Record<string, string>> {
+  const uniqueProductIds = Array.from(
+    new Set(productIds.filter((productId): productId is string => Boolean(productId?.trim()))),
+  );
+
+  if (uniqueProductIds.length === 0) {
+    return {};
+  }
+
+  const [{ data: products, error: productsError }, { data: mainImages, error: mainImagesError }] =
+    await Promise.all([
+      supabase
+        .from('products')
+        .select('id, cover_image_url, image_url')
+        .in('id', uniqueProductIds),
+      supabase
+        .from('product_images')
+        .select('product_id, url')
+        .eq('type', 'main')
+        .in('product_id', uniqueProductIds),
+    ]);
+
+  if (productsError) {
+    console.error('Failed to get INTL cart product images:', productsError);
+  }
+
+  if (mainImagesError) {
+    console.error('Failed to get INTL cart main product_images:', mainImagesError);
+  }
+
+  const mainImageByProductId = new Map<string, string>();
+  for (const image of mainImages || []) {
+    const normalizedUrl = getImageUrl(image.url);
+    if (!normalizedUrl || mainImageByProductId.has(image.product_id)) {
+      continue;
+    }
+    mainImageByProductId.set(image.product_id, normalizedUrl);
+  }
+
+  return uniqueProductIds.reduce<Record<string, string>>((imageMap, productId) => {
+    const product = (products || []).find((row) => row.id === productId);
+    const canonicalUrl =
+      getImageUrl(product?.cover_image_url || product?.image_url || null) ||
+      mainImageByProductId.get(productId);
+
+    if (canonicalUrl) {
+      imageMap[productId] = canonicalUrl;
+    }
+
+    return imageMap;
+  }, {});
+}
+
 // ============================================
 // Cross-references: Course <-> Product
 // ============================================

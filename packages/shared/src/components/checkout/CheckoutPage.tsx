@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useCart, EnhancedCartItem } from '@vetsphere/shared/context/CartContext';
 import { useLanguage } from '@vetsphere/shared/context/LanguageContext';
 import { useAuth } from '@vetsphere/shared/context/AuthContext';
+import { useIntlCartProductImageMap } from '@vetsphere/shared/hooks/useIntlCartProductImageMap';
 import { getLocaleCurrency, formatPrice } from '@vetsphere/shared/lib/currency';
+import { getImageUrl } from '@vetsphere/shared/services/supabase';
 import { Package, CreditCard, Building2, MapPin, User, Mail, Phone, Building, FileText, Truck, Shield, Check, Loader2, AlertCircle, ArrowLeft, Lock, LogIn, UserPlus, ChevronRight, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import AddressSelector, { Address } from './AddressSelector';
@@ -72,6 +74,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
   const { isAuthenticated, user, login: authLogin, logout, refreshSession, updateUser } = useAuth();
   const currency = getLocaleCurrency(locale);
   const c = t.checkout;
+  const quantityLabel = c.success.qty.replace(':', '');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -291,6 +294,7 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [shippingZone, setShippingZone] = useState<{ code: string; name: Record<string, string> } | null>(null);
+  const productImageMap = useIntlCartProductImageMap(cart.map(item => item.productId));
 
   // 从API获取真实产品重量（修复 localStorage 中旧购物车数据缺失 weight 的问题）
   const [refreshedWeights, setRefreshedWeights] = useState<Record<string, { weight: number | null; weight_unit: string | null }>>({});
@@ -1242,116 +1246,137 @@ export default function CheckoutPage({ locale }: CheckoutPageProps) {
 
             {/* 右栏：订单摘要 */}
             <div className="lg:col-span-5 mt-8 lg:mt-0">
-              <div className="bg-white rounded-xl shadow-sm p-6 sticky top-8">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">{c.orderSummary}</h2>
+              <div className="sticky top-24 space-y-4">
+                <div className="overflow-hidden rounded-[28px] bg-slate-950 p-6 text-white shadow-2xl shadow-slate-300/40 sm:p-7">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-xl font-semibold tracking-tight text-white">{c.orderSummary}</h2>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+                      {itemCount}
+                    </span>
+                  </div>
 
-                {/* 商品列表 */}
-                <div className="space-y-4 mb-6">
+                  <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 p-4 sm:p-5">
+                    <div className="max-h-[46vh] space-y-4 overflow-y-auto pr-1 custom-scrollbar">
                   {cart.map((item) => {
                     const isUnavailable = item.unavailable;
                     const isOutOfStock = item.inStock === false;
                     const hasIssue = isUnavailable || isOutOfStock;
+                    const imageUrl =
+                      (item.productId ? productImageMap[item.productId] : undefined) ||
+                      getImageUrl(item.imageUrl);
 
                     return (
                       <div key={item.id} className={`flex gap-4 ${hasIssue ? 'opacity-60' : ''}`}>
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white p-2 shadow-sm shadow-slate-900/10">
+                          {imageUrl ? (
+                            <img src={imageUrl} alt={item.name} className="h-full w-full object-contain mix-blend-multiply" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package className="w-6 h-6 text-gray-400" />
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Package className="h-6 w-6 text-slate-300" />
                             </div>
                           )}
                           {/* 失效/下架标记 */}
                           {isUnavailable && (
-                            <div className="absolute inset-0 bg-slate-800/60 flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">Unavailable</span>
+                            <div className="absolute inset-0 flex items-center justify-center bg-slate-800/70">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white">Unavailable</span>
                             </div>
                           )}
                           {isOutOfStock && !isUnavailable && (
-                            <div className="absolute inset-0 bg-red-500/60 flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">Out of Stock</span>
+                            <div className="absolute inset-0 flex items-center justify-center bg-red-500/70">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white">Out of Stock</span>
                             </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${hasIssue ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{item.name}</p>
+                          <p className={`truncate text-sm font-semibold ${hasIssue ? 'text-slate-400 line-through' : 'text-white'}`}>{item.name}</p>
                           {item.skuCode && (
-                            <p className="text-xs text-gray-500">SKU: {item.skuCode}</p>
+                            <p className="text-xs text-slate-400">SKU: {item.skuCode}</p>
                           )}
-                          <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                          <p className="text-xs text-slate-400">{quantityLabel}: {item.quantity}</p>
                           {hasIssue && (
-                            <p className="text-xs text-red-500 font-medium mt-1">
+                            <p className="mt-1 text-xs font-medium text-red-300">
                               {isUnavailable ? 'Product no longer available' : 'Out of stock'}
                             </p>
                           )}
                         </div>
-                        <p className={`text-sm font-medium ${hasIssue ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        <p className={`text-sm font-semibold ${hasIssue ? 'text-slate-400 line-through' : 'text-white'}`}>
                           {formatPrice((refreshedPrices[item.skuId || item.id]?.price || item.price) * item.quantity, currency)}
                         </p>
                       </div>
                     );
                   })}
-                </div>
+                    </div>
+                  </div>
 
-                {/* 价格明细 */}
-                <div className="border-t border-gray-200 pt-4 space-y-2">
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{c.subtotalItems.replace('{count}', String(itemCount))}</span>
-                    <span>{formatPrice(convertedSubtotal, currency)}</span>
+                  <div className="mt-6 space-y-3 border-t border-white/10 pt-6">
+                    <div className="flex justify-between gap-4 text-sm text-slate-300">
+                      <span>{c.subtotalItems.replace('{count}', String(itemCount))}</span>
+                      <span className="text-right font-medium text-white">{formatPrice(convertedSubtotal, currency)}</span>
+                    </div>
+                    <div className="flex justify-between gap-4 text-sm text-slate-300">
+                      <span>{c.shippingFee}</span>
+                      {!formData.country ? (
+                        <span className="max-w-[160px] text-right text-xs leading-5 text-amber-300">{c.selectCountryFirst || 'Select country first'}</span>
+                      ) : (
+                        <span className="text-right font-medium text-white">{formatPrice(convertedShippingFee, currency)}</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between gap-4 text-sm text-slate-300">
+                      <span>{c.tax}</span>
+                      <span className="text-right text-xs leading-5 text-slate-400">{c.taxCalculated}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{c.shippingFee}</span>
-                    {!formData.country ? (
-                      <span className="text-amber-600">{c.selectCountryFirst || 'Select country first'}</span>
-                    ) : (
-                      <span>{formatPrice(convertedShippingFee, currency)}</span>
-                    )}
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{c.tax}</span>
-                    <span>{c.taxCalculated}</span>
-                  </div>
-                </div>
 
-                {/* 总计 */}
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <div className="flex justify-between text-lg font-medium text-gray-900">
-                    <span>{c.total}</span>
-                    <span>{formatPrice(convertedOrderTotal, currency)}</span>
+                  <div className="mt-6 border-t border-white/10 pt-6">
+                    <div className="flex items-end justify-between gap-4">
+                      <span className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">{c.total}</span>
+                      <span className="text-3xl font-semibold tracking-tight text-emerald-300">{formatPrice(convertedOrderTotal, currency)}</span>
+                    </div>
                   </div>
-                </div>
 
-                {/* 错误提示 */}
-                {error && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-600">{error}</p>
-                  </div>
-                )}
-
-                {/* 提交按钮 */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-6 px-6 py-4 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      {c.processing}
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="w-5 h-5" />
-                      {c.placeOrder}
-                    </>
+                  {error && (
+                    <div className="mt-4 flex items-start gap-2 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-red-100">
+                      <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-300" />
+                      <p className="text-sm leading-6">{error}</p>
+                    </div>
                   )}
-                </button>
 
-                <p className="mt-4 text-xs text-gray-500 text-center">
-                  {c.termsAgreement}
-                </p>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-vs px-6 py-4 text-sm font-semibold text-white shadow-lg shadow-vs/20 transition-all hover:-translate-y-0.5 hover:bg-[#008F6F] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        {c.processing}
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-5 w-5" />
+                        {c.placeOrder}
+                      </>
+                    )}
+                  </button>
+
+                  <p className="mt-4 text-center text-xs leading-6 text-slate-400">
+                    {c.termsAgreement}
+                  </p>
+                </div>
+
+                <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                      <Shield className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Secure checkout</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        Transactions are encrypted. Shipping and tax finalize after delivery details are complete.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

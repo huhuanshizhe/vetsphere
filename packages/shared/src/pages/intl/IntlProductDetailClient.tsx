@@ -58,6 +58,55 @@ function normalizeRichDescription(content: string) {
     .replace(/<p>(?:&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '');
 }
 
+type ProductGalleryImage = {
+  url?: string | null;
+  alt_text?: string | null;
+  type?: string | null;
+};
+
+function buildPreferredProductImageList(options: {
+  selectedSkuImage?: string | null;
+  coverImage?: string | null;
+  galleryImages?: ProductGalleryImage[];
+  fallbackAltText: string;
+}): Array<{ url: string; alt_text: string; type?: string | null }> {
+  const { selectedSkuImage, coverImage, galleryImages = [], fallbackAltText } = options;
+  const normalizedGalleryImages = galleryImages.map((image) => ({
+    ...image,
+    url: getImageUrl(image.url || null),
+    alt_text: image.alt_text || fallbackAltText,
+  }));
+
+  const orderedCandidates = [
+    ...(selectedSkuImage
+      ? [{ url: getImageUrl(selectedSkuImage), alt_text: fallbackAltText, type: 'sku' }]
+      : []),
+    ...(coverImage
+      ? [{ url: getImageUrl(coverImage), alt_text: fallbackAltText, type: 'main' }]
+      : []),
+    ...normalizedGalleryImages.filter((image) => image.type === 'main'),
+    ...normalizedGalleryImages,
+  ];
+
+  const seenUrls = new Set<string>();
+  const preferredImages: Array<{ url: string; alt_text: string; type?: string | null }> = [];
+
+  for (const image of orderedCandidates) {
+    if (!image?.url || seenUrls.has(image.url)) {
+      continue;
+    }
+
+    seenUrls.add(image.url);
+    preferredImages.push({
+      url: image.url,
+      alt_text: image.alt_text || fallbackAltText,
+      type: image.type,
+    });
+  }
+
+  return preferredImages;
+}
+
 // ============================================
 // Component
 // ============================================
@@ -251,9 +300,13 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
         price = product.display_price || product.price_min || 0;
       }
 
-      // Get image URL
       const imageUrl =
-        selectedSku?.image_url || (images.length > 0 ? getImageUrl(images[0].url) : null);
+        buildPreferredProductImageList({
+          selectedSkuImage: selectedSku?.image_url,
+          coverImage: product.cover_image_url,
+          galleryImages: images,
+          fallbackAltText: product.display_name || product.base_name || '',
+        })[0]?.url || '';
 
       // Create cart item
       const cartItem = {
@@ -306,31 +359,11 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
 
   // All images: cover + product_images (with full URLs)
   const allImages = useMemo(() => {
-    const productDisplayName = product?.display_name || '';
-    const galleryImages =
-      images.length > 0
-        ? images.map((img) => ({ ...img, url: getImageUrl(img.url) }))
-        : [
-            ...(selectedSku?.image_url
-              ? [{ url: getImageUrl(selectedSku.image_url), alt_text: productDisplayName }]
-              : []),
-            ...(product?.cover_image_url
-              ? [{ url: getImageUrl(product.cover_image_url), alt_text: productDisplayName }]
-              : []),
-          ];
-
-    const merged = galleryImages.filter((image): image is { url: string; alt_text?: string } =>
-      Boolean(image?.url),
-    );
-
-    const seenUrls = new Set<string>();
-    return merged.filter((image) => {
-      if (seenUrls.has(image.url)) {
-        return false;
-      }
-
-      seenUrls.add(image.url);
-      return true;
+    return buildPreferredProductImageList({
+      selectedSkuImage: selectedSku?.image_url,
+      coverImage: product?.cover_image_url,
+      galleryImages: images,
+      fallbackAltText: product?.display_name || product?.base_name || '',
     });
   }, [images, product?.cover_image_url, product?.display_name, selectedSku?.image_url]);
 
