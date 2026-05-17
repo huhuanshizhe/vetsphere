@@ -996,11 +996,13 @@ export async function getIntlProductPrimaryImageMap(productIds: string[]): Promi
     mainImageByProductId.set(image.product_id, normalizedUrl);
   }
 
+  const productById = new Map((products || []).map((product) => [product.id, product]));
+
   return uniqueProductIds.reduce<Record<string, string>>((imageMap, productId) => {
-    const product = (products || []).find((row) => row.id === productId);
+    const product = productById.get(productId);
     const canonicalUrl =
-      getImageUrl(product?.cover_image_url || product?.image_url || null) ||
-      mainImageByProductId.get(productId);
+      mainImageByProductId.get(productId) ||
+      getImageUrl(product?.cover_image_url || product?.image_url || null);
 
     if (canonicalUrl) {
       imageMap[productId] = canonicalUrl;

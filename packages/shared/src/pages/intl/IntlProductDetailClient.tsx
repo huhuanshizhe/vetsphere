@@ -77,6 +77,25 @@ function buildPreferredProductImageList(options: {
     alt_text: image.alt_text || fallbackAltText,
   }));
 
+  const canonicalGalleryImages = normalizedGalleryImages.filter(
+    (image): image is { url: string; alt_text: string; type?: string | null } => Boolean(image.url),
+  );
+
+  // When canonical product_images exist, do not re-introduce stale SKU/cover URLs
+  // that may still live on legacy fields after an admin deletes gallery images.
+  if (canonicalGalleryImages.length > 0) {
+    const seenUrls = new Set<string>();
+
+    return canonicalGalleryImages.filter((image) => {
+      if (seenUrls.has(image.url)) {
+        return false;
+      }
+
+      seenUrls.add(image.url);
+      return true;
+    });
+  }
+
   const orderedCandidates = [
     ...(selectedSkuImage
       ? [{ url: getImageUrl(selectedSkuImage), alt_text: fallbackAltText, type: 'sku' }]
