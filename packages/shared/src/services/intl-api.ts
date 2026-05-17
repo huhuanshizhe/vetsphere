@@ -1524,6 +1524,8 @@ export interface ProductCategory {
   productCount?: number;
 }
 
+type ProductCategoryRow = Omit<ProductCategory, 'children' | 'productCount'>;
+
 /**
  * Get full product category tree for INTL site with product counts
  */
@@ -1544,6 +1546,37 @@ export async function getIntlProductCategoryTree(
     return [];
   }
 
+  const rawCategories = categories as ProductCategoryRow[];
+  const rawCategoryById = new Map<string, ProductCategoryRow>(
+    rawCategories.map((category) => [category.id, category]),
+  );
+  const effectiveCategoryBySlug = new Map<string, ProductCategoryRow>();
+
+  for (const category of rawCategories) {
+    const existingCategory = effectiveCategoryBySlug.get(category.slug);
+    const shouldReplaceExisting =
+      !existingCategory ||
+      (existingCategory.site_code === 'global' && category.site_code === SITE_CODE);
+
+    if (shouldReplaceExisting) {
+      effectiveCategoryBySlug.set(category.slug, category);
+    }
+  }
+
+  const effectiveCategories: ProductCategoryRow[] = Array.from(
+    effectiveCategoryBySlug.values(),
+  ).map((category) => {
+    const parentCategory = category.parent_id ? rawCategoryById.get(category.parent_id) : null;
+    const normalizedParentId = parentCategory?.slug
+      ? effectiveCategoryBySlug.get(parentCategory.slug)?.id || null
+      : null;
+
+    return {
+      ...category,
+      parent_id: normalizedParentId,
+    };
+  });
+
   // Get product counts for each category
   const { data: products } = await supabase
     .from('product_site_views')
@@ -1560,16 +1593,25 @@ export async function getIntlProductCategoryTree(
     .in('product_id', productIds);
 
   // Count products per category
-  const countMap: Record<string, number> = {};
+  const countMap = new Map<string, Set<string>>();
   if (mappings) {
     for (const mapping of mappings) {
-      countMap[mapping.category_id] = (countMap[mapping.category_id] || 0) + 1;
+      const mappedCategory = rawCategoryById.get(mapping.category_id);
+      if (!mappedCategory?.slug) {
+        continue;
+      }
+
+      if (!countMap.has(mappedCategory.slug)) {
+        countMap.set(mappedCategory.slug, new Set<string>());
+      }
+
+      countMap.get(mappedCategory.slug)?.add(mapping.product_id);
     }
   }
 
   // Build tree structure
   const buildTree = (parentId: string | null = null, level: number = 1): ProductCategory[] => {
-    const levelCategories = categories
+    const levelCategories = effectiveCategories
       .filter((c) => c.parent_id === parentId && c.level === level)
       .sort((a, b) => a.sort_order - b.sort_order);
 
@@ -1587,7 +1629,7 @@ export async function getIntlProductCategoryTree(
       site_code: cat.site_code,
       sort_order: cat.sort_order,
       is_active: cat.is_active,
-      productCount: countMap[cat.id] || 0,
+      productCount: countMap.get(cat.slug)?.size || 0,
       children: buildTree(cat.id, level + 1),
     }));
   };
