@@ -18,6 +18,25 @@ export function normalizeManualSlug(value: unknown): string {
   return normalizeSlugText(value);
 }
 
+export function getEquivalentExistingProductSlugValue(
+  incomingValue: unknown,
+  existingValue: unknown,
+): string | undefined {
+  const normalizedIncomingSlug = normalizeManualSlug(incomingValue);
+  if (!normalizedIncomingSlug) {
+    return undefined;
+  }
+
+  const existingSlug = typeof existingValue === 'string' ? existingValue : '';
+  const normalizedExistingSlug = normalizeManualSlug(existingSlug);
+
+  if (!normalizedExistingSlug || normalizedIncomingSlug !== normalizedExistingSlug) {
+    return undefined;
+  }
+
+  return existingSlug;
+}
+
 async function productFieldExists(
   supabase: SupabaseClient,
   field: ProductSlugField,

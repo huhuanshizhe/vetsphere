@@ -3,7 +3,11 @@ import { parseViewMode, parseSiteCode, siteCodeErrorResponse } from '@/lib/site-
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { writeAuditLog } from '@/lib/audit';
-import { assertUniqueProductSlug, normalizeManualSlug } from '@/lib/product-slug';
+import {
+  assertUniqueProductSlug,
+  getEquivalentExistingProductSlugValue,
+  normalizeManualSlug,
+} from '@/lib/product-slug';
 import { normalizeDimensionsForStorage } from '@/lib/product-dimensions';
 import {
   createProductImageRows,
@@ -508,18 +512,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if ('slug' in updateData) {
       const rawSlug = normalizeStringValue(updateData.slug);
       const normalizedSlug = normalizeManualSlug(rawSlug);
+      const preservedSlug = getEquivalentExistingProductSlugValue(rawSlug, existingProduct.slug);
 
       if (!normalizedSlug) {
         return NextResponse.json({ error: 'Slug 格式无效' }, { status: 400 });
       }
 
-      try {
-        updateData.slug = await assertUniqueProductSlug(supabase, 'slug', normalizedSlug, id);
-      } catch (error) {
-        return NextResponse.json(
-          { error: error instanceof Error ? error.message : 'Slug 已存在' },
-          { status: 409 },
-        );
+      if (preservedSlug !== undefined) {
+        updateData.slug = preservedSlug;
+      } else {
+        try {
+          updateData.slug = await assertUniqueProductSlug(supabase, 'slug', normalizedSlug, id);
+        } catch (error) {
+          return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Slug 已存在' },
+            { status: 409 },
+          );
+        }
       }
     }
 
@@ -529,23 +538,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         updateData.slug_en = null;
       } else {
         const normalizedSlugEn = normalizeManualSlug(rawSlugEn);
+        const preservedSlugEn = getEquivalentExistingProductSlugValue(
+          rawSlugEn,
+          existingProduct.slug_en,
+        );
 
         if (!normalizedSlugEn) {
           return NextResponse.json({ error: 'slug_en 格式无效' }, { status: 400 });
         }
 
-        try {
-          updateData.slug_en = await assertUniqueProductSlug(
-            supabase,
-            'slug_en',
-            normalizedSlugEn,
-            id,
-          );
-        } catch (error) {
-          return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'slug_en 已存在' },
-            { status: 409 },
-          );
+        if (preservedSlugEn !== undefined) {
+          updateData.slug_en = preservedSlugEn;
+        } else {
+          try {
+            updateData.slug_en = await assertUniqueProductSlug(
+              supabase,
+              'slug_en',
+              normalizedSlugEn,
+              id,
+            );
+          } catch (error) {
+            return NextResponse.json(
+              { error: error instanceof Error ? error.message : 'slug_en 已存在' },
+              { status: 409 },
+            );
+          }
         }
       }
     }
