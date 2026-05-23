@@ -14,7 +14,6 @@ import TextAlign from '@tiptap/extension-text-align';
 import {
   Bold,
   Italic,
-  Underline,
   Strikethrough,
   Heading1,
   Heading2,
@@ -34,12 +33,27 @@ import {
   Quote,
   Link,
 } from 'lucide-react';
+import { apiFetch, getErrorMessage } from '@/lib/api-client';
 
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+}
+
+const MAX_EDITOR_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+function validateEditorImage(file: File): string | null {
+  if (!file.type.startsWith('image/')) {
+    return '仅支持图片文件 (JPEG/PNG/WebP/GIF/SVG)';
+  }
+
+  if (file.size > MAX_EDITOR_IMAGE_SIZE_BYTES) {
+    return '单张图片最大 5MB';
+  }
+
+  return null;
 }
 
 export default function RichTextEditor({
@@ -49,6 +63,9 @@ export default function RichTextEditor({
   disabled = false,
 }: RichTextEditorProps) {
   const [isClient, setIsClient] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadStatus, setImageUploadStatus] = useState<string | null>(null);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -97,24 +114,60 @@ export default function RichTextEditor({
     }
   }, [editor, value]);
 
+  const uploadEditorImage = useCallback(async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'product-rich-text');
+
+    const data = await apiFetch<{ url: string }>('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    return data.url;
+  }, []);
+
   const addImage = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = 'image/jpeg,image/png,image/webp,image/gif,image/svg+xml';
+    input.multiple = true;
     input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
+      const files = Array.from((e.target as HTMLInputElement).files || []);
+      if (files.length === 0 || !editor) return;
 
-      // For now, use base64. In production, upload to server first
-      const reader = new FileReader();
-      reader.onload = () => {
-        const url = reader.result as string;
-        editor?.chain().focus().setImage({ src: url }).run();
-      };
-      reader.readAsDataURL(file);
+      const invalidFile = files.find((file) => validateEditorImage(file));
+      if (invalidFile) {
+        setImageUploadStatus(null);
+        setImageUploadError(`${invalidFile.name}: ${validateEditorImage(invalidFile)}`);
+        return;
+      }
+
+      setIsUploadingImage(true);
+      setImageUploadError(null);
+
+      try {
+        for (const [index, file] of files.entries()) {
+          setImageUploadStatus(
+            files.length === 1
+              ? `正在上传图片：${file.name}`
+              : `正在上传第 ${index + 1}/${files.length} 张图片：${file.name}`,
+          );
+
+          const url = await uploadEditorImage(file);
+          editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+        }
+
+        setImageUploadStatus(null);
+      } catch (err) {
+        setImageUploadStatus(null);
+        setImageUploadError(getErrorMessage(err) || '图片上传失败，请重试');
+      } finally {
+        setIsUploadingImage(false);
+      }
     };
     input.click();
-  }, [editor]);
+  }, [editor, uploadEditorImage]);
 
   const addYoutube = useCallback(() => {
     const url = prompt('请输入YouTube视频链接:');
@@ -271,7 +324,11 @@ export default function RichTextEditor({
           <ToolbarButton onClick={setLink} active={editor.isActive('link')} title="链接">
             <Link className="w-4 h-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={addImage} title="图片">
+          <ToolbarButton
+            onClick={addImage}
+            disabled={disabled || isUploadingImage}
+            title={isUploadingImage ? '图片上传中...' : '图片'}
+          >
             <ImageIcon className="w-4 h-4" />
           </ToolbarButton>
           <ToolbarButton onClick={addTable} title="表格">
@@ -314,6 +371,16 @@ export default function RichTextEditor({
         editor={editor}
         className="prose prose-sm max-w-none p-4 min-h-[300px] focus:outline-none"
       />
+
+      {(imageUploadStatus || imageUploadError) && (
+        <div
+          className={`border-t px-4 py-2 text-xs ${
+            imageUploadError ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+          }`}
+        >
+          {imageUploadError || imageUploadStatus}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="bg-gray-50 border-t border-gray-200 px-4 py-2 flex items-center justify-between text-xs text-gray-500">

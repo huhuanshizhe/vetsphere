@@ -57,6 +57,62 @@ interface ApiFetchOptions extends RequestInit {
   parseJson?: boolean;
 }
 
+function extractErrorMessage(value: unknown, seen = new Set<unknown>()): string | null {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+
+  if (value instanceof ApiError) {
+    return extractErrorMessage(value.data, seen) || extractErrorMessage(value.message, seen);
+  }
+
+  if (value instanceof Error) {
+    return extractErrorMessage(value.message, seen) || value.name;
+  }
+
+  if (typeof value !== 'object') {
+    return null;
+  }
+
+  if (seen.has(value)) {
+    return null;
+  }
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const message = extractErrorMessage(item, seen);
+      if (message) return message;
+    }
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of ['error', 'message', 'details', 'detail', 'hint', 'msg', 'error_description']) {
+    if (!(key in record)) continue;
+    const message = extractErrorMessage(record[key], seen);
+    if (message) return message;
+  }
+
+  if (Array.isArray(record.errors)) {
+    const message = extractErrorMessage(record.errors, seen);
+    if (message) return message;
+  }
+
+  return null;
+}
+
 /**
  * 统一的 admin 端 fetch 封装：
  * - 自动注入 Authorization Bearer
@@ -100,10 +156,7 @@ export async function apiFetch<T = unknown>(
     } catch {
       // ignore
     }
-    const message =
-      (data as { error?: string; message?: string } | null)?.error ||
-      (data as { error?: string; message?: string } | null)?.message ||
-      `请求失败 (${res.status})`;
+    const message = extractErrorMessage(data) || `请求失败 (${res.status})`;
     throw new ApiError(message, res.status, data);
   }
 
@@ -115,7 +168,5 @@ export async function apiFetch<T = unknown>(
 
 /** 提取错误对象的可读消息 */
 export function getErrorMessage(err: unknown): string {
-  if (err instanceof ApiError) return err.message;
-  if (err instanceof Error) return err.message;
-  return '未知错误';
+  return extractErrorMessage(err) || '未知错误';
 }
