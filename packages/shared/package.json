@@ -30,6 +30,7 @@
     "@stripe/stripe-js": "^8.8.0",
     "@supabase/supabase-js": "^2.98.0",
     "axios": "^1.13.5",
+    "fuse.js": "^7.3.0",
     "lucide-react": "^0.575.0",
     "openai": "^6.25.0",
     "react-markdown": "^10.1.0",

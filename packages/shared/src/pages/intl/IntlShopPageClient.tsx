@@ -37,6 +37,8 @@ function ShopPageInner() {
   const { addToCart } = useCart();
   const s = t.shop;
 
+  const currencySymbol = locale === 'ja' ? '¥' : locale === 'th' ? '฿' : locale === 'zh' ? '¥' : '$';
+
   const filters = useShopFilters();
 
   // Data
@@ -84,19 +86,7 @@ function ShopPageInner() {
         featured: false,
       });
 
-      // Client-side price filtering if needed (since SQL price filtering is complex with multi-currency SKU)
-      let items = result.items;
-      if (filters.priceMin !== null || filters.priceMax !== null) {
-        items = items.filter(p => {
-          const { minPrice } = getPriceRangeForProduct(p as any, locale);
-          if (minPrice === null) return false;
-          if (filters.priceMin !== null && minPrice < filters.priceMin) return false;
-          if (filters.priceMax !== null && minPrice > filters.priceMax) return false;
-          return true;
-        });
-      }
-
-      setProducts(items);
+      setProducts(result.items);
       setTotal(result.total);
     } catch (error) {
       console.error('[IntlShopPageClient] Failed to load products:', error);
@@ -105,8 +95,7 @@ function ShopPageInner() {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterParamsKey, filters.priceMin, filters.priceMax, locale]);
+  }, [filterParamsKey, locale]);
 
   // Load featured products (only once)
   const loadFeaturedProducts = useCallback(async () => {
@@ -176,11 +165,16 @@ function ShopPageInner() {
     activeFilterTags.push({ key: 'brand', label: brand, value: brand });
   }
   if (filters.priceMin !== null || filters.priceMax !== null) {
-    const parts = [];
-    if (filters.priceMin !== null) parts.push(`${filters.priceMin}`);
-    parts.push('-');
-    if (filters.priceMax !== null) parts.push(`${filters.priceMax}`);
-    activeFilterTags.push({ key: 'price', label: parts.join(' ') });
+    let label = '';
+    if (filters.priceMin !== null && filters.priceMax !== null) {
+      label = `${currencySymbol}${filters.priceMin} - ${currencySymbol}${filters.priceMax}`;
+    } else if (filters.priceMin !== null) {
+      label = `${currencySymbol}${filters.priceMin}+`;
+    } else if (filters.priceMax !== null) {
+      label = `<= ${currencySymbol}${filters.priceMax}`;
+    }
+
+    activeFilterTags.push({ key: 'price', label });
   }
   if (filters.purchaseType) {
     activeFilterTags.push({

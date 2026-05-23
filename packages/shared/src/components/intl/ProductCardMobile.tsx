@@ -8,6 +8,7 @@ import { getImageUrl, getAccessTokenSafe } from '../../services/supabase';
 import { useLanguage } from '../../context/LanguageContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
+import { getIntlProductPriceRange } from '../../lib/intl-product-discovery';
 
 // Product type from intl-api
 interface IntlProductCard {
@@ -58,69 +59,7 @@ interface ProductCardMobileProps {
 
 // 根据产品数据和 locale 获取价格区间 - 返回 min 和 max
 export function getPriceRangeForProduct(product: IntlProductCard, locale: string): { minPrice: number | null; maxPrice: number | null; currency: string } {
-  // 询价模式产品，返回 null
-  if (product.pricing_mode === 'inquiry' || product.purchase_type === 'quote') {
-    return { minPrice: null, maxPrice: null, currency: 'USD' };
-  }
-
-  // 根据 locale 确定期望的货币
-  const expectedCurrency = locale === 'ja' ? 'JPY' :
-                           locale === 'th' ? 'THB' :
-                           locale === 'zh' || locale === 'cn' ? 'CNY' : 'USD';
-
-  // 优先使用 SKU 价格（对应货币）
-  switch (expectedCurrency) {
-    case 'JPY':
-      if (product.sku_price_jpy_min !== null && product.sku_price_jpy_min !== undefined && product.sku_price_jpy_min > 0) {
-        return {
-          minPrice: product.sku_price_jpy_min,
-          maxPrice: product.sku_price_jpy_max ?? null,
-          currency: 'JPY'
-        };
-      }
-      break;
-    case 'THB':
-      if (product.sku_price_thb_min !== null && product.sku_price_thb_min !== undefined && product.sku_price_thb_min > 0) {
-        return {
-          minPrice: product.sku_price_thb_min,
-          maxPrice: product.sku_price_thb_max ?? null,
-          currency: 'THB'
-        };
-      }
-      break;
-    case 'CNY':
-      if (product.sku_price_cny_min !== null && product.sku_price_cny_min !== undefined && product.sku_price_cny_min > 0) {
-        return {
-          minPrice: product.sku_price_cny_min,
-          maxPrice: product.sku_price_cny_max ?? null,
-          currency: 'CNY'
-        };
-      }
-      break;
-    default: // USD
-      if (product.sku_price_usd_min !== null && product.sku_price_usd_min !== undefined && product.sku_price_usd_min > 0) {
-        return {
-          minPrice: product.sku_price_usd_min,
-          maxPrice: product.sku_price_usd_max ?? null,
-          currency: 'USD'
-        };
-      }
-  }
-
-  // 如果没有对应货币的 SKU 价格，尝试回退到 USD SKU 价格
-  if (product.sku_price_usd_min !== null && product.sku_price_usd_min !== undefined && product.sku_price_usd_min > 0) {
-    return {
-      minPrice: product.sku_price_usd_min,
-      maxPrice: product.sku_price_usd_max ?? null,
-      currency: 'USD'
-    };
-  }
-
-  // 最后回退到 display_price 或 base_price
-  const price = product.display_price ?? product.base_price ?? product.price_min ?? null;
-  const currency = product.currency_code || expectedCurrency;
-
-  return { minPrice: price, maxPrice: price, currency };
+  return getIntlProductPriceRange(product, locale);
 }
 
 export default function ProductCardMobile({ product, locale, onAddToCart, onAddToWishlist, isInWishlist: propIsInWishlist }: ProductCardMobileProps) {

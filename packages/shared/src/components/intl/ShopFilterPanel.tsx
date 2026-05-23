@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -258,6 +258,11 @@ export default function ShopFilterPanel({
 
   const currencySymbol = getCurrencySymbol(locale);
   const quickPriceRanges = getQuickPriceRanges(locale);
+
+  useEffect(() => {
+    setLocalPriceMin(priceMin !== null ? String(priceMin) : '');
+    setLocalPriceMax(priceMax !== null ? String(priceMax) : '');
+  }, [priceMax, priceMin]);
 
   // Filtered brands
   const filteredBrands = useMemo(() => {

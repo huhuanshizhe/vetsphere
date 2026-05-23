@@ -11,6 +11,11 @@ import {
   resolveCoursePurchaseMode,
   resolveCourseSitePricing,
 } from '../lib/course-site-purchase';
+import {
+  matchesIntlProductPriceRange,
+  rankIntlProductsBySearch,
+  sortIntlProducts,
+} from '../lib/intl-product-discovery';
 import { supabase, getImageUrl } from './supabase';
 
 const SITE_CODE = 'intl';
@@ -616,6 +621,15 @@ export async function getIntlProducts(options?: {
   purchaseType?: 'direct' | 'quote';
 }): Promise<{ items: IntlProduct[]; total: number }> {
   const locale = options?.locale || 'en';
+  const normalizedSearch = options?.search?.trim() || '';
+  const requiresClientPostProcessing = Boolean(
+    normalizedSearch ||
+      options?.priceMin !== undefined ||
+      options?.priceMax !== undefined ||
+      options?.sortBy === 'price-low' ||
+      options?.sortBy === 'price-high' ||
+      options?.sortBy === 'name-asc',
+  );
 
   // If categoryId is provided, resolve product IDs through category mappings
   let categoryProductIds: string[] | null = null;
@@ -669,14 +683,6 @@ export async function getIntlProducts(options?: {
     query = query.in('product_id', categoryProductIds);
   }
 
-  // Server-side search: match across name fields and brand
-  if (options?.search) {
-    const term = `%${options.search}%`;
-    query = query.or(
-      `display_name.ilike.${term},products.name.ilike.${term},products.name_en.ilike.${term},products.brand.ilike.${term}`,
-    );
-  }
-
   // Brand filter
   if (options?.brands && options.brands.length > 0) {
     query = query.in('products.brand', options.brands);
@@ -692,30 +698,27 @@ export async function getIntlProducts(options?: {
     }
   }
 
-  // Sorting
-  switch (options?.sortBy) {
-    case 'newest':
-      query = query.order('published_at', { ascending: false });
-      break;
-    case 'price-low':
-      query = query.order('display_price', { ascending: true, nullsFirst: false });
-      break;
-    case 'price-high':
-      query = query.order('display_price', { ascending: false, nullsFirst: false });
-      break;
-    case 'name-asc':
-      query = query.order('display_name', { ascending: true });
-      break;
-    case 'featured':
-    default:
-      query = query
-        .order('is_featured', { ascending: false })
-        .order('display_order')
-        .order('published_at', { ascending: false });
-      break;
+  if (!requiresClientPostProcessing) {
+    switch (options?.sortBy) {
+      case 'newest':
+        query = query.order('published_at', { ascending: false });
+        break;
+      case 'featured':
+      default:
+        query = query
+          .order('is_featured', { ascending: false })
+          .order('display_order')
+          .order('published_at', { ascending: false });
+        break;
+    }
+  } else {
+    query = query
+      .order('is_featured', { ascending: false })
+      .order('display_order')
+      .order('published_at', { ascending: false });
   }
 
-  if (options?.limit) {
+  if (!requiresClientPostProcessing && options?.limit) {
     const offset = options.offset || 0;
     query = query.range(offset, offset + options.limit - 1);
   }
@@ -857,9 +860,48 @@ export async function getIntlProducts(options?: {
     return product;
   });
 
+  if (!requiresClientPostProcessing) {
+    return {
+      items,
+      total: count || 0,
+    };
+  }
+
+  let processedItems = items;
+
+  if (normalizedSearch) {
+    processedItems = rankIntlProductsBySearch(processedItems, normalizedSearch);
+  }
+
+  if (options?.priceMin !== undefined || options?.priceMax !== undefined) {
+    processedItems = processedItems.filter((product) =>
+      matchesIntlProductPriceRange(
+        product,
+        locale,
+        options?.priceMin ?? null,
+        options?.priceMax ?? null,
+      ),
+    );
+  }
+
+  const shouldPreserveSearchRanking = Boolean(
+    normalizedSearch && (!options?.sortBy || options.sortBy === 'featured'),
+  );
+
+  if (!shouldPreserveSearchRanking) {
+    processedItems = sortIntlProducts(processedItems, locale, options?.sortBy || 'featured');
+  }
+
+  const filteredTotal = processedItems.length;
+
+  if (options?.limit) {
+    const offset = options.offset || 0;
+    processedItems = processedItems.slice(offset, offset + options.limit);
+  }
+
   return {
-    items,
-    total: count || 0,
+    items: processedItems,
+    total: filteredTotal,
   };
 }
 
