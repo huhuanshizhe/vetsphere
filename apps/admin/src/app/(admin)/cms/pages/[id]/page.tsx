@@ -187,6 +187,63 @@ function formatDateTime(value?: string | null) {
   return new Date(value).toLocaleString('zh-CN');
 }
 
+function isValidPageKey(value: string) {
+  return /^[A-Za-z0-9][A-Za-z0-9/_-]*$/.test(value);
+}
+
+function isValidJsonInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isValidLinkValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('mailto:') ||
+    trimmed.startsWith('tel:')
+  ) {
+    return true;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function hasMeaningfulJson(value: string) {
+  const trimmed = value.trim();
+  return Boolean(trimmed && trimmed !== '{}' && trimmed !== '[]');
+}
+
+function isBlankItem(item: CmsItemEditor) {
+  return (
+    !item.item_key.trim() &&
+    !item.item_type.trim() &&
+    !item.title.trim() &&
+    !item.subtitle.trim() &&
+    !item.description.trim() &&
+    !item.image_url.trim() &&
+    !item.icon.trim() &&
+    !item.link_url.trim() &&
+    !item.link_text.trim() &&
+    (!item.link_target.trim() || item.link_target.trim() === '_self') &&
+    !hasMeaningfulJson(item.content_json)
+  );
+}
+
 export default function CmsPageDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -607,6 +664,101 @@ export default function CmsPageDetailPage() {
     };
   }, [sectionEditors]);
 
+  const validationErrors = useMemo(() => {
+    if (!form) return [] as string[];
+
+    const errors: string[] = [];
+    const pageKey = form.page_key.trim();
+    const pageName = form.name.trim();
+
+    if (!pageKey) {
+      errors.push('页面标识不能为空。');
+    } else {
+      if (/\s/.test(pageKey)) {
+        errors.push('页面标识不能包含空格。');
+      }
+      if (!isValidPageKey(pageKey)) {
+        errors.push('页面标识仅支持字母、数字、斜杠、连字符和下划线。');
+      }
+    }
+
+    if (!pageName) {
+      errors.push('页面名称不能为空。');
+    }
+
+    if (form.status === 'published' && sectionEditors.length === 0) {
+      errors.push('页面发布前至少需要一个区块。');
+    }
+
+    if (form.status === 'published' && !sectionEditors.some((section) => section.is_active)) {
+      errors.push('页面发布前至少需要一个启用的区块。');
+    }
+
+    const sectionKeyPositions = new Map<string, number[]>();
+
+    sectionEditors.forEach((section, sectionIndex) => {
+      const prefix = `区块 ${sectionIndex + 1}`;
+      const sectionKey = section.section_key.trim();
+      const sectionType = section.section_type.trim();
+
+      if (!sectionKey) {
+        errors.push(`${prefix} 缺少 section_key。`);
+      } else {
+        const normalized = sectionKey.toLowerCase();
+        const positions = sectionKeyPositions.get(normalized) || [];
+        positions.push(sectionIndex + 1);
+        sectionKeyPositions.set(normalized, positions);
+      }
+
+      if (!sectionType) {
+        errors.push(`${prefix} 缺少 section_type。`);
+      }
+
+      if (!isValidJsonInput(section.content_json)) {
+        errors.push(`${prefix} 的 content JSON 不是有效 JSON。`);
+      }
+
+      if (!isValidJsonInput(section.style_config_json)) {
+        errors.push(`${prefix} 的 style_config JSON 不是有效 JSON。`);
+      }
+
+      if (!isValidLinkValue(section.cta_link)) {
+        errors.push(`${prefix} 的 CTA 链接格式不正确。`);
+      }
+
+      section.items.forEach((item, itemIndex) => {
+        const itemPrefix = `${prefix} / 子项 ${itemIndex + 1}`;
+
+        if (isBlankItem(item)) {
+          errors.push(`${itemPrefix} 还是空白，请填写或删除。`);
+          return;
+        }
+
+        if (!item.item_type.trim()) {
+          errors.push(`${itemPrefix} 缺少 item_type。`);
+        }
+
+        if (!isValidJsonInput(item.content_json)) {
+          errors.push(`${itemPrefix} 的 content JSON 不是有效 JSON。`);
+        }
+
+        if (!isValidLinkValue(item.link_url)) {
+          errors.push(`${itemPrefix} 的链接 URL 格式不正确。`);
+        }
+      });
+    });
+
+    sectionKeyPositions.forEach((positions, normalizedKey) => {
+      if (positions.length > 1) {
+        errors.push(`section_key "${normalizedKey}" 在区块 ${positions.join('、')} 中重复。`);
+      }
+    });
+
+    return errors;
+  }, [form, sectionEditors]);
+
+  const canSave = validationErrors.length === 0 && !saving;
+
   const allSectionsCollapsed =
     sectionEditors.length > 0 && sectionEditors.every((section) => collapsedSections[section.id]);
 
@@ -670,8 +822,10 @@ export default function CmsPageDetailPage() {
           <Button variant="secondary" onClick={() => router.push('/cms/pages')}>
             返回页面管理
           </Button>
-          <Button onClick={() => void handleSave()} loading={saving}>
-            保存页面与区块
+          <Button onClick={() => void handleSave()} loading={saving} disabled={!canSave}>
+            {validationErrors.length > 0
+              ? `先修复 ${validationErrors.length} 个问题`
+              : '保存页面与区块'}
           </Button>
         </div>
       </div>
@@ -1320,6 +1474,36 @@ export default function CmsPageDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">保存前检查</h2>
+              <StatusBadge
+                status={validationErrors.length === 0 ? 'active' : 'pending'}
+                size="sm"
+              />
+            </div>
+            {validationErrors.length === 0 ? (
+              <div className="mt-4 rounded-md bg-emerald-50 px-3 py-3 text-sm text-emerald-700">
+                当前编辑内容通过本地校验，可以直接保存。
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-slate-600">保存前需要先修复以下问题：</p>
+                <ul className="space-y-2 text-sm text-red-600">
+                  {validationErrors.map((issue) => (
+                    <li key={issue} className="rounded-md bg-red-50 px-3 py-2">
+                      {issue}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              当前代码库里还没有发现 cms_pages
+              的前台消费路由，因此这里先提供保存前校验，不额外放置前台预览按钮。
+            </p>
+          </Card>
+
           <Card>
             <h2 className="text-lg font-semibold text-slate-900">页面元信息</h2>
             <dl className="mt-4 space-y-3 text-sm">
