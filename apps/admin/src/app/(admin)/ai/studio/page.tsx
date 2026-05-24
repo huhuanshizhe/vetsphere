@@ -143,7 +143,7 @@ export default function ContentAiStudioPage() {
         <p className="mt-1 text-sm text-slate-500">基于内部知识库做任务型生成，输出可直接回写到内容草稿。</p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]">
+      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <Card className="min-w-0">
           <div className="space-y-4">
             <Select label="任务模板" value={taskKey} onChange={(event) => setTaskKey(event.target.value)} options={TASK_OPTIONS} />
