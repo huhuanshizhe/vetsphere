@@ -28,11 +28,23 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 
+interface IntlShopPageClientProps {
+  initialData?: {
+    locale: string;
+    products: IntlProduct[];
+    featuredProducts: IntlProduct[];
+    categories: ProductCategory[];
+    brands: BrandWithCount[];
+    total: number;
+    productRequestKey: string;
+  };
+}
+
 // ============================================
 // Inner component that uses useSearchParams
 // ============================================
 
-function ShopPageInner() {
+function ShopPageInner({ initialData }: IntlShopPageClientProps) {
   const { locale, t } = useLanguage();
   const { addToCart } = useCart();
   const s = t.shop;
@@ -42,13 +54,15 @@ function ShopPageInner() {
   const filters = useShopFilters();
 
   // Data
-  const [products, setProducts] = useState<IntlProduct[]>([]);
-  const [featuredProducts, setFeaturedProducts] = useState<IntlProduct[]>([]);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [brands, setBrands] = useState<BrandWithCount[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [products, setProducts] = useState<IntlProduct[]>(initialData?.products || []);
+  const [featuredProducts, setFeaturedProducts] = useState<IntlProduct[]>(
+    initialData?.featuredProducts || [],
+  );
+  const [categories, setCategories] = useState<ProductCategory[]>(initialData?.categories || []);
+  const [brands, setBrands] = useState<BrandWithCount[]>(initialData?.brands || []);
+  const [total, setTotal] = useState(initialData?.total || 0);
+  const [loading, setLoading] = useState(!initialData);
+  const [categoriesLoading, setCategoriesLoading] = useState(!initialData);
 
   // Mobile filter drawer
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -75,6 +89,9 @@ function ShopPageInner() {
 
   // Stable key for filter params to prevent infinite re-render loops
   const filterParamsKey = JSON.stringify(filters.filterParams);
+  const currentProductRequestKey = JSON.stringify({ locale, ...filters.filterParams });
+  const skipInitialProductsLoadRef = useRef(Boolean(initialData?.productRequestKey));
+  const skipInitialBootstrapRef = useRef(Boolean(initialData));
 
   // Load products based on filter params
   const loadProducts = useCallback(async () => {
@@ -126,14 +143,27 @@ function ShopPageInner() {
 
   // Effect: load products when filters change
   useEffect(() => {
+    if (
+      skipInitialProductsLoadRef.current &&
+      initialData?.productRequestKey === currentProductRequestKey
+    ) {
+      skipInitialProductsLoadRef.current = false;
+      return;
+    }
+
     loadProducts();
-  }, [loadProducts]);
+  }, [currentProductRequestKey, initialData?.productRequestKey, loadProducts]);
 
   // Effect: load sidebar data and featured products once
   useEffect(() => {
+    if (skipInitialBootstrapRef.current && initialData?.locale === locale) {
+      skipInitialBootstrapRef.current = false;
+      return;
+    }
+
     loadSidebarData();
     loadFeaturedProducts();
-  }, [locale]);
+  }, [initialData?.locale, loadFeaturedProducts, loadSidebarData, locale]);
 
   // Carousel scroll helpers
   const scrollCarousel = (dir: 'left' | 'right') => {
@@ -548,14 +578,14 @@ function ShopPageInner() {
 // Exported component with Suspense boundary
 // ============================================
 
-export default function IntlShopPageClient() {
+export default function IntlShopPageClient({ initialData }: IntlShopPageClientProps) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-white pt-24 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     }>
-      <ShopPageInner />
+      <ShopPageInner initialData={initialData} />
     </Suspense>
   );
 }

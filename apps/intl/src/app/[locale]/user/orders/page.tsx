@@ -1,9 +1,11 @@
 import { Metadata } from 'next';
 import OrdersClient from './page.client';
+import { noIndexRobots } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'My Orders - VetSphere',
   description: 'View and manage your orders',
+  robots: noIndexRobots,
 };
 
 interface PageProps {

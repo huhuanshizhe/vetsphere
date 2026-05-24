@@ -1,9 +1,11 @@
 import { Metadata } from 'next';
 import SuccessClient from './page.client';
+import { noIndexRobots } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Payment Successful - VetSphere',
   description: 'Your payment has been processed successfully',
+  robots: noIndexRobots,
 };
 
 interface PageProps {

@@ -1,10 +1,12 @@
 import { Metadata } from 'next';
 import WishlistPageClient from './page.client';
+import { noIndexRobots } from '@/lib/seo';
 
-export async function generateMetadata() {
+export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'My Wishlist | VetSphere',
     description: 'View and manage your favorite products',
+    robots: noIndexRobots,
   };
 }
 

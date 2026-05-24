@@ -3,10 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 interface LocaleProxyConfig {
   locales: readonly string[];
   defaultLocale: string;
+  requestLocaleHeader?: string;
 }
 
 export function createLocaleProxy(config: LocaleProxyConfig) {
-  const { locales, defaultLocale } = config;
+  const { locales, defaultLocale, requestLocaleHeader } = config;
 
   function getLocaleFromPath(pathname: string): string | null {
     const segments = pathname.split('/');
@@ -34,7 +35,17 @@ export function createLocaleProxy(config: LocaleProxyConfig) {
     const pathnameLocale = getLocaleFromPath(pathname);
 
     if (pathnameLocale) {
-      const response = NextResponse.next();
+      const requestHeaders = new Headers(request.headers);
+      if (requestLocaleHeader) {
+        requestHeaders.set(requestLocaleHeader, pathnameLocale);
+      }
+
+      const response = NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+
       response.cookies.set('NEXT_LOCALE', pathnameLocale, {
         path: '/',
         maxAge: 60 * 60 * 24 * 365,

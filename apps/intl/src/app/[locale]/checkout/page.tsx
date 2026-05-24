@@ -1,9 +1,11 @@
 import { Metadata } from 'next';
 import CheckoutClient from './page.client';
+import { noIndexRobots } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Checkout - VetSphere',
   description: 'Complete your order securely',
+  robots: noIndexRobots,
 };
 
 interface PageProps {

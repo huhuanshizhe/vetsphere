@@ -4,6 +4,7 @@ import { siteConfig } from '@/config/site.config';
 const { proxy, locales, defaultLocale } = createLocaleProxy({
   locales: siteConfig.locales,
   defaultLocale: siteConfig.defaultLocale,
+  requestLocaleHeader: 'x-vetsphere-locale',
 });
 
 export { proxy, locales, defaultLocale };

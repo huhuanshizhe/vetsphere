@@ -1,9 +1,11 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { noIndexRobots } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Live AI Assistant - Coming Soon | VetSphere',
   description: 'Voice-activated AI surgical assistant for real-time intraoperative support. Coming soon to VetSphere.',
+  robots: noIndexRobots,
 };
 
 export default async function LiveAssistantPage({ params }: { params: Promise<{ locale: string }> }) {

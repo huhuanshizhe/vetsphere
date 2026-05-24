@@ -1,9 +1,11 @@
 import { Metadata } from 'next';
 import UserCenterClient from '@vetsphere/shared/pages/UserCenterClient';
+import { noIndexRobots } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'My Account - VetSphere',
   description: 'Manage your VetSphere account',
+  robots: noIndexRobots,
 };
 
 /**

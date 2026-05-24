@@ -2,31 +2,53 @@ import type { Metadata } from 'next';
 import JsonLd, { faqSchema, breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
 import IntlUpgradeHomePageClient from '@vetsphere/shared/pages/intl/IntlUpgradeHomePageClient';
 import { siteConfig } from '@/config/site.config';
+import { buildLocaleAlternates, buildLocaleUrl } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'VetSphere | Global Veterinary Surgery Education & Equipment',
-  description: 'VetSphere is the leading global platform for veterinary surgeons. Professional surgery courses (TPLO, IVDD, Soft Tissue), precision medical equipment, and hands-on training worldwide.',
-  keywords: ['veterinary surgery courses', 'CSAVS training', 'TPLO workshop', 'veterinary orthopedic equipment', 'vet continuing education', 'veterinary surgical instruments', 'veterinary training programs'],
-  alternates: {
-    canonical: `${siteConfig.siteUrl}`,
-    languages: Object.fromEntries(
-      siteConfig.locales.map(l => [l, `${siteConfig.siteUrl}/${l}`])
-    ),
-  },
-  openGraph: {
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { locale } = await params;
+
+  const openGraphLocale =
+    locale === 'ja' ? 'ja_JP' : locale === 'th' ? 'th_TH' : 'en_US';
+  const pageUrl = buildLocaleUrl(locale);
+
+  return {
     title: 'VetSphere | Global Veterinary Surgery Education & Equipment',
-    description: 'Professional surgery courses, precision medical equipment, and a global clinical community for veterinary surgeons.',
-    url: siteConfig.siteUrl,
-    siteName: siteConfig.siteName,
-    type: 'website',
-    locale: 'en_US',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'VetSphere | Global Veterinary Surgery Platform',
-    description: 'Professional surgery courses, precision equipment for veterinary surgeons worldwide.',
-  },
-};
+    description:
+      'VetSphere is the leading global platform for veterinary surgeons. Professional surgery courses (TPLO, IVDD, Soft Tissue), precision medical equipment, and hands-on training worldwide.',
+    keywords: [
+      'veterinary surgery courses',
+      'CSAVS training',
+      'TPLO workshop',
+      'veterinary orthopedic equipment',
+      'vet continuing education',
+      'veterinary surgical instruments',
+      'veterinary training programs',
+    ],
+    alternates: buildLocaleAlternates({
+      canonicalLocale: locale,
+      xDefaultUrl: siteConfig.siteUrl,
+    }),
+    openGraph: {
+      title: 'VetSphere | Global Veterinary Surgery Education & Equipment',
+      description:
+        'Professional surgery courses, precision medical equipment, and a global clinical community for veterinary surgeons.',
+      url: pageUrl,
+      siteName: siteConfig.siteName,
+      type: 'website',
+      locale: openGraphLocale,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'VetSphere | Global Veterinary Surgery Platform',
+      description:
+        'Professional surgery courses, precision equipment for veterinary surgeons worldwide.',
+    },
+  };
+}
 
 const homeFaqs = [
   {
@@ -52,7 +74,7 @@ export default function HomePage() {
     <>
       <JsonLd data={faqSchema(homeFaqs)} />
       <JsonLd data={breadcrumbSchema([
-        { name: 'Home', url: siteConfig.siteUrl },
+        { name: 'Home', url: `${siteConfig.siteUrl}/${siteConfig.defaultLocale}` },
       ])} />
       <IntlUpgradeHomePageClient />
     </>

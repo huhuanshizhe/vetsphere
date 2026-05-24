@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Providers from "@vetsphere/shared/components/Providers";
 import JsonLd, { organizationSchema, websiteSchema } from "@vetsphere/shared/components/JsonLd";
 import { siteConfig } from "@/config/site.config";
+import { buildLocaleAlternates } from '@/lib/seo';
 import type { SupportedLocale } from "@vetsphere/shared/site-config";
 import "../globals.css";
 
@@ -23,12 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       default: "VetSphere | Global Veterinary Surgery Education Platform",
       template: "%s | VetSphere",
     },
-    alternates: {
-      canonical: `${siteConfig.siteUrl}/${locale}`,
-      languages: Object.fromEntries(
-        siteConfig.locales.map(l => [l === 'zh' ? 'zh-CN' : l, `${siteConfig.siteUrl}/${l}`])
-      ),
-    },
+    alternates: buildLocaleAlternates({
+      canonicalLocale: locale,
+      xDefaultUrl: siteConfig.siteUrl,
+    }),
   };
 }
 

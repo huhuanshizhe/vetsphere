@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
@@ -30,20 +30,33 @@ import {
 
 const PAGE_SIZE = 12;
 
+interface IntlCoursesPageClientProps {
+  initialData?: {
+    locale: string;
+    courses: IntlCourse[];
+    total: number;
+    equipmentCounts: Record<string, number>;
+    initialSpecialty: string;
+    requestKey: string;
+  };
+}
+
 // ============================================
 // Component
 // ============================================
 
-export default function IntlCoursesPageClient() {
+export default function IntlCoursesPageClient({ initialData }: IntlCoursesPageClientProps) {
   const { locale, t } = useLanguage();
   const c = t.courses;
   const searchParams = useSearchParams();
 
   // Data
-  const [courses, setCourses] = useState<IntlCourse[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [equipmentCounts, setEquipmentCounts] = useState<Record<string, number>>({});
+  const [courses, setCourses] = useState<IntlCourse[]>(initialData?.courses || []);
+  const [total, setTotal] = useState(initialData?.total || 0);
+  const [loading, setLoading] = useState(!initialData);
+  const [equipmentCounts, setEquipmentCounts] = useState<Record<string, number>>(
+    initialData?.equipmentCounts || {},
+  );
 
   // Get specialty list from translations
   const SPECIALTIES = [
@@ -80,7 +93,7 @@ export default function IntlCoursesPageClient() {
   ];
 
   // Filters
-  const initialSpecialty = searchParams.get('specialty') || 'All';
+  const initialSpecialty = initialData?.initialSpecialty || searchParams.get('specialty') || 'All';
   const [specialty, setSpecialty] = useState(initialSpecialty);
   const [level, setLevel] = useState('All');
   const [format, setFormat] = useState('All');
@@ -89,9 +102,19 @@ export default function IntlCoursesPageClient() {
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const courseRequestKey = JSON.stringify({ locale, specialty, level, format, page });
+  const initialCourseIdsKey = (initialData?.courses || []).map((course) => course.course_id).join(',');
+  const currentCourseIdsKey = courses.map((course) => course.course_id).join(',');
+  const skipInitialCoursesLoadRef = useRef(Boolean(initialData?.requestKey));
+  const skipInitialEquipmentLoadRef = useRef(Boolean(initialCourseIdsKey));
 
   // Load courses
   useEffect(() => {
+    if (skipInitialCoursesLoadRef.current && initialData?.requestKey === courseRequestKey) {
+      skipInitialCoursesLoadRef.current = false;
+      return;
+    }
+
     setLoading(true);
     getIntlCourses({
       specialty: specialty !== 'All' ? specialty : undefined,
@@ -105,11 +128,20 @@ export default function IntlCoursesPageClient() {
       setTotal(result.total);
       setLoading(false);
     });
-  }, [specialty, level, format, page, locale]);
+  }, [courseRequestKey, initialData?.requestKey, locale, specialty, level, format, page]);
 
   // Load equipment counts for visible courses
   useEffect(() => {
-    if (courses.length === 0) return;
+    if (courses.length === 0) {
+      setEquipmentCounts({});
+      return;
+    }
+
+    if (skipInitialEquipmentLoadRef.current && initialCourseIdsKey === currentCourseIdsKey) {
+      skipInitialEquipmentLoadRef.current = false;
+      return;
+    }
+
     const courseIds = courses.map(c => c.course_id);
     Promise.all(
       courseIds.map(id =>
@@ -122,7 +154,7 @@ export default function IntlCoursesPageClient() {
       results.forEach(r => { counts[r.id] = r.count; });
       setEquipmentCounts(counts);
     });
-  }, [courses]);
+  }, [courses, currentCourseIdsKey, initialCourseIdsKey]);
 
   // Client-side search filter
   const filteredCourses = useMemo(() => {

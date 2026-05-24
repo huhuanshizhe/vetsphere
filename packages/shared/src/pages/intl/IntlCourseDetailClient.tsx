@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -40,6 +40,16 @@ import {
 
 interface IntlCourseDetailClientProps {
   courseSlug: string;
+  initialData?: {
+    locale: string;
+    courseSlug: string;
+    course: IntlCourse | null;
+    instructors: IntlInstructor[];
+    chapters: any[];
+    equipmentProducts: IntlProduct[];
+    agenda: any[];
+    services: any[];
+  };
 }
 
 const equipmentRelationCopy = {
@@ -146,22 +156,35 @@ function getEquipmentInstructorNote(product: IntlProduct, locale: string) {
 // Component
 // ============================================
 
-export default function IntlCourseDetailClient({ courseSlug }: IntlCourseDetailClientProps) {
+export default function IntlCourseDetailClient({
+  courseSlug,
+  initialData,
+}: IntlCourseDetailClientProps) {
   const { locale, t } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
   const cd = t.courseDetail;
   const equipmentCopy = equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
 
-  const [course, setCourse] = useState<IntlCourse | null>(null);
-  const [instructors, setInstructors] = useState<IntlInstructor[]>([]);
-  const [chapters, setChapters] = useState<any[]>([]);
-  const [equipmentProducts, setEquipmentProducts] = useState<IntlProduct[]>([]);
-  const [agenda, setAgenda] = useState<any[]>([]);
-  const [services, setServices] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [course, setCourse] = useState<IntlCourse | null>(initialData?.course || null);
+  const [instructors, setInstructors] = useState<IntlInstructor[]>(initialData?.instructors || []);
+  const [chapters, setChapters] = useState<any[]>(initialData?.chapters || []);
+  const [equipmentProducts, setEquipmentProducts] = useState<IntlProduct[]>(
+    initialData?.equipmentProducts || [],
+  );
+  const [agenda, setAgenda] = useState<any[]>(initialData?.agenda || []);
+  const [services, setServices] = useState<any[]>(initialData?.services || []);
+  const [loading, setLoading] = useState(!initialData);
+  const skipInitialFetchRef = useRef(
+    Boolean(initialData && initialData.locale === locale && initialData.courseSlug === courseSlug),
+  );
 
   useEffect(() => {
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
+      return;
+    }
+
     getIntlCourseBySlug(courseSlug, locale).then(data => {
       setCourse(data);
       setLoading(false);

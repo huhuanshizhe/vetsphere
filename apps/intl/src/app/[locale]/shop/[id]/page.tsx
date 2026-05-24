@@ -4,7 +4,15 @@ import { permanentRedirect } from 'next/navigation';
 import JsonLd, { breadcrumbSchema, productSchema } from '@vetsphere/shared/components/JsonLd';
 import { buildProductDetailHref } from '@vetsphere/shared/lib/product-url';
 import IntlProductDetailClient from '@vetsphere/shared/pages/intl/IntlProductDetailClient';
-import { getIntlProductBySlug, type IntlProduct } from '@vetsphere/shared/services/intl-api';
+import {
+  getIntlProductBySlug,
+  getIntlProductCourses,
+  getIntlProductImages,
+  getIntlProductSkus,
+  getIntlProductVariantAttributes,
+  getIntlRelatedProducts,
+  type IntlProduct,
+} from '@vetsphere/shared/services/intl-api';
 import { siteConfig } from '@/config/site.config';
 
 interface PageProps {
@@ -110,6 +118,16 @@ export default async function ProductDetailPage({ params }: PageProps) {
     permanentRedirect(canonicalPath);
   }
 
+  const [images, relatedCourses, relatedProducts, skus, variantAttributes] = product
+    ? await Promise.all([
+        getIntlProductImages(product.product_id),
+        getIntlProductCourses(product.product_id),
+        getIntlRelatedProducts(product.product_id, product.scene_code),
+        getIntlProductSkus(product.product_id),
+        getIntlProductVariantAttributes(product.product_id),
+      ])
+    : [[], [], [], [], []];
+
   const productName = product?.display_name || product?.base_name || 'Product Details';
   const productPrice = product ? resolveIntlProductPrice(product) : null;
   const stockStatus = product?.stock_quantity && product.stock_quantity > 0 ? 'In Stock' : 'OutOfStock';
@@ -134,7 +152,19 @@ export default async function ProductDetailPage({ params }: PageProps) {
         })} />
       ) : null}
 
-      <IntlProductDetailClient productSlug={id} />
+      <IntlProductDetailClient
+        productSlug={product?.slug || id}
+        initialData={{
+          locale,
+          productSlug: product?.slug || id,
+          product,
+          images,
+          relatedCourses,
+          relatedProducts,
+          skus,
+          variantAttributes,
+        }}
+      />
     </>
   );
 }

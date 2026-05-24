@@ -44,6 +44,16 @@ import {
 
 interface IntlProductDetailClientProps {
   productSlug: string;
+  initialData?: {
+    locale: string;
+    productSlug: string;
+    product: IntlProduct | null;
+    images: any[];
+    relatedCourses: IntlCourse[];
+    relatedProducts: IntlProduct[];
+    skus: IntlProductSku[];
+    variantAttributes: { name: string; values: string[] }[];
+  };
 }
 
 const HTML_CONTENT_PATTERN =
@@ -130,26 +140,33 @@ function buildPreferredProductImageList(options: {
 // Component
 // ============================================
 
-export default function IntlProductDetailClient({ productSlug }: IntlProductDetailClientProps) {
+export default function IntlProductDetailClient({
+  productSlug,
+  initialData,
+}: IntlProductDetailClientProps) {
   const { locale, t } = useLanguage();
   const { addToCart } = useCart();
   const currency = getLocaleCurrency(locale);
   const pd = t.productDetail;
 
-  const [product, setProduct] = useState<IntlProduct | null>(null);
-  const [images, setImages] = useState<any[]>([]);
-  const [relatedCourses, setRelatedCourses] = useState<IntlCourse[]>([]);
-  const [relatedProducts, setRelatedProducts] = useState<IntlProduct[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState<IntlProduct | null>(initialData?.product || null);
+  const [images, setImages] = useState<any[]>(initialData?.images || []);
+  const [relatedCourses, setRelatedCourses] = useState<IntlCourse[]>(initialData?.relatedCourses || []);
+  const [relatedProducts, setRelatedProducts] = useState<IntlProduct[]>(
+    initialData?.relatedProducts || [],
+  );
+  const [loading, setLoading] = useState(!initialData);
   const [activeImage, setActiveImage] = useState(0);
   const [showImageLightbox, setShowImageLightbox] = useState(false);
 
   // SKU state
-  const [skus, setSkus] = useState<IntlProductSku[]>([]);
+  const [skus, setSkus] = useState<IntlProductSku[]>(initialData?.skus || []);
   const [variantAttributes, setVariantAttributes] = useState<{ name: string; values: string[] }[]>(
-    [],
+    initialData?.variantAttributes || [],
   );
-  const [selectedSku, setSelectedSku] = useState<IntlProductSku | null>(null);
+  const [selectedSku, setSelectedSku] = useState<IntlProductSku | null>(
+    initialData?.skus?.[0] || null,
+  );
 
   // Quote modal state
   const [showQuoteModal, setShowQuoteModal] = useState(false);
@@ -163,6 +180,9 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   const [quantity, setQuantity] = useState(1);
   const [tierPrice, setTierPrice] = useState<number | null>(null); // 阶梯价格（根据数量计算）
   const shouldSyncToSelectedSkuImage = useRef(false);
+  const skipInitialFetchRef = useRef(
+    Boolean(initialData && initialData.locale === locale && initialData.productSlug === productSlug),
+  );
 
   // Use global wishlist context for persistent state
   const { isInWishlist: globalIsInWishlist, toggleWishlist: globalToggleWishlist } = useWishlist();
@@ -205,6 +225,11 @@ export default function IntlProductDetailClient({ productSlug }: IntlProductDeta
   }, [product]);
 
   useEffect(() => {
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
+      return;
+    }
+
     let isCancelled = false;
 
     setLoading(true);
