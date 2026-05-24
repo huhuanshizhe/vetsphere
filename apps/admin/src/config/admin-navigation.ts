@@ -271,6 +271,33 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
     icon: 'FileEdit',
     items: [
       {
+        key: 'content-dashboard',
+        label: '内容面板',
+        icon: 'LayoutDashboard',
+        href: '/content/dashboard',
+        permission: 'cms.view',
+        siteScope: 'intl',
+        badge: 'new' as const,
+      },
+      {
+        key: 'content-review',
+        label: '审核队列',
+        icon: 'ClipboardCheck',
+        href: '/content/review',
+        permission: 'cms.view',
+        siteScope: 'intl',
+        badge: 'new' as const,
+      },
+      {
+        key: 'content-calendar',
+        label: '排期与 Brief',
+        icon: 'CalendarDays',
+        href: '/content/calendar',
+        permission: 'cms.view',
+        siteScope: 'intl',
+        badge: 'new' as const,
+      },
+      {
         key: 'content-library',
         label: '内容库',
         icon: 'ScrollText',

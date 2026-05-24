@@ -155,6 +155,15 @@ export default function ContentLibraryPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <Link href="/content/dashboard">
+            <Button variant="secondary">内容面板</Button>
+          </Link>
+          <Link href="/content/review">
+            <Button variant="secondary">审核队列</Button>
+          </Link>
+          <Link href="/content/calendar">
+            <Button variant="secondary">排期与 Brief</Button>
+          </Link>
           <Link href="/content/knowledge">
             <Button variant="secondary" icon={<Library className="h-4 w-4" />}>
               知识库
