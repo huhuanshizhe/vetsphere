@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { siteConfig } from '@/config/site.config';
 import { COURSES_CN, PRODUCTS_CN } from '@vetsphere/shared';
 import { buildProductDetailHref } from '@vetsphere/shared/lib/product-url';
+import { buildIntlContentPath, getContentRouteSegment, type ContentType } from '@vetsphere/shared/services/content-platform';
 import { supabase } from '@vetsphere/shared/services/supabase';
 import { buildCourseDetailHref, buildLocaleLanguageAlternates } from '@/lib/seo';
 
@@ -10,9 +11,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '', priority: 1.0, changeFrequency: 'weekly' as const },
     { path: '/courses', priority: 0.9, changeFrequency: 'weekly' as const },
     { path: '/shop', priority: 0.9, changeFrequency: 'weekly' as const },
+    { path: '/specialties', priority: 0.8, changeFrequency: 'weekly' as const },
+    { path: '/procedures', priority: 0.8, changeFrequency: 'weekly' as const },
+    { path: '/cases', priority: 0.75, changeFrequency: 'weekly' as const },
+    { path: '/solutions', priority: 0.8, changeFrequency: 'weekly' as const },
     { path: '/about', priority: 0.8, changeFrequency: 'monthly' as const },
     { path: '/contact', priority: 0.8, changeFrequency: 'monthly' as const },
     { path: '/faq', priority: 0.7, changeFrequency: 'monthly' as const },
+    { path: '/glossary', priority: 0.7, changeFrequency: 'weekly' as const },
+    { path: '/compare', priority: 0.7, changeFrequency: 'weekly' as const },
+    { path: '/resources', priority: 0.7, changeFrequency: 'weekly' as const },
     { path: '/privacy', priority: 0.3, changeFrequency: 'yearly' as const },
     { path: '/terms', priority: 0.3, changeFrequency: 'yearly' as const },
     { path: '/refund', priority: 0.3, changeFrequency: 'yearly' as const },
@@ -113,6 +121,50 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.85,
       });
     }
+  }
+
+  try {
+    const { data } = await supabase
+      .from('content_site_views')
+      .select(
+        `
+        slug_override,
+        published_at,
+        content_records!inner(
+          content_type,
+          canonical_slug,
+          updated_at
+        )
+      `,
+      )
+      .eq('site_code', 'intl')
+      .eq('publish_status', 'published')
+      .eq('route_status', 'active');
+
+    for (const row of data || []) {
+      const content = Array.isArray((row as any).content_records)
+        ? (row as any).content_records[0]
+        : (row as any).content_records;
+      if (!content?.content_type || !content?.canonical_slug) continue;
+
+      const contentType = content.content_type as ContentType;
+      const slug = (row as any).slug_override || content.canonical_slug;
+      const basePath = `/${getContentRouteSegment(contentType)}/${slug}`;
+
+      for (const locale of siteConfig.locales) {
+        entries.push({
+          url: `${siteConfig.siteUrl}${buildIntlContentPath(locale, contentType, slug)}`,
+          ...(content.updated_at ? { lastModified: new Date(content.updated_at) } : {}),
+          changeFrequency: 'weekly',
+          priority: contentType === 'specialty_hub' || contentType === 'solution' ? 0.8 : 0.7,
+          alternates: {
+            languages: buildLocaleLanguageAlternates(basePath),
+          },
+        });
+      }
+    }
+  } catch (error) {
+    console.warn('[sitemap] Failed to load intl content entries from Supabase:', error);
   }
 
   return entries;

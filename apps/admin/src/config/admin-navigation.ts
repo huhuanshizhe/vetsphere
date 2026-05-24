@@ -271,6 +271,24 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
     icon: 'FileEdit',
     items: [
       {
+        key: 'content-library',
+        label: '内容库',
+        icon: 'ScrollText',
+        href: '/content',
+        permission: 'cms.view',
+        siteScope: 'intl',
+        badge: 'new' as const,
+      },
+      {
+        key: 'content-knowledge',
+        label: '知识库',
+        icon: 'Search',
+        href: '/content/knowledge',
+        permission: 'cms.view',
+        siteScope: 'intl',
+        badge: 'new' as const,
+      },
+      {
         key: 'cms-pages',
         label: '页面管理',
         icon: 'FileText',
@@ -392,6 +410,15 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         icon: 'Sparkles',
         href: '/ai/features',
         permission: 'ai.view',
+      },
+      {
+        key: 'ai-content-studio',
+        label: '内容 AI 工作台',
+        icon: 'Zap',
+        href: '/ai/studio',
+        permission: 'ai.view',
+        siteScope: 'intl',
+        badge: 'new' as const,
       },
       {
         key: 'ai-tasks',

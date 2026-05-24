@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import JsonLd, { faqSchema, breadcrumbSchema } from '@vetsphere/shared/components/JsonLd';
 import FAQPageClient from '@vetsphere/shared/pages/FAQPageClient';
 import { siteConfig } from '@/config/site.config';
+import { buildIntlContentPath } from '@vetsphere/shared/services/content-platform';
+import { getFaqHubList } from '@/lib/content-pages';
 
 const locales = siteConfig.locales;
 
@@ -123,6 +126,7 @@ export default async function FAQPage({
 }) {
   const { locale } = await params;
   const isZh = locale === 'zh';
+  const { items: faqHubs } = await getFaqHubList(locale);
   
   // Flatten all FAQs for schema
   const allFaqs = [
@@ -147,6 +151,39 @@ export default async function FAQPage({
       <JsonLd data={faqSchema(allFaqs)} />
       
       <FAQPageClient />
+
+      {faqHubs.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Content Hub</p>
+              <h2 className="mt-4 text-3xl font-semibold text-slate-900">
+                {isZh ? '主题化 FAQ 专题' : 'Extended FAQ Hubs'}
+              </h2>
+              <p className="mt-3 text-base leading-8 text-slate-600">
+                {isZh
+                  ? '除了通用问答，我们还整理了更聚焦的术式、设备与培训主题 FAQ 专题。'
+                  : 'Beyond the general FAQ, explore focused FAQ hubs for procedures, equipment, training, and clinic implementation.'}
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-5 lg:grid-cols-2">
+              {faqHubs.map((hub) => (
+                <Link
+                  key={hub.id}
+                  href={buildIntlContentPath(locale, 'faq_hub', hub.slug)}
+                  className="group rounded-2xl border border-slate-200 bg-slate-50 p-6 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-white"
+                >
+                  <h3 className="text-xl font-semibold text-slate-900 group-hover:text-emerald-700">{hub.title}</h3>
+                  {hub.summary && (
+                    <p className="mt-3 text-sm leading-7 text-slate-600">{hub.summary}</p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </>
   );
 }
