@@ -160,6 +160,14 @@ function buildSectionEditor(section?: CmsSectionWithItems, index = 0): CmsSectio
   };
 }
 
+function normalizeSectionOrder(sections: CmsSectionEditor[]) {
+  return sections.map((section, index) => ({ ...section, display_order: index }));
+}
+
+function normalizeItemOrder(items: CmsItemEditor[]) {
+  return items.map((item, index) => ({ ...item, display_order: index }));
+}
+
 function buildFormState(page: CmsPage): PageFormState {
   return {
     page_key: page.page_key || '',
@@ -193,6 +201,7 @@ export default function CmsPageDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (pageId) {
@@ -218,6 +227,7 @@ export default function CmsPageDetailPage() {
         setPage(null);
         setBaselineSections([]);
         setSectionEditors([]);
+        setCollapsedSections({});
         setForm(null);
         return;
       }
@@ -260,6 +270,12 @@ export default function CmsPageDetailPage() {
       setPage(pageData as CmsPage);
       setBaselineSections(nextSections);
       setSectionEditors(nextSections.map((section, index) => buildSectionEditor(section, index)));
+      setCollapsedSections(
+        nextSections.reduce<Record<string, boolean>>((accumulator, section) => {
+          accumulator[section.id] = false;
+          return accumulator;
+        }, {}),
+      );
       setForm(buildFormState(pageData as CmsPage));
     } catch (loadError) {
       console.error('加载 CMS 页面详情失败:', loadError);
@@ -267,6 +283,7 @@ export default function CmsPageDetailPage() {
       setPage(null);
       setBaselineSections([]);
       setSectionEditors([]);
+      setCollapsedSections({});
       setForm(null);
     } finally {
       setLoading(false);
@@ -291,11 +308,47 @@ export default function CmsPageDetailPage() {
   }
 
   function addSection() {
-    setSectionEditors((current) => [...current, buildSectionEditor(undefined, current.length)]);
+    const nextSection = buildSectionEditor();
+    setSectionEditors((current) => normalizeSectionOrder([...current, nextSection]));
+    setCollapsedSections((current) => ({ ...current, [nextSection.id]: false }));
   }
 
   function removeSection(sectionId: string) {
-    setSectionEditors((current) => current.filter((section) => section.id !== sectionId));
+    setSectionEditors((current) =>
+      normalizeSectionOrder(current.filter((section) => section.id !== sectionId)),
+    );
+    setCollapsedSections((current) => {
+      const next = { ...current };
+      delete next[sectionId];
+      return next;
+    });
+  }
+
+  function toggleSectionCollapse(sectionId: string) {
+    setCollapsedSections((current) => ({ ...current, [sectionId]: !current[sectionId] }));
+  }
+
+  function setAllSectionsCollapsed(nextCollapsed: boolean) {
+    setCollapsedSections(
+      sectionEditors.reduce<Record<string, boolean>>((accumulator, section) => {
+        accumulator[section.id] = nextCollapsed;
+        return accumulator;
+      }, {}),
+    );
+  }
+
+  function moveSection(sectionId: string, direction: 'up' | 'down') {
+    setSectionEditors((current) => {
+      const currentIndex = current.findIndex((section) => section.id === sectionId);
+      if (currentIndex === -1) return current;
+
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= current.length) return current;
+
+      const next = [...current];
+      [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
+      return normalizeSectionOrder(next);
+    });
   }
 
   function updateSectionItems(
@@ -306,7 +359,8 @@ export default function CmsPageDetailPage() {
   }
 
   function addItem(sectionId: string) {
-    updateSectionItems(sectionId, (items) => [...items, buildItemEditor(undefined, items.length)]);
+    updateSectionItems(sectionId, (items) => normalizeItemOrder([...items, buildItemEditor()]));
+    setCollapsedSections((current) => ({ ...current, [sectionId]: false }));
   }
 
   function updateItemField<K extends keyof CmsItemEditor>(
@@ -321,7 +375,23 @@ export default function CmsPageDetailPage() {
   }
 
   function removeItem(sectionId: string, itemId: string) {
-    updateSectionItems(sectionId, (items) => items.filter((item) => item.id !== itemId));
+    updateSectionItems(sectionId, (items) =>
+      normalizeItemOrder(items.filter((item) => item.id !== itemId)),
+    );
+  }
+
+  function moveItem(sectionId: string, itemId: string, direction: 'up' | 'down') {
+    updateSectionItems(sectionId, (items) => {
+      const currentIndex = items.findIndex((item) => item.id === itemId);
+      if (currentIndex === -1) return items;
+
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= items.length) return items;
+
+      const next = [...items];
+      [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
+      return normalizeItemOrder(next);
+    });
   }
 
   async function saveSectionEditors(now: string) {
@@ -536,6 +606,9 @@ export default function CmsPageDetailPage() {
       itemCount,
     };
   }, [sectionEditors]);
+
+  const allSectionsCollapsed =
+    sectionEditors.length > 0 && sectionEditors.every((section) => collapsedSections[section.id]);
 
   if (loading) {
     return (
@@ -758,6 +831,15 @@ export default function CmsPageDetailPage() {
                       : 'draft'
                   }
                 />
+                {sectionEditors.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAllSectionsCollapsed(!allSectionsCollapsed)}
+                  >
+                    {allSectionsCollapsed ? '展开全部' : '折叠全部'}
+                  </Button>
+                )}
                 <Button variant="secondary" size="sm" onClick={addSection}>
                   新增区块
                 </Button>
@@ -802,376 +884,434 @@ export default function CmsPageDetailPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusBadge status={section.is_active ? 'active' : 'hidden'} size="sm" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveSection(section.id, 'up')}
+                          disabled={sectionIndex === 0}
+                        >
+                          上移
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => moveSection(section.id, 'down')}
+                          disabled={sectionIndex === sectionEditors.length - 1}
+                        >
+                          下移
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleSectionCollapse(section.id)}
+                        >
+                          {collapsedSections[section.id] ? '展开' : '折叠'}
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => removeSection(section.id)}>
                           移除区块
                         </Button>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-4 md:grid-cols-3">
-                      <Input
-                        label="section_key"
-                        value={section.section_key}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'section_key', event.target.value)
-                        }
-                        placeholder="hero"
-                      />
-                      <Input
-                        label="section_type"
-                        value={section.section_type}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'section_type', event.target.value)
-                        }
-                        placeholder="card_grid"
-                      />
-                      <Input
-                        label="display_order"
-                        type="number"
-                        value={String(section.display_order)}
-                        onChange={(event) =>
-                          updateSectionField(
-                            section.id,
-                            'display_order',
-                            Number(event.target.value || sectionIndex),
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <Input
-                        label="标题"
-                        value={section.title}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'title', event.target.value)
-                        }
-                      />
-                      <Input
-                        label="副标题"
-                        value={section.subtitle}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'subtitle', event.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div className="mt-4 space-y-1.5">
-                      <label className="block text-sm font-medium text-slate-700">区块描述</label>
-                      <textarea
-                        value={section.description}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'description', event.target.value)
-                        }
-                        rows={3}
-                        className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-3">
-                      <Input
-                        label="CTA 文案"
-                        value={section.cta_text}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'cta_text', event.target.value)
-                        }
-                      />
-                      <Input
-                        label="CTA 链接"
-                        value={section.cta_link}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'cta_link', event.target.value)
-                        }
-                      />
-                      <Input
-                        label="CTA 样式"
-                        value={section.cta_style}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'cta_style', event.target.value)
-                        }
-                        placeholder="primary"
-                      />
-                    </div>
-
-                    <label className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={section.is_active}
-                        onChange={(event) =>
-                          updateSectionField(section.id, 'is_active', event.target.checked)
-                        }
-                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      启用区块
-                    </label>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-slate-700">
-                          content JSON
-                        </label>
-                        <textarea
-                          value={section.content_json}
-                          onChange={(event) =>
-                            updateSectionField(section.id, 'content_json', event.target.value)
-                          }
-                          rows={8}
-                          className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-slate-700">
-                          style_config JSON
-                        </label>
-                        <textarea
-                          value={section.style_config_json}
-                          onChange={(event) =>
-                            updateSectionField(section.id, 'style_config_json', event.target.value)
-                          }
-                          rows={8}
-                          className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <h3 className="text-sm font-semibold text-slate-900">子项列表</h3>
-                          <p className="mt-1 text-xs text-slate-500">
-                            适用于卡片、列表项、功能点等可重复内容。
-                          </p>
-                        </div>
-                        <Button variant="secondary" size="sm" onClick={() => addItem(section.id)}>
-                          新增子项
-                        </Button>
-                      </div>
-
-                      <div className="mt-4 space-y-4">
-                        {section.items.length === 0 ? (
-                          <EmptyState
-                            title="暂无子项"
-                            description="为这个区块添加卡片、要点或 CTA 子项。"
+                    {!collapsedSections[section.id] && (
+                      <>
+                        <div className="mt-4 grid gap-4 md:grid-cols-3">
+                          <Input
+                            label="section_key"
+                            value={section.section_key}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'section_key', event.target.value)
+                            }
+                            placeholder="hero"
                           />
-                        ) : (
-                          section.items.map((item, itemIndex) => (
-                            <div
-                              key={item.id}
-                              className="rounded-md border border-slate-200 bg-white p-4"
-                            >
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div>
-                                  <p className="text-sm font-semibold text-slate-900">
-                                    {item.title || item.item_key || `子项 ${itemIndex + 1}`}
-                                  </p>
-                                  <p className="mt-1 text-xs text-slate-500">
-                                    {item.item_type || '未设置类型'} · 排序 {item.display_order}
-                                  </p>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <StatusBadge
-                                    status={item.is_active ? 'active' : 'hidden'}
-                                    size="sm"
-                                  />
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeItem(section.id, item.id)}
-                                  >
-                                    移除子项
-                                  </Button>
-                                </div>
-                              </div>
+                          <Input
+                            label="section_type"
+                            value={section.section_type}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'section_type', event.target.value)
+                            }
+                            placeholder="card_grid"
+                          />
+                          <Input
+                            label="display_order"
+                            type="number"
+                            value={String(section.display_order)}
+                            onChange={(event) =>
+                              updateSectionField(
+                                section.id,
+                                'display_order',
+                                Number(event.target.value || sectionIndex),
+                              )
+                            }
+                          />
+                        </div>
 
-                              <div className="mt-4 grid gap-4 md:grid-cols-3">
-                                <Input
-                                  label="item_key"
-                                  value={item.item_key}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'item_key',
-                                      event.target.value,
-                                    )
-                                  }
-                                  placeholder="feature-1"
-                                />
-                                <Input
-                                  label="item_type"
-                                  value={item.item_type}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'item_type',
-                                      event.target.value,
-                                    )
-                                  }
-                                  placeholder="card"
-                                />
-                                <Input
-                                  label="display_order"
-                                  type="number"
-                                  value={String(item.display_order)}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'display_order',
-                                      Number(event.target.value || itemIndex),
-                                    )
-                                  }
-                                />
-                              </div>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          <Input
+                            label="标题"
+                            value={section.title}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'title', event.target.value)
+                            }
+                          />
+                          <Input
+                            label="副标题"
+                            value={section.subtitle}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'subtitle', event.target.value)
+                            }
+                          />
+                        </div>
 
-                              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                                <Input
-                                  label="标题"
-                                  value={item.title}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'title',
-                                      event.target.value,
-                                    )
-                                  }
-                                />
-                                <Input
-                                  label="副标题"
-                                  value={item.subtitle}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'subtitle',
-                                      event.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
+                        <div className="mt-4 space-y-1.5">
+                          <label className="block text-sm font-medium text-slate-700">
+                            区块描述
+                          </label>
+                          <textarea
+                            value={section.description}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'description', event.target.value)
+                            }
+                            rows={3}
+                            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          />
+                        </div>
 
-                              <div className="mt-4 space-y-1.5">
-                                <label className="block text-sm font-medium text-slate-700">
-                                  子项描述
-                                </label>
-                                <textarea
-                                  value={item.description}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'description',
-                                      event.target.value,
-                                    )
-                                  }
-                                  rows={3}
-                                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
-                              </div>
+                        <div className="mt-4 grid gap-4 md:grid-cols-3">
+                          <Input
+                            label="CTA 文案"
+                            value={section.cta_text}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'cta_text', event.target.value)
+                            }
+                          />
+                          <Input
+                            label="CTA 链接"
+                            value={section.cta_link}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'cta_link', event.target.value)
+                            }
+                          />
+                          <Input
+                            label="CTA 样式"
+                            value={section.cta_style}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'cta_style', event.target.value)
+                            }
+                            placeholder="primary"
+                          />
+                        </div>
 
-                              <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                                <Input
-                                  label="图标"
-                                  value={item.icon}
-                                  onChange={(event) =>
-                                    updateItemField(section.id, item.id, 'icon', event.target.value)
-                                  }
-                                />
-                                <Input
-                                  label="图片 URL"
-                                  value={item.image_url}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'image_url',
-                                      event.target.value,
-                                    )
-                                  }
-                                />
-                                <Input
-                                  label="链接 URL"
-                                  value={item.link_url}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'link_url',
-                                      event.target.value,
-                                    )
-                                  }
-                                />
-                                <Input
-                                  label="链接文案"
-                                  value={item.link_text}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'link_text',
-                                      event.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
+                        <label className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={section.is_active}
+                            onChange={(event) =>
+                              updateSectionField(section.id, 'is_active', event.target.checked)
+                            }
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                          />
+                          启用区块
+                        </label>
 
-                              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                                <Input
-                                  label="link_target"
-                                  value={item.link_target}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'link_target',
-                                      event.target.value,
-                                    )
-                                  }
-                                  placeholder="_self"
-                                />
-                                <label className="flex items-center gap-2 pt-8 text-sm font-medium text-slate-700">
-                                  <input
-                                    type="checkbox"
-                                    checked={item.is_active}
-                                    onChange={(event) =>
-                                      updateItemField(
-                                        section.id,
-                                        item.id,
-                                        'is_active',
-                                        event.target.checked,
-                                      )
-                                    }
-                                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                  />
-                                  启用子项
-                                </label>
-                              </div>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <label className="block text-sm font-medium text-slate-700">
+                              content JSON
+                            </label>
+                            <textarea
+                              value={section.content_json}
+                              onChange={(event) =>
+                                updateSectionField(section.id, 'content_json', event.target.value)
+                              }
+                              rows={8}
+                              className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="block text-sm font-medium text-slate-700">
+                              style_config JSON
+                            </label>
+                            <textarea
+                              value={section.style_config_json}
+                              onChange={(event) =>
+                                updateSectionField(
+                                  section.id,
+                                  'style_config_json',
+                                  event.target.value,
+                                )
+                              }
+                              rows={8}
+                              className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                          </div>
+                        </div>
 
-                              <div className="mt-4 space-y-1.5">
-                                <label className="block text-sm font-medium text-slate-700">
-                                  content JSON
-                                </label>
-                                <textarea
-                                  value={item.content_json}
-                                  onChange={(event) =>
-                                    updateItemField(
-                                      section.id,
-                                      item.id,
-                                      'content_json',
-                                      event.target.value,
-                                    )
-                                  }
-                                  rows={6}
-                                  className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
-                              </div>
+                        <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <h3 className="text-sm font-semibold text-slate-900">子项列表</h3>
+                              <p className="mt-1 text-xs text-slate-500">
+                                适用于卡片、列表项、功能点等可重复内容。
+                              </p>
                             </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => addItem(section.id)}
+                            >
+                              新增子项
+                            </Button>
+                          </div>
+
+                          <div className="mt-4 space-y-4">
+                            {section.items.length === 0 ? (
+                              <EmptyState
+                                title="暂无子项"
+                                description="为这个区块添加卡片、要点或 CTA 子项。"
+                              />
+                            ) : (
+                              section.items.map((item, itemIndex) => (
+                                <div
+                                  key={item.id}
+                                  className="rounded-md border border-slate-200 bg-white p-4"
+                                >
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-900">
+                                        {item.title || item.item_key || `子项 ${itemIndex + 1}`}
+                                      </p>
+                                      <p className="mt-1 text-xs text-slate-500">
+                                        {item.item_type || '未设置类型'} · 排序 {item.display_order}
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <StatusBadge
+                                        status={item.is_active ? 'active' : 'hidden'}
+                                        size="sm"
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => moveItem(section.id, item.id, 'up')}
+                                        disabled={itemIndex === 0}
+                                      >
+                                        上移
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => moveItem(section.id, item.id, 'down')}
+                                        disabled={itemIndex === section.items.length - 1}
+                                      >
+                                        下移
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeItem(section.id, item.id)}
+                                      >
+                                        移除子项
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                    <Input
+                                      label="item_key"
+                                      value={item.item_key}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'item_key',
+                                          event.target.value,
+                                        )
+                                      }
+                                      placeholder="feature-1"
+                                    />
+                                    <Input
+                                      label="item_type"
+                                      value={item.item_type}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'item_type',
+                                          event.target.value,
+                                        )
+                                      }
+                                      placeholder="card"
+                                    />
+                                    <Input
+                                      label="display_order"
+                                      type="number"
+                                      value={String(item.display_order)}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'display_order',
+                                          Number(event.target.value || itemIndex),
+                                        )
+                                      }
+                                    />
+                                  </div>
+
+                                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                    <Input
+                                      label="标题"
+                                      value={item.title}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'title',
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                    <Input
+                                      label="副标题"
+                                      value={item.subtitle}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'subtitle',
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                  </div>
+
+                                  <div className="mt-4 space-y-1.5">
+                                    <label className="block text-sm font-medium text-slate-700">
+                                      子项描述
+                                    </label>
+                                    <textarea
+                                      value={item.description}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'description',
+                                          event.target.value,
+                                        )
+                                      }
+                                      rows={3}
+                                      className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                  </div>
+
+                                  <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                                    <Input
+                                      label="图标"
+                                      value={item.icon}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'icon',
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                    <Input
+                                      label="图片 URL"
+                                      value={item.image_url}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'image_url',
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                    <Input
+                                      label="链接 URL"
+                                      value={item.link_url}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'link_url',
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                    <Input
+                                      label="链接文案"
+                                      value={item.link_text}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'link_text',
+                                          event.target.value,
+                                        )
+                                      }
+                                    />
+                                  </div>
+
+                                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                    <Input
+                                      label="link_target"
+                                      value={item.link_target}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'link_target',
+                                          event.target.value,
+                                        )
+                                      }
+                                      placeholder="_self"
+                                    />
+                                    <label className="flex items-center gap-2 pt-8 text-sm font-medium text-slate-700">
+                                      <input
+                                        type="checkbox"
+                                        checked={item.is_active}
+                                        onChange={(event) =>
+                                          updateItemField(
+                                            section.id,
+                                            item.id,
+                                            'is_active',
+                                            event.target.checked,
+                                          )
+                                        }
+                                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                      />
+                                      启用子项
+                                    </label>
+                                  </div>
+
+                                  <div className="mt-4 space-y-1.5">
+                                    <label className="block text-sm font-medium text-slate-700">
+                                      content JSON
+                                    </label>
+                                    <textarea
+                                      value={item.content_json}
+                                      onChange={(event) =>
+                                        updateItemField(
+                                          section.id,
+                                          item.id,
+                                          'content_json',
+                                          event.target.value,
+                                        )
+                                      }
+                                      rows={6}
+                                      className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    />
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))
               )}
@@ -1218,7 +1358,7 @@ export default function CmsPageDetailPage() {
                 的基础编辑能力收进来了。
               </p>
               <p>
-                当前版本优先解决运维闭环：页面元信息、区块结构、子项内容都能在同一页保存；如需更重的拖拽排序和可视预览，再单独扩展。
+                当前版本优先解决运维闭环：页面元信息、区块结构、子项内容都能在同一页保存，并补上了快速排序与折叠面板；如需更重的拖拽排序和可视预览，再单独扩展。
               </p>
             </div>
           </Card>
