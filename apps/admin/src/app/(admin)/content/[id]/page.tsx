@@ -104,6 +104,55 @@ const ROUTE_SEGMENTS: Record<string, string> = {
   resource: 'resources',
 };
 
+function formatJsonInput(value: unknown, fallback = '[]') {
+  if (value === null || value === undefined) return fallback;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return fallback;
+  }
+}
+
+function JsonEditor({
+  label,
+  description,
+  value,
+  rows = 10,
+  error,
+  onChange,
+  onApply,
+}: {
+  label: string;
+  description: string;
+  value: string;
+  rows?: number;
+  error?: string;
+  onChange: (value: string) => void;
+  onApply: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <label className="block text-sm font-medium text-slate-700">{label}</label>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+        </div>
+        <Button type="button" variant="secondary" onClick={onApply}>
+          应用 JSON
+        </Button>
+      </div>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={rows}
+        spellCheck={false}
+        className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
 function createEmptyLocalization(locale: string): LocalizationDraft {
   return {
     locale,
@@ -134,6 +183,11 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeLocale, setActiveLocale] = useState('en');
   const [newLocale, setNewLocale] = useState('ja');
+  const [faqJsonText, setFaqJsonText] = useState('[]');
+  const [referencesJsonText, setReferencesJsonText] = useState('[]');
+  const [blocksJsonText, setBlocksJsonText] = useState('[]');
+  const [relationsJsonText, setRelationsJsonText] = useState('[]');
+  const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
 
   const loadItem = useCallback(async () => {
     setLoading(true);
@@ -179,6 +233,22 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
     );
   }, [activeSiteCode, item]);
 
+  useEffect(() => {
+    if (!item || !activeLocalization) return;
+    setFaqJsonText(formatJsonInput(activeLocalization.faq_json, '[]'));
+    setReferencesJsonText(formatJsonInput(activeLocalization.references_json, '[]'));
+    setBlocksJsonText(formatJsonInput(item.blocks, '[]'));
+    setRelationsJsonText(formatJsonInput(item.relations, '[]'));
+    setJsonErrors({});
+  }, [
+    item?.id,
+    activeLocale,
+    activeLocalization?.faq_json,
+    activeLocalization?.references_json,
+    item?.blocks,
+    item?.relations,
+  ]);
+
   function updateItemField(field: keyof ContentRecord, value: unknown) {
     setItem((current) => (current ? { ...current, [field]: value } : current));
   }
@@ -222,6 +292,45 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
       };
     });
     setActiveLocale(newLocale);
+  }
+
+  function applyJsonArray(kind: 'faq' | 'references' | 'blocks' | 'relations') {
+    const source =
+      kind === 'faq'
+        ? faqJsonText
+        : kind === 'references'
+          ? referencesJsonText
+          : kind === 'blocks'
+            ? blocksJsonText
+            : relationsJsonText;
+
+    try {
+      const parsed = JSON.parse(source) as unknown;
+      if (!Array.isArray(parsed)) {
+        throw new Error('必须是 JSON 数组');
+      }
+
+      if (kind === 'faq') {
+        updateLocalizationField('faq_json', parsed);
+      } else if (kind === 'references') {
+        updateLocalizationField('references_json', parsed);
+      } else if (kind === 'blocks') {
+        setItem((current) => (current ? { ...current, blocks: parsed as Array<Record<string, unknown>> } : current));
+      } else {
+        setItem((current) => (current ? { ...current, relations: parsed as Array<Record<string, unknown>> } : current));
+      }
+
+      setJsonErrors((current) => {
+        const next = { ...current };
+        delete next[kind];
+        return next;
+      });
+      success(`${kind === 'faq' ? 'FAQ' : kind === 'references' ? '参考证据' : kind === 'blocks' ? '内容块' : '关联对象'} JSON 已应用到当前草稿`);
+    } catch (jsonError) {
+      const message = jsonError instanceof Error ? jsonError.message : 'JSON 解析失败';
+      setJsonErrors((current) => ({ ...current, [kind]: message }));
+      error(`${kind === 'faq' ? 'FAQ' : kind === 'references' ? '参考证据' : kind === 'blocks' ? '内容块' : '关联对象'} JSON 无效：${message}`);
+    }
   }
 
   async function handleSave() {
@@ -388,6 +497,26 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
                   参考证据：{Array.isArray(activeLocalization.references_json) ? activeLocalization.references_json.length : 0}
                 </p>
               </div>
+              <div className="grid gap-6 xl:grid-cols-2">
+                <JsonEditor
+                  label="FAQ JSON"
+                  description="用于公开 FAQ 区块和 FAQPage 结构化数据。请保持 question / answer 数组结构。"
+                  value={faqJsonText}
+                  rows={10}
+                  error={jsonErrors.faq}
+                  onChange={setFaqJsonText}
+                  onApply={() => applyJsonArray('faq')}
+                />
+                <JsonEditor
+                  label="References JSON"
+                  description="维护内容引用的内部证据。建议保留 title、excerpt、sourceType 等字段。"
+                  value={referencesJsonText}
+                  rows={10}
+                  error={jsonErrors.references}
+                  onChange={setReferencesJsonText}
+                  onApply={() => applyJsonArray('references')}
+                />
+              </div>
             </div>
           </Card>
         </div>
@@ -432,10 +561,33 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
 
           <Card>
             <h2 className="text-lg font-semibold text-slate-900">结构化扩展</h2>
-            <div className="mt-4 space-y-3 text-sm text-slate-600">
-              <p>内容块数量：{item.blocks.length}</p>
-              <p>关联对象数量：{item.relations.length}</p>
-              <p>下一阶段会在这里接入可视化 block/relations 编辑器；当前保存会保留已存在的数据。</p>
+            <div className="mt-4 space-y-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  内容块数量：{item.blocks.length}
+                </p>
+                <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  关联对象数量：{item.relations.length}
+                </p>
+              </div>
+              <JsonEditor
+                label="Blocks JSON"
+                description="直接维护内容块数组。每项至少应包含 locale、block_key、block_type、display_order、data_json。"
+                value={blocksJsonText}
+                rows={12}
+                error={jsonErrors.blocks}
+                onChange={setBlocksJsonText}
+                onApply={() => applyJsonArray('blocks')}
+              />
+              <JsonEditor
+                label="Relations JSON"
+                description="直接维护关联对象数组。每项建议包含 relation_type、target_type、target_id、display_order、notes。"
+                value={relationsJsonText}
+                rows={12}
+                error={jsonErrors.relations}
+                onChange={setRelationsJsonText}
+                onApply={() => applyJsonArray('relations')}
+              />
             </div>
           </Card>
 

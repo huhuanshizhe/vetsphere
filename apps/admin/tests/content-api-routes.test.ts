@@ -149,6 +149,35 @@ describe('content admin API routes', () => {
 
     mocks.getSupabaseAdmin.mockReturnValue({
       from: vi.fn((table: string) => {
+        if (table === 'content_localizations') {
+          return {
+            select: vi.fn(() => {
+              const filters: Record<string, unknown> = {};
+              const query = {
+                eq: vi.fn((column: string, value: string) => {
+                  filters[column] = value;
+                  if (Object.prototype.hasOwnProperty.call(filters, 'content_id') && Object.prototype.hasOwnProperty.call(filters, 'locale')) {
+                    return {
+                      maybeSingle: vi.fn().mockResolvedValue({
+                        data: {
+                          title: 'Published title',
+                          summary: 'Published summary',
+                          opening_answer: 'A concise opening answer for publish validation.',
+                          body_markdown: 'A'.repeat(620),
+                          references_json: [{ title: 'Evidence note' }],
+                        },
+                        error: null,
+                      }),
+                    };
+                  }
+                  return query;
+                }),
+              };
+              return query;
+            }),
+          };
+        }
+
         if (table === 'content_records') {
           return {
             update: vi.fn((payload: Record<string, unknown>) => {
@@ -215,6 +244,102 @@ describe('content admin API routes', () => {
       new_state: 'published',
       payload_json: { siteCode: 'intl' },
     });
+  });
+
+  it('rejects publish when content fails readiness checks', async () => {
+    const updateCalls = {
+      contentRecord: 0,
+      siteView: 0,
+      workflowEvent: 0,
+    };
+
+    mocks.getSupabaseAdmin.mockReturnValue({
+      from: vi.fn((table: string) => {
+        if (table === 'content_localizations') {
+          return {
+            select: vi.fn(() => {
+              const filters: Record<string, unknown> = {};
+              const query = {
+                eq: vi.fn((column: string, value: string) => {
+                  filters[column] = value;
+                  if (Object.prototype.hasOwnProperty.call(filters, 'content_id') && Object.prototype.hasOwnProperty.call(filters, 'locale')) {
+                    return {
+                      maybeSingle: vi.fn().mockResolvedValue({
+                        data: {
+                          title: 'Draft title',
+                          summary: '',
+                          opening_answer: '',
+                          body_markdown: 'Too short',
+                          references_json: [],
+                        },
+                        error: null,
+                      }),
+                    };
+                  }
+                  return query;
+                }),
+              };
+              return query;
+            }),
+          };
+        }
+
+        if (table === 'content_records') {
+          return {
+            update: vi.fn(() => {
+              updateCalls.contentRecord += 1;
+              return {
+                eq: vi.fn(async () => ({ error: null })),
+              };
+            }),
+          };
+        }
+
+        if (table === 'content_site_views') {
+          return {
+            upsert: vi.fn(async () => {
+              updateCalls.siteView += 1;
+              return { error: null };
+            }),
+          };
+        }
+
+        if (table === 'content_workflow_events') {
+          return {
+            insert: vi.fn(async () => {
+              updateCalls.workflowEvent += 1;
+              return { error: null };
+            }),
+          };
+        }
+
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    });
+
+    const response = await PUBLISH_POST(
+      createJsonRequest('http://localhost:3002/api/v1/admin/content/content-1/publish', {
+        siteCode: 'intl',
+      }),
+      {
+        params: Promise.resolve({ id: 'content-1' }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Content is not ready to publish',
+      failures: expect.arrayContaining([
+        'Missing summary',
+        'Missing opening answer',
+        'Body markdown must contain at least 600 characters',
+        'At least one reference is required',
+      ]),
+    });
+    expect(updateCalls.contentRecord).toBe(0);
+    expect(updateCalls.siteView).toBe(0);
+    expect(updateCalls.workflowEvent).toBe(0);
+    expect(mocks.writeAuditLog).not.toHaveBeenCalled();
   });
 
   it('archives content and hides the site view', async () => {

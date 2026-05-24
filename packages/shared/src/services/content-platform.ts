@@ -294,10 +294,7 @@ export async function getPublishedIntlContentBySlug(options: {
   slug: string;
 }): Promise<IntlPublishedContent | null> {
   const siteCode = options.siteCode || 'intl';
-  const { data, error } = await supabase
-    .from('content_site_views')
-    .select(
-      `
+  const selectClause = `
       id,
       site_code,
       publish_status,
@@ -352,23 +349,36 @@ export async function getPublishedIntlContentBySlug(options: {
           notes
         )
       )
-    `,
-    )
-    .eq('site_code', siteCode)
-    .eq('publish_status', 'published')
-    .eq('route_status', 'active')
-    .eq('content_records.content_type', options.contentType)
-    .or(`slug_override.eq.${options.slug},content_records.canonical_slug.eq.${options.slug}`)
-    .limit(1)
-    .maybeSingle();
+    `;
 
-  if (error) {
-    throw new Error(error.message || 'Failed to load content detail');
+  async function loadSiteViewByFilter(filterColumn: 'slug_override' | 'content_records.canonical_slug') {
+    return supabase
+      .from('content_site_views')
+      .select(selectClause)
+      .eq('site_code', siteCode)
+      .eq('publish_status', 'published')
+      .eq('route_status', 'active')
+      .eq('content_records.content_type', options.contentType)
+      .eq(filterColumn, options.slug)
+      .limit(1)
+      .maybeSingle();
   }
 
-  if (!data) {
+  const slugOverrideResult = await loadSiteViewByFilter('slug_override');
+  if (slugOverrideResult.error) {
+    throw new Error(slugOverrideResult.error.message || 'Failed to load content detail');
+  }
+  if (slugOverrideResult.data) {
+    return mapContentSiteViewRow(slugOverrideResult.data as ContentSiteViewRow, options.locale);
+  }
+
+  const canonicalResult = await loadSiteViewByFilter('content_records.canonical_slug');
+  if (canonicalResult.error) {
+    throw new Error(canonicalResult.error.message || 'Failed to load content detail');
+  }
+  if (!canonicalResult.data) {
     return null;
   }
 
-  return mapContentSiteViewRow(data as ContentSiteViewRow, options.locale);
+  return mapContentSiteViewRow(canonicalResult.data as ContentSiteViewRow, options.locale);
 }
