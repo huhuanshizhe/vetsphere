@@ -349,13 +349,26 @@ function useContentOpsData() {
 
 export function ContentDashboardView() {
   const { data, loading, refreshing, loadData, toasts, removeToast } = useContentOpsData();
-  const state = <ContentOpsState loading={loading} data={data} errorTitle="内容运营面板暂时不可用" />;
-  if (state) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <ToastContainer toasts={toasts} removeToast={removeToast} />
         <ContentOpsHeader title="内容运营面板" description="查看内容库存、待审队列、保鲜风险和 AI 生产动态。" />
-        {state}
+        <LoadingState text="加载内容运营数据..." />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <ContentOpsHeader title="内容运营面板" description="查看内容库存、待审队列、保鲜风险和 AI 生产动态。" />
+        <EmptyState
+          icon="📊"
+          title="内容运营面板暂时不可用"
+          description="内容运营接口没有返回数据，请刷新重试。"
+        />
       </div>
     );
   }
@@ -436,7 +449,6 @@ export function ContentDashboardView() {
 
 export function ContentReviewQueueView() {
   const { data, loading, refreshing, loadData, toasts, removeToast } = useContentOpsData();
-  const state = <ContentOpsState loading={loading} data={data} errorTitle="审核队列暂时不可用" />;
   const stats = useMemo(() => {
     if (!data) {
       return { approved: 0, scheduled: 0 };
@@ -447,12 +459,26 @@ export function ContentReviewQueueView() {
     };
   }, [data]);
 
-  if (state) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <ToastContainer toasts={toasts} removeToast={removeToast} />
         <ContentOpsHeader title="审核队列" description="集中处理待审内容、发布前置缺口和公开页风险。" />
-        {state}
+        <LoadingState text="加载内容运营数据..." />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <ContentOpsHeader title="审核队列" description="集中处理待审内容、发布前置缺口和公开页风险。" />
+        <EmptyState
+          icon="📊"
+          title="审核队列暂时不可用"
+          description="内容运营接口没有返回数据，请刷新重试。"
+        />
       </div>
     );
   }
@@ -504,14 +530,27 @@ export function ContentReviewQueueView() {
 
 export function ContentCalendarView() {
   const { data, loading, refreshing, loadData, toasts, removeToast } = useContentOpsData();
-  const state = <ContentOpsState loading={loading} data={data} errorTitle="排期与 Brief 面板暂时不可用" />;
 
-  if (state) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <ToastContainer toasts={toasts} removeToast={removeToast} />
         <ContentOpsHeader title="排期与 Brief" description="把已排期内容和 AI brief 资产放到同一张执行面板里。" />
-        {state}
+        <LoadingState text="加载内容运营数据..." />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <ContentOpsHeader title="排期与 Brief" description="把已排期内容和 AI brief 资产放到同一张执行面板里。" />
+        <EmptyState
+          icon="📊"
+          title="排期与 Brief 面板暂时不可用"
+          description="内容运营接口没有返回数据，请刷新重试。"
+        />
       </div>
     );
   }
