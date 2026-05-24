@@ -2,7 +2,11 @@ import type { MetadataRoute } from 'next';
 import { siteConfig } from '@/config/site.config';
 import { COURSES_CN, PRODUCTS_CN } from '@vetsphere/shared';
 import { buildProductDetailHref } from '@vetsphere/shared/lib/product-url';
-import { buildIntlContentPath, getContentRouteSegment, type ContentType } from '@vetsphere/shared/services/content-platform';
+import {
+  buildIntlContentPath,
+  getContentRouteSegment,
+  type ContentType,
+} from '@vetsphere/shared/services/content-platform';
 import { supabase } from '@vetsphere/shared/services/supabase';
 import { buildCourseDetailHref, buildLocaleLanguageAlternates } from '@/lib/seo';
 
@@ -41,13 +45,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  let courseEntries: Array<{ course_id: string; slug: string; updated_at: string | null }> = COURSES_CN.map(
-    (course) => ({
+  let courseEntries: Array<{ course_id: string; slug: string; updated_at: string | null }> =
+    COURSES_CN.map((course) => ({
       course_id: course.id,
       slug: course.id,
       updated_at: null,
-    }),
-  );
+    }));
 
   try {
     const { data } = await supabase
@@ -82,13 +85,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  let productEntries: Array<{ product_id: string; slug: string; updated_at: string | null }> = PRODUCTS_CN.map(
-    (product) => ({
+  let productEntries: Array<{ product_id: string; slug: string; updated_at: string | null }> =
+    PRODUCTS_CN.map((product) => ({
       product_id: product.id,
       slug: product.slug || product.id,
       updated_at: null,
-    }),
-  );
+    }));
 
   try {
     const { data } = await supabase
@@ -165,6 +167,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch (error) {
     console.warn('[sitemap] Failed to load intl content entries from Supabase:', error);
+  }
+
+  try {
+    const { data } = await supabase
+      .from('cms_pages')
+      .select('page_key, updated_at, published_at')
+      .eq('status', 'published');
+
+    for (const row of data || []) {
+      const pageKey = row.page_key?.trim();
+      if (!pageKey) continue;
+
+      const basePath = `/pages/${pageKey}`;
+
+      for (const locale of siteConfig.locales) {
+        entries.push({
+          url: `${siteConfig.siteUrl}/${locale}${basePath}`,
+          ...(row.updated_at ? { lastModified: new Date(row.updated_at) } : {}),
+          changeFrequency: 'weekly',
+          priority: 0.65,
+          alternates: {
+            languages: buildLocaleLanguageAlternates(basePath),
+          },
+        });
+      }
+    }
+  } catch (error) {
+    console.warn('[sitemap] Failed to load CMS page entries from Supabase:', error);
   }
 
   return entries;
