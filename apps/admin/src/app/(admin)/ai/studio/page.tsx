@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button, Card, Input, Select, ToastContainer, useToast } from '@/components/ui';
-import { useSite } from '@/context/SiteContext';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
+import { CONTENT_ADMIN_SITE_CODE } from '@/lib/content-admin';
 
 interface Citation {
   id: string;
@@ -14,20 +14,73 @@ interface Citation {
   chunkText: string;
 }
 
+interface TaskOption {
+  value: string;
+  label: string;
+  description: string;
+}
+
 const TASK_OPTIONS = [
-  { value: 'content_brief_planner', label: '内容 Brief 规划' },
-  { value: 'content_outline_generator', label: '内容大纲生成' },
-  { value: 'content_draft_generator', label: '内容初稿生成' },
-  { value: 'content_section_expander', label: '单段扩写' },
-  { value: 'content_faq_extractor', label: 'FAQ 抽取' },
-  { value: 'content_glossary_extractor', label: '术语抽取' },
-  { value: 'content_meta_generator', label: 'SEO 元信息生成' },
-];
+  {
+    value: 'content_brief_planner',
+    label: '内容 Brief 规划',
+    description: '先定义目标受众、页面角度、证据优先级和后续写作边界。',
+  },
+  {
+    value: 'content_outline_generator',
+    label: '内容大纲生成',
+    description: '把已有 brief 或主题拆成可编辑的大纲和章节结构。',
+  },
+  {
+    value: 'content_draft_generator',
+    label: '内容初稿生成',
+    description: '基于知识证据生成可直接回写到草稿的首版正文。',
+  },
+  {
+    value: 'content_section_expander',
+    label: '单段扩写',
+    description: '对某个段落或主题做定向扩写，而不是重写整篇内容。',
+  },
+  {
+    value: 'content_faq_extractor',
+    label: 'FAQ 抽取',
+    description: '从当前证据中提炼高频问题和可回答的专业答复。',
+  },
+  {
+    value: 'content_glossary_extractor',
+    label: '术语抽取',
+    description: '识别需要解释的术语、缩写和关键概念，便于补充词汇区。',
+  },
+  {
+    value: 'content_meta_generator',
+    label: 'SEO 元信息生成',
+    description: '生成 SEO title、description 等搜索入口文案。',
+  },
+  {
+    value: 'content_internal_link_suggester',
+    label: '内链建议',
+    description: '输出适合挂接到课程、商品或相关内容的内链建议。',
+  },
+  {
+    value: 'content_locale_adapter',
+    label: '本地化改写',
+    description: '基于源内容和证据，为目标 locale 生成专业化改写稿。',
+  },
+  {
+    value: 'content_claim_reviewer',
+    label: '事实审阅',
+    description: '检查草稿是否脱离证据、是否包含高风险或待核实表述。',
+  },
+  {
+    value: 'content_publish_readiness_checker',
+    label: '发布就绪检查',
+    description: '从编辑完整性、SEO 和治理角度检查是否满足发布前置。',
+  },
+] satisfies TaskOption[];
 
 export default function ContentAiStudioPage() {
   const searchParams = useSearchParams();
-  const { currentSite } = useSite();
-  const siteCode = currentSite === 'global' ? 'intl' : currentSite;
+  const siteCode = CONTENT_ADMIN_SITE_CODE;
   const { toasts, removeToast, success, error } = useToast();
 
   const [taskKey, setTaskKey] = useState(searchParams.get('taskKey') || 'content_brief_planner');
@@ -39,6 +92,7 @@ export default function ContentAiStudioPage() {
   const [running, setRunning] = useState(false);
   const [outputText, setOutputText] = useState('');
   const [citations, setCitations] = useState<Citation[]>([]);
+  const activeTask = TASK_OPTIONS.find((option) => option.value === taskKey) ?? TASK_OPTIONS[0];
 
   useEffect(() => {
     setTaskKey(searchParams.get('taskKey') || 'content_brief_planner');
@@ -89,10 +143,14 @@ export default function ContentAiStudioPage() {
         <p className="mt-1 text-sm text-slate-500">基于内部知识库做任务型生成，输出可直接回写到内容草稿。</p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card>
+      <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]">
+        <Card className="min-w-0">
           <div className="space-y-4">
             <Select label="任务模板" value={taskKey} onChange={(event) => setTaskKey(event.target.value)} options={TASK_OPTIONS} />
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+              <p className="text-sm font-semibold text-emerald-900">{activeTask.label}</p>
+              <p className="mt-1 text-sm text-emerald-800">{activeTask.description}</p>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Input label="内容 ID" value={contentId} onChange={(event) => setContentId(event.target.value)} placeholder="可选，绑定现有内容" />
               <Select label="语言" value={locale} onChange={(event) => setLocale(event.target.value)} options={[
@@ -130,16 +188,16 @@ export default function ContentAiStudioPage() {
           </div>
         </Card>
 
-        <div className="space-y-6">
-          <Card>
+        <div className="min-w-0 space-y-6">
+          <Card className="min-w-0">
             <h2 className="text-lg font-semibold text-slate-900">生成输出</h2>
             <p className="mt-1 text-sm text-slate-500">当前以 JSON 输出，便于直接回写、审核和二次加工。</p>
-            <pre className="mt-4 max-h-[420px] overflow-auto rounded-lg bg-slate-950 p-4 text-xs leading-6 text-slate-100">
+            <pre className="mt-4 max-h-[420px] min-w-0 overflow-auto rounded-lg bg-slate-950 p-4 text-xs leading-6 text-slate-100">
               {outputText || '{\n  "status": "idle"\n}'}
             </pre>
           </Card>
 
-          <Card>
+          <Card className="min-w-0">
             <h2 className="text-lg font-semibold text-slate-900">引用证据</h2>
             <div className="mt-4 space-y-3">
               {citations.length === 0 ? (
