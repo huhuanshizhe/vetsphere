@@ -15,6 +15,7 @@ const CONTENT_TYPE_OPTIONS = [
   { value: 'glossary_term', label: '术语词条' },
   { value: 'compare_page', label: '对比页' },
   { value: 'resource', label: '资源页' },
+  { value: 'news', label: '新闻页' },
 ];
 
 const LOCALE_OPTIONS = [
@@ -101,19 +102,49 @@ export default function NewContentPage() {
 
       <Card>
         <form className="space-y-5" onSubmit={handleSubmit}>
-          <Input label="内容标题" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：Small Animal Endoscopy Training Hub" />
+          <Input
+            label="内容标题"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="例如：Small Animal Endoscopy Training Hub"
+          />
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Select label="内容类型" value={contentType} onChange={(event) => setContentType(event.target.value)} options={CONTENT_TYPE_OPTIONS} />
-            <Select label="源语言" value={sourceLanguage} onChange={(event) => setSourceLanguage(event.target.value)} options={LOCALE_OPTIONS} />
+            <Select
+              label="内容类型"
+              value={contentType}
+              onChange={(event) => setContentType(event.target.value)}
+              options={CONTENT_TYPE_OPTIONS}
+            />
+            <Select
+              label="源语言"
+              value={sourceLanguage}
+              onChange={(event) => setSourceLanguage(event.target.value)}
+              options={LOCALE_OPTIONS}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Input label="主专科" value={primarySpecialty} onChange={(event) => setPrimarySpecialty(event.target.value)} placeholder="Small Animal Surgery" />
-            <Input label="目标受众" value={targetAudience} onChange={(event) => setTargetAudience(event.target.value)} placeholder="Veterinary specialists" />
+            <Input
+              label="主专科"
+              value={primarySpecialty}
+              onChange={(event) => setPrimarySpecialty(event.target.value)}
+              placeholder="Small Animal Surgery"
+            />
+            <Input
+              label="目标受众"
+              value={targetAudience}
+              onChange={(event) => setTargetAudience(event.target.value)}
+              placeholder="Veterinary specialists"
+            />
           </div>
 
-          <Input label="搜索意图" value={searchIntent} onChange={(event) => setSearchIntent(event.target.value)} placeholder="commercial investigation / training evaluation" />
+          <Input
+            label="搜索意图"
+            value={searchIntent}
+            onChange={(event) => setSearchIntent(event.target.value)}
+            placeholder="commercial investigation / training evaluation"
+          />
 
           <div className="flex items-center justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => router.push('/content')}>

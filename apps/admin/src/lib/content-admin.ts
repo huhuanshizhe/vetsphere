@@ -17,6 +17,7 @@ export const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   glossary_term: '术语词条',
   compare_page: '对比页',
   resource: '资源页',
+  news: '新闻页',
 };
 
 export const CONTENT_TYPE_OPTIONS = Object.entries(CONTENT_TYPE_LABELS).map(([value, label]) => ({
@@ -158,7 +159,9 @@ export function mapAdminContentRecord(row: any, locale = 'en'): AdminContentEdit
     localizations,
     site_views: siteViews,
     blocks: blocks.sort((left, right) => (left.display_order || 0) - (right.display_order || 0)),
-    relations: relations.sort((left, right) => (left.display_order || 0) - (right.display_order || 0)),
+    relations: relations.sort(
+      (left, right) => (left.display_order || 0) - (right.display_order || 0),
+    ),
     created_at: row.created_at,
     updated_at: row.updated_at,
     published_at: row.published_at || null,
@@ -185,6 +188,10 @@ export function mapAdminContentListItem(row: any, locale = 'en'): AdminContentLi
   };
 }
 
-export function getContentRoutePath(locale: string, contentType: ContentType, slug: string): string {
+export function getContentRoutePath(
+  locale: string,
+  contentType: ContentType,
+  slug: string,
+): string {
   return `/${locale}/${CONTENT_TYPE_ROUTE_SEGMENTS[contentType]}/${slug}`;
 }

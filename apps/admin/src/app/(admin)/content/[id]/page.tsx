@@ -75,6 +75,7 @@ const CONTENT_TYPE_OPTIONS = [
   { value: 'glossary_term', label: '术语词条' },
   { value: 'compare_page', label: '对比页' },
   { value: 'resource', label: '资源页' },
+  { value: 'news', label: '新闻页' },
 ];
 
 const WORKFLOW_OPTIONS = [
@@ -102,6 +103,7 @@ const ROUTE_SEGMENTS: Record<string, string> = {
   glossary_term: 'glossary',
   compare_page: 'compare',
   resource: 'resources',
+  news: 'news',
 };
 
 function formatJsonInput(value: unknown, fallback = '[]') {
@@ -191,7 +193,9 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
   const loadItem = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiFetch<{ item: ContentRecord }>(`/api/v1/admin/content/${id}?locale=${activeLocale}`);
+      const data = await apiFetch<{ item: ContentRecord }>(
+        `/api/v1/admin/content/${id}?locale=${activeLocale}`,
+      );
       setItem(data.item);
       setActiveLocale((current) => {
         if (data.item.localizations.some((localization) => localization.locale === current)) {
@@ -211,15 +215,18 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
   }, [loadItem]);
 
   const activeLocalization = useMemo(() => {
-    return item?.localizations.find((localization) => localization.locale === activeLocale) || item?.localizations[0] || null;
+    return (
+      item?.localizations.find((localization) => localization.locale === activeLocale) ||
+      item?.localizations[0] ||
+      null
+    );
   }, [activeLocale, item?.localizations]);
 
   const activeSiteView = useMemo(() => {
     if (!item) return null;
     return (
       item.site_views.find((siteView) => siteView.site_code === activeSiteCode) ||
-      item.site_views[0] ||
-      {
+      item.site_views[0] || {
         site_code: activeSiteCode,
         publish_status: 'draft',
         route_status: 'active',
@@ -272,7 +279,15 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
         ? current.site_views.map((siteView) =>
             siteView.site_code === activeSiteCode ? { ...siteView, [field]: value } : siteView,
           )
-        : [...current.site_views, { site_code: activeSiteCode, publish_status: 'draft', route_status: 'active', [field]: value } as SiteViewDraft];
+        : [
+            ...current.site_views,
+            {
+              site_code: activeSiteCode,
+              publish_status: 'draft',
+              route_status: 'active',
+              [field]: value,
+            } as SiteViewDraft,
+          ];
       return {
         ...current,
         site_views: nextSiteViews,
@@ -282,7 +297,10 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
 
   function addLocale() {
     setItem((current) => {
-      if (!current || current.localizations.some((localization) => localization.locale === newLocale)) {
+      if (
+        !current ||
+        current.localizations.some((localization) => localization.locale === newLocale)
+      ) {
         return current;
       }
       return {
@@ -314,9 +332,13 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
       } else if (kind === 'references') {
         updateLocalizationField('references_json', parsed);
       } else if (kind === 'blocks') {
-        setItem((current) => (current ? { ...current, blocks: parsed as Array<Record<string, unknown>> } : current));
+        setItem((current) =>
+          current ? { ...current, blocks: parsed as Array<Record<string, unknown>> } : current,
+        );
       } else {
-        setItem((current) => (current ? { ...current, relations: parsed as Array<Record<string, unknown>> } : current));
+        setItem((current) =>
+          current ? { ...current, relations: parsed as Array<Record<string, unknown>> } : current,
+        );
       }
 
       setJsonErrors((current) => {
@@ -324,11 +346,15 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
         delete next[kind];
         return next;
       });
-      success(`${kind === 'faq' ? 'FAQ' : kind === 'references' ? '参考证据' : kind === 'blocks' ? '内容块' : '关联对象'} JSON 已应用到当前草稿`);
+      success(
+        `${kind === 'faq' ? 'FAQ' : kind === 'references' ? '参考证据' : kind === 'blocks' ? '内容块' : '关联对象'} JSON 已应用到当前草稿`,
+      );
     } catch (jsonError) {
       const message = jsonError instanceof Error ? jsonError.message : 'JSON 解析失败';
       setJsonErrors((current) => ({ ...current, [kind]: message }));
-      error(`${kind === 'faq' ? 'FAQ' : kind === 'references' ? '参考证据' : kind === 'blocks' ? '内容块' : '关联对象'} JSON 无效：${message}`);
+      error(
+        `${kind === 'faq' ? 'FAQ' : kind === 'references' ? '参考证据' : kind === 'blocks' ? '内容块' : '关联对象'} JSON 无效：${message}`,
+      );
     }
   }
 
@@ -357,7 +383,13 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
         method: 'POST',
         body: JSON.stringify({ siteCode: activeSiteCode }),
       });
-      success(endpoint === 'publish' ? '内容已发布' : endpoint === 'archive' ? '内容已归档' : '已复制内容');
+      success(
+        endpoint === 'publish'
+          ? '内容已发布'
+          : endpoint === 'archive'
+            ? '内容已归档'
+            : '已复制内容',
+      );
       if (endpoint === 'duplicate' && data.id) {
         window.location.href = `/content/${data.id}`;
         return;
@@ -385,7 +417,9 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">{activeLocalization.title || '未命名内容'}</h1>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {activeLocalization.title || '未命名内容'}
+            </h1>
             <StatusBadge status={item.workflow_state} />
           </div>
           <p className="mt-1 text-sm text-slate-500">
@@ -396,10 +430,18 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
           <Link href="/ai/studio">
             <Button variant="secondary">AI 工作台</Button>
           </Link>
-          <Button variant="secondary" loading={actionLoading === 'duplicate'} onClick={() => void runAction('duplicate')}>
+          <Button
+            variant="secondary"
+            loading={actionLoading === 'duplicate'}
+            onClick={() => void runAction('duplicate')}
+          >
             复制
           </Button>
-          <Button variant="secondary" loading={actionLoading === 'archive'} onClick={() => void runAction('archive')}>
+          <Button
+            variant="secondary"
+            loading={actionLoading === 'archive'}
+            onClick={() => void runAction('archive')}
+          >
             归档
           </Button>
           <Button loading={actionLoading === 'publish'} onClick={() => void runAction('publish')}>
@@ -415,14 +457,48 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
         <div className="space-y-6">
           <Card>
             <div className="grid gap-4 md:grid-cols-2">
-              <Select label="内容类型" value={item.content_type} onChange={(event) => updateItemField('content_type', event.target.value)} options={CONTENT_TYPE_OPTIONS} />
-              <Select label="工作流状态" value={item.workflow_state} onChange={(event) => updateItemField('workflow_state', event.target.value)} options={WORKFLOW_OPTIONS} />
-              <Input label="Canonical Slug" value={item.canonical_slug} onChange={(event) => updateItemField('canonical_slug', event.target.value)} />
-              <Input label="源语言" value={item.source_language} onChange={(event) => updateItemField('source_language', event.target.value)} />
-              <Input label="主专科" value={item.primary_specialty || ''} onChange={(event) => updateItemField('primary_specialty', event.target.value)} />
-              <Input label="主术式" value={item.primary_procedure || ''} onChange={(event) => updateItemField('primary_procedure', event.target.value)} />
-              <Input label="目标受众" value={item.target_audience || ''} onChange={(event) => updateItemField('target_audience', event.target.value)} />
-              <Input label="搜索意图" value={item.search_intent || ''} onChange={(event) => updateItemField('search_intent', event.target.value)} />
+              <Select
+                label="内容类型"
+                value={item.content_type}
+                onChange={(event) => updateItemField('content_type', event.target.value)}
+                options={CONTENT_TYPE_OPTIONS}
+              />
+              <Select
+                label="工作流状态"
+                value={item.workflow_state}
+                onChange={(event) => updateItemField('workflow_state', event.target.value)}
+                options={WORKFLOW_OPTIONS}
+              />
+              <Input
+                label="Canonical Slug"
+                value={item.canonical_slug}
+                onChange={(event) => updateItemField('canonical_slug', event.target.value)}
+              />
+              <Input
+                label="源语言"
+                value={item.source_language}
+                onChange={(event) => updateItemField('source_language', event.target.value)}
+              />
+              <Input
+                label="主专科"
+                value={item.primary_specialty || ''}
+                onChange={(event) => updateItemField('primary_specialty', event.target.value)}
+              />
+              <Input
+                label="主术式"
+                value={item.primary_procedure || ''}
+                onChange={(event) => updateItemField('primary_procedure', event.target.value)}
+              />
+              <Input
+                label="目标受众"
+                value={item.target_audience || ''}
+                onChange={(event) => updateItemField('target_audience', event.target.value)}
+              />
+              <Input
+                label="搜索意图"
+                value={item.search_intent || ''}
+                onChange={(event) => updateItemField('search_intent', event.target.value)}
+              />
             </div>
           </Card>
 
@@ -430,11 +506,24 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">本地化内容</h2>
-                <p className="mt-1 text-sm text-slate-500">每个 locale 独立维护标题、摘要、正文和 SEO 元信息。</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  每个 locale 独立维护标题、摘要、正文和 SEO 元信息。
+                </p>
               </div>
               <div className="flex gap-3">
-                <Select value={newLocale} onChange={(event) => setNewLocale(event.target.value)} options={LOCALE_OPTIONS.filter((option) => !item.localizations.some((localization) => localization.locale === option.value))} />
-                <Button variant="secondary" onClick={addLocale}>新增语言</Button>
+                <Select
+                  value={newLocale}
+                  onChange={(event) => setNewLocale(event.target.value)}
+                  options={LOCALE_OPTIONS.filter(
+                    (option) =>
+                      !item.localizations.some(
+                        (localization) => localization.locale === option.value,
+                      ),
+                  )}
+                />
+                <Button variant="secondary" onClick={addLocale}>
+                  新增语言
+                </Button>
               </div>
             </div>
 
@@ -451,11 +540,27 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
             </div>
 
             <div className="mt-5 space-y-4">
-              <Input label="标题" value={activeLocalization.title || ''} onChange={(event) => updateLocalizationField('title', event.target.value)} />
-              <Input label="副标题" value={activeLocalization.subtitle || ''} onChange={(event) => updateLocalizationField('subtitle', event.target.value)} />
+              <Input
+                label="标题"
+                value={activeLocalization.title || ''}
+                onChange={(event) => updateLocalizationField('title', event.target.value)}
+              />
+              <Input
+                label="副标题"
+                value={activeLocalization.subtitle || ''}
+                onChange={(event) => updateLocalizationField('subtitle', event.target.value)}
+              />
               <div className="grid gap-4 md:grid-cols-2">
-                <Input label="Hero Title" value={activeLocalization.hero_title || ''} onChange={(event) => updateLocalizationField('hero_title', event.target.value)} />
-                <Input label="Hero Subtitle" value={activeLocalization.hero_subtitle || ''} onChange={(event) => updateLocalizationField('hero_subtitle', event.target.value)} />
+                <Input
+                  label="Hero Title"
+                  value={activeLocalization.hero_title || ''}
+                  onChange={(event) => updateLocalizationField('hero_title', event.target.value)}
+                />
+                <Input
+                  label="Hero Subtitle"
+                  value={activeLocalization.hero_subtitle || ''}
+                  onChange={(event) => updateLocalizationField('hero_subtitle', event.target.value)}
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-slate-700">摘要</label>
@@ -470,7 +575,9 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
                 <label className="block text-sm font-medium text-slate-700">Opening Answer</label>
                 <textarea
                   value={activeLocalization.opening_answer || ''}
-                  onChange={(event) => updateLocalizationField('opening_answer', event.target.value)}
+                  onChange={(event) =>
+                    updateLocalizationField('opening_answer', event.target.value)
+                  }
                   rows={4}
                   className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
@@ -485,15 +592,31 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
                 />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <Input label="SEO Title" value={activeLocalization.seo_title || ''} onChange={(event) => updateLocalizationField('seo_title', event.target.value)} />
-                <Input label="SEO Description" value={activeLocalization.seo_description || ''} onChange={(event) => updateLocalizationField('seo_description', event.target.value)} />
+                <Input
+                  label="SEO Title"
+                  value={activeLocalization.seo_title || ''}
+                  onChange={(event) => updateLocalizationField('seo_title', event.target.value)}
+                />
+                <Input
+                  label="SEO Description"
+                  value={activeLocalization.seo_description || ''}
+                  onChange={(event) =>
+                    updateLocalizationField('seo_description', event.target.value)
+                  }
+                />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                  FAQ 数量：{Array.isArray(activeLocalization.faq_json) ? activeLocalization.faq_json.length : 0}
+                  FAQ 数量：
+                  {Array.isArray(activeLocalization.faq_json)
+                    ? activeLocalization.faq_json.length
+                    : 0}
                 </p>
                 <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                  参考证据：{Array.isArray(activeLocalization.references_json) ? activeLocalization.references_json.length : 0}
+                  参考证据：
+                  {Array.isArray(activeLocalization.references_json)
+                    ? activeLocalization.references_json.length
+                    : 0}
                 </p>
               </div>
               <div className="grid gap-6 xl:grid-cols-2">
@@ -523,11 +646,17 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
         <div className="space-y-6">
           <Card>
             <h2 className="text-lg font-semibold text-slate-900">站点视图</h2>
-            <p className="mt-1 text-sm text-slate-500">控制 intl 站点上的发布状态、路由状态和 SEO 覆盖字段。</p>
+            <p className="mt-1 text-sm text-slate-500">
+              控制 intl 站点上的发布状态、路由状态和 SEO 覆盖字段。
+            </p>
 
             <div className="mt-5 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <Input label="站点代码" value={activeSiteView.site_code} onChange={(event) => updateSiteViewField('site_code', event.target.value)} />
+                <Input
+                  label="站点代码"
+                  value={activeSiteView.site_code}
+                  onChange={(event) => updateSiteViewField('site_code', event.target.value)}
+                />
                 <Input label="预览路径" value={previewPath} readOnly />
                 <Select
                   label="发布状态"
@@ -552,9 +681,23 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
                 />
               </div>
 
-              <Input label="Slug Override" value={activeSiteView.slug_override || ''} onChange={(event) => updateSiteViewField('slug_override', event.target.value)} />
-              <Input label="SEO Title Override" value={activeSiteView.seo_title_override || ''} onChange={(event) => updateSiteViewField('seo_title_override', event.target.value)} />
-              <Input label="SEO Description Override" value={activeSiteView.seo_description_override || ''} onChange={(event) => updateSiteViewField('seo_description_override', event.target.value)} />
+              <Input
+                label="Slug Override"
+                value={activeSiteView.slug_override || ''}
+                onChange={(event) => updateSiteViewField('slug_override', event.target.value)}
+              />
+              <Input
+                label="SEO Title Override"
+                value={activeSiteView.seo_title_override || ''}
+                onChange={(event) => updateSiteViewField('seo_title_override', event.target.value)}
+              />
+              <Input
+                label="SEO Description Override"
+                value={activeSiteView.seo_description_override || ''}
+                onChange={(event) =>
+                  updateSiteViewField('seo_description_override', event.target.value)
+                }
+              />
             </div>
           </Card>
 
@@ -596,10 +739,14 @@ export default function ContentEditorPage({ params }: { params: Promise<{ id: st
               使用知识库和任务模板生成 brief、outline、draft、FAQ 或 SEO 元信息。
             </p>
             <div className="mt-4 flex gap-3">
-              <Link href={`/ai/studio?contentId=${item.id}&taskKey=content_brief_planner&query=${encodeURIComponent(activeLocalization.title || item.canonical_slug)}`}>
+              <Link
+                href={`/ai/studio?contentId=${item.id}&taskKey=content_brief_planner&query=${encodeURIComponent(activeLocalization.title || item.canonical_slug)}`}
+              >
                 <Button variant="secondary">生成 Brief</Button>
               </Link>
-              <Link href={`/ai/studio?contentId=${item.id}&taskKey=content_draft_generator&query=${encodeURIComponent(activeLocalization.title || item.canonical_slug)}`}>
+              <Link
+                href={`/ai/studio?contentId=${item.id}&taskKey=content_draft_generator&query=${encodeURIComponent(activeLocalization.title || item.canonical_slug)}`}
+              >
                 <Button>生成 Draft</Button>
               </Link>
             </div>

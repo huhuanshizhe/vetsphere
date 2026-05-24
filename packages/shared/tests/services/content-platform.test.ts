@@ -16,16 +16,21 @@ describe('content-platform routes', () => {
       glossary_term: 'glossary',
       compare_page: 'compare',
       resource: 'resources',
+      news: 'news',
     });
   });
 
   it('builds locale-aware content paths', () => {
     expect(getContentRouteSegment('compare_page')).toBe('compare');
+    expect(getContentRouteSegment('news')).toBe('news');
     expect(buildIntlContentPath('en', 'compare_page', 'rigid-vs-flexible-endoscopy')).toBe(
       '/en/compare/rigid-vs-flexible-endoscopy',
     );
     expect(buildIntlContentPath('ja', 'resource', 'clinic-setup-checklist')).toBe(
       '/ja/resources/clinic-setup-checklist',
+    );
+    expect(buildIntlContentPath('en', 'news', 'clinical-expansion-update')).toBe(
+      '/en/news/clinical-expansion-update',
     );
   });
 });

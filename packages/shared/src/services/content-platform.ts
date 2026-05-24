@@ -9,6 +9,7 @@ export const CONTENT_TYPE_ROUTE_SEGMENTS = {
   glossary_term: 'glossary',
   compare_page: 'compare',
   resource: 'resources',
+  news: 'news',
 } as const;
 
 export type ContentType = keyof typeof CONTENT_TYPE_ROUTE_SEGMENTS;
@@ -136,10 +137,18 @@ function pickLocalization(
   locale: string,
 ): IntlContentLocalization | null {
   const items = localizations || [];
-  return items.find((item) => item.locale === locale) || items.find((item) => item.locale === 'en') || items[0] || null;
+  return (
+    items.find((item) => item.locale === locale) ||
+    items.find((item) => item.locale === 'en') ||
+    items[0] ||
+    null
+  );
 }
 
-function mapContentSiteViewRow(row: ContentSiteViewRow, locale: string): IntlPublishedContent | null {
+function mapContentSiteViewRow(
+  row: ContentSiteViewRow,
+  locale: string,
+): IntlPublishedContent | null {
   const content = normalizeArray(row.content_records)[0];
   if (!content) return null;
 
@@ -176,7 +185,9 @@ function mapContentSiteViewRow(row: ContentSiteViewRow, locale: string): IntlPub
     workflow_state: content.workflow_state,
     published_at: row.published_at || content.published_at,
     updated_at: content.updated_at,
-    blocks: normalizeArray(content.content_blocks).filter((block) => block.locale === localization.locale),
+    blocks: normalizeArray(content.content_blocks).filter(
+      (block) => block.locale === localization.locale,
+    ),
     relations: normalizeArray(content.content_relations).sort(
       (left, right) => (left.display_order || 0) - (right.display_order || 0),
     ),
@@ -187,7 +198,11 @@ export function getContentRouteSegment(contentType: ContentType): string {
   return CONTENT_TYPE_ROUTE_SEGMENTS[contentType];
 }
 
-export function buildIntlContentPath(locale: string, contentType: ContentType, slug: string): string {
+export function buildIntlContentPath(
+  locale: string,
+  contentType: ContentType,
+  slug: string,
+): string {
   return `/${locale}/${getContentRouteSegment(contentType)}/${slug}`;
 }
 
@@ -282,7 +297,9 @@ export async function getPublishedIntlContentList(options?: {
   }
 
   return {
-    items: normalizeArray(data as ContentSiteViewRow[]).map((row) => mapContentSiteViewRow(row, locale)).filter(Boolean) as IntlPublishedContent[],
+    items: normalizeArray(data as ContentSiteViewRow[])
+      .map((row) => mapContentSiteViewRow(row, locale))
+      .filter(Boolean) as IntlPublishedContent[],
     total: count || 0,
   };
 }
@@ -351,7 +368,9 @@ export async function getPublishedIntlContentBySlug(options: {
       )
     `;
 
-  async function loadSiteViewByFilter(filterColumn: 'slug_override' | 'content_records.canonical_slug') {
+  async function loadSiteViewByFilter(
+    filterColumn: 'slug_override' | 'content_records.canonical_slug',
+  ) {
     return supabase
       .from('content_site_views')
       .select(selectClause)

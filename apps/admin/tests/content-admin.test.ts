@@ -80,14 +80,28 @@ describe('content-admin helpers', () => {
       source_language: 'en',
       publish_priority: 8,
       content_localizations: [{ locale: 'en', title: 'Clinic Endoscopy Solution' }],
-      content_site_views: [{ site_code: 'intl', publish_status: 'published', route_status: 'active' }],
+      content_site_views: [
+        { site_code: 'intl', publish_status: 'published', route_status: 'active' },
+      ],
       content_blocks: [
         { id: 'block-2', locale: 'en', block_key: 'cta', block_type: 'cta', display_order: 20 },
         { id: 'block-1', locale: 'en', block_key: 'hero', block_type: 'hero', display_order: 10 },
       ],
       content_relations: [
-        { id: 'rel-2', relation_type: 'product', target_type: 'product', target_id: 'p2', display_order: 9 },
-        { id: 'rel-1', relation_type: 'course', target_type: 'course', target_id: 'c1', display_order: 1 },
+        {
+          id: 'rel-2',
+          relation_type: 'product',
+          target_type: 'product',
+          target_id: 'p2',
+          display_order: 9,
+        },
+        {
+          id: 'rel-1',
+          relation_type: 'course',
+          target_type: 'course',
+          target_id: 'c1',
+          display_order: 1,
+        },
       ],
       created_at: '2026-05-24T00:00:00.000Z',
       updated_at: '2026-05-24T01:00:00.000Z',
@@ -98,6 +112,12 @@ describe('content-admin helpers', () => {
     expect(item.relations.map((relation) => relation.id)).toEqual(['rel-1', 'rel-2']);
     expect(getContentRoutePath('en', 'solution', 'clinic-endoscopy-solution')).toBe(
       '/en/solutions/clinic-endoscopy-solution',
+    );
+  });
+
+  it('builds the public route for news content', () => {
+    expect(getContentRoutePath('en', 'news', 'vetsphere-launch-update')).toBe(
+      '/en/news/vetsphere-launch-update',
     );
   });
 });

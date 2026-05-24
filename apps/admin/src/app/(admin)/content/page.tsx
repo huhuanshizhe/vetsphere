@@ -53,6 +53,7 @@ const CONTENT_TYPE_OPTIONS = [
   { value: 'glossary_term', label: '术语词条' },
   { value: 'compare_page', label: '对比页' },
   { value: 'resource', label: '资源页' },
+  { value: 'news', label: '新闻页' },
 ];
 
 const WORKFLOW_OPTIONS = [
@@ -87,7 +88,9 @@ export default function ContentLibraryPage() {
       if (contentType) params.set('contentType', contentType);
       if (workflowState) params.set('workflowState', workflowState);
 
-      const data = await apiFetch<{ items: ContentListItem[] }>(`/api/v1/admin/content?${params.toString()}`);
+      const data = await apiFetch<{ items: ContentListItem[] }>(
+        `/api/v1/admin/content?${params.toString()}`,
+      );
       setItems(data.items || []);
     } catch (loadError) {
       error(`加载内容库失败：${getErrorMessage(loadError)}`);
@@ -185,10 +188,30 @@ export default function ContentLibraryPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="总内容数" value={stats.total} icon={<FileEdit className="h-5 w-5" />} color="blue" />
-        <StatCard label="草稿" value={stats.draft} icon={<FileEdit className="h-5 w-5" />} color="slate" />
-        <StatCard label="待审核" value={stats.inReview} icon={<Search className="h-5 w-5" />} color="amber" />
-        <StatCard label="已发布" value={stats.published} icon={<Sparkles className="h-5 w-5" />} color="emerald" />
+        <StatCard
+          label="总内容数"
+          value={stats.total}
+          icon={<FileEdit className="h-5 w-5" />}
+          color="blue"
+        />
+        <StatCard
+          label="草稿"
+          value={stats.draft}
+          icon={<FileEdit className="h-5 w-5" />}
+          color="slate"
+        />
+        <StatCard
+          label="待审核"
+          value={stats.inReview}
+          icon={<Search className="h-5 w-5" />}
+          color="amber"
+        />
+        <StatCard
+          label="已发布"
+          value={stats.published}
+          icon={<Sparkles className="h-5 w-5" />}
+          color="emerald"
+        />
       </div>
 
       <Card>
@@ -198,8 +221,16 @@ export default function ContentLibraryPage() {
             onChange={(event) => setKeyword(event.target.value)}
             placeholder="搜索标题、slug、专科或术式..."
           />
-          <Select value={contentType} onChange={(event) => setContentType(event.target.value)} options={CONTENT_TYPE_OPTIONS} />
-          <Select value={workflowState} onChange={(event) => setWorkflowState(event.target.value)} options={WORKFLOW_OPTIONS} />
+          <Select
+            value={contentType}
+            onChange={(event) => setContentType(event.target.value)}
+            options={CONTENT_TYPE_OPTIONS}
+          />
+          <Select
+            value={workflowState}
+            onChange={(event) => setWorkflowState(event.target.value)}
+            options={WORKFLOW_OPTIONS}
+          />
           <Button variant="secondary" onClick={() => void loadData()}>
             刷新
           </Button>
@@ -226,12 +257,24 @@ export default function ContentLibraryPage() {
               <table className="w-full min-w-[980px]">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">标题 / 类型</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Slug</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">状态</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">站点视图</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">更新时间</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">操作</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                      标题 / 类型
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                      Slug
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                      状态
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                      站点视图
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                      更新时间
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -242,19 +285,28 @@ export default function ContentLibraryPage() {
                         <p className="mt-1 text-xs text-slate-500">{item.content_type_label}</p>
                         {(item.primary_specialty || item.primary_procedure) && (
                           <p className="mt-1 text-xs text-slate-400">
-                            {[item.primary_specialty, item.primary_procedure].filter(Boolean).join(' / ')}
+                            {[item.primary_specialty, item.primary_procedure]
+                              .filter(Boolean)
+                              .join(' / ')}
                           </p>
                         )}
                       </td>
-                      <td className="px-4 py-3 align-top text-sm text-slate-600">/{item.canonical_slug}</td>
+                      <td className="px-4 py-3 align-top text-sm text-slate-600">
+                        /{item.canonical_slug}
+                      </td>
                       <td className="px-4 py-3 align-top">
                         <StatusBadge status={item.workflow_state} />
                       </td>
                       <td className="px-4 py-3 align-top">
                         <div className="flex flex-col gap-1">
                           {item.site_views.map((siteView) => (
-                            <div key={`${item.id}-${siteView.site_code}`} className="flex items-center gap-2 text-xs text-slate-500">
-                              <span className="font-semibold uppercase text-slate-700">{siteView.site_code}</span>
+                            <div
+                              key={`${item.id}-${siteView.site_code}`}
+                              className="flex items-center gap-2 text-xs text-slate-500"
+                            >
+                              <span className="font-semibold uppercase text-slate-700">
+                                {siteView.site_code}
+                              </span>
                               <StatusBadge status={siteView.publish_status} size="sm" />
                               <StatusBadge status={siteView.route_status} size="sm" />
                             </div>
@@ -267,7 +319,9 @@ export default function ContentLibraryPage() {
                       <td className="px-4 py-3 align-top">
                         <div className="flex justify-end gap-2">
                           <Link href={`/content/${item.id}`}>
-                            <Button size="sm" variant="secondary">编辑</Button>
+                            <Button size="sm" variant="secondary">
+                              编辑
+                            </Button>
                           </Link>
                           <Button
                             size="sm"
@@ -299,7 +353,12 @@ export default function ContentLibraryPage() {
                 </tbody>
               </table>
             </TableContainer>
-            <Pagination page={page} pageSize={PAGE_SIZE} total={items.length} onPageChange={setPage} />
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={items.length}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </Card>
