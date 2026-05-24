@@ -19,6 +19,40 @@ interface CmsSectionWithItems extends CmsSection {
   items: CmsItem[];
 }
 
+interface CmsItemEditor {
+  id: string;
+  item_key: string;
+  item_type: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  image_url: string;
+  icon: string;
+  link_url: string;
+  link_text: string;
+  link_target: string;
+  is_active: boolean;
+  display_order: number;
+  content_json: string;
+}
+
+interface CmsSectionEditor {
+  id: string;
+  section_key: string;
+  section_type: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  cta_text: string;
+  cta_link: string;
+  cta_style: string;
+  is_active: boolean;
+  display_order: number;
+  content_json: string;
+  style_config_json: string;
+  items: CmsItemEditor[];
+}
+
 interface PageFormState {
   page_key: string;
   name: string;
@@ -53,6 +87,79 @@ const STATUS_OPTIONS = [
   { value: 'offline', label: '已下线' },
 ];
 
+function createDraftId(prefix: 'section' | 'item') {
+  return `draft-${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function isDraftId(id: string) {
+  return id.startsWith('draft-');
+}
+
+function stringifyStructured(value: unknown, fallback = '{}') {
+  if (value === null || value === undefined) return fallback;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeOptionalText(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function parseStructuredInput(value: string, fallback: unknown, label: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    throw new Error(`${label} 不是有效 JSON`);
+  }
+}
+
+function buildItemEditor(item?: CmsItem, index = 0): CmsItemEditor {
+  return {
+    id: item?.id || createDraftId('item'),
+    item_key: item?.item_key || '',
+    item_type: item?.item_type || '',
+    title: item?.title || '',
+    subtitle: item?.subtitle || '',
+    description: item?.description || '',
+    image_url: item?.image_url || '',
+    icon: item?.icon || '',
+    link_url: item?.link_url || '',
+    link_text: item?.link_text || '',
+    link_target: item?.link_target || '_self',
+    is_active: item?.is_active ?? true,
+    display_order: item?.display_order ?? index,
+    content_json: stringifyStructured(item?.content, '{}'),
+  };
+}
+
+function buildSectionEditor(section?: CmsSectionWithItems, index = 0): CmsSectionEditor {
+  return {
+    id: section?.id || createDraftId('section'),
+    section_key: section?.section_key || '',
+    section_type: section?.section_type || '',
+    title: section?.title || '',
+    subtitle: section?.subtitle || '',
+    description: section?.description || '',
+    cta_text: section?.cta_text || '',
+    cta_link: section?.cta_link || '',
+    cta_style: section?.cta_style || '',
+    is_active: section?.is_active ?? true,
+    display_order: section?.display_order ?? index,
+    content_json: stringifyStructured(section?.content, '{}'),
+    style_config_json: stringifyStructured(section?.style_config, '{}'),
+    items: (section?.items || []).map((item, itemIndex) => buildItemEditor(item, itemIndex)),
+  };
+}
+
 function buildFormState(page: CmsPage): PageFormState {
   return {
     page_key: page.page_key || '',
@@ -79,7 +186,8 @@ export default function CmsPageDetailPage() {
   const pageId = params.id as string;
 
   const [page, setPage] = useState<CmsPage | null>(null);
-  const [sections, setSections] = useState<CmsSectionWithItems[]>([]);
+  const [baselineSections, setBaselineSections] = useState<CmsSectionWithItems[]>([]);
+  const [sectionEditors, setSectionEditors] = useState<CmsSectionEditor[]>([]);
   const [form, setForm] = useState<PageFormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -108,7 +216,8 @@ export default function CmsPageDetailPage() {
       if (!pageData) {
         setError('该 CMS 页面不存在，或已被删除。');
         setPage(null);
-        setSections([]);
+        setBaselineSections([]);
+        setSectionEditors([]);
         setForm(null);
         return;
       }
@@ -149,16 +258,207 @@ export default function CmsPageDetailPage() {
       }));
 
       setPage(pageData as CmsPage);
-      setSections(nextSections);
+      setBaselineSections(nextSections);
+      setSectionEditors(nextSections.map((section, index) => buildSectionEditor(section, index)));
       setForm(buildFormState(pageData as CmsPage));
     } catch (loadError) {
       console.error('加载 CMS 页面详情失败:', loadError);
       setError('加载 CMS 页面详情失败，请刷新重试。');
       setPage(null);
-      setSections([]);
+      setBaselineSections([]);
+      setSectionEditors([]);
       setForm(null);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function updateSectionEditor(
+    sectionId: string,
+    updater: (current: CmsSectionEditor) => CmsSectionEditor,
+  ) {
+    setSectionEditors((current) =>
+      current.map((section) => (section.id === sectionId ? updater(section) : section)),
+    );
+  }
+
+  function updateSectionField<K extends keyof CmsSectionEditor>(
+    sectionId: string,
+    field: K,
+    value: CmsSectionEditor[K],
+  ) {
+    updateSectionEditor(sectionId, (section) => ({ ...section, [field]: value }));
+  }
+
+  function addSection() {
+    setSectionEditors((current) => [...current, buildSectionEditor(undefined, current.length)]);
+  }
+
+  function removeSection(sectionId: string) {
+    setSectionEditors((current) => current.filter((section) => section.id !== sectionId));
+  }
+
+  function updateSectionItems(
+    sectionId: string,
+    updater: (items: CmsItemEditor[]) => CmsItemEditor[],
+  ) {
+    updateSectionEditor(sectionId, (section) => ({ ...section, items: updater(section.items) }));
+  }
+
+  function addItem(sectionId: string) {
+    updateSectionItems(sectionId, (items) => [...items, buildItemEditor(undefined, items.length)]);
+  }
+
+  function updateItemField<K extends keyof CmsItemEditor>(
+    sectionId: string,
+    itemId: string,
+    field: K,
+    value: CmsItemEditor[K],
+  ) {
+    updateSectionItems(sectionId, (items) =>
+      items.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)),
+    );
+  }
+
+  function removeItem(sectionId: string, itemId: string) {
+    updateSectionItems(sectionId, (items) => items.filter((item) => item.id !== itemId));
+  }
+
+  async function saveSectionEditors(now: string) {
+    const baselineSectionsById = new Map(baselineSections.map((section) => [section.id, section]));
+    const baselineSectionIds = baselineSections.map((section) => section.id);
+    const nextPersistedSectionIds = sectionEditors
+      .map((section) => section.id)
+      .filter((sectionId) => !isDraftId(sectionId));
+
+    const removedSectionIds = baselineSectionIds.filter(
+      (sectionId) => !nextPersistedSectionIds.includes(sectionId),
+    );
+
+    if (removedSectionIds.length > 0) {
+      const { error: deleteSectionsError } = await supabase
+        .from('cms_sections')
+        .delete()
+        .eq('page_id', pageId)
+        .in('id', removedSectionIds);
+
+      if (deleteSectionsError) throw deleteSectionsError;
+    }
+
+    for (const [sectionIndex, section] of sectionEditors.entries()) {
+      const sectionKey = section.section_key.trim();
+      const sectionType = section.section_type.trim();
+
+      if (!sectionKey || !sectionType) {
+        throw new Error(`第 ${sectionIndex + 1} 个区块缺少 section_key 或 section_type。`);
+      }
+
+      const sectionPayload = {
+        page_id: pageId,
+        section_key: sectionKey,
+        section_type: sectionType,
+        title: normalizeOptionalText(section.title),
+        subtitle: normalizeOptionalText(section.subtitle),
+        description: normalizeOptionalText(section.description),
+        content: parseStructuredInput(
+          section.content_json,
+          {},
+          `第 ${sectionIndex + 1} 个区块内容`,
+        ),
+        cta_text: normalizeOptionalText(section.cta_text),
+        cta_link: normalizeOptionalText(section.cta_link),
+        cta_style: normalizeOptionalText(section.cta_style),
+        is_active: section.is_active,
+        display_order: Number.isFinite(section.display_order)
+          ? section.display_order
+          : sectionIndex,
+        style_config: parseStructuredInput(
+          section.style_config_json,
+          {},
+          `第 ${sectionIndex + 1} 个区块样式配置`,
+        ),
+        updated_at: now,
+      };
+
+      let persistedSectionId = section.id;
+
+      if (isDraftId(section.id)) {
+        const { data: newSection, error: insertSectionError } = await supabase
+          .from('cms_sections')
+          .insert(sectionPayload)
+          .select('*')
+          .single();
+
+        if (insertSectionError) throw insertSectionError;
+        persistedSectionId = (newSection as CmsSection).id;
+      } else {
+        const { error: updateSectionError } = await supabase
+          .from('cms_sections')
+          .update(sectionPayload)
+          .eq('id', section.id)
+          .eq('page_id', pageId);
+
+        if (updateSectionError) throw updateSectionError;
+      }
+
+      const baselineItems = !isDraftId(section.id)
+        ? baselineSectionsById.get(section.id)?.items || []
+        : [];
+      const baselineItemIds = baselineItems.map((item) => item.id);
+      const nextPersistedItemIds = section.items
+        .map((item) => item.id)
+        .filter((itemId) => !isDraftId(itemId));
+
+      const removedItemIds = baselineItemIds.filter(
+        (itemId) => !nextPersistedItemIds.includes(itemId),
+      );
+
+      if (removedItemIds.length > 0) {
+        const { error: deleteItemsError } = await supabase
+          .from('cms_items')
+          .delete()
+          .eq('section_id', persistedSectionId)
+          .in('id', removedItemIds);
+
+        if (deleteItemsError) throw deleteItemsError;
+      }
+
+      for (const [itemIndex, item] of section.items.entries()) {
+        const itemPayload = {
+          section_id: persistedSectionId,
+          item_key: normalizeOptionalText(item.item_key),
+          item_type: normalizeOptionalText(item.item_type),
+          title: normalizeOptionalText(item.title),
+          subtitle: normalizeOptionalText(item.subtitle),
+          description: normalizeOptionalText(item.description),
+          content: parseStructuredInput(
+            item.content_json,
+            {},
+            `第 ${sectionIndex + 1} 个区块的第 ${itemIndex + 1} 个子项内容`,
+          ),
+          image_url: normalizeOptionalText(item.image_url),
+          icon: normalizeOptionalText(item.icon),
+          link_url: normalizeOptionalText(item.link_url),
+          link_text: normalizeOptionalText(item.link_text),
+          link_target: normalizeOptionalText(item.link_target) || '_self',
+          is_active: item.is_active,
+          display_order: Number.isFinite(item.display_order) ? item.display_order : itemIndex,
+          updated_at: now,
+        };
+
+        if (isDraftId(item.id)) {
+          const { error: insertItemError } = await supabase.from('cms_items').insert(itemPayload);
+          if (insertItemError) throw insertItemError;
+        } else {
+          const { error: updateItemError } = await supabase
+            .from('cms_items')
+            .update(itemPayload)
+            .eq('id', item.id)
+            .eq('section_id', persistedSectionId);
+
+          if (updateItemError) throw updateItemError;
+        }
+      }
     }
   }
 
@@ -177,6 +477,7 @@ export default function CmsPageDetailPage() {
       const now = new Date().toISOString();
       const { data: authData } = await supabase.auth.getUser();
       const nextVersion = (page.version || 1) + 1;
+      const totalItems = sectionEditors.reduce((sum, section) => sum + section.items.length, 0);
 
       const updateData: CmsPageUpdatePayload = {
         page_key: form.page_key.trim(),
@@ -204,6 +505,8 @@ export default function CmsPageDetailPage() {
 
       if (updateError) throw updateError;
 
+      await saveSectionEditors(now);
+
       await supabase.from('admin_audit_logs').insert({
         admin_user_id: authData.user?.id,
         module: 'cms',
@@ -211,28 +514,28 @@ export default function CmsPageDetailPage() {
         target_type: 'cms_page',
         target_id: page.id,
         target_name: form.name.trim(),
-        changes_summary: `更新CMS页面: ${form.name.trim()}`,
+        changes_summary: `更新CMS页面: ${form.name.trim()}（${sectionEditors.length}个区块，${totalItems}个子项）`,
       });
 
-      setNotice('保存成功');
+      setNotice('保存成功，页面与区块结构已同步。');
       await loadPage();
     } catch (saveError) {
       console.error('保存 CMS 页面失败:', saveError);
-      setError('保存失败，请重试。');
+      setError(saveError instanceof Error ? saveError.message : '保存失败，请重试。');
     } finally {
       setSaving(false);
     }
   }
 
   const stats = useMemo(() => {
-    const activeSections = sections.filter((section) => section.is_active).length;
-    const itemCount = sections.reduce((sum, section) => sum + section.items.length, 0);
+    const activeSections = sectionEditors.filter((section) => section.is_active).length;
+    const itemCount = sectionEditors.reduce((sum, section) => sum + section.items.length, 0);
     return {
-      sectionCount: sections.length,
+      sectionCount: sectionEditors.length,
       activeSections,
       itemCount,
     };
-  }, [sections]);
+  }, [sectionEditors]);
 
   if (loading) {
     return (
@@ -295,7 +598,7 @@ export default function CmsPageDetailPage() {
             返回页面管理
           </Button>
           <Button onClick={() => void handleSave()} loading={saving}>
-            保存页面
+            保存页面与区块
           </Button>
         </div>
       </div>
@@ -442,63 +745,433 @@ export default function CmsPageDetailPage() {
           <Card>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">区块概览</h2>
+                <h2 className="text-lg font-semibold text-slate-900">区块编辑器</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  先把 404 补上，这里提供页面区块与子项的结构检查。
+                  在当前页面直接新增、删除和调整区块及子项，保存时会和页面基础字段一起落库。
                 </p>
               </div>
-              <StatusBadge
-                status={
-                  stats.activeSections === stats.sectionCount && stats.sectionCount > 0
-                    ? 'active'
-                    : 'draft'
-                }
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge
+                  status={
+                    stats.activeSections === stats.sectionCount && stats.sectionCount > 0
+                      ? 'active'
+                      : 'draft'
+                  }
+                />
+                <Button variant="secondary" size="sm" onClick={addSection}>
+                  新增区块
+                </Button>
+              </div>
             </div>
 
-            <div className="mt-4 space-y-3">
-              {sections.length === 0 ? (
+            <div className="mt-4 space-y-4">
+              {sectionEditors.length === 0 ? (
                 <EmptyState
                   icon="🧱"
                   title="当前没有区块"
-                  description="这条 CMS 页面还没有挂接任何 section。"
+                  description="点击右上角新增区块，即可开始配置页面结构。"
+                  action={
+                    <Button variant="secondary" onClick={addSection}>
+                      新增第一个区块
+                    </Button>
+                  }
                 />
               ) : (
-                sections.map((section) => (
+                sectionEditors.map((section, sectionIndex) => (
                   <div key={section.id} className="rounded-lg border border-slate-200 p-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-semibold text-slate-900">
-                            {section.title || section.section_key}
+                            {section.title || section.section_key || `区块 ${sectionIndex + 1}`}
                           </p>
-                          <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                            {section.section_key}
-                          </code>
-                          <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                            {section.section_type}
-                          </code>
+                          {section.section_key && (
+                            <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                              {section.section_key}
+                            </code>
+                          )}
+                          {section.section_type && (
+                            <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                              {section.section_type}
+                            </code>
+                          )}
                         </div>
-                        {section.description && (
-                          <p className="mt-2 text-sm text-slate-500">{section.description}</p>
-                        )}
+                        <p className="mt-2 text-sm text-slate-500">
+                          {section.items.length} 个子项 · 排序 {section.display_order}
+                        </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusBadge status={section.is_active ? 'active' : 'hidden'} size="sm" />
-                        <span className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-                          排序 {section.display_order}
-                        </span>
-                        <span className="rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-                          {section.items.length} 个子项
-                        </span>
+                        <Button variant="ghost" size="sm" onClick={() => removeSection(section.id)}>
+                          移除区块
+                        </Button>
                       </div>
                     </div>
-                    {(section.cta_text || section.cta_link) && (
-                      <div className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                        CTA: {section.cta_text || '未命名'}{' '}
-                        {section.cta_link ? `-> ${section.cta_link}` : ''}
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-3">
+                      <Input
+                        label="section_key"
+                        value={section.section_key}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'section_key', event.target.value)
+                        }
+                        placeholder="hero"
+                      />
+                      <Input
+                        label="section_type"
+                        value={section.section_type}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'section_type', event.target.value)
+                        }
+                        placeholder="card_grid"
+                      />
+                      <Input
+                        label="display_order"
+                        type="number"
+                        value={String(section.display_order)}
+                        onChange={(event) =>
+                          updateSectionField(
+                            section.id,
+                            'display_order',
+                            Number(event.target.value || sectionIndex),
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <Input
+                        label="标题"
+                        value={section.title}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'title', event.target.value)
+                        }
+                      />
+                      <Input
+                        label="副标题"
+                        value={section.subtitle}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'subtitle', event.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="mt-4 space-y-1.5">
+                      <label className="block text-sm font-medium text-slate-700">区块描述</label>
+                      <textarea
+                        value={section.description}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'description', event.target.value)
+                        }
+                        rows={3}
+                        className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-3">
+                      <Input
+                        label="CTA 文案"
+                        value={section.cta_text}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'cta_text', event.target.value)
+                        }
+                      />
+                      <Input
+                        label="CTA 链接"
+                        value={section.cta_link}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'cta_link', event.target.value)
+                        }
+                      />
+                      <Input
+                        label="CTA 样式"
+                        value={section.cta_style}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'cta_style', event.target.value)
+                        }
+                        placeholder="primary"
+                      />
+                    </div>
+
+                    <label className="mt-4 flex items-center gap-2 text-sm font-medium text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={section.is_active}
+                        onChange={(event) =>
+                          updateSectionField(section.id, 'is_active', event.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      启用区块
+                    </label>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-slate-700">
+                          content JSON
+                        </label>
+                        <textarea
+                          value={section.content_json}
+                          onChange={(event) =>
+                            updateSectionField(section.id, 'content_json', event.target.value)
+                          }
+                          rows={8}
+                          className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
                       </div>
-                    )}
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-slate-700">
+                          style_config JSON
+                        </label>
+                        <textarea
+                          value={section.style_config_json}
+                          onChange={(event) =>
+                            updateSectionField(section.id, 'style_config_json', event.target.value)
+                          }
+                          rows={8}
+                          className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900">子项列表</h3>
+                          <p className="mt-1 text-xs text-slate-500">
+                            适用于卡片、列表项、功能点等可重复内容。
+                          </p>
+                        </div>
+                        <Button variant="secondary" size="sm" onClick={() => addItem(section.id)}>
+                          新增子项
+                        </Button>
+                      </div>
+
+                      <div className="mt-4 space-y-4">
+                        {section.items.length === 0 ? (
+                          <EmptyState
+                            title="暂无子项"
+                            description="为这个区块添加卡片、要点或 CTA 子项。"
+                          />
+                        ) : (
+                          section.items.map((item, itemIndex) => (
+                            <div
+                              key={item.id}
+                              className="rounded-md border border-slate-200 bg-white p-4"
+                            >
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                  <p className="text-sm font-semibold text-slate-900">
+                                    {item.title || item.item_key || `子项 ${itemIndex + 1}`}
+                                  </p>
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    {item.item_type || '未设置类型'} · 排序 {item.display_order}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <StatusBadge
+                                    status={item.is_active ? 'active' : 'hidden'}
+                                    size="sm"
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeItem(section.id, item.id)}
+                                  >
+                                    移除子项
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                <Input
+                                  label="item_key"
+                                  value={item.item_key}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'item_key',
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="feature-1"
+                                />
+                                <Input
+                                  label="item_type"
+                                  value={item.item_type}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'item_type',
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="card"
+                                />
+                                <Input
+                                  label="display_order"
+                                  type="number"
+                                  value={String(item.display_order)}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'display_order',
+                                      Number(event.target.value || itemIndex),
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                <Input
+                                  label="标题"
+                                  value={item.title}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'title',
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                                <Input
+                                  label="副标题"
+                                  value={item.subtitle}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'subtitle',
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="mt-4 space-y-1.5">
+                                <label className="block text-sm font-medium text-slate-700">
+                                  子项描述
+                                </label>
+                                <textarea
+                                  value={item.description}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'description',
+                                      event.target.value,
+                                    )
+                                  }
+                                  rows={3}
+                                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                              </div>
+
+                              <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                                <Input
+                                  label="图标"
+                                  value={item.icon}
+                                  onChange={(event) =>
+                                    updateItemField(section.id, item.id, 'icon', event.target.value)
+                                  }
+                                />
+                                <Input
+                                  label="图片 URL"
+                                  value={item.image_url}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'image_url',
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                                <Input
+                                  label="链接 URL"
+                                  value={item.link_url}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'link_url',
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                                <Input
+                                  label="链接文案"
+                                  value={item.link_text}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'link_text',
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                <Input
+                                  label="link_target"
+                                  value={item.link_target}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'link_target',
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="_self"
+                                />
+                                <label className="flex items-center gap-2 pt-8 text-sm font-medium text-slate-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.is_active}
+                                    onChange={(event) =>
+                                      updateItemField(
+                                        section.id,
+                                        item.id,
+                                        'is_active',
+                                        event.target.checked,
+                                      )
+                                    }
+                                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                  />
+                                  启用子项
+                                </label>
+                              </div>
+
+                              <div className="mt-4 space-y-1.5">
+                                <label className="block text-sm font-medium text-slate-700">
+                                  content JSON
+                                </label>
+                                <textarea
+                                  value={item.content_json}
+                                  onChange={(event) =>
+                                    updateItemField(
+                                      section.id,
+                                      item.id,
+                                      'content_json',
+                                      event.target.value,
+                                    )
+                                  }
+                                  rows={6}
+                                  className="w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
@@ -541,12 +1214,11 @@ export default function CmsPageDetailPage() {
             <h2 className="text-lg font-semibold text-slate-900">当前修复说明</h2>
             <div className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
               <p>
-                之前列表页把“编辑”跳到了 `/cms/pages/:id`，但代码里没有这条动态路由，所以线上只能
-                404。
+                这条详情页现在不仅补齐了 `/cms/pages/:id` 路由，也把 section 和 item
+                的基础编辑能力收进来了。
               </p>
               <p>
-                这次先补了详情页入口与基础编辑，区块编辑仍保持为结构概览，不扩散到整套 CMS
-                编辑器重构。
+                当前版本优先解决运维闭环：页面元信息、区块结构、子项内容都能在同一页保存；如需更重的拖拽排序和可视预览，再单独扩展。
               </p>
             </div>
           </Card>
