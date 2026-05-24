@@ -316,6 +316,15 @@ export const ADMIN_NAVIGATION: NavGroup[] = [
         badge: 'new' as const,
       },
       {
+        key: 'content-handbook',
+        label: '运营手册',
+        icon: 'BookOpen',
+        href: '/content/handbook',
+        permission: 'cms.view',
+        siteScope: 'intl',
+        badge: 'new' as const,
+      },
+      {
         key: 'cms-pages',
         label: '页面管理',
         icon: 'FileText',

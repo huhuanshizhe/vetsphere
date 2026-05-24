@@ -18,7 +18,7 @@ import {
 } from '@/components/ui';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { CONTENT_ADMIN_SITE_CODE } from '@/lib/content-admin';
-import { FileEdit, Library, Search, Sparkles } from 'lucide-react';
+import { BookOpen, FileEdit, Library, Search, Sparkles } from 'lucide-react';
 
 interface ContentSiteView {
   site_code: string;
@@ -156,6 +156,11 @@ export default function ContentLibraryPage() {
         <div className="flex flex-wrap gap-3">
           <Link href="/content/dashboard">
             <Button variant="secondary">内容面板</Button>
+          </Link>
+          <Link href="/content/handbook">
+            <Button variant="secondary" icon={<BookOpen className="h-4 w-4" />}>
+              运营手册
+            </Button>
           </Link>
           <Link href="/content/review">
             <Button variant="secondary">审核队列</Button>

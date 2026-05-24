@@ -18,7 +18,7 @@ import {
 import { CONTENT_ADMIN_SITE_CODE, getContentRoutePath } from '@/lib/content-admin';
 import type { ContentOpsBriefItem, ContentOpsEventItem, ContentOpsGenerationRunItem, ContentOpsResponse, ContentOpsReviewItem } from '@/lib/content-ops';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
-import { CalendarDays, ClipboardCheck, Library, RefreshCw, Sparkles } from 'lucide-react';
+import { BookOpen, CalendarDays, ClipboardCheck, Library, RefreshCw, Sparkles } from 'lucide-react';
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return '未记录';
@@ -108,6 +108,11 @@ function ContentOpsHeader({
         <Link href="/content">
           <Button variant="secondary" icon={<Library className="h-4 w-4" />}>
             内容库
+          </Button>
+        </Link>
+        <Link href="/content/handbook">
+          <Button variant="secondary" icon={<BookOpen className="h-4 w-4" />}>
+            运营手册
           </Button>
         </Link>
         <Link href="/content/review">
