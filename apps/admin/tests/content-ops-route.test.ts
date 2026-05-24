@@ -57,7 +57,7 @@ describe('content ops API route', () => {
     mocks.assertSiteAuthorized.mockImplementation(() => undefined);
   });
 
-  it('returns summary, review queue, freshness, briefs, and filtered generation runs', async () => {
+  it('returns summary, review queue, schedule candidates, briefs, and filtered generation runs', async () => {
     const supabaseMock = {
       from: vi.fn((table: string) => {
         if (table === 'content_records') {
@@ -153,6 +153,7 @@ describe('content ops API route', () => {
                   title: 'TPLO expansion brief',
                   target_audience: 'Referral clinics',
                   search_intent: 'commercial investigation',
+                  primary_angle: 'Training pathway with equipment readiness',
                   status: 'ready',
                   owner_id: 'owner-1',
                   updated_at: '2026-05-20T00:00:00.000Z',
@@ -235,9 +236,16 @@ describe('content ops API route', () => {
           locale_count: 1,
         }),
       ],
+      scheduleCandidates: [
+        expect.objectContaining({
+          id: 'content-1',
+          canonical_slug: 'tplo',
+        }),
+      ],
       briefs: [
         expect.objectContaining({
           id: 'brief-1',
+          primary_angle: 'Training pathway with equipment readiness',
           status: 'ready',
         }),
       ],

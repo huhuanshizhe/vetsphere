@@ -6,7 +6,9 @@ import {
   Button,
   Card,
   EmptyState,
+  Input,
   LoadingState,
+  Select,
   StatCard,
   StatusBadge,
   TableContainer,
@@ -31,6 +33,32 @@ function getFreshnessLabel(days: number) {
 function getBriefStatusBadge(status: ContentOpsBriefItem['status']) {
   if (status === 'ready') return 'approved';
   return status;
+}
+
+const BRIEF_STATUS_OPTIONS = [
+  { value: 'draft', label: '草稿' },
+  { value: 'ready', label: 'Ready' },
+  { value: 'archived', label: '已归档' },
+];
+
+interface BriefFormState {
+  title: string;
+  contentId: string;
+  targetAudience: string;
+  searchIntent: string;
+  primaryAngle: string;
+  status: ContentOpsBriefItem['status'];
+}
+
+function createEmptyBriefForm(): BriefFormState {
+  return {
+    title: '',
+    contentId: '',
+    targetAudience: '',
+    searchIntent: '',
+    primaryAngle: '',
+    status: 'draft',
+  };
 }
 
 function ContentOpsHeader({
@@ -209,7 +237,74 @@ function ReviewQueueTable({
   );
 }
 
-function BriefsTable({ briefs }: { briefs: ContentOpsBriefItem[] }) {
+function ScheduleCandidatesTable({
+  items,
+  locale,
+  schedulingId,
+  onSchedule,
+}: {
+  items: ContentOpsReviewItem[];
+  locale: string;
+  schedulingId: string | null;
+  onSchedule: (contentId: string) => Promise<void>;
+}) {
+  if (items.length === 0) {
+    return <EmptyState icon="🗓️" title="当前没有可加入排期的内容" description="满足发布前置的内容会优先出现在这里。" />;
+  }
+
+  return (
+    <TableContainer>
+      <table className="w-full min-w-[920px]">
+        <thead>
+          <tr className="border-b border-slate-200 bg-slate-50">
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">内容</th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">当前工作流</th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">发布就绪性</th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">最近更新</th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">操作</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {items.map((item) => (
+            <tr key={item.id} className="align-top hover:bg-slate-50">
+              <td className="px-4 py-3">
+                <ContentTitleCell item={item} locale={locale} />
+              </td>
+              <td className="px-4 py-3">
+                <div className="space-y-2">
+                  <StatusBadge status={item.workflow_state} />
+                  <p className="text-xs text-slate-500">优先级 {item.publish_priority}</p>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <ReadinessCell item={item} />
+              </td>
+              <td className="px-4 py-3">
+                <div className="space-y-1">
+                  <p className="text-sm text-slate-700">{getFreshnessLabel(item.days_since_update)}</p>
+                  <p className="text-xs text-slate-500">{formatDateTime(item.updated_at)}</p>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <Button size="sm" loading={schedulingId === item.id} onClick={() => void onSchedule(item.id)}>
+                  加入排期
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableContainer>
+  );
+}
+
+function BriefsTable({
+  briefs,
+  onEdit,
+}: {
+  briefs: ContentOpsBriefItem[];
+  onEdit: (brief: ContentOpsBriefItem) => void;
+}) {
   if (briefs.length === 0) {
     return <EmptyState icon="📝" title="当前没有 brief" description="可以从 AI 工作台或内容规划流程开始创建 brief。" />;
   }
@@ -223,6 +318,7 @@ function BriefsTable({ briefs }: { briefs: ContentOpsBriefItem[] }) {
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">状态</th>
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">受众 / 意图</th>
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">最近更新</th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">操作</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -246,9 +342,20 @@ function BriefsTable({ briefs }: { briefs: ContentOpsBriefItem[] }) {
                 <div className="space-y-1 text-sm text-slate-700">
                   <p>{brief.target_audience || '未填写受众'}</p>
                   <p className="text-xs text-slate-500">{brief.search_intent || '未填写搜索意图'}</p>
+                  {brief.primary_angle && <p className="text-xs text-slate-400">角度：{brief.primary_angle}</p>}
                 </div>
               </td>
               <td className="px-4 py-3 text-sm text-slate-600">{formatDateTime(brief.updated_at)}</td>
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => onEdit(brief)}>
+                    编辑 brief
+                  </Button>
+                  <Link href={`/ai/studio?taskKey=content_brief_planner&query=${encodeURIComponent(brief.title)}`}>
+                    <Button variant="secondary" size="sm">AI 补全</Button>
+                  </Link>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -311,7 +418,7 @@ function GenerationRunFeed({ items }: { items: ContentOpsGenerationRunItem[] }) 
 
 function useContentOpsData() {
   const activeSiteCode = CONTENT_ADMIN_SITE_CODE;
-  const { toasts, removeToast, error } = useToast();
+  const { toasts, removeToast, success, error } = useToast();
   const [data, setData] = useState<ContentOpsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -342,6 +449,8 @@ function useContentOpsData() {
     loadData,
     toasts,
     removeToast,
+    success,
+    error,
   };
 }
 
@@ -527,7 +636,86 @@ export function ContentReviewQueueView() {
 }
 
 export function ContentCalendarView() {
-  const { data, loading, refreshing, loadData, toasts, removeToast } = useContentOpsData();
+  const { activeSiteCode, data, loading, refreshing, loadData, toasts, removeToast, success, error } = useContentOpsData();
+  const [briefForm, setBriefForm] = useState<BriefFormState>(() => createEmptyBriefForm());
+  const [editingBriefId, setEditingBriefId] = useState<string | null>(null);
+  const [savingBrief, setSavingBrief] = useState(false);
+  const [schedulingId, setSchedulingId] = useState<string | null>(null);
+
+  const resetBriefForm = useCallback(() => {
+    setEditingBriefId(null);
+    setBriefForm(createEmptyBriefForm());
+  }, []);
+
+  const handleEditBrief = useCallback((brief: ContentOpsBriefItem) => {
+    setEditingBriefId(brief.id);
+    setBriefForm({
+      title: brief.title,
+      contentId: brief.content_id || '',
+      targetAudience: brief.target_audience || '',
+      searchIntent: brief.search_intent || '',
+      primaryAngle: brief.primary_angle || '',
+      status: brief.status,
+    });
+  }, []);
+
+  async function handleSaveBrief() {
+    if (!data) return;
+    if (!briefForm.title.trim()) {
+      error('请先填写 brief 标题');
+      return;
+    }
+
+    setSavingBrief(true);
+    try {
+      const payload = {
+        siteCode: activeSiteCode,
+        locale: data.locale,
+        title: briefForm.title.trim(),
+        contentId: briefForm.contentId.trim() || null,
+        targetAudience: briefForm.targetAudience.trim() || null,
+        searchIntent: briefForm.searchIntent.trim() || null,
+        primaryAngle: briefForm.primaryAngle.trim() || null,
+        status: briefForm.status,
+      };
+
+      if (editingBriefId) {
+        await apiFetch(`/api/v1/admin/content/briefs/${editingBriefId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await apiFetch('/api/v1/admin/content/briefs', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }
+
+      success(editingBriefId ? 'Brief 已更新' : 'Brief 已创建');
+      resetBriefForm();
+      await loadData();
+    } catch (saveError) {
+      error(`保存 brief 失败：${getErrorMessage(saveError)}`);
+    } finally {
+      setSavingBrief(false);
+    }
+  }
+
+  async function handleSchedule(contentId: string) {
+    setSchedulingId(contentId);
+    try {
+      await apiFetch(`/api/v1/admin/content/${contentId}/schedule`, {
+        method: 'POST',
+        body: JSON.stringify({ siteCode: activeSiteCode }),
+      });
+      success('内容已加入排期');
+      await loadData();
+    } catch (scheduleError) {
+      error(`加入排期失败：${getErrorMessage(scheduleError)}`);
+    } finally {
+      setSchedulingId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -572,30 +760,131 @@ export function ContentCalendarView() {
         <StatCard label="待保鲜" value={data.summary.stale} color="rose" />
       </div>
 
-      <Card padding="none">
-        <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
-          <h2 className="text-lg font-semibold text-slate-900">已排期内容</h2>
-          <p className="mt-1 text-sm text-slate-500">当前以工作流状态为 scheduled 的内容会进入这个执行面板。</p>
-        </div>
-        <div className="p-4 sm:p-5">
-          <ReviewQueueTable
-            items={data.scheduled}
-            locale={data.locale}
-            emptyTitle="目前没有已排期内容"
-            emptyDescription="将内容状态推进到 scheduled 后，就会出现在这里。"
-          />
-        </div>
-      </Card>
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card padding="none">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <h2 className="text-lg font-semibold text-slate-900">待加入排期</h2>
+            <p className="mt-1 text-sm text-slate-500">优先暴露已满足发布前置、但还没有进入 scheduled 的内容。</p>
+          </div>
+          <div className="p-4 sm:p-5">
+            <ScheduleCandidatesTable
+              items={data.scheduleCandidates}
+              locale={data.locale}
+              schedulingId={schedulingId}
+              onSchedule={handleSchedule}
+            />
+          </div>
+        </Card>
 
-      <Card padding="none">
-        <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
-          <h2 className="text-lg font-semibold text-slate-900">Brief 池</h2>
-          <p className="mt-1 text-sm text-slate-500">跟踪 brief 的准备度，避免生成链路和人工编辑链路脱节。</p>
-        </div>
-        <div className="p-4 sm:p-5">
-          <BriefsTable briefs={data.briefs} />
-        </div>
-      </Card>
+        <Card>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">创建 / 编辑 Brief</h2>
+              <p className="mt-1 text-sm text-slate-500">默认把负责人记为当前管理员，可先绑定内容，再继续进入 AI 工作台。</p>
+            </div>
+            {editingBriefId && (
+              <Button variant="ghost" size="sm" onClick={resetBriefForm}>
+                取消编辑
+              </Button>
+            )}
+          </div>
+
+          <div className="mt-4 space-y-4">
+            <Input
+              label="Brief 标题"
+              value={briefForm.title}
+              onChange={(event) => setBriefForm((current) => ({ ...current, title: event.target.value }))}
+              placeholder="例如：TPLO training page refresh brief"
+            />
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Input
+                label="绑定内容 ID"
+                value={briefForm.contentId}
+                onChange={(event) => setBriefForm((current) => ({ ...current, contentId: event.target.value }))}
+                placeholder="可选，绑定现有内容"
+              />
+              <Select
+                label="Brief 状态"
+                value={briefForm.status}
+                onChange={(event) => setBriefForm((current) => ({ ...current, status: event.target.value as ContentOpsBriefItem['status'] }))}
+                options={BRIEF_STATUS_OPTIONS}
+              />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Input
+                label="目标受众"
+                value={briefForm.targetAudience}
+                onChange={(event) => setBriefForm((current) => ({ ...current, targetAudience: event.target.value }))}
+                placeholder="例如：转诊骨科诊所"
+              />
+              <Input
+                label="搜索意图"
+                value={briefForm.searchIntent}
+                onChange={(event) => setBriefForm((current) => ({ ...current, searchIntent: event.target.value }))}
+                placeholder="例如：commercial investigation"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">主要角度</label>
+              <textarea
+                value={briefForm.primaryAngle}
+                onChange={(event) => setBriefForm((current) => ({ ...current, primaryAngle: event.target.value }))}
+                rows={4}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                placeholder="例如：强调术前评估、器械准备和围手术期协同。"
+              />
+            </div>
+
+            <p className="text-xs text-slate-500">保存后就可以在 AI 工作台继续生成 brief、outline 或 draft。</p>
+
+            <div className="flex flex-wrap justify-end gap-3">
+              {briefForm.title.trim() && (
+                <Link href={`/ai/studio?taskKey=content_brief_planner&query=${encodeURIComponent(briefForm.title.trim())}`}>
+                  <Button variant="secondary">在 AI 工作台继续</Button>
+                </Link>
+              )}
+              {editingBriefId && (
+                <Button variant="ghost" onClick={resetBriefForm}>
+                  取消
+                </Button>
+              )}
+              <Button loading={savingBrief} onClick={() => void handleSaveBrief()}>
+                {editingBriefId ? '更新 Brief' : '创建 Brief'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 2xl:grid-cols-2">
+        <Card padding="none">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <h2 className="text-lg font-semibold text-slate-900">已排期内容</h2>
+            <p className="mt-1 text-sm text-slate-500">当前以工作流状态为 scheduled 的内容会进入这个执行面板。</p>
+          </div>
+          <div className="p-4 sm:p-5">
+            <ReviewQueueTable
+              items={data.scheduled}
+              locale={data.locale}
+              emptyTitle="目前没有已排期内容"
+              emptyDescription="将内容状态推进到 scheduled 后，就会出现在这里。"
+            />
+          </div>
+        </Card>
+
+        <Card padding="none">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <h2 className="text-lg font-semibold text-slate-900">Brief 池</h2>
+            <p className="mt-1 text-sm text-slate-500">跟踪 brief 的准备度，避免生成链路和人工编辑链路脱节。</p>
+          </div>
+          <div className="p-4 sm:p-5">
+            <BriefsTable briefs={data.briefs} onEdit={handleEditBrief} />
+          </div>
+        </Card>
+      </div>
 
       <Card>
         <h2 className="text-lg font-semibold text-slate-900">最近 AI 生产动态</h2>

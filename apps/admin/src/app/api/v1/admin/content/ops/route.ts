@@ -136,7 +136,7 @@ export const GET = withAdminAuth(async (req, { admin }) => {
       .limit(300),
     supabase
       .from('content_briefs')
-      .select('id, content_id, site_code, locale, title, target_audience, search_intent, status, owner_id, updated_at, created_at')
+      .select('id, content_id, site_code, locale, title, target_audience, search_intent, primary_angle, status, owner_id, updated_at, created_at')
       .eq('site_code', siteCode)
       .order('updated_at', { ascending: false })
       .limit(limit),
@@ -173,7 +173,7 @@ export const GET = withAdminAuth(async (req, { admin }) => {
       acc.total += 1;
       acc[item.workflow_state] += 1;
       if (item.days_since_update >= STALE_CONTENT_DAYS) acc.stale += 1;
-      if (item.publish_readiness_failures.length === 0 && item.workflow_state !== 'published') {
+      if (item.publish_readiness_failures.length === 0 && !['published', 'archived'].includes(item.workflow_state)) {
         acc.ready_to_publish += 1;
       }
       return acc;
@@ -202,6 +202,12 @@ export const GET = withAdminAuth(async (req, { admin }) => {
     .sort((left, right) => right.days_since_update - left.days_since_update)
     .slice(0, limit);
 
+  const scheduleCandidates = sortByPriority(
+    siteItems.filter(
+      (item) => !['published', 'scheduled', 'archived'].includes(item.workflow_state) && item.publish_readiness_failures.length === 0,
+    ),
+  ).slice(0, limit);
+
   const scheduled = sortByPriority(siteItems.filter((item) => item.workflow_state === 'scheduled')).slice(0, limit);
 
   const briefs = (briefsResult.data || []) as ContentOpsBriefItem[];
@@ -220,6 +226,7 @@ export const GET = withAdminAuth(async (req, { admin }) => {
     summary,
     reviewQueue,
     freshness,
+    scheduleCandidates,
     scheduled,
     briefs,
     recentEvents,

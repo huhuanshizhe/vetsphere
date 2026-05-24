@@ -1,5 +1,7 @@
 import type { AdminContentListItem, AdminContentSiteView } from '@/lib/content-admin';
 
+export type ContentBriefStatus = 'draft' | 'ready' | 'archived';
+
 export interface ContentOpsReviewItem extends AdminContentListItem {
   publish_priority: number;
   reviewer_id: string | null;
@@ -19,7 +21,8 @@ export interface ContentOpsBriefItem {
   title: string;
   target_audience: string | null;
   search_intent: string | null;
-  status: 'draft' | 'ready' | 'archived';
+  primary_angle: string | null;
+  status: ContentBriefStatus;
   owner_id: string | null;
   updated_at: string;
   created_at: string;
@@ -67,6 +70,7 @@ export interface ContentOpsResponse {
   summary: ContentOpsSummary;
   reviewQueue: ContentOpsReviewItem[];
   freshness: ContentOpsReviewItem[];
+  scheduleCandidates: ContentOpsReviewItem[];
   scheduled: ContentOpsReviewItem[];
   briefs: ContentOpsBriefItem[];
   recentEvents: ContentOpsEventItem[];
