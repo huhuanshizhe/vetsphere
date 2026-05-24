@@ -84,11 +84,14 @@ export default function ContentAiStudioPage() {
   const { toasts, removeToast, success, error } = useToast();
 
   const [taskKey, setTaskKey] = useState(searchParams.get('taskKey') || 'content_brief_planner');
+  const [briefId, setBriefId] = useState(searchParams.get('briefId') || '');
   const [contentId, setContentId] = useState(searchParams.get('contentId') || '');
-  const [locale, setLocale] = useState('en');
+  const [locale, setLocale] = useState(searchParams.get('locale') || 'en');
   const [query, setQuery] = useState(searchParams.get('query') || '');
-  const [instructions, setInstructions] = useState('');
-  const [applyToContent, setApplyToContent] = useState(true);
+  const [instructions, setInstructions] = useState(searchParams.get('instructions') || '');
+  const [applyToContent, setApplyToContent] = useState(
+    searchParams.get('applyToContent') === '1' || Boolean(searchParams.get('contentId')),
+  );
   const [running, setRunning] = useState(false);
   const [outputText, setOutputText] = useState('');
   const [citations, setCitations] = useState<Citation[]>([]);
@@ -96,8 +99,12 @@ export default function ContentAiStudioPage() {
 
   useEffect(() => {
     setTaskKey(searchParams.get('taskKey') || 'content_brief_planner');
+    setBriefId(searchParams.get('briefId') || '');
     setContentId(searchParams.get('contentId') || '');
+    setLocale(searchParams.get('locale') || 'en');
     setQuery(searchParams.get('query') || '');
+    setInstructions(searchParams.get('instructions') || '');
+    setApplyToContent(searchParams.get('applyToContent') === '1' || Boolean(searchParams.get('contentId')));
   }, [searchParams]);
 
   async function handleRun() {
@@ -114,6 +121,7 @@ export default function ContentAiStudioPage() {
           method: 'POST',
           body: JSON.stringify({
             taskKey,
+            briefId: briefId || null,
             contentId: contentId || null,
             locale,
             siteCode,
@@ -151,6 +159,12 @@ export default function ContentAiStudioPage() {
               <p className="text-sm font-semibold text-emerald-900">{activeTask.label}</p>
               <p className="mt-1 text-sm text-emerald-800">{activeTask.description}</p>
             </div>
+            {(briefId || contentId) && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                {briefId && <p>当前 Brief ID: {briefId}</p>}
+                {contentId && <p className="mt-1">绑定内容 ID: {contentId}</p>}
+              </div>
+            )}
             <div className="grid gap-4 md:grid-cols-2">
               <Input label="内容 ID" value={contentId} onChange={(event) => setContentId(event.target.value)} placeholder="可选，绑定现有内容" />
               <Select label="语言" value={locale} onChange={(event) => setLocale(event.target.value)} options={[

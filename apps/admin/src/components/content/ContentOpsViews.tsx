@@ -41,6 +41,36 @@ const BRIEF_STATUS_OPTIONS = [
   { value: 'archived', label: '已归档' },
 ];
 
+function buildBriefAiStudioLink(brief: ContentOpsBriefItem, taskKey: string) {
+  const params = new URLSearchParams({
+    taskKey,
+    briefId: brief.id,
+    query: brief.title,
+    locale: brief.locale,
+  });
+
+  if (brief.content_id) {
+    params.set('contentId', brief.content_id);
+    if (taskKey === 'content_draft_generator') {
+      params.set('applyToContent', '1');
+    }
+  }
+
+  const instructions = [
+    brief.target_audience ? `Target audience: ${brief.target_audience}` : null,
+    brief.search_intent ? `Search intent: ${brief.search_intent}` : null,
+    brief.primary_angle ? `Primary angle: ${brief.primary_angle}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  if (instructions) {
+    params.set('instructions', instructions);
+  }
+
+  return `/ai/studio?${params.toString()}`;
+}
+
 interface BriefFormState {
   title: string;
   contentId: string;
@@ -173,11 +203,13 @@ function ReviewQueueTable({
   locale,
   emptyTitle,
   emptyDescription,
+  renderActions,
 }: {
   items: ContentOpsReviewItem[];
   locale: string;
   emptyTitle: string;
   emptyDescription: string;
+  renderActions?: (item: ContentOpsReviewItem) => React.ReactNode;
 }) {
   if (items.length === 0) {
     return <EmptyState icon="✅" title={emptyTitle} description={emptyDescription} />;
@@ -185,7 +217,7 @@ function ReviewQueueTable({
 
   return (
     <TableContainer>
-      <table className="w-full min-w-[980px]">
+      <table className={`w-full ${renderActions ? 'min-w-[1140px]' : 'min-w-[980px]'}`}>
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">内容</th>
@@ -194,6 +226,7 @@ function ReviewQueueTable({
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">发布就绪性</th>
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">本地化</th>
             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">新鲜度</th>
+            {renderActions && <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">操作</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -229,6 +262,7 @@ function ReviewQueueTable({
                   <p className="text-xs text-slate-500">{formatDateTime(item.updated_at)}</p>
                 </div>
               </td>
+              {renderActions && <td className="px-4 py-3">{renderActions(item)}</td>}
             </tr>
           ))}
         </tbody>
@@ -351,8 +385,11 @@ function BriefsTable({
                   <Button variant="ghost" size="sm" onClick={() => onEdit(brief)}>
                     编辑 brief
                   </Button>
-                  <Link href={`/ai/studio?taskKey=content_brief_planner&query=${encodeURIComponent(brief.title)}`}>
-                    <Button variant="secondary" size="sm">AI 补全</Button>
+                  <Link href={buildBriefAiStudioLink(brief, 'content_outline_generator')}>
+                    <Button variant="secondary" size="sm">生成大纲</Button>
+                  </Link>
+                  <Link href={buildBriefAiStudioLink(brief, 'content_draft_generator')}>
+                    <Button variant="secondary" size="sm">生成 Draft</Button>
                   </Link>
                 </div>
               </td>
@@ -555,7 +592,8 @@ export function ContentDashboardView() {
 }
 
 export function ContentReviewQueueView() {
-  const { data, loading, refreshing, loadData, toasts, removeToast } = useContentOpsData();
+  const { activeSiteCode, data, loading, refreshing, loadData, toasts, removeToast, success, error } = useContentOpsData();
+  const [actionKey, setActionKey] = useState<string | null>(null);
   const stats = useMemo(() => {
     if (!data) {
       return { approved: 0, scheduled: 0 };
@@ -565,6 +603,81 @@ export function ContentReviewQueueView() {
       scheduled: data.reviewQueue.filter((item) => item.workflow_state === 'scheduled').length,
     };
   }, [data]);
+
+  async function handleReviewAction(item: ContentOpsReviewItem, action: 'approve' | 'request_changes' | 'reject' | 'schedule') {
+    const nextActionKey = `${action}:${item.id}`;
+    setActionKey(nextActionKey);
+    try {
+      if (action === 'schedule') {
+        await apiFetch(`/api/v1/admin/content/${item.id}/schedule`, {
+          method: 'POST',
+          body: JSON.stringify({ siteCode: activeSiteCode }),
+        });
+        success('内容已加入排期');
+      } else {
+        await apiFetch(`/api/v1/admin/content/${item.id}/workflow`, {
+          method: 'POST',
+          body: JSON.stringify({ siteCode: activeSiteCode, action }),
+        });
+        const messages = {
+          approve: '内容已通过审核',
+          request_changes: '内容已打回修改',
+          reject: '内容已拒绝并归档',
+        };
+        success(messages[action]);
+      }
+      await loadData();
+    } catch (actionError) {
+      error(`执行审核动作失败：${getErrorMessage(actionError)}`);
+    } finally {
+      setActionKey(null);
+    }
+  }
+
+  function renderReviewActions(item: ContentOpsReviewItem) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {item.workflow_state === 'in_review' && (
+          <Button
+            size="sm"
+            loading={actionKey === `approve:${item.id}`}
+            onClick={() => void handleReviewAction(item, 'approve')}
+          >
+            通过
+          </Button>
+        )}
+        {item.workflow_state === 'approved' && item.publish_readiness_failures.length === 0 && (
+          <Button
+            size="sm"
+            loading={actionKey === `schedule:${item.id}`}
+            onClick={() => void handleReviewAction(item, 'schedule')}
+          >
+            加入排期
+          </Button>
+        )}
+        {item.workflow_state !== 'published' && item.workflow_state !== 'archived' && (
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={actionKey === `request_changes:${item.id}`}
+            onClick={() => void handleReviewAction(item, 'request_changes')}
+          >
+            打回修改
+          </Button>
+        )}
+        {item.workflow_state !== 'published' && item.workflow_state !== 'archived' && (
+          <Button
+            variant="danger"
+            size="sm"
+            loading={actionKey === `reject:${item.id}`}
+            onClick={() => void handleReviewAction(item, 'reject')}
+          >
+            拒绝并归档
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -620,6 +733,7 @@ export function ContentReviewQueueView() {
             locale={data.locale}
             emptyTitle="审核队列为空"
             emptyDescription="可以先从内容库将草稿推进到 in_review，或用 AI 工作台生成初稿后再送审。"
+            renderActions={renderReviewActions}
           />
         </div>
       </Card>
