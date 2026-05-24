@@ -11,8 +11,8 @@ import {
   ToastContainer,
   useToast,
 } from '@/components/ui';
-import { useSite } from '@/context/SiteContext';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
+import { CONTENT_ADMIN_SITE_CODE } from '@/lib/content-admin';
 
 interface KnowledgeAsset {
   id: string;
@@ -45,8 +45,7 @@ const SOURCE_TYPE_OPTIONS = [
 ];
 
 export default function ContentKnowledgePage() {
-  const { currentSite } = useSite();
-  const siteCode = currentSite === 'global' ? 'intl' : currentSite;
+  const siteCode = CONTENT_ADMIN_SITE_CODE;
   const { toasts, removeToast, success, error } = useToast();
 
   const [items, setItems] = useState<KnowledgeAsset[]>([]);

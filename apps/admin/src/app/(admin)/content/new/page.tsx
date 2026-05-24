@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Input, Select, ToastContainer, useToast } from '@/components/ui';
-import { useSite } from '@/context/SiteContext';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
+import { CONTENT_ADMIN_SITE_CODE } from '@/lib/content-admin';
 
 const CONTENT_TYPE_OPTIONS = [
   { value: 'specialty_hub', label: '专科中心' },
@@ -26,8 +26,7 @@ const LOCALE_OPTIONS = [
 
 export default function NewContentPage() {
   const router = useRouter();
-  const { currentSite } = useSite();
-  const siteCode = currentSite === 'global' ? 'intl' : currentSite;
+  const siteCode = CONTENT_ADMIN_SITE_CODE;
   const { toasts, removeToast, success, error } = useToast();
 
   const [title, setTitle] = useState('');

@@ -24,6 +24,8 @@ export const CONTENT_TYPE_OPTIONS = Object.entries(CONTENT_TYPE_LABELS).map(([va
   label,
 }));
 
+export const CONTENT_ADMIN_SITE_CODE = 'intl';
+
 export type SitePublishStatus = 'draft' | 'published' | 'archived';
 
 export interface AdminContentSiteView {

@@ -13,8 +13,7 @@ import {
   ToastContainer,
   useToast,
 } from '@/components/ui';
-import { useSite } from '@/context/SiteContext';
-import { getContentRoutePath } from '@/lib/content-admin';
+import { CONTENT_ADMIN_SITE_CODE, getContentRoutePath } from '@/lib/content-admin';
 import type { ContentOpsBriefItem, ContentOpsEventItem, ContentOpsGenerationRunItem, ContentOpsResponse, ContentOpsReviewItem } from '@/lib/content-ops';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { CalendarDays, ClipboardCheck, Library, RefreshCw, Sparkles } from 'lucide-react';
@@ -311,8 +310,7 @@ function GenerationRunFeed({ items }: { items: ContentOpsGenerationRunItem[] }) 
 }
 
 function useContentOpsData() {
-  const { currentSite } = useSite();
-  const activeSiteCode = currentSite === 'global' ? 'intl' : currentSite;
+  const activeSiteCode = CONTENT_ADMIN_SITE_CODE;
   const { toasts, removeToast, error } = useToast();
   const [data, setData] = useState<ContentOpsResponse | null>(null);
   const [loading, setLoading] = useState(true);

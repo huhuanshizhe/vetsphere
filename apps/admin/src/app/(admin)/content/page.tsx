@@ -16,8 +16,8 @@ import {
   ToastContainer,
   useToast,
 } from '@/components/ui';
-import { useSite } from '@/context/SiteContext';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
+import { CONTENT_ADMIN_SITE_CODE } from '@/lib/content-admin';
 import { FileEdit, Library, Search, Sparkles } from 'lucide-react';
 
 interface ContentSiteView {
@@ -66,8 +66,7 @@ const WORKFLOW_OPTIONS = [
 ];
 
 export default function ContentLibraryPage() {
-  const { currentSite } = useSite();
-  const activeSiteCode = currentSite === 'global' ? 'intl' : currentSite;
+  const activeSiteCode = CONTENT_ADMIN_SITE_CODE;
   const { toasts, removeToast, success, error } = useToast();
 
   const [items, setItems] = useState<ContentListItem[]>([]);
