@@ -31,6 +31,22 @@ interface PageFormState {
   status: CmsPage['status'];
 }
 
+interface CmsPageUpdatePayload {
+  page_key: string;
+  name: string;
+  title: string | null;
+  subtitle: string | null;
+  description: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  seo_keywords: string | null;
+  status: CmsPage['status'];
+  updated_at: string;
+  version: number;
+  published_at?: string | null;
+  published_by?: string | null;
+}
+
 const STATUS_OPTIONS = [
   { value: 'draft', label: '草稿' },
   { value: 'published', label: '已发布' },
@@ -162,7 +178,7 @@ export default function CmsPageDetailPage() {
       const { data: authData } = await supabase.auth.getUser();
       const nextVersion = (page.version || 1) + 1;
 
-      const updateData: Partial<CmsPage> & { updated_at: string; version: number } = {
+      const updateData: CmsPageUpdatePayload = {
         page_key: form.page_key.trim(),
         name: form.name.trim(),
         title: form.title.trim() || null,
@@ -178,7 +194,7 @@ export default function CmsPageDetailPage() {
 
       if (form.status === 'published' && page.status !== 'published') {
         updateData.published_at = now;
-        updateData.published_by = authData.user?.id || null;
+        updateData.published_by = authData.user?.id ?? null;
       }
 
       const { error: updateError } = await supabase
