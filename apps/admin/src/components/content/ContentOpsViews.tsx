@@ -962,10 +962,24 @@ export function ContentCalendarView() {
             <p className="text-xs text-slate-500">保存后就可以在 AI 工作台继续生成 brief、outline 或 draft。</p>
 
             <div className="flex flex-wrap justify-end gap-3">
-              {briefForm.title.trim() && (
-                <Link href={`/ai/studio?taskKey=content_brief_planner&query=${encodeURIComponent(briefForm.title.trim())}`}>
-                  <Button variant="secondary">在 AI 工作台继续</Button>
+              {editingBriefId && briefForm.title.trim() ? (
+                <Link href={buildBriefAiStudioLink({
+                  id: editingBriefId,
+                  title: briefForm.title.trim(),
+                  content_id: briefForm.contentId.trim() || null,
+                  locale: data.locale,
+                  site_code: activeSiteCode,
+                  target_audience: briefForm.targetAudience.trim() || null,
+                  search_intent: briefForm.searchIntent.trim() || null,
+                  primary_angle: briefForm.primaryAngle.trim() || null,
+                  status: briefForm.status,
+                } as ContentOpsBriefItem, 'content_draft_generator')}>
+                  <Button variant="secondary">生成草稿</Button>
                 </Link>
+              ) : (
+                <Button variant="secondary" disabled>
+                  请先保存 Brief
+                </Button>
               )}
               {editingBriefId && (
                 <Button variant="ghost" onClick={resetBriefForm}>
