@@ -16,3 +16,11 @@ export const siteConfig: SiteConfig = {
   organizationAddress: { locality: 'Shanghai', country: 'CN' },
   features: { liveStreaming: false, aiConsultation: true, communityPosts: false },
 };
+
+// 相关站点配置
+export const RELATED_SITES = {
+  intl: 'https://vetsphere.net',
+  cn: 'https://vetsphere.cn',
+  edu: 'https://edu.vetsphere.cn',
+  gear: 'https://gear.vetsphere.cn',
+} as const;

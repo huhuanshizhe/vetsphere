@@ -16,6 +16,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { CONTENT_ADMIN_SITE_CODE, getContentRoutePath } from '@/lib/content-admin';
+import { RELATED_SITES } from '@/config/site.config';
 import type { ContentOpsBriefItem, ContentOpsEventItem, ContentOpsGenerationRunItem, ContentOpsResponse, ContentOpsReviewItem } from '@/lib/content-ops';
 import { apiFetch, getErrorMessage } from '@/lib/api-client';
 import { BookOpen, CalendarDays, ClipboardCheck, Library, RefreshCw, Sparkles } from 'lucide-react';
@@ -160,7 +161,8 @@ function ContentOpsState({
 }
 
 function ContentTitleCell({ item, locale }: { item: ContentOpsReviewItem; locale: string }) {
-  const previewPath = getContentRoutePath(locale, item.content_type, item.site_view?.slug_override || item.canonical_slug);
+  const routePath = getContentRoutePath(locale, item.content_type, item.site_view?.slug_override || item.canonical_slug);
+  const previewUrl = `${RELATED_SITES.intl}${routePath}`;
   const canPreview = item.site_view?.publish_status === 'published' && item.site_view.route_status === 'active';
 
   return (
@@ -177,7 +179,7 @@ function ContentTitleCell({ item, locale }: { item: ContentOpsReviewItem; locale
           编辑内容
         </Link>
         {canPreview && (
-          <Link href={previewPath} target="_blank" className="text-xs font-medium text-slate-500 hover:text-slate-700">
+          <Link href={previewUrl} target="_blank" className="text-xs font-medium text-slate-500 hover:text-slate-700">
             查看公开页
           </Link>
         )}
