@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import Providers from "@vetsphere/shared/components/Providers";
-import JsonLd, { organizationSchema, websiteSchema } from "@vetsphere/shared/components/JsonLd";
-import { siteConfig } from "@/config/site.config";
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import Providers from '@vetsphere/shared/components/Providers';
+import JsonLd, { organizationSchema, websiteSchema } from '@vetsphere/shared/components/JsonLd';
+import IntlAppShell from '@/components/IntlAppShell';
+import { siteConfig } from '@/config/site.config';
 import { buildLocaleAlternates } from '@/lib/seo';
-import type { SupportedLocale } from "@vetsphere/shared/site-config";
-import "../globals.css";
+import type { SupportedLocale } from '@vetsphere/shared/site-config';
+import '../globals.css';
 
 type Props = {
   children: React.ReactNode;
@@ -21,8 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: {
-      default: "VetSphere | Global Veterinary Surgery Education Platform",
-      template: "%s | VetSphere",
+      default: 'VetSphere | Global Veterinary Surgery Education Platform',
+      template: '%s | VetSphere',
     },
     alternates: buildLocaleAlternates({
       canonicalLocale: locale,
@@ -42,8 +43,13 @@ export default async function LocaleLayout({ children, params }: Props) {
     <>
       <JsonLd data={organizationSchema(siteConfig)} />
       <JsonLd data={websiteSchema(siteConfig)} />
-      <Providers locale={locale as SupportedLocale} locales={siteConfig.locales} defaultLocale={siteConfig.defaultLocale} siteConfig={siteConfig}>
-        {children}
+      <Providers
+        locale={locale as SupportedLocale}
+        locales={siteConfig.locales}
+        defaultLocale={siteConfig.defaultLocale}
+        siteConfig={siteConfig}
+      >
+        <IntlAppShell>{children}</IntlAppShell>
       </Providers>
     </>
   );
