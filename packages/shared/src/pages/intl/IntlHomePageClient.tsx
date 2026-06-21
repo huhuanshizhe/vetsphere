@@ -39,7 +39,8 @@ export default function IntlHomePageClient() {
       location: h.course1Location,
       date: h.course1Date,
       price: h.course1Price,
-      image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=800&q=80',
+      image:
+        'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=800&q=80',
     },
     {
       title: h.course2Title,
@@ -48,7 +49,8 @@ export default function IntlHomePageClient() {
       location: h.course2Location,
       date: h.course2Date,
       price: h.course2Price,
-      image: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80',
+      image:
+        'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80',
     },
     {
       title: h.course3Title,
@@ -57,14 +59,20 @@ export default function IntlHomePageClient() {
       location: h.course3Location,
       date: h.course3Date,
       price: h.course3Price,
-      image: 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=800&q=80',
+      image:
+        'https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=800&q=80',
     },
   ];
 
   const productCategories = [
     { name: h.catPowerTools, desc: h.catPowerToolsDesc, icon: Zap, group: 'PowerTools' },
     { name: h.catImplants, desc: h.catImplantsDesc, icon: Wrench, group: 'Implants' },
-    { name: h.catHandInstruments, desc: h.catHandInstrumentsDesc, icon: Scissors, group: 'HandInstruments' },
+    {
+      name: h.catHandInstruments,
+      desc: h.catHandInstrumentsDesc,
+      icon: Scissors,
+      group: 'HandInstruments',
+    },
     { name: h.catConsumables, desc: h.catConsumablesDesc, icon: Package, group: 'Consumables' },
     { name: h.catEquipment, desc: h.catEquipmentDesc, icon: Monitor, group: 'Equipment' },
   ];
@@ -75,7 +83,8 @@ export default function IntlHomePageClient() {
       desc: h.orthoDesc,
       specialty: Specialty.ORTHOPEDICS,
       emoji: '\u{1F9B4}',
-      image: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=800&q=80',
+      image:
+        'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=800&q=80',
       grayscale: true,
     },
     {
@@ -83,7 +92,8 @@ export default function IntlHomePageClient() {
       desc: h.neuroDesc,
       specialty: Specialty.NEUROSURGERY,
       emoji: '\u{1F9E0}',
-      image: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80',
+      image:
+        'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=800&q=80',
       grayscale: false,
     },
     {
@@ -91,21 +101,41 @@ export default function IntlHomePageClient() {
       desc: h.softDesc,
       specialty: Specialty.SOFT_TISSUE,
       emoji: '\u{1FA79}',
-      image: 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=800&q=80',
+      image:
+        'https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=800&q=80',
       grayscale: false,
     },
   ];
 
   const features = [
-    { title: h.featLabs, desc: h.featLabsDesc, icon: GraduationCap, color: 'bg-blue-50 text-blue-600' },
-    { title: h.featCase, desc: h.featCaseDesc, icon: MessageSquare, color: 'bg-purple-50 text-purple-600' },
-    { title: h.featSupply, desc: h.featSupplyDesc, icon: Truck, color: 'bg-orange-50 text-orange-600' },
-    { title: h.featDigital, desc: h.featDigitalDesc, icon: Cpu, color: 'bg-emerald-50 text-emerald-600' },
+    {
+      title: h.featLabs,
+      desc: h.featLabsDesc,
+      icon: GraduationCap,
+      color: 'bg-blue-50 text-blue-600',
+    },
+    {
+      title: h.featCase,
+      desc: h.featCaseDesc,
+      icon: MessageSquare,
+      color: 'bg-purple-50 text-purple-600',
+    },
+    {
+      title: h.featSupply,
+      desc: h.featSupplyDesc,
+      icon: Truck,
+      color: 'bg-orange-50 text-orange-600',
+    },
+    {
+      title: h.featDigital,
+      desc: h.featDigitalDesc,
+      icon: Cpu,
+      color: 'bg-emerald-50 text-emerald-600',
+    },
   ];
 
   return (
     <div className="flex flex-col bg-white">
-
       {/* 1. HERO SECTION */}
       <section className="relative pt-24 pb-20 lg:pt-32 lg:pb-28 overflow-hidden bg-slate-50">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16">
@@ -113,7 +143,9 @@ export default function IntlHomePageClient() {
             <div className="space-y-8">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span className="text-sm font-bold text-slate-600 uppercase tracking-wider">{h.heroTag}</span>
+                <span className="text-sm font-bold text-slate-600 uppercase tracking-wider">
+                  {h.heroTag}
+                </span>
               </div>
 
               <h1 className="text-4xl lg:text-6xl font-extrabold text-slate-900 leading-[1.1] tracking-tight">
@@ -138,6 +170,28 @@ export default function IntlHomePageClient() {
                   <span>{h.heroCTA2}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(
+                        new CustomEvent('vetsphere:chat:open', {
+                          detail: { pageContext: 'home' },
+                        }),
+                      );
+                    }
+                  }}
+                  className="px-6 py-4 bg-blue-50 text-blue-700 border border-blue-200 rounded-2xl font-bold text-base hover:bg-blue-100 hover:border-blue-300 transition-all flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  <span>{h.heroChatCTA || 'Talk to VetAssist'}</span>
+                </button>
               </div>
 
               <div className="pt-8 flex items-center gap-8 text-slate-400 text-xs font-bold uppercase tracking-widest">
@@ -162,7 +216,9 @@ export default function IntlHomePageClient() {
               </div>
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl border border-slate-100 max-w-[200px] hidden md:block">
                 <p className="text-4xl font-extrabold text-slate-900 mb-1">{h.heroOverlayCount}</p>
-                <p className="text-sm text-slate-500 font-medium leading-tight">{h.heroOverlayLabel}</p>
+                <p className="text-sm text-slate-500 font-medium leading-tight">
+                  {h.heroOverlayLabel}
+                </p>
               </div>
             </div>
           </div>
@@ -193,7 +249,9 @@ export default function IntlHomePageClient() {
       <section className="py-24 bg-white">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-3">{h.featuredTitle}</h2>
+            <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-3">
+              {h.featuredTitle}
+            </h2>
             <p className="text-slate-500 text-lg">{h.featuredSubtitle}</p>
           </div>
 
@@ -264,8 +322,12 @@ export default function IntlHomePageClient() {
       <section className="py-24 bg-slate-50">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-3">{h.disciplinesTag}</h2>
-            <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">{h.disciplinesTitle}</h3>
+            <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-3">
+              {h.disciplinesTag}
+            </h2>
+            <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
+              {h.disciplinesTitle}
+            </h3>
             <p className="mt-4 text-slate-500 text-lg">{h.disciplinesDesc}</p>
           </div>
 
@@ -308,7 +370,9 @@ export default function IntlHomePageClient() {
       <section className="py-24 bg-white">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-3">{h.productsTitle}</h2>
+            <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-3">
+              {h.productsTitle}
+            </h2>
             <p className="text-slate-500 text-lg">{h.productsSubtitle}</p>
           </div>
 
@@ -322,7 +386,9 @@ export default function IntlHomePageClient() {
                 <div className="w-16 h-16 rounded-2xl bg-slate-50 group-hover:bg-[#00A884]/10 flex items-center justify-center mb-5 transition-colors duration-300">
                   <cat.icon className="w-7 h-7 text-slate-400 group-hover:text-[#00A884] transition-colors duration-300" />
                 </div>
-                <h4 className="font-bold text-slate-900 mb-1 group-hover:text-[#00A884] transition-colors">{cat.name}</h4>
+                <h4 className="font-bold text-slate-900 mb-1 group-hover:text-[#00A884] transition-colors">
+                  {cat.name}
+                </h4>
                 <p className="text-xs text-slate-500">{cat.desc}</p>
               </Link>
             ))}
@@ -350,8 +416,13 @@ export default function IntlHomePageClient() {
 
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {features.map((feat, idx) => (
-              <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-lg transition-shadow duration-300">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${feat.color}`}>
+              <div
+                key={idx}
+                className="bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-lg transition-shadow duration-300"
+              >
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${feat.color}`}
+                >
                   <feat.icon className="w-6 h-6" />
                 </div>
                 <h4 className="font-bold text-slate-900 text-lg mb-3">{feat.title}</h4>
@@ -372,9 +443,7 @@ export default function IntlHomePageClient() {
               <h2 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
                 {h.ctaTitle}
               </h2>
-              <p className="text-slate-400 text-lg">
-                {h.ctaSubtitle}
-              </p>
+              <p className="text-slate-400 text-lg">{h.ctaSubtitle}</p>
               <div className="flex flex-col sm:flex-row justify-center gap-6 pt-6">
                 <Link
                   href={`/${locale}/auth?redirect=${encodeURIComponent(pathname)}`}
@@ -388,12 +457,33 @@ export default function IntlHomePageClient() {
                 >
                   {h.ctaButton2}
                 </Link>
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(
+                        new CustomEvent('vetsphere:chat:open', {
+                          detail: { pageContext: 'home' },
+                        }),
+                      );
+                    }
+                  }}
+                  className="px-10 py-4 bg-blue-500 text-white rounded-2xl font-bold text-base hover:bg-blue-400 transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  {h.ctaChatButton || 'Talk to VetAssist'}
+                </button>
               </div>
             </div>
           </div>
         </div>
       </section>
-
     </div>
   );
 }

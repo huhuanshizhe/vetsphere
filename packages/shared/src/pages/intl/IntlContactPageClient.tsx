@@ -43,6 +43,10 @@ const contactTranslations = {
     sendMessage: 'Send Message',
     sending: 'Sending...',
     required: '*',
+    chatTitle: 'Prefer instant answers?',
+    chatDesc:
+      'Chat with VetAssist, our AI consultant, for immediate help with products, courses, and procurement questions.',
+    chatCTA: 'Chat Now',
   },
   th: {
     badge: 'ติดต่อเรา',
@@ -75,6 +79,10 @@ const contactTranslations = {
     sendMessage: 'ส่งข้อความ',
     sending: 'กำลังส่ง...',
     required: '*',
+    chatTitle: 'ต้องการคำตอบทันที?',
+    chatDesc:
+      'แชทกับ VetAssist ที่ปรึกษา AI ของเรา เพื่อรับความช่วยเหลือเกี่ยวกับสินค้า หลักสูตร และการจัดซื้อทันที',
+    chatCTA: 'แชทเลย',
   },
   ja: {
     badge: 'お問い合わせ',
@@ -107,6 +115,10 @@ const contactTranslations = {
     sendMessage: 'メッセージを送信',
     sending: '送信中...',
     required: '*',
+    chatTitle: 'すぐに回答が欲しいですか？',
+    chatDesc:
+      'AIコンサルタントVetAssistとチャットして、製品・コース・調達についてすぐにサポートを受けましょう。',
+    chatCTA: 'チャットする',
   },
 };
 
@@ -281,6 +293,36 @@ export function IntlContactPageClient({ locale }: IntlContactPageClientProps) {
 
             {/* Contact Form */}
             <div className="lg:col-span-2">
+              {/* VetAssist Chat Alternative */}
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h4 className="font-bold text-blue-900">
+                    {t.chatTitle || 'Prefer instant answers?'}
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    {t.chatDesc ||
+                      'Chat with VetAssist, our AI consultant, for immediate help with products, courses, and procurement questions.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(
+                        new CustomEvent('vetsphere:chat:open', {
+                          detail: { pageContext: 'contact' },
+                        }),
+                      );
+                    }
+                  }}
+                  className="flex-shrink-0 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors"
+                >
+                  {t.chatCTA || 'Chat Now'}
+                </button>
+              </div>
+
               <Card>
                 <CardHeader>
                   <CardTitle>{t.formTitle}</CardTitle>
@@ -354,7 +396,12 @@ export function IntlContactPageClient({ locale }: IntlContactPageClientProps) {
                       />
                     </div>
 
-                    <Button type="submit" size="lg" disabled={isSubmitting} className="w-full md:w-auto">
+                    <Button
+                      type="submit"
+                      size="lg"
+                      disabled={isSubmitting}
+                      className="w-full md:w-auto"
+                    >
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

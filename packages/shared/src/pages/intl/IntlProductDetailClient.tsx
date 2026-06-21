@@ -151,7 +151,9 @@ export default function IntlProductDetailClient({
 
   const [product, setProduct] = useState<IntlProduct | null>(initialData?.product || null);
   const [images, setImages] = useState<any[]>(initialData?.images || []);
-  const [relatedCourses, setRelatedCourses] = useState<IntlCourse[]>(initialData?.relatedCourses || []);
+  const [relatedCourses, setRelatedCourses] = useState<IntlCourse[]>(
+    initialData?.relatedCourses || [],
+  );
   const [relatedProducts, setRelatedProducts] = useState<IntlProduct[]>(
     initialData?.relatedProducts || [],
   );
@@ -181,7 +183,9 @@ export default function IntlProductDetailClient({
   const [tierPrice, setTierPrice] = useState<number | null>(null); // 阶梯价格（根据数量计算）
   const shouldSyncToSelectedSkuImage = useRef(false);
   const skipInitialFetchRef = useRef(
-    Boolean(initialData && initialData.locale === locale && initialData.productSlug === productSlug),
+    Boolean(
+      initialData && initialData.locale === locale && initialData.productSlug === productSlug,
+    ),
   );
 
   // Use global wishlist context for persistent state
@@ -824,6 +828,38 @@ export default function IntlProductDetailClient({
                   </button>
                 </>
               )}
+            </div>
+
+            {/* Ask VetAssist - AI Sales Consultant */}
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(
+                      new CustomEvent('vetsphere:chat:open', {
+                        detail: {
+                          productId: product.product_id,
+                          productName: product.display_name || product.base_name,
+                          prefillMessage: `Hi, I'm looking at the ${product.display_name || product.base_name}${product.brand ? ` by ${product.brand}` : ''}. Can you help me with some questions about it?`,
+                        },
+                      }),
+                    );
+                  }
+                }}
+                className="flex items-center gap-2 w-full px-6 py-3 bg-blue-50 text-blue-700 
+                           border border-blue-200 rounded-xl font-medium text-sm
+                           hover:bg-blue-100 hover:border-blue-300 transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                {pd.askVetAssist || 'Ask VetAssist about this product'}
+              </button>
             </div>
 
             {/* Recommendation Reason */}

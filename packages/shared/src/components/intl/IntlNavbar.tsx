@@ -115,9 +115,7 @@ export function IntlNavbar() {
             <div className="relative w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg">
               <span className="text-[#00A884] font-black text-lg leading-none">VS</span>
             </div>
-            <span className="font-bold text-xl text-white hidden sm:block">
-              VetSphere
-            </span>
+            <span className="font-bold text-xl text-white hidden sm:block">VetSphere</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -135,6 +133,26 @@ export function IntlNavbar() {
 
           {/* Right side actions */}
           <div className="hidden lg:flex items-center gap-3">
+            {/* VetAssist Chat Button */}
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('vetsphere:chat:open', { detail: {} }));
+                }
+              }}
+              className="relative p-2 text-white hover:text-emerald-100 transition-colors"
+              title="Chat with VetAssist"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+            </button>
+
             <Link
               href={`/${language}/cart`}
               className="relative p-2 text-white hover:text-emerald-100 transition-colors"
@@ -146,7 +164,7 @@ export function IntlNavbar() {
                 </span>
               )}
             </Link>
-            
+
             {/* User Menu when logged in */}
             {isAuthenticated && user ? (
               <div className="relative" ref={userMenuRef}>
@@ -199,7 +217,10 @@ export function IntlNavbar() {
                 )}
               </div>
             ) : (
-              <Link href={authHref} className="py-2.5 px-6 rounded-xl text-sm font-bold text-white bg-white/20 hover:bg-white/30 transition-colors hover:shadow-lg">
+              <Link
+                href={authHref}
+                className="py-2.5 px-6 rounded-xl text-sm font-bold text-white bg-white/20 hover:bg-white/30 transition-colors hover:shadow-lg"
+              >
                 {t[language].signIn}
               </Link>
             )}
@@ -226,7 +247,11 @@ export function IntlNavbar() {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6 text-white" /> : <Menu className="w-6 h-6 text-white" />}
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6 text-white" />
+              ) : (
+                <Menu className="w-6 h-6 text-white" />
+              )}
             </button>
           </div>
         </nav>
@@ -271,7 +296,10 @@ export function IntlNavbar() {
                       <span>{t[language].orders}</span>
                     </Link>
                     <button
-                      onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleLogout();
+                      }}
                       className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-600 hover:bg-red-50 transition-all font-medium"
                     >
                       <LogOut className="w-5 h-5" />
@@ -287,6 +315,25 @@ export function IntlNavbar() {
                     {t[language].signIn}
                   </Link>
                 )}
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('vetsphere:chat:open', { detail: {} }));
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all mt-2 w-full"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  <span>Chat with VetAssist</span>
+                </button>
                 <Link
                   href={`/${language}/cart`}
                   className="flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 transition-all mt-2"

@@ -1,9 +1,10 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useChat } from './hooks/useChat';
 import { useChatSession } from './hooks/useChatSession';
+import { onChatTrigger, type ChatTriggerPayload } from '@vetsphere/shared/hooks/useChatTrigger';
 import ChatWindow from './ChatWindow';
 
 export default function ChatWidget() {
@@ -11,8 +12,44 @@ export default function ChatWidget() {
   const { visitorId } = useChatSession();
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const pendingMessageRef = useRef<string | null>(null);
 
   const { messages, isLoading, sendMessage, sessionId } = useChat(visitorId, pathname);
+
+  // Listen for chat trigger events from other components
+  useEffect(() => {
+    const cleanup = onChatTrigger((payload: ChatTriggerPayload) => {
+      setIsOpen(true);
+
+      // Build contextual prefill message
+      if (payload.prefillMessage) {
+        pendingMessageRef.current = payload.prefillMessage;
+      } else if (payload.productName) {
+        pendingMessageRef.current = `Hi, I'm looking at the ${payload.productName}. Can you help me with some questions about it?`;
+      } else if (payload.courseName) {
+        pendingMessageRef.current = `Hi, I'm interested in the ${payload.courseName} training course. Can you tell me more about it?`;
+      } else if (payload.pageContext === 'clinics') {
+        pendingMessageRef.current =
+          "Hi, I'm looking to upgrade my clinic with new equipment and training. Can you help me find the right package?";
+      } else if (payload.pageContext === 'contact') {
+        pendingMessageRef.current =
+          "Hi, I'd like to get in touch about your products and services.";
+      } else if (payload.pageContext === 'home') {
+        pendingMessageRef.current = "Hi, I'm new here. Can you help me find what I need?";
+      }
+    });
+    return cleanup;
+  }, []);
+
+  // Auto-send pending message after chat opens
+  useEffect(() => {
+    if (isOpen && pendingMessageRef.current && !isLoading) {
+      const msg = pendingMessageRef.current;
+      pendingMessageRef.current = null;
+      // Small delay to ensure chat is fully rendered
+      setTimeout(() => sendMessage(msg), 300);
+    }
+  }, [isOpen, isLoading, sendMessage]);
 
   // Track unread messages when chat is closed
   useEffect(() => {

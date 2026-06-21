@@ -95,15 +95,23 @@ const equipmentRelationCopy = {
 // Helpers
 // ============================================
 
-function productCTA(p: IntlProduct, locale: string): { label: string; href: string; variant: 'primary' | 'outline' } {
+function productCTA(
+  p: IntlProduct,
+  locale: string,
+): { label: string; href: string; variant: 'primary' | 'outline' } {
   if (p.purchase_type === 'quote' || p.pricing_mode === 'custom') {
-    return { label: 'Request Quote', href: `/${locale}/shop/${p.slug}?action=quote`, variant: 'outline' };
+    return {
+      label: 'Request Quote',
+      href: `/${locale}/shop/${p.slug}?action=quote`,
+      variant: 'outline',
+    };
   }
   return { label: 'View Product', href: `/${locale}/shop/${p.slug}`, variant: 'primary' };
 }
 
 function getEquipmentRelationLabel(product: IntlProduct, locale: string) {
-  const copy = equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
+  const copy =
+    equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
 
   switch (product.relationship_type) {
     case 'required':
@@ -127,7 +135,8 @@ function getEquipmentRelationClass(product: IntlProduct) {
 }
 
 function getEquipmentScopeLabel(product: IntlProduct, locale: string) {
-  const copy = equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
+  const copy =
+    equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
 
   if (product.relation_type === 'module') {
     return product.day_index ? `${copy.module} ${product.day_index}` : copy.module;
@@ -164,7 +173,8 @@ export default function IntlCourseDetailClient({
   const pathname = usePathname();
   const router = useRouter();
   const cd = t.courseDetail;
-  const equipmentCopy = equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
+  const equipmentCopy =
+    equipmentRelationCopy[locale as keyof typeof equipmentRelationCopy] || equipmentRelationCopy.en;
 
   const [course, setCourse] = useState<IntlCourse | null>(initialData?.course || null);
   const [instructors, setInstructors] = useState<IntlInstructor[]>(initialData?.instructors || []);
@@ -185,7 +195,7 @@ export default function IntlCourseDetailClient({
       return;
     }
 
-    getIntlCourseBySlug(courseSlug, locale).then(data => {
+    getIntlCourseBySlug(courseSlug, locale).then((data) => {
       setCourse(data);
       setLoading(false);
       if (data) {
@@ -232,7 +242,10 @@ export default function IntlCourseDetailClient({
         <GraduationCap className="w-16 h-16 text-slate-300 mx-auto mb-6" />
         <h1 className="text-2xl font-bold text-slate-700 mb-4">{cd.notFound}</h1>
         <p className="text-slate-500 mb-8">{cd.notFoundDesc}</p>
-        <Link href={`/${locale}/courses`} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition">
+        <Link
+          href={`/${locale}/courses`}
+          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition"
+        >
           {cd.browseAll}
         </Link>
       </div>
@@ -242,18 +255,28 @@ export default function IntlCourseDetailClient({
   const leadInstructor = instructors[0];
 
   // Fallback: if no instructors from junction table, use course.instructor JSONB fields
-  const effectiveInstructors: { id: string; name: string; title: string; bio: string | null; avatar_url: string | null; credentials: string | null; role?: string }[] =
+  const effectiveInstructors: {
+    id: string;
+    name: string;
+    title: string;
+    bio: string | null;
+    avatar_url: string | null;
+    credentials: string | null;
+    role?: string;
+  }[] =
     instructors.length > 0
       ? instructors
       : course.instructor_name
-        ? [{
-            id: 'jsonb-instructor',
-            name: course.instructor_name,
-            title: course.instructor_title || '',
-            bio: course.instructor_bio || null,
-            avatar_url: course.instructor_avatar_url || null,
-            credentials: null,
-          }]
+        ? [
+            {
+              id: 'jsonb-instructor',
+              name: course.instructor_name,
+              title: course.instructor_title || '',
+              bio: course.instructor_bio || null,
+              avatar_url: course.instructor_avatar_url || null,
+              credentials: null,
+            },
+          ]
         : [];
   const effectiveLeadInstructor = effectiveInstructors[0] || null;
 
@@ -262,9 +285,13 @@ export default function IntlCourseDetailClient({
       {/* Breadcrumb */}
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 pt-28 pb-4">
         <nav className="flex items-center gap-2 text-sm text-slate-400">
-          <Link href={`/${locale}`} className="hover:text-emerald-600 transition">{cd.home}</Link>
+          <Link href={`/${locale}`} className="hover:text-emerald-600 transition">
+            {cd.home}
+          </Link>
           <ChevronRight className="w-3.5 h-3.5" />
-          <Link href={`/${locale}/courses`} className="hover:text-emerald-600 transition">{cd.training}</Link>
+          <Link href={`/${locale}/courses`} className="hover:text-emerald-600 transition">
+            {cd.training}
+          </Link>
           <ChevronRight className="w-3.5 h-3.5" />
           <span className="text-slate-600 font-medium truncate max-w-[300px]">{course.title}</span>
         </nav>
@@ -299,10 +326,14 @@ export default function IntlCourseDetailClient({
                   </span>
                 )}
                 {course.specialty && (
-                  <span className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-full">{course.specialty}</span>
+                  <span className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-full">
+                    {course.specialty}
+                  </span>
                 )}
                 {course.level && (
-                  <span className="px-3 py-1.5 bg-white/90 text-slate-700 text-xs font-bold rounded-full backdrop-blur-sm">{course.level}</span>
+                  <span className="px-3 py-1.5 bg-white/90 text-slate-700 text-xs font-bold rounded-full backdrop-blur-sm">
+                    {course.level}
+                  </span>
                 )}
               </div>
             </div>
@@ -340,19 +371,25 @@ export default function IntlCourseDetailClient({
                 )}
                 {course.enrollment_count > 0 && (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg font-medium">
-                    <Users className="w-4 h-4 text-slate-400" /> {course.enrollment_count} {cd.enrolled}
+                    <Users className="w-4 h-4 text-slate-400" /> {course.enrollment_count}{' '}
+                    {cd.enrolled}
                   </span>
                 )}
                 {course.avg_rating && (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-lg font-medium text-amber-700">
-                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" /> {course.avg_rating.toFixed(1)}
+                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />{' '}
+                    {course.avg_rating.toFixed(1)}
                   </span>
                 )}
               </div>
             </div>
 
             {/* Course Schedule & Location Info */}
-            {(course.start_date || course.end_date || course.enrollment_deadline || course.location_city || course.teaching_languages.length > 0) && (
+            {(course.start_date ||
+              course.end_date ||
+              course.enrollment_deadline ||
+              course.location_city ||
+              course.teaching_languages.length > 0) && (
               <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
                 <h2 className="text-xl font-bold text-slate-900 mb-4">{cd.courseDetails}</h2>
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -363,11 +400,23 @@ export default function IntlCourseDetailClient({
                         <Calendar className="w-5 h-5 text-emerald-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{cd.dates}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          {cd.dates}
+                        </p>
                         <p className="text-sm font-medium text-slate-900">
-                          {course.start_date && new Date(course.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {course.start_date &&
+                            new Date(course.start_date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
                           {course.start_date && course.end_date && ' - '}
-                          {course.end_date && new Date(course.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {course.end_date &&
+                            new Date(course.end_date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
                         </p>
                       </div>
                     </div>
@@ -380,9 +429,15 @@ export default function IntlCourseDetailClient({
                         <Clock className="w-5 h-5 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{cd.enrollmentDeadline}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          {cd.enrollmentDeadline}
+                        </p>
                         <p className="text-sm font-medium text-slate-900">
-                          {new Date(course.enrollment_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(course.enrollment_deadline).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
                         </p>
                       </div>
                     </div>
@@ -395,12 +450,16 @@ export default function IntlCourseDetailClient({
                         <MapPin className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{cd.location}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          {cd.location}
+                        </p>
                         <p className="text-sm font-medium text-slate-900">
                           {course.location_venue}
                           {course.location_venue && course.location_city && ', '}
                           {course.location_city}
-                          {(course.location_city || course.location_venue) && course.location_country && ', '}
+                          {(course.location_city || course.location_venue) &&
+                            course.location_country &&
+                            ', '}
                           {course.location_country}
                         </p>
                         {course.location_address && (
@@ -417,7 +476,9 @@ export default function IntlCourseDetailClient({
                         <Globe className="w-5 h-5 text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{cd.teachingLanguage}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          {cd.teachingLanguage}
+                        </p>
                         <p className="text-sm font-medium text-slate-900">
                           {course.teaching_languages.join(', ')}
                         </p>
@@ -433,13 +494,23 @@ export default function IntlCourseDetailClient({
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                   </div>
                   <h2 className="text-xl font-bold text-slate-900">{cd.aboutThisTraining}</h2>
                 </div>
-                <div 
+                <div
                   className="text-slate-600 leading-relaxed whitespace-pre-line"
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 >
@@ -462,7 +533,10 @@ export default function IntlCourseDetailClient({
                 <h2 className="text-xl font-bold text-slate-900">{cd.curriculum}</h2>
                 <div className="space-y-3">
                   {chapters.map((ch, idx) => (
-                    <div key={ch.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+                    <div
+                      key={ch.id}
+                      className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow"
+                    >
                       <div className="flex items-start gap-4">
                         <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm shrink-0">
                           {idx + 1}
@@ -470,7 +544,9 @@ export default function IntlCourseDetailClient({
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-slate-900 text-base">{ch.title}</h4>
                           {ch.description && (
-                            <p className="text-sm text-slate-500 mt-1 line-clamp-2">{ch.description}</p>
+                            <p className="text-sm text-slate-500 mt-1 line-clamp-2">
+                              {ch.description}
+                            </p>
                           )}
                         </div>
                         <div className="flex items-center gap-3 shrink-0 text-xs text-slate-400">
@@ -480,7 +556,9 @@ export default function IntlCourseDetailClient({
                             </span>
                           )}
                           {ch.is_free_preview && (
-                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md font-bold">{cd.freePreview}</span>
+                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md font-bold">
+                              {cd.freePreview}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -495,19 +573,26 @@ export default function IntlCourseDetailClient({
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-slate-900">{cd.schedule}</h2>
                 <div className="space-y-4">
-                  {Array.from(new Set(agenda.map(item => item.day_number))).map(dayNum => (
-                    <div key={dayNum} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                  {Array.from(new Set(agenda.map((item) => item.day_number))).map((dayNum) => (
+                    <div
+                      key={dayNum}
+                      className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
+                    >
                       <div className="bg-slate-50 px-5 py-3 border-b border-slate-200">
-                        <h3 className="font-bold text-slate-900">{cd.day} {dayNum}</h3>
+                        <h3 className="font-bold text-slate-900">
+                          {cd.day} {dayNum}
+                        </h3>
                       </div>
                       <div className="divide-y divide-slate-100">
                         {agenda
-                          .filter(item => item.day_number === dayNum)
+                          .filter((item) => item.day_number === dayNum)
                           .sort((a, b) => a.display_order - b.display_order)
-                          .map(item => (
+                          .map((item) => (
                             <div key={item.id} className="px-5 py-4 flex items-start gap-4">
                               {item.session_time && (
-                                <span className="text-sm font-medium text-slate-400 shrink-0 w-20">{item.session_time}</span>
+                                <span className="text-sm font-medium text-slate-400 shrink-0 w-20">
+                                  {item.session_time}
+                                </span>
                               )}
                               <div className="flex-1">
                                 <h4 className="font-bold text-slate-900 text-sm">{item.title}</h4>
@@ -529,7 +614,7 @@ export default function IntlCourseDetailClient({
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-slate-900">{cd.whatsIncluded}</h2>
                 <div className="grid sm:grid-cols-2 gap-4">
-                  {services.map(svc => {
+                  {services.map((svc) => {
                     const iconMap: Record<string, React.ReactNode> = {
                       meals: <Utensils className="w-5 h-5 text-emerald-600" />,
                       accommodation: <Hotel className="w-5 h-5 text-emerald-600" />,
@@ -537,15 +622,26 @@ export default function IntlCourseDetailClient({
                       visa_letter: <FileText className="w-5 h-5 text-emerald-600" />,
                     };
                     return (
-                      <div key={svc.id} className={`flex items-start gap-3 p-4 rounded-xl border ${svc.is_included ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-200'}`}>
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${svc.is_included ? 'bg-emerald-100' : 'bg-slate-100'}`}>
-                          {iconMap[svc.service_type] || <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+                      <div
+                        key={svc.id}
+                        className={`flex items-start gap-3 p-4 rounded-xl border ${svc.is_included ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-200'}`}
+                      >
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${svc.is_included ? 'bg-emerald-100' : 'bg-slate-100'}`}
+                        >
+                          {iconMap[svc.service_type] || (
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          )}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-slate-900 text-sm capitalize">{svc.service_type.replace('_', ' ')}</h4>
+                            <h4 className="font-bold text-slate-900 text-sm capitalize">
+                              {svc.service_type.replace('_', ' ')}
+                            </h4>
                             {svc.is_included && (
-                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">{cd.included}</span>
+                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">
+                                {cd.included}
+                              </span>
                             )}
                           </div>
                           {svc.description && (
@@ -562,12 +658,21 @@ export default function IntlCourseDetailClient({
             {/* Instructors */}
             {effectiveInstructors.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-slate-900">{effectiveInstructors.length > 1 ? cd.instructors : cd.instructor}</h2>
+                <h2 className="text-xl font-bold text-slate-900">
+                  {effectiveInstructors.length > 1 ? cd.instructors : cd.instructor}
+                </h2>
                 <div className="space-y-4">
-                  {effectiveInstructors.map(inst => (
-                    <div key={inst.id} className="flex items-start gap-5 bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                  {effectiveInstructors.map((inst) => (
+                    <div
+                      key={inst.id}
+                      className="flex items-start gap-5 bg-slate-50 rounded-2xl p-6 border border-slate-100"
+                    >
                       {inst.avatar_url ? (
-                        <img src={inst.avatar_url} alt={inst.name} className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md shrink-0" />
+                        <img
+                          src={inst.avatar_url}
+                          alt={inst.name}
+                          className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md shrink-0"
+                        />
                       ) : (
                         <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xl shrink-0">
                           {inst.name.charAt(0)}
@@ -577,11 +682,17 @@ export default function IntlCourseDetailClient({
                         <h4 className="font-bold text-slate-900 text-lg">{inst.name}</h4>
                         <p className="text-sm text-slate-500 font-medium mb-2">{inst.title}</p>
                         {inst.role && (
-                          <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-xs font-bold mb-2 capitalize">{inst.role}</span>
+                          <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-xs font-bold mb-2 capitalize">
+                            {inst.role}
+                          </span>
                         )}
-                        {inst.bio && <p className="text-sm text-slate-600 leading-relaxed">{inst.bio}</p>}
+                        {inst.bio && (
+                          <p className="text-sm text-slate-600 leading-relaxed">{inst.bio}</p>
+                        )}
                         {inst.credentials && (
-                          <p className="text-xs text-slate-400 mt-2 font-medium">{inst.credentials}</p>
+                          <p className="text-xs text-slate-400 mt-2 font-medium">
+                            {inst.credentials}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -606,7 +717,7 @@ export default function IntlCourseDetailClient({
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
-                  {equipmentProducts.map(product => {
+                  {equipmentProducts.map((product) => {
                     const cta = productCTA(product, locale);
                     const instructorNote = getEquipmentInstructorNote(product, locale);
                     return (
@@ -632,25 +743,35 @@ export default function IntlCourseDetailClient({
                         <div className="flex-1 min-w-0 flex flex-col">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
                             {product.brand && (
-                              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">{product.brand}</span>
+                              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                                {product.brand}
+                              </span>
                             )}
-                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${getEquipmentRelationClass(product)}`}>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${getEquipmentRelationClass(product)}`}
+                            >
                               {getEquipmentRelationLabel(product, locale)}
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
                               {getEquipmentScopeLabel(product, locale)}
                             </span>
                           </div>
-                          <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-1">{product.display_name}</h4>
+                          <h4 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-1">
+                            {product.display_name}
+                          </h4>
                           {product.recommendation_reason && !instructorNote && (
-                            <p className="text-xs text-blue-600 mt-0.5">{product.recommendation_reason}</p>
+                            <p className="text-xs text-blue-600 mt-0.5">
+                              {product.recommendation_reason}
+                            </p>
                           )}
                           {instructorNote && (
                             <div className="mt-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
                               <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">
                                 {equipmentCopy.instructorNote}
                               </p>
-                              <p className="text-xs text-amber-900 line-clamp-3">{instructorNote}</p>
+                              <p className="text-xs text-amber-900 line-clamp-3">
+                                {instructorNote}
+                              </p>
                             </div>
                           )}
                           <div className="mt-auto flex items-center justify-between pt-2">
@@ -661,9 +782,11 @@ export default function IntlCourseDetailClient({
                             ) : (
                               <span className="text-xs text-slate-400">Contact for pricing</span>
                             )}
-                            <span className={`text-xs font-bold flex items-center gap-1 ${
-                              cta.variant === 'outline' ? 'text-blue-600' : 'text-emerald-600'
-                            }`}>
+                            <span
+                              className={`text-xs font-bold flex items-center gap-1 ${
+                                cta.variant === 'outline' ? 'text-blue-600' : 'text-emerald-600'
+                              }`}
+                            >
                               {cta.label} <ArrowRight className="w-3 h-3" />
                             </span>
                           </div>
@@ -698,10 +821,15 @@ export default function IntlCourseDetailClient({
                     <span className="text-3xl font-extrabold text-emerald-600">{cd.free}</span>
                   ) : course.price ? (
                     <span className="text-3xl font-extrabold text-slate-900">
-                      {course.currency === 'USD' ? '$' :
-                       course.currency === 'CNY' ? '¥' :
-                       course.currency === 'JPY' ? '¥' :
-                       course.currency === 'THB' ? '฿' : '$'}
+                      {course.currency === 'USD'
+                        ? '$'
+                        : course.currency === 'CNY'
+                          ? '¥'
+                          : course.currency === 'JPY'
+                            ? '¥'
+                            : course.currency === 'THB'
+                              ? '฿'
+                              : '$'}
                       {course.price.toLocaleString()}
                     </span>
                   ) : (
@@ -713,7 +841,8 @@ export default function IntlCourseDetailClient({
                 </div>
 
                 {/* CTA Buttons - 根据当前语言的价格决定显示询价还是购买 */}
-                {course.cta_config?.primary_action === 'inquiry' || (!course.price && !course.is_free) ? (
+                {course.cta_config?.primary_action === 'inquiry' ||
+                (!course.price && !course.is_free) ? (
                   <Link
                     href={`/${locale}/for-clinics#consultation`}
                     className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-base hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-900/10"
@@ -739,6 +868,36 @@ export default function IntlCourseDetailClient({
                 >
                   {cd.talkToTeam}
                 </Link>
+
+                {/* Ask VetAssist - AI Course Consultant */}
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(
+                        new CustomEvent('vetsphere:chat:open', {
+                          detail: {
+                            courseId: course.course_id,
+                            courseName: course.title,
+                            prefillMessage: `Hi, I'm interested in the "${course.title}" training course. Can you tell me more about the curriculum, required equipment, and how it can benefit my practice?`,
+                          },
+                        }),
+                      );
+                    }
+                  }}
+                  className="w-full mt-2 flex items-center justify-center gap-2 px-6 py-3 bg-blue-50 text-blue-700 
+                             border border-blue-200 rounded-xl font-medium text-sm
+                             hover:bg-blue-100 hover:border-blue-300 transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  {cd.askVetAssist || 'Ask VetAssist about this course'}
+                </button>
 
                 {/* Quick Info */}
                 <div className="mt-6 space-y-3">
@@ -774,7 +933,10 @@ export default function IntlCourseDetailClient({
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-500">{cd.startDate}</span>
                       <span className="font-bold text-slate-900">
-                        {new Date(course.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {new Date(course.start_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
                       </span>
                     </div>
                   )}
@@ -787,7 +949,9 @@ export default function IntlCourseDetailClient({
                   {course.teaching_languages.length > 0 && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-500">Language</span>
-                      <span className="font-bold text-slate-900">{course.teaching_languages.join(', ')}</span>
+                      <span className="font-bold text-slate-900">
+                        {course.teaching_languages.join(', ')}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -796,10 +960,15 @@ export default function IntlCourseDetailClient({
               {/* Growth Tracks */}
               {course.growth_tracks && course.growth_tracks.length > 0 && (
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-                  <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Growth Tracks</h4>
+                  <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
+                    Growth Tracks
+                  </h4>
                   <div className="flex flex-wrap gap-2">
                     {course.growth_tracks.map((track, i) => (
-                      <span key={i} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                      <span
+                        key={i}
+                        className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700"
+                      >
                         {track}
                       </span>
                     ))}
@@ -810,10 +979,16 @@ export default function IntlCourseDetailClient({
               {/* Lead instructor mini card */}
               {effectiveLeadInstructor && (
                 <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Lead Instructor</h4>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                    Lead Instructor
+                  </h4>
                   <div className="flex items-center gap-3">
                     {effectiveLeadInstructor.avatar_url ? (
-                      <img src={effectiveLeadInstructor.avatar_url} alt={effectiveLeadInstructor.name} className="w-12 h-12 rounded-full object-cover border border-slate-100" />
+                      <img
+                        src={effectiveLeadInstructor.avatar_url}
+                        alt={effectiveLeadInstructor.name}
+                        className="w-12 h-12 rounded-full object-cover border border-slate-100"
+                      />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-lg">
                         {effectiveLeadInstructor.name.charAt(0)}
@@ -838,7 +1013,10 @@ export default function IntlCourseDetailClient({
                       <Wrench className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="font-bold text-blue-900">{equipmentProducts.length} Equipment Kit{equipmentProducts.length !== 1 ? 's' : ''}</p>
+                      <p className="font-bold text-blue-900">
+                        {equipmentProducts.length} Equipment Kit
+                        {equipmentProducts.length !== 1 ? 's' : ''}
+                      </p>
                       <p className="text-xs text-blue-600">View recommended equipment below</p>
                     </div>
                   </div>

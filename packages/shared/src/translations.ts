@@ -1,4 +1,3 @@
-
 export const translations = {
   en: {
     // ... existing translations ...
@@ -179,7 +178,7 @@ export const translations = {
       joinNetwork: 'Join Network',
       orAccess: 'Or access with',
       noAccount: "Don't have an account yet?",
-      hasAccount: "Already have an account?",
+      hasAccount: 'Already have an account?',
       registerNow: 'Register Now',
       signInLink: 'Sign In',
       authenticating: 'Authenticating...',
@@ -188,7 +187,8 @@ export const translations = {
       secureLogin: 'Secure Login',
       vetHome: 'VetSphere Home',
       heroTitle: 'Elevate Your Surgical Precision.',
-      heroDesc: 'Join over 5,000 veterinary surgeons accessing world-class training, precision instruments, and AI-powered clinical support.',
+      heroDesc:
+        'Join over 5,000 veterinary surgeons accessing world-class training, precision instruments, and AI-powered clinical support.',
       badgeCE: 'CE Accredited',
       badgeGlobal: 'Global Network',
       loginToView: 'Login to View Price',
@@ -204,7 +204,8 @@ export const translations = {
       disciplineFocus: 'Focus Specialty',
       contactPerson: 'Contact Person',
       businessLicense: 'Business Registration / ID',
-      applySuccess: 'Application submitted! Our clinical relations team will contact you within 48 hours.',
+      applySuccess:
+        'Application submitted! Our clinical relations team will contact you within 48 hours.',
       resetPassword: 'Reset Password',
       sendResetLink: 'Send Reset Link',
       resetEmailSent: 'A password reset link has been sent to your email. Please check your inbox.',
@@ -264,7 +265,8 @@ export const translations = {
       // Shop page translations
       heroTitle: 'Professional Veterinary',
       heroTitleHighlight: 'Equipment Marketplace',
-      heroSubtitle: 'Your trusted B2B platform for professional veterinary medical equipment. Direct access to manufacturers, bulk pricing, and expert support.',
+      heroSubtitle:
+        'Your trusted B2B platform for professional veterinary medical equipment. Direct access to manufacturers, bulk pricing, and expert support.',
       searchPlaceholder: 'Search equipment, brands, or part numbers...',
       b2bBadge: 'B2B Platform',
       productsCount: 'Products',
@@ -284,7 +286,8 @@ export const translations = {
       noProductsAvailable: 'No products available at the moment.',
       contactForPrice: 'Contact for Price',
       needCustomSolutions: 'Need Custom Solutions?',
-      customSolutionsDesc: 'Get personalized product recommendations, bulk pricing, and expert support for your veterinary clinic',
+      customSolutionsDesc:
+        'Get personalized product recommendations, bulk pricing, and expert support for your veterinary clinic',
       requestQuote: 'Request a Quote',
       exploreTraining: 'Explore Training',
       loadMore: 'Load More',
@@ -316,7 +319,8 @@ export const translations = {
       showingRange: 'Showing {start}-{end} of {total} products',
       previousPage: 'Previous page',
       nextPage: 'Next page',
-      noResultsWithFilters: 'No products match your current filters. Try adjusting or clearing your filters.',
+      noResultsWithFilters:
+        'No products match your current filters. Try adjusting or clearing your filters.',
       viewResults: 'View {count} Results',
       moqLabel: 'MOQ: {qty} units',
     },
@@ -324,7 +328,7 @@ export const translations = {
       title: 'Shopping Cart',
       itemsCount: '{count} item(s) in your cart',
       empty: 'Your cart is empty',
-      emptyDesc: 'Looks like you haven\'t added anything to your cart yet.',
+      emptyDesc: "Looks like you haven't added anything to your cart yet.",
       continueShopping: 'Continue Shopping',
       sku: 'SKU:',
       minOrder: 'Min. order:',
@@ -349,7 +353,8 @@ export const translations = {
       continueShopping: 'Continue Shopping',
       orderPlaced: 'Order Placed Successfully!',
       orderNumber: 'Order Number:',
-      bankTransferNote: 'Please complete your payment via bank transfer. We will process your order once payment is confirmed.',
+      bankTransferNote:
+        'Please complete your payment via bank transfer. We will process your order once payment is confirmed.',
       confirmationEmail: 'You will receive a confirmation email shortly.',
       viewOrders: 'View Orders',
       // Account Section (One-Page Checkout)
@@ -415,7 +420,8 @@ export const translations = {
       bankTransfer: 'Bank Transfer',
       bankTransferDesc: 'Manual bank transfer, order processed after payment confirmation',
       bankTransferInstructions: 'Bank Transfer Instructions:',
-      bankTransferInstructionsDetail: 'After placing your order, you will receive our bank account details via email. Please include your order number in the transfer reference.',
+      bankTransferInstructionsDetail:
+        'After placing your order, you will receive our bank account details via email. Please include your order number in the transfer reference.',
       // Order Notes
       orderNotes: 'Order Notes (Optional)',
       orderNotesPlaceholder: 'Any special instructions for your order...',
@@ -429,7 +435,8 @@ export const translations = {
       // Actions
       processing: 'Processing...',
       placeOrder: 'Place Order',
-      termsAgreement: 'By placing your order, you agree to our Terms of Service and Privacy Policy.',
+      termsAgreement:
+        'By placing your order, you agree to our Terms of Service and Privacy Policy.',
       errorTitle: 'An error occurred',
       success: {
         title: 'Payment Successful!',
@@ -470,6 +477,7 @@ export const translations = {
       viewCart: 'View Cart',
       requestQuote: 'Request a Quote',
       requestQuoteShort: 'Request Quote',
+      askVetAssist: 'Ask VetAssist about this product',
       quoteModalTitle: 'Request a Quote',
       quoteSubmitted: 'Quote Request Submitted',
       quoteSubmittedDesc: 'Our team will get back to you within 1-2 business days.',
@@ -503,7 +511,7 @@ export const translations = {
       freePreview: 'Free Preview',
       schedule: 'Schedule',
       day: 'Day',
-      whatsIncluded: 'What\'s Included',
+      whatsIncluded: "What's Included",
       included: 'Included',
       instructor: 'Instructor',
       instructors: 'Instructors',
@@ -518,6 +526,7 @@ export const translations = {
       inquireCourse: 'Inquire About This Course',
       enrollNow: 'Enroll Now',
       talkToTeam: 'Talk to Our Team',
+      askVetAssist: 'Ask VetAssist about this course',
       format: 'Format',
       level: 'Level',
       specialty: 'Specialty',
@@ -591,7 +600,8 @@ export const translations = {
     },
     courses: {
       title: 'Advanced Training Curriculum',
-      subtitle: 'Accredited wet-labs and seminars led by recognized international clinical experts.',
+      subtitle:
+        'Accredited wet-labs and seminars led by recognized international clinical experts.',
       allSpecialties: 'All Specialties',
       tuition: 'Registration Fee',
       agenda: 'Curriculum',
@@ -600,12 +610,18 @@ export const translations = {
       venue: 'Clinical Site',
       openMaps: 'Navigate to Site',
       empty: 'No pending sessions. Contact academy for future scheduling.',
-      features: ['Advanced Wet-lab', 'CPE Accredited', 'Clinical Materials Included', 'Master-level Feedback'],
+      features: [
+        'Advanced Wet-lab',
+        'CPE Accredited',
+        'Clinical Materials Included',
+        'Master-level Feedback',
+      ],
       // List page translations
       heroTag: 'Premium Training',
       heroTitle: 'Advanced Clinical Training for',
       heroTitleHighlight: 'Veterinary Surgeons',
-      heroSubtitle: 'Expert-led hands-on workshops designed by board-certified Diplomates. Earn ACVS/ECVS credits and master advanced surgical techniques.',
+      heroSubtitle:
+        'Expert-led hands-on workshops designed by board-certified Diplomates. Earn ACVS/ECVS credits and master advanced surgical techniques.',
       heroBadge1: 'ACVS Credits',
       heroBadge2: '50+ Diplomates',
       heroBadge3: 'Hands-On Practice',
@@ -631,7 +647,8 @@ export const translations = {
       previous: 'Previous',
       next: 'Next',
       bottomTitle: 'Not Sure Which Training Is Right for You?',
-      bottomSubtitle: 'Our expert team can recommend the perfect training program based on your specialty, experience level, and clinic goals.',
+      bottomSubtitle:
+        'Our expert team can recommend the perfect training program based on your specialty, experience level, and clinic goals.',
       getRecommendation: 'Get Personalized Recommendation',
       browseAll: 'Browse All Training',
       // Filter options
@@ -678,7 +695,7 @@ export const translations = {
       enrolled: 'Enrolled',
       completed: 'Completed',
       viewAll: 'View All',
-      noCoursesYet: 'You haven\'t enrolled in any courses yet.',
+      noCoursesYet: "You haven't enrolled in any courses yet.",
       noOrdersYet: 'No orders yet.',
       browseCourses: 'Browse Courses',
       pointsRewards: 'Points & Rewards',
@@ -691,7 +708,8 @@ export const translations = {
       support: 'Clinical Support',
       company: 'Academy',
       copyright: '© 2026 VetSphere Global. Institutional Standards Applied.',
-      brandDesc: "Building the digital infrastructure for global veterinary surgery. Connecting clinical decision-makers with world-class education and precision medical devices.",
+      brandDesc:
+        'Building the digital infrastructure for global veterinary surgery. Connecting clinical decision-makers with world-class education and precision medical devices.',
       links: {
         courses: 'Education',
         shop: 'Instruments',
@@ -709,52 +727,54 @@ export const translations = {
       address: {
         line1: 'VetSphere Global Headquarters',
         line2: '123 Surgical Way, Suite 400',
-        line3: 'Zurich, CH-8001, Switzerland'
-      }
+        line3: 'Zurich, CH-8001, Switzerland',
+      },
     },
     home: {
       heroTag: 'Global Veterinary Surgery',
       heroTitle1: 'Advancing the',
       heroTitle2: 'Standard of Care.',
-      heroDesc: "VetSphere connects the world's leading veterinary surgeons with master-level education, precision orthopedics, and neurosurgical technologies.",
+      heroDesc:
+        "VetSphere connects the world's leading veterinary surgeons with master-level education, precision orthopedics, and neurosurgical technologies.",
       heroBadge1: 'ISO 13485 Certified',
       heroBadge2: 'AAVSB RACE Approved',
       // Partners
       partnerTitle: 'Global Academic Alliances',
-      partnerSubtitle: 'Our curriculum is built on the expertise of faculty from the world\'s top-ranked veterinary institutions.',
+      partnerSubtitle:
+        "Our curriculum is built on the expertise of faculty from the world's top-ranked veterinary institutions.",
       partnerBadge: 'QS World Top 10',
-      
+
       // University Specifics
       uniUF: 'University of Florida',
       uniUFDesc: '#1 Clinical Caseload in US Academic Hospitals',
-      
+
       uniRVC: 'Royal Veterinary College',
       uniRVCDesc: 'London • Global #1 Ranking',
-      
+
       uniUCD: 'UC Davis',
       uniUCDDesc: 'Precision Medicine Leader',
-      
+
       uniCornell: 'Cornell University',
       uniCornellDesc: 'Clinical & Research Balance',
-      
+
       uniCSU: 'Colorado State',
       uniCSUDesc: 'Top-tier Small Animal Orthopedics',
-      
+
       uniEdin: 'Univ. of Edinburgh',
       uniEdinDesc: 'Companion Animal Health',
-      
+
       uniGuelph: 'Univ. of Guelph',
       uniGuelphDesc: 'North American Education Hub',
-      
+
       uniVetsuisse: 'Vetsuisse Faculty',
       uniVetsuisseDesc: 'Bern/Zurich • Research Excellence',
-      
+
       uniUtrecht: 'Utrecht University',
       uniUtrechtDesc: 'European Research Center',
-      
+
       uniPenn: 'UPenn Vet',
       uniPennDesc: 'Translational Medicine',
-      
+
       uniTexas: 'Texas A&M',
       uniTexasDesc: 'Large Animal & Tropical Disease',
 
@@ -774,64 +794,78 @@ export const translations = {
       statDevicesSub: '13485 Certified',
       focusTag: 'Clinical Focus',
       focusTitle: 'Comprehensive Surgical Solutions',
-      focusDesc: 'We specialize in the complete lifecycle of veterinary surgery: from residency-level training to the supply of precision implants.',
+      focusDesc:
+        'We specialize in the complete lifecycle of veterinary surgery: from residency-level training to the supply of precision implants.',
       orthoTitle: 'Orthopedics',
-      orthoDesc: 'Advanced instruction in TPLO, fracture repair, and joint replacement using medical-grade titanium implants.',
+      orthoDesc:
+        'Advanced instruction in TPLO, fracture repair, and joint replacement using medical-grade titanium implants.',
       neuroTitle: 'Neurosurgery',
-      neuroDesc: 'Precision techniques for IVDD decompression, spinal stabilization, and complex intracranial procedures.',
+      neuroDesc:
+        'Precision techniques for IVDD decompression, spinal stabilization, and complex intracranial procedures.',
       softTitle: 'Soft Tissue & MIS',
-      softDesc: 'Mastery in oncologic reconstruction, liver lobectomy, and minimally invasive thoracoscopy/laparoscopy.',
+      softDesc:
+        'Mastery in oncologic reconstruction, liver lobectomy, and minimally invasive thoracoscopy/laparoscopy.',
       explore: 'Explore Curriculum →',
       equipTag: 'SurgiTech Precision Instruments',
       equipTitle1: 'Engineering',
       equipTitle2: 'Clinical Confidence.',
-      equipDesc: 'Our distinct line of power tools and implants are designed in Germany and manufactured to ISO 13485 standards. Ergonomically optimized for veterinary surgeons.',
+      equipDesc:
+        'Our distinct line of power tools and implants are designed in Germany and manufactured to ISO 13485 standards. Ergonomically optimized for veterinary surgeons.',
       equipList: [
         'High-Torque Oscillating Saws (TPLO)',
         'Medical Grade 5 Titanium Locking Plates',
         'Modular External Fixation Systems',
-        'Microsurgical Instrument Sets'
+        'Microsurgical Instrument Sets',
       ],
       equipCta: 'Browse Equipment Catalog',
       equipFeatureTag: 'Featured System',
       equipFeatureName: 'SurgiPower TPLO V4',
       equipFeatureSpec: 'Max Torque Load',
       netTitle: 'A Global Community of Excellence.',
-      netDesc: 'VetSphere is not just a platform; it is a worldwide network of teaching hospitals, research centers, and surgical specialists.',
+      netDesc:
+        'VetSphere is not just a platform; it is a worldwide network of teaching hospitals, research centers, and surgical specialists.',
       netPartner1: 'Strategic Partner (Asia)',
       netPartner2: 'Diplomate Faculty',
       netJoined: 'Joined by 15,000+ peers',
       featLabs: 'Hands-on Wet Labs',
-      featLabsDesc: 'Small group sessions (4:1 student-teacher ratio) ensuring direct mentorship on cadaver models.',
+      featLabsDesc:
+        'Small group sessions (4:1 student-teacher ratio) ensuring direct mentorship on cadaver models.',
       featCase: 'Case Consultation',
-      featCaseDesc: 'Post-course support allowing you to upload complex cases for expert review before surgery.',
+      featCaseDesc:
+        'Post-course support allowing you to upload complex cases for expert review before surgery.',
       featSupply: 'Supply Chain Integration',
-      featSupplyDesc: 'Seamless ordering of implants matching the exact specifications learned in training.',
+      featSupplyDesc:
+        'Seamless ordering of implants matching the exact specifications learned in training.',
       featDigital: 'Digital Support',
       featDigitalDesc: 'AI-assisted preoperative planning and intelligent inventory management.',
       ctaTitle1: 'Ready to elevate your',
       ctaTitle2: 'Surgical Practice?',
-      ctaDesc: 'Join the professional network trusted by veterinary teaching hospitals and private specialty centers worldwide.',
+      ctaDesc:
+        'Join the professional network trusted by veterinary teaching hospitals and private specialty centers worldwide.',
       ctaButtonPrimary: 'Register Membership',
-      ctaButtonSecondary: 'View Case Studies'
+      ctaButtonSecondary: 'View Case Studies',
     },
     ai: {
       title: 'Surgical Decision Intelligence',
       status: 'Analytical Vision Active',
       reset: 'Clear Session',
       liveMode: 'Intra-op Voice Mode',
-      welcome: 'VetSphere Intelligence initialized. Provide clinical imagery or technical specifications for immediate analysis.',
+      welcome:
+        'VetSphere Intelligence initialized. Provide clinical imagery or technical specifications for immediate analysis.',
       placeholder: 'Describe case or input device specs...',
       imagePlaceholder: 'Specify clinical query for this image...',
       analyzing: 'Analyzing radiographic data...',
-      suggestions: ['Radiographic Analysis', 'Course Recommendations', 'Instrument Calibration']
+      suggestions: ['Radiographic Analysis', 'Course Recommendations', 'Instrument Calibration'],
     },
     intlHome: {
       heroTag: 'Global Veterinary Surgery',
       heroTitle: 'Professional Veterinary Surgery Education',
-      heroSubtitle: 'World-class training programs and precision surgical instruments for veterinary professionals worldwide.',
+      heroSubtitle:
+        'World-class training programs and precision surgical instruments for veterinary professionals worldwide.',
       heroCTA1: 'Browse Courses',
       heroCTA2: 'Shop Equipment',
+      heroChatCTA: 'Talk to VetAssist',
+      ctaChatButton: 'Talk to VetAssist',
       heroBadge1: 'ISO 13485 Certified',
       heroBadge2: 'AAVSB RACE Approved',
       heroOverlayCount: '50+',
@@ -849,7 +883,8 @@ export const translations = {
       statCertsLabel: 'Medical Devices',
       statCertsSub: '13485 Certified',
       featuredTitle: 'Upcoming Featured Courses',
-      featuredSubtitle: 'Join our next hands-on surgical training programs led by board-certified specialists',
+      featuredSubtitle:
+        'Join our next hands-on surgical training programs led by board-certified specialists',
       viewAllCourses: 'View All Courses',
       learnMore: 'Learn More',
       course1Title: 'Advanced TPLO Techniques',
@@ -872,13 +907,17 @@ export const translations = {
       course3Price: '$2,500',
       disciplinesTag: 'Clinical Focus',
       disciplinesTitle: 'Comprehensive Surgical Solutions',
-      disciplinesDesc: 'We specialize in the complete lifecycle of veterinary surgery: from residency-level training to the supply of precision implants.',
+      disciplinesDesc:
+        'We specialize in the complete lifecycle of veterinary surgery: from residency-level training to the supply of precision implants.',
       orthoTitle: 'Orthopedics',
-      orthoDesc: 'Advanced instruction in TPLO, fracture repair, and joint replacement using medical-grade titanium implants.',
+      orthoDesc:
+        'Advanced instruction in TPLO, fracture repair, and joint replacement using medical-grade titanium implants.',
       neuroTitle: 'Neurosurgery',
-      neuroDesc: 'Precision techniques for IVDD decompression, spinal stabilization, and complex intracranial procedures.',
+      neuroDesc:
+        'Precision techniques for IVDD decompression, spinal stabilization, and complex intracranial procedures.',
       softTitle: 'Soft Tissue & MIS',
-      softDesc: 'Mastery in oncologic reconstruction, liver lobectomy, and minimally invasive thoracoscopy/laparoscopy.',
+      softDesc:
+        'Mastery in oncologic reconstruction, liver lobectomy, and minimally invasive thoracoscopy/laparoscopy.',
       explore: 'Explore Curriculum \u2192',
       productsTitle: 'Shop by Category',
       productsSubtitle: 'Professional surgical instruments and equipment for every specialty',
@@ -896,15 +935,19 @@ export const translations = {
       whyTitle: 'Why Choose VetSphere',
       whySubtitle: 'The global leader in veterinary surgical education and instrumentation',
       featLabs: 'Hands-on Wet Labs',
-      featLabsDesc: 'Small group sessions (4:1 student-teacher ratio) ensuring direct mentorship on cadaver models.',
+      featLabsDesc:
+        'Small group sessions (4:1 student-teacher ratio) ensuring direct mentorship on cadaver models.',
       featCase: 'Case Consultation',
-      featCaseDesc: 'Post-course support allowing you to upload complex cases for expert review before surgery.',
+      featCaseDesc:
+        'Post-course support allowing you to upload complex cases for expert review before surgery.',
       featSupply: 'Supply Chain Integration',
-      featSupplyDesc: 'Seamless ordering of implants matching the exact specifications learned in training.',
+      featSupplyDesc:
+        'Seamless ordering of implants matching the exact specifications learned in training.',
       featDigital: 'Digital Support',
       featDigitalDesc: 'AI-assisted preoperative planning and intelligent inventory management.',
       ctaTitle: 'Ready to Advance Your Practice?',
-      ctaSubtitle: 'Join the professional network trusted by veterinary teaching hospitals and private specialty centers worldwide.',
+      ctaSubtitle:
+        'Join the professional network trusted by veterinary teaching hospitals and private specialty centers worldwide.',
       ctaButton1: 'Register Membership',
       ctaButton2: 'Contact Sales',
     },
@@ -932,13 +975,15 @@ export const translations = {
       step4Desc: 'Take on higher-value cases with confidence',
       featuredTag: 'Featured Training Programs',
       featuredTitle: 'Hands-on Courses with Equipment Integration',
-      featuredSubtitle: 'Each training program is paired with the clinical equipment you need to apply what you learn',
+      featuredSubtitle:
+        'Each training program is paired with the clinical equipment you need to apply what you learn',
       equipmentBadge: 'recommended equipment',
       viewAllTraining: 'View All Training Programs',
       learnMore: 'Learn More',
       toolkitTag: 'Clinical Toolkit',
       toolkitTitle: 'Equipment by Clinical Workflow',
-      toolkitSubtitle: 'Professional instruments and devices organized by how you use them in practice',
+      toolkitSubtitle:
+        'Professional instruments and devices organized by how you use them in practice',
       browseAll: 'Browse All Equipment',
       trustTag: 'Trusted Worldwide',
       trustTitle: 'Trusted by Leading Clinics Worldwide',
@@ -956,15 +1001,20 @@ export const translations = {
       statCertsLabel: 'Medical Devices',
       statCertsSub: '13485 Certified',
       trustFeat1: 'Expert-Led Training',
-      trustFeat1Desc: 'Small group wet labs (4:1 ratio) with board-certified diplomates ensuring hands-on mentorship.',
+      trustFeat1Desc:
+        'Small group wet labs (4:1 ratio) with board-certified diplomates ensuring hands-on mentorship.',
       trustFeat2: 'Post-Course Support',
-      trustFeat2Desc: 'Upload complex cases for expert review before surgery. Your instructors stay accessible.',
+      trustFeat2Desc:
+        'Upload complex cases for expert review before surgery. Your instructors stay accessible.',
       trustFeat3: 'Integrated Supply Chain',
-      trustFeat3Desc: 'Order the exact implants and instruments you trained with. No specification mismatch.',
+      trustFeat3Desc:
+        'Order the exact implants and instruments you trained with. No specification mismatch.',
       trustFeat4: 'Digital Clinical Tools',
-      trustFeat4Desc: 'AI-assisted preoperative planning and intelligent inventory management for your clinic.',
+      trustFeat4Desc:
+        'AI-assisted preoperative planning and intelligent inventory management for your clinic.',
       ctaTitle: 'Ready to upgrade your clinic?',
-      ctaSubtitle: 'Join independent veterinarians worldwide who are upgrading their clinical capabilities',
+      ctaSubtitle:
+        'Join independent veterinarians worldwide who are upgrading their clinical capabilities',
       ctaCTA1: 'Explore Training Programs',
       ctaCTA2: 'Browse Equipment Catalog',
     },
@@ -975,19 +1025,23 @@ export const translations = {
       completedCourse: 'Completed',
       // Testimonials
       testimonial1NameTitle: 'Small Animal Surgeon',
-      testimonial1Quote: 'After completing the Advanced TPLO Course, my orthopedic caseload increased by 300%. I now confidently perform 10+ complex surgeries weekly. VetSphere transformed my veterinary career.',
+      testimonial1Quote:
+        'After completing the Advanced TPLO Course, my orthopedic caseload increased by 300%. I now confidently perform 10+ complex surgeries weekly. VetSphere transformed my veterinary career.',
       testimonial1Result: '300% Surgery Growth',
       testimonial1Course: 'Advanced TPLO Workshop',
       testimonial2NameTitle: 'Clinic Founder & Director',
-      testimonial2Quote: "With VetSphere's equipment solutions and clinic management training, we built a state-of-the-art surgical facility from scratch. Annual revenue grew 250% in just 18 months.",
+      testimonial2Quote:
+        "With VetSphere's equipment solutions and clinic management training, we built a state-of-the-art surgical facility from scratch. Annual revenue grew 250% in just 18 months.",
       testimonial2Result: '250% Revenue Growth',
       testimonial2Course: 'Complete Clinic Setup Program',
       testimonial3NameTitle: 'Neurology Specialist',
-      testimonial3Quote: 'The IVDD surgery course is incredibly comprehensive. From theory to hands-on practice, every detail is covered. I now confidently perform complex spinal surgeries as a regional specialist.',
+      testimonial3Quote:
+        'The IVDD surgery course is incredibly comprehensive. From theory to hands-on practice, every detail is covered. I now confidently perform complex spinal surgeries as a regional specialist.',
       testimonial3Result: 'Independent Spinal Surgery',
       testimonial3Course: 'IVDD Neurosurgery Program',
       testimonial4NameTitle: 'Exotic Animal Veterinarian',
-      testimonial4Quote: "VetSphere's exotic animal medicine program gave me the confidence and skills to handle birds, reptiles, and small mammals. My clinic is now the go-to referral center for exotics in our region.",
+      testimonial4Quote:
+        "VetSphere's exotic animal medicine program gave me the confidence and skills to handle birds, reptiles, and small mammals. My clinic is now the go-to referral center for exotics in our region.",
       testimonial4Result: 'Regional Exotics Referral Center',
       testimonial4Course: 'Exotic Animal Medicine Certification',
       // Stats
@@ -1047,36 +1101,54 @@ export const translations = {
     forClinics: {
       heroTag: 'Clinic Upgrade Programs',
       heroTitle: 'Upgrade Programs for Independent Clinics',
-      heroSubtitle: 'Comprehensive training + equipment solutions designed for independent veterinary clinics looking to expand their surgical capabilities.',
+      heroSubtitle:
+        'Comprehensive training + equipment solutions designed for independent veterinary clinics looking to expand their surgical capabilities.',
       heroCTA: 'Request Consultation',
       tier1Title: 'Surgical Foundations',
-      tier1Desc: 'Essential surgical training and core equipment for clinics beginning their upgrade journey.',
-      tier1Items: 'Introductory surgical courses,Basic surgical instrument sets,Equipment setup guidance,Online case consultation access',
+      tier1Desc:
+        'Essential surgical training and core equipment for clinics beginning their upgrade journey.',
+      tier1Items:
+        'Introductory surgical courses,Basic surgical instrument sets,Equipment setup guidance,Online case consultation access',
       tier2Title: 'Specialty Expansion',
-      tier2Desc: 'Focused training and specialized equipment for clinics ready to add new surgical disciplines.',
-      tier2Items: 'Specialty-focused advanced courses,Specialty instrument & implant packages,Workflow optimization consultation,Priority technical support',
+      tier2Desc:
+        'Focused training and specialized equipment for clinics ready to add new surgical disciplines.',
+      tier2Items:
+        'Specialty-focused advanced courses,Specialty instrument & implant packages,Workflow optimization consultation,Priority technical support',
       tier3Title: 'Full Clinical Transformation',
-      tier3Desc: 'Complete program for clinics committed to becoming a surgical referral destination.',
-      tier3Items: 'Comprehensive multi-specialty training,Full equipment suite with installation,Clinical workflow redesign,Ongoing mentorship program',
+      tier3Desc:
+        'Complete program for clinics committed to becoming a surgical referral destination.',
+      tier3Items:
+        'Comprehensive multi-specialty training,Full equipment suite with installation,Clinical workflow redesign,Ongoing mentorship program',
       tierCTA: 'Learn More',
+      chatBadge: 'Instant AI Consultant',
+      chatTitle: 'Not sure which package is right for your clinic?',
+      chatDesc:
+        'Chat with VetAssist, our AI procurement consultant. Get personalized recommendations for equipment, training, and clinic upgrade packages — no forms needed.',
+      chatCTA: 'Chat with VetAssist Now',
       benefitsTitle: 'Why Choose a Clinic Program',
       benefitsSubtitle: 'Advantages of our integrated training + equipment approach',
       benefit1Title: 'Coordinated Learning',
-      benefit1Desc: 'Training is matched with the equipment you will actually use in your clinic. No gaps between what you learn and what you have.',
+      benefit1Desc:
+        'Training is matched with the equipment you will actually use in your clinic. No gaps between what you learn and what you have.',
       benefit2Title: 'Volume Solutions',
-      benefit2Desc: 'Bundled training and equipment consultation with pricing tailored to your practice needs.',
+      benefit2Desc:
+        'Bundled training and equipment consultation with pricing tailored to your practice needs.',
       benefit3Title: 'Ongoing Support',
-      benefit3Desc: 'Post-purchase clinical consultation ensures you get the most from your investment.',
+      benefit3Desc:
+        'Post-purchase clinical consultation ensures you get the most from your investment.',
       benefit4Title: 'Flexible Programs',
-      benefit4Desc: 'Every program is customized to your clinic size, specialties, and growth goals.',
+      benefit4Desc:
+        'Every program is customized to your clinic size, specialties, and growth goals.',
       formTitle: 'Request a Consultation',
-      formSubtitle: 'Tell us about your clinic and we will design a custom upgrade plan within 24 hours.',
+      formSubtitle:
+        'Tell us about your clinic and we will design a custom upgrade plan within 24 hours.',
       formClinicName: 'Clinic Name',
       formContact: 'Contact Person',
       formEmail: 'Email',
       formPhone: 'Phone',
       formInterest: 'Area of Interest',
-      formInterestOptions: 'Orthopedic Surgery,Neurosurgery,Soft Tissue Surgery,General Surgery,Multiple Specialties',
+      formInterestOptions:
+        'Orthopedic Surgery,Neurosurgery,Soft Tissue Surgery,General Surgery,Multiple Specialties',
       formMessage: 'Message (optional)',
       formSubmit: 'Request Consultation',
       formSuccess: 'Thank you! We will contact you within 24 hours.',
@@ -1257,8 +1329,8 @@ export const translations = {
       signIn: '安全登录',
       joinNetwork: '加入网络',
       orAccess: '或通过以下方式访问',
-      noAccount: "还没有账号？",
-      hasAccount: "已有账号？",
+      noAccount: '还没有账号？',
+      hasAccount: '已有账号？',
       registerNow: '立即注册',
       signInLink: '登录',
       authenticating: '验证中...',
@@ -1267,7 +1339,8 @@ export const translations = {
       secureLogin: '安全登录',
       vetHome: 'VetSphere 首页',
       heroTitle: '提升您的\n外科精准度。',
-      heroDesc: '加入超过 5,000 名兽医外科医生的行列，获取世界级的培训、精密器械和 AI 辅助临床支持。',
+      heroDesc:
+        '加入超过 5,000 名兽医外科医生的行列，获取世界级的培训、精密器械和 AI 辅助临床支持。',
       badgeCE: 'CPE 认证',
       badgeGlobal: '全球网络',
       loginToView: '登录查看价格',
@@ -1341,7 +1414,8 @@ export const translations = {
       // Shop page translations
       heroTitle: '专业兽医',
       heroTitleHighlight: '设备商城',
-      heroSubtitle: '您值得信赖的专业兽医医疗设备B2B平台。直接对接厂商、批量采购价格、专家技术支持。',
+      heroSubtitle:
+        '您值得信赖的专业兽医医疗设备B2B平台。直接对接厂商、批量采购价格、专家技术支持。',
       searchPlaceholder: '搜索设备、品牌或型号...',
       b2bBadge: 'B2B平台',
       productsCount: '产品',
@@ -1409,7 +1483,7 @@ export const translations = {
       venue: '临床培训地点',
       openMaps: '导航至现场',
       empty: '暂无待处理课程。请联系学院获取未来排期。',
-      features: ['高阶实操 Wet-lab', 'CPE 学分认证', '包含临床耗材', '专家一对一反馈']
+      features: ['高阶实操 Wet-lab', 'CPE 学分认证', '包含临床耗材', '专家一对一反馈'],
     },
     dashboard: {
       roadmap: '医学成长路径',
@@ -1444,7 +1518,7 @@ export const translations = {
       support: '临床支持',
       company: '学院中心',
       copyright: '© 2026 VetSphere Global. 遵循国际医疗行业标准。',
-      brandDesc: "构建全球兽医外科的数字基础设施。连接临床决策者与世界级教育及精密医疗器械。",
+      brandDesc: '构建全球兽医外科的数字基础设施。连接临床决策者与世界级教育及精密医疗器械。',
       links: {
         courses: '医学教育',
         shop: '外科器械',
@@ -1462,14 +1536,14 @@ export const translations = {
       address: {
         line1: 'VetSphere 全球总部',
         line2: '123 Surgical Way, Suite 400',
-        line3: '苏黎世, CH-8001, 瑞士'
-      }
+        line3: '苏黎世, CH-8001, 瑞士',
+      },
     },
     home: {
       heroTag: '全球兽医外科中心',
       heroTitle1: '重新定义',
       heroTitle2: '外科临床标准',
-      heroDesc: "VetSphere 将全球顶尖的兽医外科专家与大师级教育、精密骨科及神经外科技术紧密连接。",
+      heroDesc: 'VetSphere 将全球顶尖的兽医外科专家与大师级教育、精密骨科及神经外科技术紧密连接。',
       heroBadge1: 'ISO 13485 医疗认证',
       heroBadge2: 'AAVSB RACE 批准',
       partnerTitle: '全球顶尖学术联盟',
@@ -1523,12 +1597,13 @@ export const translations = {
       equipTag: 'SurgiTech 精密器械',
       equipTitle1: '精工工程',
       equipTitle2: '铸就临床信心',
-      equipDesc: '我们要么不提供，提供即是精品。所有动力工具与植入物均在德国设计，符合 ISO 13485 标准，专为兽医人体工学优化。',
+      equipDesc:
+        '我们要么不提供，提供即是精品。所有动力工具与植入物均在德国设计，符合 ISO 13485 标准，专为兽医人体工学优化。',
       equipList: [
         '高扭矩摆锯系统 (TPLO)',
         '医用 5 级钛合金锁定板',
         '模块化外固定支架系统',
-        '显微外科手术器械组'
+        '显微外科手术器械组',
       ],
       equipCta: '浏览器械目录',
       equipFeatureTag: '核心系统',
@@ -1551,7 +1626,7 @@ export const translations = {
       ctaTitle2: '外科诊疗水平了吗？',
       ctaDesc: '加入这个深受全球教学医院和私立专科中心信赖的专业网络。',
       ctaButtonPrimary: '注册会员',
-      ctaButtonSecondary: '查看病例研究'
+      ctaButtonSecondary: '查看病例研究',
     },
     ai: {
       title: '手术决策智能系统',
@@ -1562,12 +1637,13 @@ export const translations = {
       placeholder: '描述病例或输入器械参数...',
       imagePlaceholder: '请指定针对该影像的临床疑问...',
       analyzing: '正在分析影像数据...',
-      suggestions: ['影像学分析', '课程匹配', '器械校准建议']
+      suggestions: ['影像学分析', '课程匹配', '器械校准建议'],
     },
     intlHome: {
       heroTag: 'Global Veterinary Surgery',
       heroTitle: 'Professional Veterinary Surgery Education',
-      heroSubtitle: 'World-class training programs and precision surgical instruments for veterinary professionals worldwide.',
+      heroSubtitle:
+        'World-class training programs and precision surgical instruments for veterinary professionals worldwide.',
       heroCTA1: 'Browse Courses',
       heroCTA2: 'Shop Equipment',
       heroBadge1: 'ISO 13485 Certified',
@@ -1587,7 +1663,8 @@ export const translations = {
       statCertsLabel: 'Medical Devices',
       statCertsSub: '13485 Certified',
       featuredTitle: 'Upcoming Featured Courses',
-      featuredSubtitle: 'Join our next hands-on surgical training programs led by board-certified specialists',
+      featuredSubtitle:
+        'Join our next hands-on surgical training programs led by board-certified specialists',
       viewAllCourses: 'View All Courses',
       learnMore: 'Learn More',
       course1Title: 'Advanced TPLO Techniques',
@@ -1610,13 +1687,17 @@ export const translations = {
       course3Price: '$2,500',
       disciplinesTag: 'Clinical Focus',
       disciplinesTitle: 'Comprehensive Surgical Solutions',
-      disciplinesDesc: 'We specialize in the complete lifecycle of veterinary surgery: from residency-level training to the supply of precision implants.',
+      disciplinesDesc:
+        'We specialize in the complete lifecycle of veterinary surgery: from residency-level training to the supply of precision implants.',
       orthoTitle: 'Orthopedics',
-      orthoDesc: 'Advanced instruction in TPLO, fracture repair, and joint replacement using medical-grade titanium implants.',
+      orthoDesc:
+        'Advanced instruction in TPLO, fracture repair, and joint replacement using medical-grade titanium implants.',
       neuroTitle: 'Neurosurgery',
-      neuroDesc: 'Precision techniques for IVDD decompression, spinal stabilization, and complex intracranial procedures.',
+      neuroDesc:
+        'Precision techniques for IVDD decompression, spinal stabilization, and complex intracranial procedures.',
       softTitle: 'Soft Tissue & MIS',
-      softDesc: 'Mastery in oncologic reconstruction, liver lobectomy, and minimally invasive thoracoscopy/laparoscopy.',
+      softDesc:
+        'Mastery in oncologic reconstruction, liver lobectomy, and minimally invasive thoracoscopy/laparoscopy.',
       explore: 'Explore Curriculum →',
       productsTitle: 'Shop by Category',
       productsSubtitle: 'Professional surgical instruments and equipment for every specialty',
@@ -1634,15 +1715,19 @@ export const translations = {
       whyTitle: 'Why Choose VetSphere',
       whySubtitle: 'The global leader in veterinary surgical education and instrumentation',
       featLabs: 'Hands-on Wet Labs',
-      featLabsDesc: 'Small group sessions (4:1 student-teacher ratio) ensuring direct mentorship on cadaver models.',
+      featLabsDesc:
+        'Small group sessions (4:1 student-teacher ratio) ensuring direct mentorship on cadaver models.',
       featCase: 'Case Consultation',
-      featCaseDesc: 'Post-course support allowing you to upload complex cases for expert review before surgery.',
+      featCaseDesc:
+        'Post-course support allowing you to upload complex cases for expert review before surgery.',
       featSupply: 'Supply Chain Integration',
-      featSupplyDesc: 'Seamless ordering of implants matching the exact specifications learned in training.',
+      featSupplyDesc:
+        'Seamless ordering of implants matching the exact specifications learned in training.',
       featDigital: 'Digital Support',
       featDigitalDesc: 'AI-assisted preoperative planning and intelligent inventory management.',
       ctaTitle: 'Ready to Advance Your Practice?',
-      ctaSubtitle: 'Join the professional network trusted by veterinary teaching hospitals and private specialty centers worldwide.',
+      ctaSubtitle:
+        'Join the professional network trusted by veterinary teaching hospitals and private specialty centers worldwide.',
       ctaButton1: 'Register Membership',
       ctaButton2: 'Contact Sales',
     },
@@ -1651,7 +1736,8 @@ export const translations = {
       // Section 1: Hero (v3 - training entry)
       heroTitle: '跟随国际临床专家',
       heroTitleLine2: '走向更高水平的宠物医疗实践',
-      heroSubtitle: '由 ACVS/ECVS 认证专家领衔授课，小班制实操训练，\n帮助中国宠物医生真正提升临床能力。',
+      heroSubtitle:
+        '由 ACVS/ECVS 认证专家领衔授课，小班制实操训练，\n帮助中国宠物医生真正提升临床能力。',
       heroCtaPrimary: '浏览课程',
       heroCtaSecondary: '了解平台',
       heroSupport: '已有超过 1,000 名中国宠物医生在平台学习成长',
@@ -1669,7 +1755,8 @@ export const translations = {
       trainTitle: '为什么我们的培训不一样',
       trainSubtitle: '这不是普通的线上课程平台，而是面向临床能力提升的高质量培训体系。',
       trainCard1Title: '国际临床专家',
-      trainCard1Desc: '授课导师均来自 ACVS、ECVS 等国际顶级兽医外科学院，拥有丰富的临床与教学经验。',
+      trainCard1Desc:
+        '授课导师均来自 ACVS、ECVS 等国际顶级兽医外科学院，拥有丰富的临床与教学经验。',
       trainCard2Title: '高水平实操导向',
       trainCard2Desc: '小班制手术实操训练，从理论到手术台的完整学习闭环，不是看视频，是真正上手。',
       trainCard3Title: '专科进阶路径',
@@ -1679,7 +1766,8 @@ export const translations = {
 
       // Section 3: Growth Path (v3 - training-first nodes)
       growthTitle: '一条完整的宠物医生成长路径',
-      growthSubtitle: '从国际课程学习，到临床能力进阶，再到职业选择与事业发展，\n帮助你把能力真正转化为长期事业。',
+      growthSubtitle:
+        '从国际课程学习，到临床能力进阶，再到职业选择与事业发展，\n帮助你把能力真正转化为长期事业。',
       growthStep1: '国际课程学习',
       growthStep1Desc: '国际临床专家授课，专科系统课程，建立高水平临床认知。',
       growthStep2: '临床实操训练',
@@ -1696,7 +1784,8 @@ export const translations = {
       capTitle: '围绕医生真实需求，提供四大核心能力',
       capSubtitle: '从高水平培训出发，延展到临床工具、职业发展与创业支持。',
       capATitle: '国际培训与专业成长',
-      capADesc: '由国际认证临床专家领衔，覆盖骨科、神经外科、软组织等核心专科，小班实操训练，从课堂到手术台的完整学习闭环。',
+      capADesc:
+        '由国际认证临床专家领衔，覆盖骨科、神经外科、软组织等核心专科，小班实操训练，从课堂到手术台的完整学习闭环。',
       capAItems: ['ACVS/ECVS 认证导师', '专科系统课程', '小班实操训练', '国际院校合作资源'],
       capACta: '浏览课程',
       capABadge: '核心入口',
@@ -1728,11 +1817,22 @@ export const translations = {
       careerTitle: '不止于学习，更走向更好的职业与事业',
       careerSubtitle: '平台帮助医生提升专业能力的同时，\n也支持你看见更长远的职业与创业可能。',
       careerLeftTitle: '职业发展',
-      careerLeftItems: ['优质岗位机会', '医院与专科方向匹配', '个人成长路径建议', '能力沉淀与职业画像'],
+      careerLeftItems: [
+        '优质岗位机会',
+        '医院与专科方向匹配',
+        '个人成长路径建议',
+        '能力沉淀与职业画像',
+      ],
       careerRightTitle: '创业支持',
-      careerRightItems: ['新型宠物健康管理中心模型', '创业工具包与运营指南', '服务项目设计与定价支持', '客户经营体系与持续收入模型'],
+      careerRightItems: [
+        '新型宠物健康管理中心模型',
+        '创业工具包与运营指南',
+        '服务项目设计与定价支持',
+        '客户经营体系与持续收入模型',
+      ],
       careerHealthCenter: '新型宠物健康管理中心',
-      careerHealthCenterDesc: '区别于传统宠物医院，以"预防+健康管理+家庭医生"为核心的轻量化创业模式。平台提供完整的商业模型、选址指南、服务设计与运营工具包。',
+      careerHealthCenterDesc:
+        '区别于传统宠物医院，以"预防+健康管理+家庭医生"为核心的轻量化创业模式。平台提供完整的商业模型、选址指南、服务设计与运营工具包。',
       careerBottom: '帮助医生从"会看病"走向"能发展事业"——这是平台最核心的价值。',
 
       // Section 7: Real Scenarios (unchanged)
@@ -1773,7 +1873,8 @@ export const translations = {
 
       // Section 10: Final CTA (unchanged)
       finalTitle: '让你的专业成长，真正变成事业成长',
-      finalSubtitle: '从专业能力，到职业机会，再到客户经营与长期发展，\n现在开始，建立属于你的长期竞争力。',
+      finalSubtitle:
+        '从专业能力，到职业机会，再到客户经营与长期发展，\n现在开始，建立属于你的长期竞争力。',
       finalCtaPrimary: '立即加入平台',
       finalCtaSecondary: '申请成为医生用户',
       finalBadge: '免费注册 · 医生专属',
@@ -1796,7 +1897,8 @@ export const translations = {
       teachingCenter: '教学中心',
     },
     cnFooter: {
-      brandDesc: '宠医界 — 围绕宠物医生职业全生命周期，提供专业成长、临床工具、职业发展与创业支持的一站式事业发展平台。',
+      brandDesc:
+        '宠医界 — 围绕宠物医生职业全生命周期，提供专业成长、临床工具、职业发展与创业支持的一站式事业发展平台。',
       growth: '成长体系',
       growthCourses: '课程中心',
       growthPath: '进阶路径',
@@ -1820,7 +1922,8 @@ export const translations = {
       legal: '法律信息',
       privacy: '隐私政策',
       terms: '服务条款',
-      disclaimer: '本平台所有内容仅供专业教育参考，不构成临床诊疗建议。宠医界不直接提供兽医诊疗服务。',
+      disclaimer:
+        '本平台所有内容仅供专业教育参考，不构成临床诊疗建议。宠医界不直接提供兽医诊疗服务。',
       copyright: '宠医界 VetSphere. 保留所有权利。',
     },
     /* ── Doctor Workspace (医生工作台) ── */
@@ -1911,7 +2014,8 @@ export const translations = {
       careerRecommended: '推荐岗位',
       careerStartupUpdate: '创业支持动态',
       careerHealthCenter: '新型宠物健康管理中心',
-      careerHealthCenterDesc: '全新的创业模型：以家庭医生服务为核心，整合培训能力与客户经营，打造可持续的宠物健康管理事业。',
+      careerHealthCenterDesc:
+        '全新的创业模型：以家庭医生服务为核心，整合培训能力与客户经营，打造可持续的宠物健康管理事业。',
       careerViewJobs: '查看全部岗位',
       careerViewStartup: '了解创业支持',
 
@@ -2074,7 +2178,8 @@ export const translations = {
 
       // Consultations module
       consultTitle: '在线问诊',
-      consultSubtitle: '统一管理宠主咨询、图文问诊与持续跟进，让每一次沟通都能沉淀为更长期的服务关系。',
+      consultSubtitle:
+        '统一管理宠主咨询、图文问诊与持续跟进，让每一次沟通都能沉淀为更长期的服务关系。',
       consultSearch: '搜索宠主、宠物或问诊内容...',
       consultFilter: '筛选',
       consultEnterPending: '进入待处理问诊',
@@ -2154,7 +2259,8 @@ export const translations = {
 
       // Courses module - Page Header
       coursesTitle: '我的课程',
-      coursesSubtitle: '管理你的学习进度、成长路径与课程记录，让每一次学习都真正转化为临床能力与长期职业价值。',
+      coursesSubtitle:
+        '管理你的学习进度、成长路径与课程记录，让每一次学习都真正转化为临床能力与长期职业价值。',
       coursesSearch: '搜索课程名、方向或技能标签...',
       coursesFilter: '筛选',
       coursesViewSystem: '查看课程体系',
@@ -2236,7 +2342,8 @@ export const translations = {
 
       // Growth module - Page Header
       growthTitle: '成长档案',
-      growthSubtitle: '记录你的学习成果、能力积累与成长方向，让每一步专业提升都成为长期可沉淀的职业资产。',
+      growthSubtitle:
+        '记录你的学习成果、能力积累与成长方向，让每一步专业提升都成为长期可沉淀的职业资产。',
       growthViewSystem: '查看课程体系',
       growthContinue: '继续成长',
       growthExport: '导出成长概览',
@@ -2304,7 +2411,8 @@ export const translations = {
 
       // Career module - Page Header
       careerTitle: '职业机会',
-      careerSubtitle: '基于你的成长方向与能力积累，为你推荐更适合的岗位机会与职业发展路径，让专业成长真正转化为更好的职业选择。',
+      careerSubtitle:
+        '基于你的成长方向与能力积累，为你推荐更适合的岗位机会与职业发展路径，让专业成长真正转化为更好的职业选择。',
       careerSearch: '搜索岗位、城市或医院...',
       careerFilter: '筛选',
       careerViewRecommended: '查看推荐岗位',
@@ -2360,7 +2468,8 @@ export const translations = {
       careerSavedNewMatch: '新匹配机会',
       // Startup Bridge Section
       careerBridgeTitle: '如果你正在考虑更大的事业方向',
-      careerBridgeDesc: '当你具备一定的专业积累后，平台也会支持你探索更长期的事业路径，包括新型宠物健康管理中心等创业方向。',
+      careerBridgeDesc:
+        '当你具备一定的专业积累后，平台也会支持你探索更长期的事业路径，包括新型宠物健康管理中心等创业方向。',
       careerBridgeAction: '查看创业中心',
       // Legacy keys (keep for compatibility)
       careerJobs: '岗位推荐',
@@ -2371,7 +2480,8 @@ export const translations = {
 
       // Startup module - Page Header
       startupTitle: '创业中心',
-      startupSubtitle: '从专业成长走向事业发展，帮助你理解、准备并逐步探索新型宠物健康管理中心的创业路径。',
+      startupSubtitle:
+        '从专业成长走向事业发展，帮助你理解、准备并逐步探索新型宠物健康管理中心的创业路径。',
       startupViewPath: '查看创业路径',
       startupAssess: '评估我的准备度',
       startupViewGrowth: '查看成长档案',
@@ -2386,7 +2496,8 @@ export const translations = {
       startupOverviewViewGap: '查看我还缺什么',
       // Model Explanation
       startupModelTitle: '什么是新型宠物健康管理中心',
-      startupModelDesc: '这不是传统宠物医院，也不是普通宠物用品店。而是一种以医生为核心、轻医疗、长期健康管理为主的新型服务模式。',
+      startupModelDesc:
+        '这不是传统宠物医院，也不是普通宠物用品店。而是一种以医生为核心、轻医疗、长期健康管理为主的新型服务模式。',
       startupModelCompare1: '相比宠物医院',
       startupModelCompare2: '相比宠物用品店',
       startupModelCompare3: '核心价值',
@@ -2452,7 +2563,8 @@ export const translations = {
 
       // Community module - Page Header
       communityTitle: '医生社区',
-      communitySubtitle: '围绕病例讨论、导师答疑、成长经验与创业交流，与同行一起持续提升，而不是独自前行。',
+      communitySubtitle:
+        '围绕病例讨论、导师答疑、成长经验与创业交流，与同行一起持续提升，而不是独自前行。',
       communitySearch: '搜索讨论主题、作者或关键词...',
       communityFilter: '筛选',
       communityNewPost: '发布讨论',
@@ -2739,8 +2851,8 @@ export const translations = {
       signIn: 'เข้าสู่ระบบอย่างปลอดภัย',
       joinNetwork: 'เข้าร่วมเครือข่าย',
       orAccess: 'หรือเข้าถึงด้วย',
-      noAccount: "ยังไม่มีบัญชีใช่ไหม?",
-      hasAccount: "มีบัญชีอยู่แล้ว?",
+      noAccount: 'ยังไม่มีบัญชีใช่ไหม?',
+      hasAccount: 'มีบัญชีอยู่แล้ว?',
       registerNow: 'ลงทะเบียนทันที',
       signInLink: 'เข้าสู่ระบบ',
       authenticating: 'กำลังยืนยันตัวตน...',
@@ -2749,7 +2861,8 @@ export const translations = {
       secureLogin: 'เข้าสู่ระบบปลอดภัย',
       vetHome: 'หน้าแรก VetSphere',
       heroTitle: 'ยกระดับความแม่นยำ\nทางศัลยกรรมของคุณ',
-      heroDesc: 'เข้าร่วมกับศัลยแพทย์สัตวแพทย์กว่า 5,000 คนที่เข้าถึงการฝึกอบรมระดับโลก เครื่องมือที่มีความแม่นยำ และการสนับสนุนทางคลินิกด้วย AI',
+      heroDesc:
+        'เข้าร่วมกับศัลยแพทย์สัตวแพทย์กว่า 5,000 คนที่เข้าถึงการฝึกอบรมระดับโลก เครื่องมือที่มีความแม่นยำ และการสนับสนุนทางคลินิกด้วย AI',
       badgeCE: 'ได้รับการรับรอง CPE',
       badgeGlobal: 'เครือข่ายระดับโลก',
       loginToView: 'เข้าสู่ระบบเพื่อดูราคา',
@@ -2781,7 +2894,8 @@ export const translations = {
       cases: 'เคส',
       viewMembers: 'ดูสมาชิกทั้งหมด',
       certPath: 'เส้นทางการรับรอง',
-      certDesc: 'เสร็จสิ้นการตรวจสอบโดยเพื่อนร่วมงานเพื่อรับตรา "ผู้เชี่ยวชาญชุมชน" และเครดิตทางคลินิก',
+      certDesc:
+        'เสร็จสิ้นการตรวจสอบโดยเพื่อนร่วมงานเพื่อรับตรา "ผู้เชี่ยวชาญชุมชน" และเครดิตทางคลินิก',
       learnMore: 'เรียนรู้เพิ่มเติม',
       clinicalBackground: '01. ภูมิหลังทางคลินิก',
       diagnosis: '02. การวินิจฉัย',
@@ -2824,7 +2938,8 @@ export const translations = {
       // Shop page translations
       heroTitle: 'อุปกรณ์สัตวแพทย์',
       heroTitleHighlight: 'มาร์เก็ตเพลซอุปกรณ์',
-      heroSubtitle: 'แพลตฟอร์ม B2B ที่เชื่อถือได้สำหรับอุปกรณ์แพทย์สัตวแพทย์มืออาชีพ เข้าถึงผู้ผลิตโดยตรง ราคาขายส่ง และการสนับสนุนจากผู้เชี่ยวชาญ',
+      heroSubtitle:
+        'แพลตฟอร์ม B2B ที่เชื่อถือได้สำหรับอุปกรณ์แพทย์สัตวแพทย์มืออาชีพ เข้าถึงผู้ผลิตโดยตรง ราคาขายส่ง และการสนับสนุนจากผู้เชี่ยวชาญ',
       searchPlaceholder: 'ค้นหาอุปกรณ์ แบรนด์ หรือหมายเลขรุ่น...',
       b2bBadge: 'แพลตฟอร์ม B2B',
       productsCount: 'ผลิตภัณฑ์',
@@ -2844,7 +2959,8 @@ export const translations = {
       noProductsAvailable: 'ยังไม่มีผลิตภัณฑ์ในขณะนี้',
       contactForPrice: 'ติดต่อสอบถามราคา',
       needCustomSolutions: 'ต้องการโซลูชันที่กำหนดเอง?',
-      customSolutionsDesc: 'รับคำแนะนำผลิตภัณฑ์เฉพาะบุคคล ราคาขายส่ง และการสนับสนุนจากผู้เชี่ยวชาญสำหรับคลินิกสัตวแพทย์ของคุณ',
+      customSolutionsDesc:
+        'รับคำแนะนำผลิตภัณฑ์เฉพาะบุคคล ราคาขายส่ง และการสนับสนุนจากผู้เชี่ยวชาญสำหรับคลินิกสัตวแพทย์ของคุณ',
       requestQuote: 'ขอใบเสนอราคา',
       exploreTraining: 'ดูหลักสูตร',
       loadMore: 'โหลดเพิ่มเติม',
@@ -2974,7 +3090,8 @@ export const translations = {
       bankTransfer: 'โอนเงินธนาคาร',
       bankTransferDesc: 'โอนเงินธนาคาร, ดำเนินการหลังยืนยันการชำระเงิน',
       bankTransferInstructions: 'คำแนะนำการโอนเงินธนาคาร',
-      bankTransferInstructionDetail: 'หลังสั่งซื้อ คุณจะได้รับข้อมูลบัญชีธนาคารทางอีเมล กรุณาระบุหมายเลขคำสั่งซื้อในการโอนเงิน',
+      bankTransferInstructionDetail:
+        'หลังสั่งซื้อ คุณจะได้รับข้อมูลบัญชีธนาคารทางอีเมล กรุณาระบุหมายเลขคำสั่งซื้อในการโอนเงิน',
       // Order Notes
       orderNotes: 'หมายเหตุคำสั่งซื้อ (ไม่บังคับ)',
       orderNotesPlaceholder: 'คำแนะนำพิเศษสำหรับคำสั่งซื้อ...',
@@ -3029,6 +3146,7 @@ export const translations = {
       viewCart: 'ดูตะกร้า',
       requestQuote: 'ขอใบเสนอราคา',
       requestQuoteShort: 'ขอใบเสนอราคา',
+      askVetAssist: 'สอบถาม VetAssist เกี่ยวกับสินค้านี้',
       quoteModalTitle: 'ขอใบเสนอราคา',
       quoteSubmitted: 'ส่งคำขอใบเสนอราคาแล้ว',
       quoteSubmittedDesc: 'ทีมงานจะติดต่อกลับภายใน 1-2 วันทำการ',
@@ -3077,6 +3195,7 @@ export const translations = {
       inquireCourse: 'สอบถามหลักสูตรนี้',
       enrollNow: 'ลงทะเบียนเลย',
       talkToTeam: 'ปรึกษาทีมงาน',
+      askVetAssist: 'สอบถาม VetAssist เกี่ยวกับหลักสูตรนี้',
       format: 'รูปแบบ',
       level: 'ระดับ',
       specialty: 'สาขา',
@@ -3159,12 +3278,18 @@ export const translations = {
       venue: 'สถานที่ปฏิบัติการ',
       openMaps: 'นำทางไปยังสถานที่',
       empty: 'ยังไม่มีเซสชันที่รออยู่ ติดต่อสถาบันเพื่อสอบถามตารางเวลา',
-      features: ['Wet-lab ขั้นสูง', 'ได้รับการรับรอง CPE', 'รวมวัสดุทางคลินิก', 'คำแนะนำระดับมาสเตอร์'],
+      features: [
+        'Wet-lab ขั้นสูง',
+        'ได้รับการรับรอง CPE',
+        'รวมวัสดุทางคลินิก',
+        'คำแนะนำระดับมาสเตอร์',
+      ],
       // List page translations
       heroTag: 'การฝึกอบรมระดับพรีเมียม',
       heroTitle: 'การฝึกอบรมทางคลินิกขั้นสูงสำหรับ',
       heroTitleHighlight: 'สัตวแพทย์ศัลยกร',
-      heroSubtitle: 'เวิร์กช็อปแบบลงมือปฏิบัติจริงโดยผู้เชี่ยวชาญที่ได้รับการรับรอง รับหน่วยกิต ACVS/ECVS และเรียนรู้เทคนิคการผ่าตัดขั้นสูง',
+      heroSubtitle:
+        'เวิร์กช็อปแบบลงมือปฏิบัติจริงโดยผู้เชี่ยวชาญที่ได้รับการรับรอง รับหน่วยกิต ACVS/ECVS และเรียนรู้เทคนิคการผ่าตัดขั้นสูง',
       heroBadge1: 'หน่วยกิต ACVS',
       heroBadge2: 'ผู้เชี่ยวชาญ 50+ ท่าน',
       heroBadge3: 'ฝึกปฏิบัติจริง',
@@ -3190,7 +3315,8 @@ export const translations = {
       previous: 'ก่อนหน้า',
       next: 'ถัดไป',
       bottomTitle: 'ไม่แน่ใจว่าหลักสูตรไหนเหมาะกับคุณ?',
-      bottomSubtitle: 'ทีมผู้เชี่ยวชาญของเราสามารถแนะนำหลักสูตรที่เหมาะสมตามสาขา ระดับประสบการณ์ และเป้าหมายของคลินิกคุณ',
+      bottomSubtitle:
+        'ทีมผู้เชี่ยวชาญของเราสามารถแนะนำหลักสูตรที่เหมาะสมตามสาขา ระดับประสบการณ์ และเป้าหมายของคลินิกคุณ',
       getRecommendation: 'รับคำแนะนำเฉพาะบุคคล',
       browseAll: 'ดูหลักสูตรทั้งหมด',
       // Filter options
@@ -3250,7 +3376,8 @@ export const translations = {
       support: 'สนับสนุนทางคลินิก',
       company: 'สถาบันวิชาการ',
       copyright: '© 2026 VetSphere Global. ภายใต้มาตรฐานสถาบัน.',
-      brandDesc: "สร้างโครงสร้างพื้นฐานดิจิทัลสำหรับการผ่าตัดทางสัตวแพทย์ระดับโลก เชื่อมโยงผู้ตัดสินใจทางคลินิกกับการศึกษาระดับโลกและเครื่องมือแพทย์ที่มีความแม่นยำ",
+      brandDesc:
+        'สร้างโครงสร้างพื้นฐานดิจิทัลสำหรับการผ่าตัดทางสัตวแพทย์ระดับโลก เชื่อมโยงผู้ตัดสินใจทางคลินิกกับการศึกษาระดับโลกและเครื่องมือแพทย์ที่มีความแม่นยำ',
       links: {
         courses: 'การศึกษา',
         shop: 'เครื่องมือ',
@@ -3268,51 +3395,52 @@ export const translations = {
       address: {
         line1: 'สำนักงานใหญ่ VetSphere Global',
         line2: '123 Surgical Way, Suite 400',
-        line3: 'ซูริก, CH-8001, สวิตเซอร์แลนด์'
-      }
+        line3: 'ซูริก, CH-8001, สวิตเซอร์แลนด์',
+      },
     },
     home: {
       heroTag: 'Global Veterinary Surgery',
       heroTitle1: 'ยกระดับมาตรฐาน',
       heroTitle2: 'การผ่าตัดทางสัตวแพทย์',
-      heroDesc: 'VetSphere เชื่อมโยงศัลยแพทย์สัตวแพทย์ชั้นนำของโลกกับการศึกษาระดับปริญญาโท ความแม่นยำด้านศัลยกรรมกระดูก และเทคโนโลยีศัลยกรรมระบบประสาท',
+      heroDesc:
+        'VetSphere เชื่อมโยงศัลยแพทย์สัตวแพทย์ชั้นนำของโลกกับการศึกษาระดับปริญญาโท ความแม่นยำด้านศัลยกรรมกระดูก และเทคโนโลยีศัลยกรรมระบบประสาท',
       heroBadge1: 'ได้รับการรับรอง ISO 13485',
       heroBadge2: 'ได้รับการอนุมัติจาก AAVSB RACE',
       // Partners
       partnerTitle: 'พันธมิตรทางวิชาการระดับโลก',
       partnerSubtitle: 'หลักสูตรของเราได้รับการพัฒนาโดยคณาจารย์จากมหาวิทยาลัยสัตวแพทย์ชั้นนำของโลก',
       partnerBadge: 'QS World Top 10',
-      
+
       uniUF: 'UF College of Veterinary Medicine',
       uniUFDesc: '#1 Clinical Caseload in US',
-      
+
       uniRVC: 'Royal Veterinary College',
       uniRVCDesc: 'London • Global #1 Ranking',
-      
+
       uniUCD: 'UC Davis',
       uniUCDDesc: 'Precision Medicine Leader',
-      
+
       uniCornell: 'Cornell University',
       uniCornellDesc: 'Clinical & Research Balance',
-      
+
       uniCSU: 'Colorado State',
       uniCSUDesc: 'Small Animal Orthopedics',
-      
+
       uniEdin: 'Univ. of Edinburgh',
       uniEdinDesc: 'Companion Animal Health',
-      
+
       uniGuelph: 'Univ. of Guelph',
       uniGuelphDesc: 'North American Education Hub',
-      
+
       uniVetsuisse: 'Vetsuisse Faculty',
       uniVetsuisseDesc: 'Bern/Zurich Excellence',
-      
+
       uniUtrecht: 'Utrecht University',
       uniUtrechtDesc: 'European Research Center',
-      
+
       uniPenn: 'UPenn Vet',
       uniPennDesc: 'Translational Medicine',
-      
+
       uniTexas: 'Texas A&M',
       uniTexasDesc: 'Large Animal & Tropical',
 
@@ -3332,64 +3460,77 @@ export const translations = {
       statDevicesSub: 'ได้รับการรับรอง 13485',
       focusTag: 'จุดเน้นทางคลินิก',
       focusTitle: 'โซลูชันศัลยกรรมครบวงจร',
-      focusDesc: 'เราเชี่ยวชาญในวงจรชีวิตของการผ่าตัดทางสัตวแพทย์ ตั้งแต่การฝึกอบรมระดับแพทย์ประจำบ้านไปจนถึงการจัดหาวัสดุฝังที่แม่นยำ',
+      focusDesc:
+        'เราเชี่ยวชาญในวงจรชีวิตของการผ่าตัดทางสัตวแพทย์ ตั้งแต่การฝึกอบรมระดับแพทย์ประจำบ้านไปจนถึงการจัดหาวัสดุฝังที่แม่นยำ',
       orthoTitle: 'ศัลยกรรมกระดูก',
-      orthoDesc: 'การสอนขั้นสูงใน TPLO, การซ่อมแซมกระดูกหัก และการเปลี่ยนข้อต่อโดยใช้วัสดุฝังไทเทเนียมเกรดการแพทย์',
+      orthoDesc:
+        'การสอนขั้นสูงใน TPLO, การซ่อมแซมกระดูกหัก และการเปลี่ยนข้อต่อโดยใช้วัสดุฝังไทเทเนียมเกรดการแพทย์',
       neuroTitle: 'ศัลยกรรมระบบประสาท',
-      neuroDesc: 'เทคนิคที่แม่นยำสำหรับการลดความดัน IVDD, การรักษาเสถียรภาพของกระดูกสันหลัง และกระบวนการภายในกะโหลกศีรษะที่ซับซ้อน',
+      neuroDesc:
+        'เทคนิคที่แม่นยำสำหรับการลดความดัน IVDD, การรักษาเสถียรภาพของกระดูกสันหลัง และกระบวนการภายในกะโหลกศีรษะที่ซับซ้อน',
       softTitle: 'เนื้อเยื่ออ่อน & MIS',
-      softDesc: 'ความเชี่ยวชาญในการสร้างใหม่ทางมะเร็งวิทยา, การตัดกลีบตับ และการส่องกล้องทรวงอก/ช่องท้องที่มีการรุกล้ำน้อยที่สุด',
+      softDesc:
+        'ความเชี่ยวชาญในการสร้างใหม่ทางมะเร็งวิทยา, การตัดกลีบตับ และการส่องกล้องทรวงอก/ช่องท้องที่มีการรุกล้ำน้อยที่สุด',
       explore: 'สำรวจหลักสูตร →',
       equipTag: 'เครื่องมือความแม่นยำ SurgiTech',
       equipTitle1: 'วิศวกรรม',
       equipTitle2: 'ความมั่นใจทางคลินิก',
-      equipDesc: 'เครื่องมือไฟฟ้าและวัสดุฝังของเราได้รับการออกแบบในเยอรมนีและผลิตตามมาตรฐาน ISO 13485 ปรับให้เหมาะสมตามหลักสรีรศาสตร์สำหรับสัตวแพทย์ศัลยกรรม',
+      equipDesc:
+        'เครื่องมือไฟฟ้าและวัสดุฝังของเราได้รับการออกแบบในเยอรมนีและผลิตตามมาตรฐาน ISO 13485 ปรับให้เหมาะสมตามหลักสรีรศาสตร์สำหรับสัตวแพทย์ศัลยกรรม',
       equipList: [
         'เลื่อยสั่นสะเทือนแรงบิดสูง (TPLO)',
         'แผ่นล็อคไทเทเนียมเกรดการแพทย์ 5',
         'ระบบตรึงภายนอกแบบแยกส่วน',
-        'ชุดเครื่องมือจุลศัลยกรรม'
+        'ชุดเครื่องมือจุลศัลยกรรม',
       ],
       equipCta: 'เลือกดูแคตตาล็อกอุปกรณ์',
       equipFeatureTag: 'ระบบแนะนำ',
       equipFeatureName: 'SurgiPower TPLO V4',
       equipFeatureSpec: 'โหลดแรงบิดสูงสุด',
       netTitle: 'ชุมชนแห่งความเป็นเลิศระดับโลก',
-      netDesc: 'VetSphere ไม่ใช่แค่แพลตฟอร์ม แต่เป็นเครือข่ายทั่วโลกของโรงพยาบาลการสอน ศูนย์วิจัย และผู้เชี่ยวชาญด้านศัลยกรรม',
+      netDesc:
+        'VetSphere ไม่ใช่แค่แพลตฟอร์ม แต่เป็นเครือข่ายทั่วโลกของโรงพยาบาลการสอน ศูนย์วิจัย และผู้เชี่ยวชาญด้านศัลยกรรม',
       netPartner1: 'พันธมิตรเชิงกลยุทธ์ (เอเชีย)',
       netPartner2: 'คณะกรรมการผู้เชี่ยวชาญ',
       netJoined: 'เข้าร่วมโดยเพื่อนร่วมงานกว่า 15,000 คน',
       featLabs: 'Wet-Labs ภาคปฏิบัติ',
-      featLabsDesc: 'เซสชันกลุ่มเล็ก (อัตราส่วนนักเรียนต่อครู 4:1) เพื่อให้มั่นใจว่าได้รับคำแนะนำโดยตรงกับร่างอาจารย์ใหญ่',
+      featLabsDesc:
+        'เซสชันกลุ่มเล็ก (อัตราส่วนนักเรียนต่อครู 4:1) เพื่อให้มั่นใจว่าได้รับคำแนะนำโดยตรงกับร่างอาจารย์ใหญ่',
       featCase: 'การปรึกษาเคส',
-      featCaseDesc: 'การสนับสนุนหลังหลักสูตรช่วยให้คุณอัปโหลดเคสที่ซับซ้อนเพื่อขอรับการตรวจสอบจากผู้เชี่ยวชาญก่อนการผ่าตัด',
+      featCaseDesc:
+        'การสนับสนุนหลังหลักสูตรช่วยให้คุณอัปโหลดเคสที่ซับซ้อนเพื่อขอรับการตรวจสอบจากผู้เชี่ยวชาญก่อนการผ่าตัด',
       featSupply: 'การรวมห่วงโซ่อุปทาน',
       featSupplyDesc: 'การสั่งซื้อวัสดุฝังที่ราบรื่นซึ่งตรงกับข้อกำหนดที่เรียนรู้ในการฝึกอบรม',
       featDigital: 'การสนับสนุนดิจิทัล',
       featDigitalDesc: 'การวางแผนก่อนการผ่าตัดด้วย AI และการจัดการสินค้าคงคลังอัจฉริยะ',
       ctaTitle1: 'พร้อมที่จะยกระดับ',
       ctaTitle2: 'การปฏิบัติงานศัลยกรรมของคุณหรือยัง?',
-      ctaDesc: 'เข้าร่วมเครือข่ายมืออาชีพที่ได้รับความไว้วางใจจากโรงพยาบาลสอนสัตวแพทย์และศูนย์เฉพาะทางเอกชนทั่วโลก',
+      ctaDesc:
+        'เข้าร่วมเครือข่ายมืออาชีพที่ได้รับความไว้วางใจจากโรงพยาบาลสอนสัตวแพทย์และศูนย์เฉพาะทางเอกชนทั่วโลก',
       ctaButtonPrimary: 'สมัครสมาชิก',
-      ctaButtonSecondary: 'ดูกรณีศึกษา'
+      ctaButtonSecondary: 'ดูกรณีศึกษา',
     },
     ai: {
       title: 'Surgical Decision Intelligence',
       status: 'Analytical Vision พร้อมทำงาน',
       reset: 'รีเซ็ตเซสชัน',
       liveMode: 'โหมดเสียงระหว่างผ่าตัด',
-      welcome: 'เริ่มต้นระบบ VetSphere Intelligence โปรดระบุภาพทางคลินิกหรือข้อมูลเทคนิคเพื่อการวิเคราะห์ทันที',
+      welcome:
+        'เริ่มต้นระบบ VetSphere Intelligence โปรดระบุภาพทางคลินิกหรือข้อมูลเทคนิคเพื่อการวิเคราะห์ทันที',
       placeholder: 'บรรยายเคสหรือข้อมูลอุปกรณ์...',
       imagePlaceholder: 'ระบุคำถามทางคลินิกสำหรับภาพนี้...',
       analyzing: 'กำลังวิเคราะห์ข้อมูลเอกซเรย์...',
-      suggestions: ['วิเคราะห์ภาพเอกซเรย์', 'แนะนำหลักสูตร', 'การตั้งค่าเครื่องมือ']
+      suggestions: ['วิเคราะห์ภาพเอกซเรย์', 'แนะนำหลักสูตร', 'การตั้งค่าเครื่องมือ'],
     },
     intlHome: {
       heroTag: 'ศัลยกรรมสัตวแพทย์ระดับโลก',
       heroTitle: 'การศึกษาศัลยกรรมสัตวแพทย์ระดับมืออาชีพ',
-      heroSubtitle: 'โปรแกรมฝึกอบรมระดับโลกและเครื่องมือผ่าตัดที่แม่นยำสำหรับสัตวแพทย์มืออาชีพทั่วโลก',
+      heroSubtitle:
+        'โปรแกรมฝึกอบรมระดับโลกและเครื่องมือผ่าตัดที่แม่นยำสำหรับสัตวแพทย์มืออาชีพทั่วโลก',
       heroCTA1: 'ดูหลักสูตร',
       heroCTA2: 'ซื้ออุปกรณ์',
+      heroChatCTA: 'พูดคุยกับ VetAssist',
+      ctaChatButton: 'พูดคุยกับ VetAssist',
       heroBadge1: 'ISO 13485 รับรอง',
       heroBadge2: 'AAVSB RACE อนุมัติ',
       heroOverlayCount: '50+',
@@ -3430,11 +3571,14 @@ export const translations = {
       course3Price: '฿87,500',
       disciplinesTag: 'จุดเน้นทางคลินิก',
       disciplinesTitle: 'โซลูชันศัลยกรรมครบวงจร',
-      disciplinesDesc: 'เราเชี่ยวชาญในวงจรชีวิตทั้งหมดของศัลยกรรมสัตวแพทย์: ตั้งแต่การฝึกอบรมระดับเรสิเดนซี่ไปจนถึงการจัดหาอุปกรณ์ปลูกถ่ายที่แม่นยำ',
+      disciplinesDesc:
+        'เราเชี่ยวชาญในวงจรชีวิตทั้งหมดของศัลยกรรมสัตวแพทย์: ตั้งแต่การฝึกอบรมระดับเรสิเดนซี่ไปจนถึงการจัดหาอุปกรณ์ปลูกถ่ายที่แม่นยำ',
       orthoTitle: 'ออร์โธปิดิกส์',
-      orthoDesc: 'การเรียนการสอนขั้นสูงเรื่อง TPLO การซ่อมแซมกระดูกหัก และการเปลี่ยนข้อเทียมด้วยอุปกรณ์ไทเทเนียมเกรดการแพทย์',
+      orthoDesc:
+        'การเรียนการสอนขั้นสูงเรื่อง TPLO การซ่อมแซมกระดูกหัก และการเปลี่ยนข้อเทียมด้วยอุปกรณ์ไทเทเนียมเกรดการแพทย์',
       neuroTitle: 'ประสาทศัลยกรรม',
-      neuroDesc: 'เทคนิคที่แม่นยำสำหรับ IVDD decompression การทำให้กระดูกสันหลังมั่นคง และขั้นตอนภายในกะโหลกที่ซับซ้อน',
+      neuroDesc:
+        'เทคนิคที่แม่นยำสำหรับ IVDD decompression การทำให้กระดูกสันหลังมั่นคง และขั้นตอนภายในกะโหลกที่ซับซ้อน',
       softTitle: 'เนื้อเยื่ออ่อน & MIS',
       softDesc: 'ความเชี่ยวชาญในการสร้างเนื้อเยื่อจากมะเร็ง การตัดตับ และศัลยกรรมส่องกล้อง',
       explore: 'สำรวจหลักสูตร →',
@@ -3454,15 +3598,19 @@ export const translations = {
       whyTitle: 'ทำไมต้องเลือก VetSphere',
       whySubtitle: 'ผู้นำระดับโลกด้านการศึกษาศัลยกรรมสัตวแพทย์และเครื่องมือแพทย์',
       featLabs: 'ห้องปฏิบัติการภาคปฏิบัติ',
-      featLabsDesc: 'เซสชันกลุ่มเล็ก (อัตราส่วนนักเรียนต่ออาจารย์ 4:1) รับประกันการเรียนรู้โดยตรงกับโมเดลซากสัตว์',
+      featLabsDesc:
+        'เซสชันกลุ่มเล็ก (อัตราส่วนนักเรียนต่ออาจารย์ 4:1) รับประกันการเรียนรู้โดยตรงกับโมเดลซากสัตว์',
       featCase: 'ปรึกษาเคส',
-      featCaseDesc: 'การสนับสนุนหลังเรียนให้คุณอัปโหลดเคสที่ซับซ้อนเพื่อให้ผู้เชี่ยวชาญตรวจสอบก่อนการผ่าตัด',
+      featCaseDesc:
+        'การสนับสนุนหลังเรียนให้คุณอัปโหลดเคสที่ซับซ้อนเพื่อให้ผู้เชี่ยวชาญตรวจสอบก่อนการผ่าตัด',
       featSupply: 'การรวมซัพพลายเชน',
-      featSupplyDesc: 'การสั่งซื้ออุปกรณ์ปลูกถ่ายที่ตรงกับข้อมูลจำเพาะที่เรียนในการฝึกอบรมอย่างราบรื่น',
+      featSupplyDesc:
+        'การสั่งซื้ออุปกรณ์ปลูกถ่ายที่ตรงกับข้อมูลจำเพาะที่เรียนในการฝึกอบรมอย่างราบรื่น',
       featDigital: 'การสนับสนุนดิจิทัล',
       featDigitalDesc: 'การวางแผนก่อนผ่าตัดด้วย AI และการจัดการสินค้าคงคลังอัจฉริยะ',
       ctaTitle: 'พร้อมยกระดับการปฏิบัติงานของคุณหรือยัง?',
-      ctaSubtitle: 'เข้าร่วมเครือข่ายวิชาชีพที่โรงพยาบาลสอนสัตวแพทย์และศูนย์เฉพาะทางทั่วโลกเชื่อถือ',
+      ctaSubtitle:
+        'เข้าร่วมเครือข่ายวิชาชีพที่โรงพยาบาลสอนสัตวแพทย์และศูนย์เฉพาะทางทั่วโลกเชื่อถือ',
       ctaButton1: 'สมัครสมาชิก',
       ctaButton2: 'ติดต่อฝ่ายขาย',
     },
@@ -3479,7 +3627,8 @@ export const translations = {
       heroOverlayLabel: 'ผู้เชี่ยวชาญที่ได้รับการรับรอง',
       upgradePathTag: 'เส้นทางอัปเกรด',
       upgradePathTitle: 'จากการฝึกอบรมสู่การเปลี่ยนแปลง',
-      upgradePathSubtitle: 'กรอบการทำงาน 4 ขั้นตอนที่พิสูจน์แล้วเพื่อยกระดับการปฏิบัติงานคลินิกของคุณ',
+      upgradePathSubtitle:
+        'กรอบการทำงาน 4 ขั้นตอนที่พิสูจน์แล้วเพื่อยกระดับการปฏิบัติงานคลินิกของคุณ',
       step1Title: 'การฝึกอบรม',
       step1Desc: 'เรียนรู้เทคนิคการผ่าตัดขั้นสูงจากผู้เชี่ยวชาญที่ได้รับการรับรอง',
       step2Title: 'อุปกรณ์',
@@ -3490,7 +3639,8 @@ export const translations = {
       step4Desc: 'รับเคสที่มีมูลค่าสูงขึ้นด้วยความมั่นใจ',
       featuredTag: 'โปรแกรมฝึกอบรมเด่น',
       featuredTitle: 'หลักสูตรปฏิบัติจริงพร้อมอุปกรณ์ครบครัน',
-      featuredSubtitle: 'ทุกโปรแกรมการฝึกอบรมจับคู่กับอุปกรณ์คลินิกที่คุณต้องการเพื่อนำสิ่งที่เรียนรู้ไปใช้',
+      featuredSubtitle:
+        'ทุกโปรแกรมการฝึกอบรมจับคู่กับอุปกรณ์คลินิกที่คุณต้องการเพื่อนำสิ่งที่เรียนรู้ไปใช้',
       equipmentBadge: 'อุปกรณ์ที่แนะนำ',
       viewAllTraining: 'ดูโปรแกรมฝึกอบรมทั้งหมด',
       learnMore: 'เรียนรู้เพิ่มเติม',
@@ -3514,13 +3664,15 @@ export const translations = {
       statCertsLabel: 'อุปกรณ์การแพทย์',
       statCertsSub: 'ได้รับการรับรอง 13485',
       trustFeat1: 'การฝึกอบรมโดยผู้เชี่ยวชาญ',
-      trustFeat1Desc: 'เวิร์กช็อปกลุ่มเล็ก (อัตราส่วน 4:1) กับผู้เชี่ยวชาญที่ได้รับการรับรองเพื่อการดูแลแบบตัวต่อตัว',
+      trustFeat1Desc:
+        'เวิร์กช็อปกลุ่มเล็ก (อัตราส่วน 4:1) กับผู้เชี่ยวชาญที่ได้รับการรับรองเพื่อการดูแลแบบตัวต่อตัว',
       trustFeat2: 'การสนับสนุนหลังหลักสูตร',
       trustFeat2Desc: 'อัปโหลดเคสที่ซับซ้อนเพื่อรับคำปรึกษาจากผู้เชี่ยวชาญก่อนการผ่าตัด',
       trustFeat3: 'ห่วงโซ่อุปทานแบบบูรณาการ',
       trustFeat3Desc: 'สั่งซื้อรากฟันเทียมและเครื่องมือที่คุณฝึกมาโดยตรง ไม่มีข้อกำหนดที่ไม่ตรงกัน',
       trustFeat4: 'เครื่องมือคลินิกดิจิทัล',
-      trustFeat4Desc: 'การวางแผนก่อนผ่าตัดด้วย AI และการจัดการสินค้าคงคลังอัจฉริยะสำหรับคลินิกของคุณ',
+      trustFeat4Desc:
+        'การวางแผนก่อนผ่าตัดด้วย AI และการจัดการสินค้าคงคลังอัจฉริยะสำหรับคลินิกของคุณ',
       ctaTitle: 'พร้อมที่จะอัปเกรดคลินิกของคุณหรือยัง?',
       ctaSubtitle: 'เข้าร่วมกับสัตวแพทย์อิสระทั่วโลกที่กำลังอัปเกรดความสามารถทางคลินิก',
       ctaCTA1: 'สำรวจโปรแกรมฝึกอบรม',
@@ -3533,19 +3685,23 @@ export const translations = {
       completedCourse: 'หลักสูตรที่สำเร็จ',
       // Testimonials
       testimonial1NameTitle: 'ศัลยแพทย์สัตว์เล็ก',
-      testimonial1Quote: 'หลังจากสำเร็จหลักสูตร TPLO ขั้นสูง ปริมาณงานศัลยกรรมกระดูกและข้อของฉันเพิ่มขึ้น 300% ตอนนี้ฉันทำการผ่าตัดที่ซับซ้อนได้มากกว่า 10 ครั้งต่อสัปดาห์อย่างมั่นใจ VetSphere เปลี่ยนแปลงอาชีพสัตวแพทย์ของฉัน',
+      testimonial1Quote:
+        'หลังจากสำเร็จหลักสูตร TPLO ขั้นสูง ปริมาณงานศัลยกรรมกระดูกและข้อของฉันเพิ่มขึ้น 300% ตอนนี้ฉันทำการผ่าตัดที่ซับซ้อนได้มากกว่า 10 ครั้งต่อสัปดาห์อย่างมั่นใจ VetSphere เปลี่ยนแปลงอาชีพสัตวแพทย์ของฉัน',
       testimonial1Result: 'การผ่าตัดเพิ่มขึ้น 300%',
       testimonial1Course: 'เวิร์กช็อป TPLO ขั้นสูง',
       testimonial2NameTitle: 'ผู้ก่อตั้งและผู้อำนวยการคลินิก',
-      testimonial2Quote: 'ด้วยโซลูชันอุปกรณ์และการฝึกอบรมการจัดการคลินิกของ VetSphere เราสร้างสถานศัลยกรรมที่ทันสมัยจากศูนย์ รายได้ประจำปีเติบโต 250% ในเวลาเพียง 18 เดือน',
+      testimonial2Quote:
+        'ด้วยโซลูชันอุปกรณ์และการฝึกอบรมการจัดการคลินิกของ VetSphere เราสร้างสถานศัลยกรรมที่ทันสมัยจากศูนย์ รายได้ประจำปีเติบโต 250% ในเวลาเพียง 18 เดือน',
       testimonial2Result: 'รายได้เติบโต 250%',
       testimonial2Course: 'โปรแกรมจัดตั้งคลินิกแบบครบวงจร',
       testimonial3NameTitle: 'ผู้เชี่ยวชาญด้านระบบประสาท',
-      testimonial3Quote: 'หลักสูตรศัลยกรรม IVDD ครอบคลุมอย่างมาก ตั้งแต่ทฤษฎีจนถึงการปฏิบัติจริง ทุก細節ได้รับการครอบคลุม ตอนนี้ฉันทำการผ่าตัดกระดูกสันหลังที่ซับซ้อนได้อย่างมั่นใจในฐานะผู้เชี่ยวชาญระดับภูมิภาค',
+      testimonial3Quote:
+        'หลักสูตรศัลยกรรม IVDD ครอบคลุมอย่างมาก ตั้งแต่ทฤษฎีจนถึงการปฏิบัติจริง ทุก細節ได้รับการครอบคลุม ตอนนี้ฉันทำการผ่าตัดกระดูกสันหลังที่ซับซ้อนได้อย่างมั่นใจในฐานะผู้เชี่ยวชาญระดับภูมิภาค',
       testimonial3Result: 'ทำการผ่าตัดกระดูกสันหลังอย่างอิสระ',
       testimonial3Course: 'โปรแกรมศัลยกรรมระบบประสาท IVDD',
       testimonial4NameTitle: 'สัตวแพทย์สัตว์พิเศษ',
-      testimonial4Quote: 'โปรแกรมเวชศาสตร์สัตว์พิเศษของ VetSphere ให้ความมั่นใจและทักษะในการดูแลนก สัตว์เลื้อยคลาน และสัตว์เลี้ยงลูกด้วยนมขนาดเล็ก คลินิกของเรา现在是ศูนย์ส่งต่อสัตว์พิเศษในภูมิภาค',
+      testimonial4Quote:
+        'โปรแกรมเวชศาสตร์สัตว์พิเศษของ VetSphere ให้ความมั่นใจและทักษะในการดูแลนก สัตว์เลื้อยคลาน และสัตว์เลี้ยงลูกด้วยนมขนาดเล็ก คลินิกของเรา现在是ศูนย์ส่งต่อสัตว์พิเศษในภูมิภาค',
       testimonial4Result: 'ศูนย์ส่งต่อสัตว์พิเศษระดับภูมิภาค',
       testimonial4Course: 'การรับรองเวชศาสตร์สัตว์พิเศษ',
       // Stats
@@ -3605,22 +3761,33 @@ export const translations = {
     forClinics: {
       heroTag: 'โปรแกรมอัปเกรดคลินิก',
       heroTitle: 'โปรแกรมอัปเกรดสำหรับคลินิกอิสระ',
-      heroSubtitle: 'โซลูชันการฝึกอบรม + อุปกรณ์ครบวงจรที่ออกแบบมาสำหรับคลินิกสัตวแพทย์อิสระที่ต้องการขยายขีดความสามารถทางศัลยกรรม',
+      heroSubtitle:
+        'โซลูชันการฝึกอบรม + อุปกรณ์ครบวงจรที่ออกแบบมาสำหรับคลินิกสัตวแพทย์อิสระที่ต้องการขยายขีดความสามารถทางศัลยกรรม',
       heroCTA: 'ขอรับคำปรึกษา',
       tier1Title: 'พื้นฐานศัลยกรรม',
-      tier1Desc: 'การฝึกอบรมศัลยกรรมที่จำเป็นและอุปกรณ์หลักสำหรับคลินิกที่เริ่มต้นเส้นทางการอัปเกรด',
-      tier1Items: 'หลักสูตรศัลยกรรมเบื้องต้น,ชุดเครื่องมือศัลยกรรมพื้นฐาน,คำแนะนำการตั้งค่าอุปกรณ์,การเข้าถึงการปรึกษาเคสออนไลน์',
+      tier1Desc:
+        'การฝึกอบรมศัลยกรรมที่จำเป็นและอุปกรณ์หลักสำหรับคลินิกที่เริ่มต้นเส้นทางการอัปเกรด',
+      tier1Items:
+        'หลักสูตรศัลยกรรมเบื้องต้น,ชุดเครื่องมือศัลยกรรมพื้นฐาน,คำแนะนำการตั้งค่าอุปกรณ์,การเข้าถึงการปรึกษาเคสออนไลน์',
       tier2Title: 'การขยายความเชี่ยวชาญ',
       tier2Desc: 'การฝึกอบรมเฉพาะทางและอุปกรณ์พิเศษสำหรับคลินิกที่พร้อมเพิ่มสาขาศัลยกรรมใหม่',
-      tier2Items: 'หลักสูตรขั้นสูงเฉพาะทาง,แพ็คเกจเครื่องมือและรากฟันเทียมเฉพาะทาง,การปรึกษาการเพิ่มประสิทธิภาพขั้นตอนการทำงาน,การสนับสนุนทางเทคนิคลำดับความสำคัญ',
+      tier2Items:
+        'หลักสูตรขั้นสูงเฉพาะทาง,แพ็คเกจเครื่องมือและรากฟันเทียมเฉพาะทาง,การปรึกษาการเพิ่มประสิทธิภาพขั้นตอนการทำงาน,การสนับสนุนทางเทคนิคลำดับความสำคัญ',
       tier3Title: 'การเปลี่ยนแปลงคลินิกอย่างสมบูรณ์',
       tier3Desc: 'โปรแกรมครบวงจรสำหรับคลินิกที่มุ่งมั่นที่จะเป็นจุดหมายปลายทางการส่งต่อทางศัลยกรรม',
-      tier3Items: 'การฝึกอบรมหลายสาขาครบวงจร,ชุดอุปกรณ์ครบพร้อมการติดตั้ง,การออกแบบขั้นตอนการทำงานคลินิกใหม่,โปรแกรมที่ปรึกษาต่อเนื่อง',
+      tier3Items:
+        'การฝึกอบรมหลายสาขาครบวงจร,ชุดอุปกรณ์ครบพร้อมการติดตั้ง,การออกแบบขั้นตอนการทำงานคลินิกใหม่,โปรแกรมที่ปรึกษาต่อเนื่อง',
       tierCTA: 'เรียนรู้เพิ่มเติม',
+      chatBadge: 'ที่ปรึกษา AI ทันที',
+      chatTitle: 'ไม่แน่ใจว่าแพ็คเกจไหนเหมาะกับคลินิกของคุณ?',
+      chatDesc:
+        'พูดคุยกับ VetAssist ที่ปรึกษาการจัดซื้อ AI ของเรา รับคำแนะนำส่วนบุคคลสำหรับอุปกรณ์ การฝึกอบรม และแพ็คเกจอัปเกรดคลินิก — ไม่ต้องกรอกฟอร์ม',
+      chatCTA: 'พูดคุยกับ VetAssist ตอนนี้',
       benefitsTitle: 'ทำไมต้องเลือกโปรแกรมคลินิก',
       benefitsSubtitle: 'ข้อดีของแนวทางการฝึกอบรม + อุปกรณ์แบบบูรณาการของเรา',
       benefit1Title: 'การเรียนรู้ที่ประสานกัน',
-      benefit1Desc: 'การฝึกอบรมจับคู่กับอุปกรณ์ที่คุณจะใช้จริงในคลินิก ไม่มีช่องว่างระหว่างสิ่งที่เรียนกับสิ่งที่มี',
+      benefit1Desc:
+        'การฝึกอบรมจับคู่กับอุปกรณ์ที่คุณจะใช้จริงในคลินิก ไม่มีช่องว่างระหว่างสิ่งที่เรียนกับสิ่งที่มี',
       benefit2Title: 'โซลูชันแบบเหมา',
       benefit2Desc: 'การปรึกษาการฝึกอบรมและอุปกรณ์แบบรวมกับราคาที่เหมาะกับความต้องการของคลินิก',
       benefit3Title: 'การสนับสนุนต่อเนื่อง',
@@ -3628,13 +3795,15 @@ export const translations = {
       benefit4Title: 'โปรแกรมที่ยืดหยุ่น',
       benefit4Desc: 'ทุกโปรแกรมปรับแต่งตามขนาดคลินิก สาขาเฉพาะทาง และเป้าหมายการเติบโตของคุณ',
       formTitle: 'ขอรับคำปรึกษา',
-      formSubtitle: 'บอกเราเกี่ยวกับคลินิกของคุณ และเราจะออกแบบแผนอัปเกรดที่กำหนดเองภายใน 24 ชั่วโมง',
+      formSubtitle:
+        'บอกเราเกี่ยวกับคลินิกของคุณ และเราจะออกแบบแผนอัปเกรดที่กำหนดเองภายใน 24 ชั่วโมง',
       formClinicName: 'ชื่อคลินิก',
       formContact: 'ผู้ติดต่อ',
       formEmail: 'อีเมล',
       formPhone: 'โทรศัพท์',
       formInterest: 'ด้านที่สนใจ',
-      formInterestOptions: 'ศัลยกรรมกระดูก,ประสาทศัลยกรรม,ศัลยกรรมเนื้อเยื่ออ่อน,ศัลยกรรมทั่วไป,หลายสาขา',
+      formInterestOptions:
+        'ศัลยกรรมกระดูก,ประสาทศัลยกรรม,ศัลยกรรมเนื้อเยื่ออ่อน,ศัลยกรรมทั่วไป,หลายสาขา',
       formMessage: 'ข้อความ (ไม่บังคับ)',
       formSubmit: 'ขอรับคำปรึกษา',
       formSuccess: 'ขอบคุณ! เราจะติดต่อคุณภายใน 24 ชั่วโมง',
@@ -3825,7 +3994,8 @@ export const translations = {
       secureLogin: '安全なログイン',
       vetHome: 'VetSphereホーム',
       heroTitle: '外科の精度を\n向上させましょう。',
-      heroDesc: '世界クラスのトレーニング、精密機器、AIを活用した臨床サポートにアクセスする5,000人以上の獣医外科医に参加しましょう。',
+      heroDesc:
+        '世界クラスのトレーニング、精密機器、AIを活用した臨床サポートにアクセスする5,000人以上の獣医外科医に参加しましょう。',
       badgeCE: 'CE認定',
       badgeGlobal: 'グローバルネットワーク',
       loginToView: '価格を見るにはログイン',
@@ -3843,7 +4013,8 @@ export const translations = {
       applySuccess: '申請が送信されました！臨床関係チームが48時間以内にご連絡いたします。',
       resetPassword: 'パスワードをリセット',
       sendResetLink: 'リセットリンクを送信',
-      resetEmailSent: 'パスワードリセットリンクがメールに送信されました。受信トレイをご確認ください。',
+      resetEmailSent:
+        'パスワードリセットリンクがメールに送信されました。受信トレイをご確認ください。',
       invalidEmail: '有効なメールアドレスを入力してください。',
       passwordTooShort: 'パスワードは8文字以上である必要があります。',
       socialComingSoon: '近日公開',
@@ -3899,7 +4070,8 @@ export const translations = {
       // Shop page translations
       heroTitle: 'プロフェッショナル獣医',
       heroTitleHighlight: '機器マーケットプレイス',
-      heroSubtitle: 'プロフェッショナルな獣医用医療機器の信頼できるB2Bプラットフォーム。メーカーへの直接アクセス、まとめ買い価格、専門家サポート。',
+      heroSubtitle:
+        'プロフェッショナルな獣医用医療機器の信頼できるB2Bプラットフォーム。メーカーへの直接アクセス、まとめ買い価格、専門家サポート。',
       searchPlaceholder: '機器、ブランド、型番を検索...',
       b2bBadge: 'B2Bプラットフォーム',
       productsCount: '製品',
@@ -3919,7 +4091,8 @@ export const translations = {
       noProductsAvailable: '現在利用可能な製品はありません。',
       contactForPrice: '価格お問い合わせ',
       needCustomSolutions: 'カスタムソリューションが必要ですか？',
-      customSolutionsDesc: '獣医クリニック向けのパーソナライズされた製品推奨、まとめ買い価格、専門家サポートをご提供します',
+      customSolutionsDesc:
+        '獣医クリニック向けのパーソナライズされた製品推奨、まとめ買い価格、専門家サポートをご提供します',
       requestQuote: '見積もり依頼',
       exploreTraining: 'トレーニングを見る',
       loadMore: 'もっと読み込む',
@@ -3949,7 +4122,8 @@ export const translations = {
       showingRange: '{total}件中 {start}-{end}件を表示',
       previousPage: '前のページ',
       nextPage: '次のページ',
-      noResultsWithFilters: '現在のフィルター条件に一致する製品がありません。フィルターを調整またはクリアしてください。',
+      noResultsWithFilters:
+        '現在のフィルター条件に一致する製品がありません。フィルターを調整またはクリアしてください。',
       viewResults: '{count}件の結果を表示',
       moqLabel: '最小注文数: {qty}個',
     },
@@ -3982,7 +4156,8 @@ export const translations = {
       continueShopping: 'ショッピングを続ける',
       orderPlaced: '注文完了！',
       orderNumber: '注文番号',
-      bankTransferNote: '銀行振込でのお支払いを完了してください。お支払い確認後、注文を処理いたします。',
+      bankTransferNote:
+        '銀行振込でのお支払いを完了してください。お支払い確認後、注文を処理いたします。',
       confirmationEmail: '確認メールをお送りします。',
       viewOrders: '注文履歴を見る',
       // Account Section (One-Page Checkout)
@@ -4048,7 +4223,8 @@ export const translations = {
       bankTransfer: '銀行振込',
       bankTransferDesc: '手動銀行振込、お支払い確認後に注文処理',
       bankTransferInstructions: '銀行振込のご案内',
-      bankTransferInstructionDetail: '注文後、銀行口座情報をメールでお送りします。振込参照欄に注文番号をご記入ください。',
+      bankTransferInstructionDetail:
+        '注文後、銀行口座情報をメールでお送りします。振込参照欄に注文番号をご記入ください。',
       // Order Notes
       orderNotes: '注文メモ（任意）',
       orderNotesPlaceholder: '注文に関する特別なご指示...',
@@ -4103,6 +4279,7 @@ export const translations = {
       viewCart: 'カートを見る',
       requestQuote: '見積りを依頼',
       requestQuoteShort: '見積り依頼',
+      askVetAssist: 'この製品についてVetAssistに相談する',
       quoteModalTitle: '見積りを依頼',
       quoteSubmitted: '見積り依頼を送信しました',
       quoteSubmittedDesc: '1-2営業日以内に担当者よりご連絡いたします。',
@@ -4151,6 +4328,7 @@ export const translations = {
       inquireCourse: 'このコースについて問い合わせる',
       enrollNow: '今すぐ申し込む',
       talkToTeam: 'チームに相談する',
+      askVetAssist: 'このコースについてVetAssistに相談する',
       format: '形式',
       level: 'レベル',
       specialty: '専門分野',
@@ -4232,13 +4410,15 @@ export const translations = {
       registerNow: '登録を完了',
       venue: '臨床サイト',
       openMaps: 'サイトへナビゲート',
-      empty: '保留中のセッションはありません。今後のスケジュールについてはアカデミーにお問い合わせください。',
+      empty:
+        '保留中のセッションはありません。今後のスケジュールについてはアカデミーにお問い合わせください。',
       features: ['上級ウェットラボ', 'CPE認定', '臨床資材含む', 'マスターレベルのフィードバック'],
       // List page translations
       heroTag: 'プレミアムトレーニング',
       heroTitle: '獣医師のための',
       heroTitleHighlight: '上級臨床トレーニング',
-      heroSubtitle: '専門医認定資格者による実践型ハンズオンワークショップ。ACVS/ECVSクレジットを取得し、高度な外科手技を習得。',
+      heroSubtitle:
+        '専門医認定資格者による実践型ハンズオンワークショップ。ACVS/ECVSクレジットを取得し、高度な外科手技を習得。',
       heroBadge1: 'ACVSクレジット',
       heroBadge2: '50名以上の専門医',
       heroBadge3: '実践演習',
@@ -4264,7 +4444,8 @@ export const translations = {
       previous: '前へ',
       next: '次へ',
       bottomTitle: '適切なトレーニングをお探しですか？',
-      bottomSubtitle: '専門分野、経験レベル、クリニックの目標に基づいて、最適なトレーニングプログラムをご提案いたします。',
+      bottomSubtitle:
+        '専門分野、経験レベル、クリニックの目標に基づいて、最適なトレーニングプログラムをご提案いたします。',
       getRecommendation: 'パーソナライズされた推奨を受ける',
       browseAll: 'すべてのトレーニングを見る',
       // Filter options
@@ -4324,7 +4505,8 @@ export const translations = {
       support: '臨床サポート',
       company: 'アカデミー',
       copyright: '© 2026 VetSphere Global. 機関基準適用。',
-      brandDesc: "グローバル獣医外科のデジタルインフラストラクチャを構築。臨床意思決定者を世界クラスの教育と精密医療機器に接続。",
+      brandDesc:
+        'グローバル獣医外科のデジタルインフラストラクチャを構築。臨床意思決定者を世界クラスの教育と精密医療機器に接続。',
       links: {
         courses: '教育',
         shop: '器具',
@@ -4342,50 +4524,52 @@ export const translations = {
       address: {
         line1: 'VetSphereグローバル本社',
         line2: '123 Surgical Way, Suite 400',
-        line3: 'チューリッヒ, CH-8001, スイス'
-      }
+        line3: 'チューリッヒ, CH-8001, スイス',
+      },
     },
     home: {
       heroTag: 'グローバル獣医外科',
       heroTitle1: 'ケアの基準を',
       heroTitle2: '向上させる',
-      heroDesc: 'VetSphereは世界をリードする獣医外科医をマスターレベルの教育、精密整形外科、神経外科技術に接続します。',
+      heroDesc:
+        'VetSphereは世界をリードする獣医外科医をマスターレベルの教育、精密整形外科、神経外科技術に接続します。',
       heroBadge1: 'ISO 13485認証',
       heroBadge2: 'AAVSB RACE承認',
       partnerTitle: 'グローバル学術提携',
-      partnerSubtitle: '私たちのカリキュラムは、世界トップランクの獣医機関の教員の専門知識に基づいて構築されています。',
+      partnerSubtitle:
+        '私たちのカリキュラムは、世界トップランクの獣医機関の教員の専門知識に基づいて構築されています。',
       partnerBadge: 'QS世界トップ10',
-      
+
       uniUF: 'フロリダ大学',
       uniUFDesc: '米国学術病院で臨床症例数第1位',
-      
+
       uniRVC: '王立獣医大学',
       uniRVCDesc: 'ロンドン • グローバル第1位ランキング',
-      
+
       uniUCD: 'UCデービス',
       uniUCDDesc: '精密医療リーダー',
-      
+
       uniCornell: 'コーネル大学',
       uniCornellDesc: '臨床と研究のバランス',
-      
+
       uniCSU: 'コロラド州立大学',
       uniCSUDesc: 'トップクラスの小動物整形外科',
-      
+
       uniEdin: 'エディンバラ大学',
       uniEdinDesc: 'コンパニオンアニマルヘルス',
-      
+
       uniGuelph: 'ゲルフ大学',
       uniGuelphDesc: '北米教育ハブ',
-      
+
       uniVetsuisse: 'Vetsuisse学部',
       uniVetsuisseDesc: 'ベルン/チューリッヒ • 研究の卓越性',
-      
+
       uniUtrecht: 'ユトレヒト大学',
       uniUtrechtDesc: 'ヨーロッパ研究センター',
-      
+
       uniPenn: 'ペン獣医',
       uniPennDesc: 'トランスレーショナルメディシン',
-      
+
       uniTexas: 'テキサスA&M',
       uniTexasDesc: '大型動物と熱帯病',
 
@@ -4404,7 +4588,8 @@ export const translations = {
       statDevicesSub: '13485認証',
       focusTag: '臨床フォーカス',
       focusTitle: '包括的な外科ソリューション',
-      focusDesc: '私たちは獣医外科のライフサイクル全体を専門としています：レジデンシーレベルのトレーニングから精密インプラントの供給まで。',
+      focusDesc:
+        '私たちは獣医外科のライフサイクル全体を専門としています：レジデンシーレベルのトレーニングから精密インプラントの供給まで。',
       orthoTitle: '整形外科',
       orthoDesc: '医療グレードのチタンインプラントを使用したTPLO、骨折修復、関節置換の上級指導。',
       neuroTitle: '神経外科',
@@ -4415,46 +4600,52 @@ export const translations = {
       equipTag: 'SurgiTech精密機器',
       equipTitle1: 'エンジニアリング',
       equipTitle2: '臨床的信頼。',
-      equipDesc: '私たちの独自のパワーツールとインプラントラインはドイツで設計され、ISO 13485基準に従って製造されています。獣医外科医のために人間工学的に最適化されています。',
+      equipDesc:
+        '私たちの独自のパワーツールとインプラントラインはドイツで設計され、ISO 13485基準に従って製造されています。獣医外科医のために人間工学的に最適化されています。',
       equipList: [
         'ハイトルク振動ソー（TPLO）',
         '医療グレード5チタンロッキングプレート',
         'モジュラー創外固定システム',
-        'マイクロサージカル器具セット'
+        'マイクロサージカル器具セット',
       ],
       equipCta: '機器カタログを閲覧',
       equipFeatureTag: '注目システム',
       equipFeatureName: 'SurgiPower TPLO V4',
       equipFeatureSpec: '最大トルク負荷',
       netTitle: '卓越性のグローバルコミュニティ。',
-      netDesc: 'VetSphereは単なるプラットフォームではありません。教育病院、研究センター、外科専門家の世界的なネットワークです。',
+      netDesc:
+        'VetSphereは単なるプラットフォームではありません。教育病院、研究センター、外科専門家の世界的なネットワークです。',
       netPartner1: '戦略的パートナー（アジア）',
       netPartner2: 'Diplomate教員',
       netJoined: '15,000人以上の同僚が参加',
       featLabs: 'ハンズオンウェットラボ',
-      featLabsDesc: 'カダバーモデルでの直接メンターシップを確保する小グループセッション（学生対教員比4:1）。',
+      featLabsDesc:
+        'カダバーモデルでの直接メンターシップを確保する小グループセッション（学生対教員比4:1）。',
       featCase: 'ケースコンサルテーション',
-      featCaseDesc: '手術前に専門家レビューのために複雑なケースをアップロードできるコース後サポート。',
+      featCaseDesc:
+        '手術前に専門家レビューのために複雑なケースをアップロードできるコース後サポート。',
       featSupply: 'サプライチェーン統合',
       featSupplyDesc: 'トレーニングで学んだ正確な仕様に一致するインプラントのシームレスな注文。',
       featDigital: 'デジタルサポート',
       featDigitalDesc: 'AI支援の術前計画とインテリジェント在庫管理。',
       ctaTitle1: 'あなたの外科診療を',
       ctaTitle2: '向上させる準備はできていますか？',
-      ctaDesc: '世界中の獣医教育病院と民間専門センターから信頼されているプロフェッショナルネットワークに参加しましょう。',
+      ctaDesc:
+        '世界中の獣医教育病院と民間専門センターから信頼されているプロフェッショナルネットワークに参加しましょう。',
       ctaButtonPrimary: 'メンバーシップ登録',
-      ctaButtonSecondary: 'ケーススタディを見る'
+      ctaButtonSecondary: 'ケーススタディを見る',
     },
     ai: {
       title: '外科意思決定インテリジェンス',
       status: '分析ビジョンアクティブ',
       reset: 'セッションをクリア',
       liveMode: '術中音声モード',
-      welcome: 'VetSphereインテリジェンスが初期化されました。即時分析のために臨床画像または技術仕様を提供してください。',
+      welcome:
+        'VetSphereインテリジェンスが初期化されました。即時分析のために臨床画像または技術仕様を提供してください。',
       placeholder: 'ケースを説明またはデバイス仕様を入力...',
       imagePlaceholder: 'この画像の臨床クエリを指定...',
       analyzing: 'X線データを分析中...',
-      suggestions: ['X線分析', 'コース推奨', '器具キャリブレーション']
+      suggestions: ['X線分析', 'コース推奨', '器具キャリブレーション'],
     },
     intlHome: {
       heroTag: 'グローバル獣医外科',
@@ -4462,6 +4653,8 @@ export const translations = {
       heroSubtitle: '世界トップクラスのトレーニングと精密機器を獣医専門家に提供します。',
       heroCTA1: 'コースを見る',
       heroCTA2: '機器を購入',
+      heroChatCTA: 'VetAssistに相談',
+      ctaChatButton: 'VetAssistに相談',
       heroBadge1: 'ISO 13485認証',
       heroBadge2: 'RACE認定',
       heroOverlayCount: '50+',
@@ -4502,7 +4695,8 @@ export const translations = {
       course3Price: '¥375,000',
       disciplinesTag: '臨床フォーカス',
       disciplinesTitle: '包括的な外科ソリューション',
-      disciplinesDesc: '獣医外科の全ライフサイクルに特化：レジデンシーレベルのトレーニングから精密インプラントの供給まで。',
+      disciplinesDesc:
+        '獣医外科の全ライフサイクルに特化：レジデンシーレベルのトレーニングから精密インプラントの供給まで。',
       orthoTitle: '整形外科',
       orthoDesc: 'TPLO、骨折修復、人工関節置換における高度な指導。',
       neuroTitle: '神経外科',
@@ -4542,7 +4736,8 @@ export const translations = {
       heroTag: '臨床アップグレードプラットフォーム',
       heroTitle: 'トレーニングと臨床機器で小動物診療を向上させましょう',
       heroSubtitle: '独立系動物病院のために設計されています。',
-      heroSubtitleLine2: 'グローバルな専門家と共にトレーニングし、自信を持ってクリニックを整備しましょう。',
+      heroSubtitleLine2:
+        'グローバルな専門家と共にトレーニングし、自信を持ってクリニックを整備しましょう。',
       heroCTA1: 'トレーニングから始める',
       heroCTA2: '臨床機器を閲覧',
       heroBadge1: 'ISO 13485認証',
@@ -4562,7 +4757,8 @@ export const translations = {
       step4Desc: '自信を持ってより高価値な症例に取り組む',
       featuredTag: '注目のトレーニングプログラム',
       featuredTitle: '機器統合型ハンズオンコース',
-      featuredSubtitle: '各トレーニングプログラムには、学んだことを実践するために必要な臨床機器が付属しています',
+      featuredSubtitle:
+        '各トレーニングプログラムには、学んだことを実践するために必要な臨床機器が付属しています',
       equipmentBadge: '推奨機器',
       viewAllTraining: 'すべてのトレーニングプログラムを見る',
       learnMore: '詳細を見る',
@@ -4605,19 +4801,23 @@ export const translations = {
       completedCourse: '修了コース',
       // Testimonials
       testimonial1NameTitle: '小動物外科医',
-      testimonial1Quote: '高度な TPLO コースを修了した後、整形外科の症例が 300％増加。週に 10 件以上の複雑な手術を自信を持って行っています。VetSphere は私の獣医師キャリアを変えました。',
+      testimonial1Quote:
+        '高度な TPLO コースを修了した後、整形外科の症例が 300％増加。週に 10 件以上の複雑な手術を自信を持って行っています。VetSphere は私の獣医師キャリアを変えました。',
       testimonial1Result: '手術数 300％増',
       testimonial1Course: '高度な TPLO ワークショップ',
       testimonial2NameTitle: 'クリニック創設者兼ディレクター',
-      testimonial2Quote: 'VetSphere の機器ソリューションとクリニック管理トレーニングにより、ゼロから最先端の手術施設を構築。わずか 18 ヶ月で年間収益が 250％成長しました。',
+      testimonial2Quote:
+        'VetSphere の機器ソリューションとクリニック管理トレーニングにより、ゼロから最先端の手術施設を構築。わずか 18 ヶ月で年間収益が 250％成長しました。',
       testimonial2Result: '収益 250％増',
       testimonial2Course: 'クリニック設立 Complete プログラム',
       testimonial3NameTitle: '神経学スペシャリスト',
-      testimonial3Quote: 'IVDD 外科コースは非常に包括的。理論から実習まで、すべての詳細がカバーされています。現在、地域スペシャリストとして複雑な脊椎手術を自信を持って行っています。',
+      testimonial3Quote:
+        'IVDD 外科コースは非常に包括的。理論から実習まで、すべての詳細がカバーされています。現在、地域スペシャリストとして複雑な脊椎手術を自信を持って行っています。',
       testimonial3Result: '脊椎手術を独立して実施',
       testimonial3Course: 'IVDD 神経外科プログラム',
       testimonial4NameTitle: 'エキゾチック動物獣医師',
-      testimonial4Quote: 'VetSphere のエキゾチック動物医学プログラムにより、鳥類、爬虫類、小型哺乳類を扱う自信とスキルを獲得。現在、私たちのクリニックは地域のエキゾチック動物紹介センターとなっています。',
+      testimonial4Quote:
+        'VetSphere のエキゾチック動物医学プログラムにより、鳥類、爬虫類、小型哺乳類を扱う自信とスキルを獲得。現在、私たちのクリニックは地域のエキゾチック動物紹介センターとなっています。',
       testimonial4Result: '地域エキゾチック紹介センター',
       testimonial4Course: 'エキゾチック動物医学認定',
       // Stats
@@ -4677,30 +4877,43 @@ export const translations = {
     forClinics: {
       heroTag: 'クリニックアップグレードプログラム',
       heroTitle: '独立系クリニック向けアップグレードプログラム',
-      heroSubtitle: '手術能力の拡大を目指す独立系動物病院向けの包括的なトレーニング＋機器ソリューション。',
+      heroSubtitle:
+        '手術能力の拡大を目指す独立系動物病院向けの包括的なトレーニング＋機器ソリューション。',
       heroCTA: 'コンサルテーションを依頼',
       tier1Title: '外科基礎',
       tier1Desc: 'アップグレードの旅を始めるクリニック向けの基本的な外科トレーニングとコア機器。',
-      tier1Items: '入門外科コース,基本外科器具セット,機器セットアップガイダンス,オンライン症例相談アクセス',
+      tier1Items:
+        '入門外科コース,基本外科器具セット,機器セットアップガイダンス,オンライン症例相談アクセス',
       tier2Title: '専門分野拡大',
       tier2Desc: '新しい外科分野の追加に向けた専門トレーニングと特殊機器。',
-      tier2Items: '専門分野別上級コース,専門器具・インプラントパッケージ,ワークフロー最適化コンサルテーション,優先テクニカルサポート',
+      tier2Items:
+        '専門分野別上級コース,専門器具・インプラントパッケージ,ワークフロー最適化コンサルテーション,優先テクニカルサポート',
       tier3Title: '完全臨床変革',
       tier3Desc: '外科リファラル施設を目指すクリニック向けの包括的プログラム。',
-      tier3Items: '包括的マルチスペシャリティトレーニング,設置込みフル機器スイート,臨床ワークフロー再設計,継続的メンターシッププログラム',
+      tier3Items:
+        '包括的マルチスペシャリティトレーニング,設置込みフル機器スイート,臨床ワークフロー再設計,継続的メンターシッププログラム',
       tierCTA: '詳細を見る',
+      chatBadge: '即時AIコンサルタント',
+      chatTitle: 'クリニックに最適なパッケージが分かりませんか？',
+      chatDesc:
+        'AI調達コンサルタントVetAssistに相談。機器、トレーニング、クリニックアップグレードパッケージの個別アドバイスを受けましょう — フォーム不要。',
+      chatCTA: 'VetAssistと今すぐチャット',
       benefitsTitle: 'クリニックプログラムを選ぶ理由',
       benefitsSubtitle: '統合型トレーニング＋機器アプローチの利点',
       benefit1Title: '連携した学習',
-      benefit1Desc: 'トレーニングはクリニックで実際に使用する機器とマッチング。学んだことと持っているもののギャップなし。',
+      benefit1Desc:
+        'トレーニングはクリニックで実際に使用する機器とマッチング。学んだことと持っているもののギャップなし。',
       benefit2Title: 'ボリュームソリューション',
-      benefit2Desc: 'クリニックのニーズに合わせた価格でのバンドルトレーニング＋機器コンサルテーション。',
+      benefit2Desc:
+        'クリニックのニーズに合わせた価格でのバンドルトレーニング＋機器コンサルテーション。',
       benefit3Title: '継続的サポート',
       benefit3Desc: '購入後の臨床コンサルテーションで投資を最大限に活用。',
       benefit4Title: '柔軟なプログラム',
-      benefit4Desc: 'すべてのプログラムはクリニックの規模、専門分野、成長目標に合わせてカスタマイズ。',
+      benefit4Desc:
+        'すべてのプログラムはクリニックの規模、専門分野、成長目標に合わせてカスタマイズ。',
       formTitle: 'コンサルテーションを依頼',
-      formSubtitle: 'クリニックについてお聞かせください。24時間以内にカスタムアップグレードプランを設計します。',
+      formSubtitle:
+        'クリニックについてお聞かせください。24時間以内にカスタムアップグレードプランを設計します。',
       formClinicName: 'クリニック名',
       formContact: '担当者名',
       formEmail: 'メールアドレス',
