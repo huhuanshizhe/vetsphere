@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, getErrorMessage } from '@/lib/api-client';
+import { apiFetch } from '@/lib/api-client';
 
 interface Message {
   id: string;
@@ -23,12 +23,36 @@ export function useChat(visitorId: string, currentPage?: string): UseChatReturn 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load existing session on mount
+  // Load existing session and message history on mount
   useEffect(() => {
+    if (!visitorId) return;
+
     const savedSessionId = localStorage.getItem(`chat_session_${visitorId}`);
-    if (savedSessionId) {
+    if (savedSessionId && messages.length === 0) {
       setSessionId(savedSessionId);
-      // TODO: Load message history from API
+
+      // Load message history from API
+      apiFetch<{ messages: Message[]; sessionId: string | null }>(
+        `/api/ai/sales-chat/history?sessionId=${encodeURIComponent(savedSessionId)}&visitorId=${encodeURIComponent(visitorId)}`,
+      )
+        .then((data) => {
+          if (data.messages && data.messages.length > 0) {
+            const loaded: Message[] = data.messages.map((m) => ({
+              ...m,
+              timestamp: new Date(m.timestamp),
+            }));
+            setMessages(loaded);
+          } else {
+            // Session invalid or empty, clear it
+            setSessionId(null);
+            localStorage.removeItem(`chat_session_${visitorId}`);
+          }
+        })
+        .catch(() => {
+          // Failed to load history, start fresh
+          setSessionId(null);
+          localStorage.removeItem(`chat_session_${visitorId}`);
+        });
     }
   }, [visitorId]);
 

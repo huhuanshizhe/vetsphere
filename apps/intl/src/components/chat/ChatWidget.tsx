@@ -70,14 +70,15 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Chat Window */}
-      {isOpen && visitorId && (
+      {/* Chat Window - always mounted, hidden via CSS to preserve state */}
+      {visitorId && (
         <div
-          className="fixed bottom-24 right-4 z-50 w-[380px] h-[600px] 
+          className={`fixed bottom-24 right-4 z-50 w-[380px] h-[600px] 
                         md:w-[420px] md:h-[650px]
                         bg-white rounded-2xl shadow-2xl border border-gray-200
                         flex flex-col overflow-hidden
-                        animate-slide-up"
+                        transition-all duration-300 origin-bottom-right
+                        ${isOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
         >
           <ChatWindow
             messages={messages}
